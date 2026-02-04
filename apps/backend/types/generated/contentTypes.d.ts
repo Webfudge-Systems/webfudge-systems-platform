@@ -385,6 +385,233 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiAppApp extends Struct.CollectionTypeSchema {
+  collectionName: 'apps'
+  info: {
+    description: 'Applications available in the platform'
+    displayName: 'App'
+    pluralName: 'apps'
+    singularName: 'app'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    basePrice: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    category: Schema.Attribute.String
+    color: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    features: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
+    icon: Schema.Attribute.String
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::app.app'> & Schema.Attribute.Private
+    modules: Schema.Attribute.Relation<'oneToMany', 'api::module.module'>
+    name: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.Unique
+    order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiInvitationInvitation extends Struct.CollectionTypeSchema {
+  collectionName: 'invitations'
+  info: {
+    description: 'User invitations to organizations'
+    displayName: 'Invitation'
+    pluralName: 'invitations'
+    singularName: 'invitation'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    acceptedAt: Schema.Attribute.DateTime
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    email: Schema.Attribute.Email & Schema.Attribute.Required
+    expiresAt: Schema.Attribute.DateTime & Schema.Attribute.Required
+    invitedBy: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::invitation.invitation'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    permissions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    publishedAt: Schema.Attribute.DateTime
+    role: Schema.Attribute.String & Schema.Attribute.DefaultTo<'User'>
+    status: Schema.Attribute.Enumeration<['pending', 'accepted', 'expired']> &
+      Schema.Attribute.DefaultTo<'pending'>
+    token: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.Unique
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiModuleModule extends Struct.CollectionTypeSchema {
+  collectionName: 'modules'
+  info: {
+    description: 'Modules available for each app'
+    displayName: 'Module'
+    pluralName: 'modules'
+    singularName: 'module'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    app: Schema.Attribute.Relation<'manyToOne', 'api::app.app'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    features: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
+    icon: Schema.Attribute.String
+    isCore: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::module.module'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    order: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    pricePerUser: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiOrganizationUserOrganizationUser extends Struct.CollectionTypeSchema {
+  collectionName: 'organization_users'
+  info: {
+    description: 'Users belonging to organizations'
+    displayName: 'Organization User'
+    pluralName: 'organization-users'
+    singularName: 'organization-user'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    customPermissions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    joinedAt: Schema.Attribute.DateTime
+    lastAccessAt: Schema.Attribute.DateTime
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::organization-user.organization-user'
+    > &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    role: Schema.Attribute.String & Schema.Attribute.DefaultTo<'User'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    user: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+  }
+}
+
+export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema {
+  collectionName: 'organizations'
+  info: {
+    description: 'Organizations/Enterprises in the platform'
+    displayName: 'Organization'
+    pluralName: 'organizations'
+    singularName: 'organization'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    activeModules: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    address: Schema.Attribute.JSON
+    companyEmail: Schema.Attribute.Email
+    companyPhone: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    industry: Schema.Attribute.Enumeration<
+      [
+        'technology',
+        'finance',
+        'healthcare',
+        'education',
+        'retail',
+        'manufacturing',
+        'services',
+        'other',
+      ]
+    >
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::organization.organization'> &
+      Schema.Attribute.Private
+    logo: Schema.Attribute.Media<'images'>
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    onboardingCompleted: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    organizationUsers: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::organization-user.organization-user'
+    >
+    owner: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    publishedAt: Schema.Attribute.DateTime
+    size: Schema.Attribute.Enumeration<
+      ['size_1_10', 'size_11_50', 'size_51_200', 'size_201_500', 'size_500_plus']
+    >
+    slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required
+    status: Schema.Attribute.Enumeration<['trial', 'active', 'suspended', 'cancelled']> &
+      Schema.Attribute.DefaultTo<'trial'>
+    subscriptions: Schema.Attribute.Relation<'oneToMany', 'api::subscription.subscription'>
+    trialEndsAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    website: Schema.Attribute.String
+  }
+}
+
+export interface ApiSubscriptionSubscription extends Struct.CollectionTypeSchema {
+  collectionName: 'subscriptions'
+  info: {
+    description: 'Organization subscriptions to apps and modules'
+    displayName: 'Subscription'
+    pluralName: 'subscriptions'
+    singularName: 'subscription'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    app: Schema.Attribute.Relation<'manyToOne', 'api::app.app'>
+    autoRenew: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    basePrice: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    billingCycle: Schema.Attribute.Enumeration<['monthly', 'annual']> &
+      Schema.Attribute.DefaultTo<'monthly'>
+    calculatedPrice: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    endDate: Schema.Attribute.DateTime
+    lastPaymentDate: Schema.Attribute.DateTime
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::subscription.subscription'> &
+      Schema.Attribute.Private
+    nextBillingDate: Schema.Attribute.DateTime
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paymentMethod: Schema.Attribute.String
+    pricePerUser: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    selectedModules: Schema.Attribute.Relation<'manyToMany', 'api::module.module'>
+    startDate: Schema.Attribute.DateTime
+    status: Schema.Attribute.Enumeration<['trial', 'active', 'suspended', 'cancelled']> &
+      Schema.Attribute.DefaultTo<'trial'>
+    totalUsers: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface PluginContentReleasesRelease extends Struct.CollectionTypeSchema {
   collectionName: 'strapi_releases'
   info: {
@@ -813,6 +1040,12 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken
       'admin::transfer-token-permission': AdminTransferTokenPermission
       'admin::user': AdminUser
+      'api::app.app': ApiAppApp
+      'api::invitation.invitation': ApiInvitationInvitation
+      'api::module.module': ApiModuleModule
+      'api::organization-user.organization-user': ApiOrganizationUserOrganizationUser
+      'api::organization.organization': ApiOrganizationOrganization
+      'api::subscription.subscription': ApiSubscriptionSubscription
       'plugin::content-releases.release': PluginContentReleasesRelease
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction
       'plugin::i18n.locale': PluginI18NLocale

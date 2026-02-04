@@ -12,7 +12,7 @@
  * - Light: #FFFAF7 (RGB 255, 250, 247)
  */
 
-export const brandColors = {
+const brandColors = {
   // Primary Brand Colors
   primary: '#F5630F',      // Brand Orange
   dark: '#1A1A1A',         // Brand Dark
@@ -74,7 +74,7 @@ export const brandColors = {
 };
 
 // Gradient Definitions
-export const brandGradients = {
+const brandGradients = {
   primary: 'linear-gradient(135deg, #F5630F 0%, #fb923c 50%, #eab308 100%)',
   orange: 'linear-gradient(135deg, #F5630F 0%, #fb923c 100%)',
   sunset: 'linear-gradient(135deg, #F5630F 0%, #fdba74 50%, #fde047 100%)',
@@ -89,7 +89,7 @@ export const brandGradients = {
 };
 
 // Shadow Definitions
-export const brandShadows = {
+const brandShadows = {
   brand: '0 4px 14px 0 rgba(245, 99, 15, 0.25)',
   brandLg: '0 10px 40px 0 rgba(245, 99, 15, 0.2)',
   brandSm: '0 2px 8px 0 rgba(245, 99, 15, 0.15)',
@@ -99,7 +99,7 @@ export const brandShadows = {
 };
 
 // Usage Guidelines
-export const brandUsage = {
+const brandUsage = {
   primary: {
     color: '#F5630F',
     use: 'Primary actions, CTAs, active states',
@@ -118,7 +118,7 @@ export const brandUsage = {
 };
 
 // Tailwind Config Helper
-export const getTailwindColors = () => ({
+const getTailwindColors = () => ({
   brand: {
     primary: brandColors.primary,
     dark: brandColors.dark,
@@ -130,4 +130,14 @@ export const getTailwindColors = () => ({
   dark: brandColors.dark,
 });
 
-export default brandColors;
+// CommonJS exports
+module.exports = {
+  brandColors,
+  brandGradients,
+  brandShadows,
+  brandUsage,
+  getTailwindColors,
+};
+
+// Default export for backward compatibility
+module.exports.default = brandColors;

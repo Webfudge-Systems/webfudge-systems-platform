@@ -13,8 +13,8 @@ module.exports = {
         // Brand Colors
         brand: {
           primary: brandColors.primary,
-          dark: brandColors.dark,
-          light: brandColors.light,
+          dark: brandColors.dark[900],
+          light: brandColors.light[50],
           white: brandColors.white,
         },
 
@@ -22,6 +22,7 @@ module.exports = {
         orange: brandColors.orange,
         yellow: brandColors.yellow,
         dark: brandColors.dark,
+        light: brandColors.light,
       },
 
       // Brand Gradients
@@ -47,10 +48,11 @@ module.exports = {
         'soft': brandShadows.soft,
       },
 
-      // Font Families
+      // Font Families — Host Grotesk for apps; Jura for landing (landing overrides in its tailwind)
       fontFamily: {
         sans: ['Host Grotesk', 'system-ui', 'sans-serif'],
         heading: ['Host Grotesk', 'system-ui', 'sans-serif'],
+        jura: ['Jura', 'system-ui', 'sans-serif'],
         mono: ['Fira Code', 'monospace'],
       },
     },

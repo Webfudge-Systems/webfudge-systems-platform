@@ -1,4 +1,4 @@
-'use strict';
+const { seed } = require('../database/seeds/apps-and-modules');
 
 module.exports = {
   /**
@@ -16,5 +16,21 @@ module.exports = {
    * This gives you an opportunity to set up your data model,
    * run jobs, or perform some special logic.
    */
-  bootstrap(/*{ strapi }*/) {},
+  async bootstrap({ strapi }) {
+    console.log('🚀 Strapi is bootstrapping...');
+
+    // Check if we should run seeds
+    const shouldSeed = process.env.SEED_DATA === 'true';
+    
+    if (shouldSeed) {
+      console.log('🌱 Running database seeds...');
+      try {
+        await seed();
+      } catch (error) {
+        console.error('❌ Seeding failed:', error);
+      }
+    }
+
+    console.log('✅ Bootstrap complete!');
+  },
 };

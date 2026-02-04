@@ -8,7 +8,12 @@ module.exports = {
     '../../packages/ui/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Jura', 'system-ui', 'sans-serif'],
+        heading: ['Jura', 'system-ui', 'sans-serif'],
+      },
+    },
   },
   plugins: [],
 }

@@ -1,4 +1,4 @@
-import { clsx } from "clsx";
+import { clsx } from 'clsx'
 
 export function Table({
   columns = [],
@@ -8,28 +8,52 @@ export function Table({
   bodyClassName,
   rowClassName,
   onRowClick,
+  keyField = 'id',
+  variant = 'default',
   ...props
 }) {
+  const variants = {
+    default: {
+      container: 'overflow-x-auto bg-white',
+      table: 'min-w-full divide-y divide-gray-200',
+      header: 'bg-gray-50',
+      headerCell:
+        'px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider',
+      body: 'bg-white divide-y divide-gray-100',
+      row: 'hover:bg-gray-50 transition-colors duration-150',
+      cell: 'px-6 py-4 text-sm text-gray-900',
+    },
+    modern: {
+      container: 'overflow-x-auto bg-white border border-gray-200 rounded-xl',
+      table: 'min-w-full',
+      header: 'bg-gray-50 border-b border-gray-200',
+      headerCell: 'px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide',
+      body: 'bg-white divide-y divide-gray-100',
+      row: 'hover:bg-blue-50/50 transition-all duration-200 group',
+      cell: 'px-6 py-4 text-sm text-gray-700 group-hover:text-gray-900',
+    },
+    compact: {
+      container: 'overflow-x-auto bg-white',
+      table: 'min-w-full',
+      header: 'bg-white border-b-2 border-gray-200',
+      headerCell: 'px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase',
+      body: 'bg-white divide-y divide-gray-100',
+      row: 'hover:bg-gray-50 transition-colors',
+      cell: 'px-4 py-3 text-sm text-gray-700',
+    },
+  }
+
+  const styles = variants[variant] || variants.default
+
   return (
-    <div className="overflow-x-auto rounded-3xl bg-white/70 backdrop-blur-xl border border-white/40 transition-shadow duration-300">
-      <table
-        className={clsx("min-w-full rounded-3xl overflow-hidden", className)}
-        {...props}
-      >
-        <thead
-          className={clsx(
-            "bg-white/90 backdrop-blur-lg border-b border-orange-200/50 shadow-sm",
-            headerClassName
-          )}
-        >
+    <div className={clsx(styles.container, 'transition-shadow duration-300')}>
+      <table className={clsx(styles.table, className)} {...props}>
+        <thead className={clsx(styles.header, headerClassName)}>
           <tr>
             {columns.map((column, index) => (
               <th
                 key={column.key || index}
-                className={clsx(
-                  "px-6 py-5 text-left text-xs font-black text-gray-800 uppercase tracking-wider first:rounded-tl-3xl last:rounded-tr-3xl shadow-sm",
-                  column.headerClassName
-                )}
+                className={clsx(styles.headerCell, column.headerClassName)}
                 style={
                   column.width
                     ? {
@@ -40,34 +64,22 @@ export function Table({
                     : {}
                 }
               >
-                {column.title || column.label || ""}
+                {column.title || column.label || ''}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody
-          className={clsx(
-            "bg-white/60 backdrop-blur-sm divide-y divide-white/20",
-            bodyClassName
-          )}
-        >
+        <tbody className={clsx(styles.body, bodyClassName)}>
           {data.map((row, rowIndex) => (
             <tr
-              key={row.id || rowIndex}
-              className={clsx(
-                "hover:bg-orange-50/50 hover:shadow-lg transition-all duration-300 group bg-white/40 shadow-sm hover:shadow-orange-100/50",
-                onRowClick && "cursor-pointer",
-                rowClassName
-              )}
+              key={row[keyField] || row.id || rowIndex}
+              className={clsx(styles.row, onRowClick && 'cursor-pointer', rowClassName)}
               onClick={() => onRowClick && onRowClick(row, rowIndex)}
             >
               {columns.map((column, colIndex) => (
                 <td
                   key={column.key || colIndex}
-                  className={clsx(
-                    "px-6 py-4 text-sm text-gray-800 group-hover:text-gray-900 transition-colors duration-300",
-                    column.className
-                  )}
+                  className={clsx(styles.cell, column.className)}
                   style={
                     column.width
                       ? {
@@ -78,9 +90,7 @@ export function Table({
                       : {}
                   }
                 >
-                  {column.render
-                    ? column.render(row[column.key], row, rowIndex)
-                    : row[column.key]}
+                  {column.render ? column.render(row[column.key], row, rowIndex) : row[column.key]}
                 </td>
               ))}
             </tr>
@@ -88,7 +98,7 @@ export function Table({
         </tbody>
       </table>
     </div>
-  );
+  )
 }
 
-export default Table;
+export default Table

@@ -12,12 +12,14 @@ export {
   Checkbox,
   Textarea,
   // Display Components
+  Accordion,
   Card,
   Badge,
   Avatar,
   Table,
   Pagination,
   EmptyState,
+  KPICard,
   // Navigation Components
   Tabs,
   TabsWithActions,
@@ -27,6 +29,7 @@ export {
 // LAYOUTS - Page structure and containers
 export {
   Container,
+  Section,
   PageHeader,
 } from '../layouts';
 

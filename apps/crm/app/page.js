@@ -1,46 +1,146 @@
-import Link from 'next/link';
+'use client';
 
-export default function CRMHome() {
+import { useState, useEffect } from 'react';
+import { useAuth } from '@webfudge/auth';
+import { Users, DollarSign, TrendingUp, Target, Loader2 } from 'lucide-react';
+import { formatCurrency } from '@webfudge/utils';
+import { KPICard } from '@webfudge/ui';
+import CRMPageHeader from '../components/CRMPageHeader';
+import dashboardService from '../lib/api/dashboardService';
+import {
+  SalesAnalyticsWidget,
+  QuickActionsWidget,
+  ActivityFeedWidget,
+  DealsPipelineWidget,
+} from '../components/dashboard';
+
+const colorSchemes = ['orange', 'orange', 'orange', 'orange'];
+
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState([]);
+
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good Morning';
+    if (h < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const getDate = () =>
+    new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const [statsRes] = await Promise.all([dashboardService.getStats()]);
+        const data = statsRes?.data || {};
+        const changes = data.changes || {};
+        const formatChange = (c) => (c === 0 ? '0' : c > 0 ? `+${c}%` : `${c}%`);
+        if (!cancelled) {
+          setStats([
+            {
+              title: 'Total Leads',
+              value: String(data.totalLeads ?? 0),
+              change: formatChange(changes.leadsChange ?? 0),
+              changeType: (changes.leadsChange ?? 0) >= 0 ? 'increase' : 'decrease',
+              icon: Users,
+            },
+            {
+              title: 'Pipeline Value',
+              value: formatCurrency(data.pipelineValue ?? 0, { notation: 'compact' }),
+              change: formatChange(changes.pipelineValueChange ?? 0),
+              changeType: (changes.pipelineValueChange ?? 0) >= 0 ? 'increase' : 'decrease',
+              icon: DollarSign,
+            },
+            {
+              title: 'Conversion Rate',
+              value: `${data.conversionRate ?? 0}%`,
+              change: formatChange(changes.conversionRateChange ?? 0),
+              changeType: (changes.conversionRateChange ?? 0) >= 0 ? 'increase' : 'decrease',
+              icon: TrendingUp,
+            },
+            {
+              title: 'Active Deals',
+              value: String(data.activeDeals ?? 0),
+              change: formatChange(changes.dealsChange ?? 0),
+              changeType: (changes.dealsChange ?? 0) >= 0 ? 'increase' : 'decrease',
+              icon: Target,
+            },
+          ]);
+        }
+      } catch (e) {
+        if (!cancelled) setStats([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const userName = user?.firstName || user?.name?.split?.(' ')[0] || 'User';
+
   return (
-    <main className="min-h-screen bg-gradient-warm">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            CRM Application
-          </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            Customer Relationship Management - Next.js with Tailwind CSS
-          </p>
+    <div className="p-4 space-y-4 bg-white min-h-full">
+      <CRMPageHeader
+        title="Dashboard"
+        subtitle={`${getGreeting()}, ${userName} • ${getDate()}`}
+        breadcrumb={[{ label: 'Dashboard', href: '/' }]}
+        showSearch
+        searchPlaceholder="Search anything..."
+      />
 
-          {/* Test Components Link */}
-          <div className="mb-8">
-            <Link
-              href="/components-test"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors shadow-brand hover:shadow-brand-lg"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-              </svg>
-              View UI Components Showcase
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
-              <h3 className="text-2xl font-semibold text-orange-600 mb-2">Leads</h3>
-              <p className="text-gray-600">Manage your leads effectively</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
-              <h3 className="text-2xl font-semibold text-orange-600 mb-2">Contacts</h3>
-              <p className="text-gray-600">Track all customer contacts</p>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow">
-              <h3 className="text-2xl font-semibold text-orange-600 mb-2">Deals</h3>
-              <p className="text-gray-600">Close more deals faster</p>
-            </div>
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
+            <span className="text-gray-600">Loading dashboard...</span>
           </div>
         </div>
-      </div>
-    </main>
-  )
+      ) : (
+        <>
+          <div className="space-y-4">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {stats.map((stat, index) => (
+                <KPICard
+                  key={stat.title}
+                  title={stat.title}
+                  value={stat.value}
+                  change={stat.change}
+                  changeType={stat.changeType}
+                  icon={stat.icon}
+                  colorScheme={colorSchemes[index] || colorSchemes[0]}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Enhanced Dashboard Sections */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+            {/* Left Column - Analytics & Pipeline */}
+            <div className="xl:col-span-2 space-y-6">
+              {/* Sales Analytics */}
+              <SalesAnalyticsWidget />
+
+              {/* Deals Pipeline */}
+              <DealsPipelineWidget />
+            </div>
+
+            {/* Right Column - Actions & Activity */}
+            <div className="space-y-6">
+              {/* Quick Actions */}
+              <QuickActionsWidget />
+
+              {/* Activity Feed */}
+              <ActivityFeedWidget />
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
