@@ -1,0 +1,100 @@
+:root{
+  --bg-1: #071033;
+  --bg-2: #0f172a;
+  --accent: #7dd3fc;
+  --muted: #9fb7df;
+  --card-bg: rgba(255,255,255,0.04);
+  --glass: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: linear-gradient(120deg,var(--bg-2) 0%, var(--bg-1) 100%);
+  color:#e6f0ff;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:2rem;
+}
+.wrap{
+  width:100%;
+  max-width:1000px;
+  position:relative;
+  display:grid;
+  grid-template-columns: 1fr 360px;
+  gap:2rem;
+  align-items:center;
+}
+.card{
+  background: var(--card-bg);
+  border:1px solid rgba(255,255,255,0.04);
+  padding:2.25rem;
+  border-radius:14px;
+  box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+}
+h1{
+  margin:0;
+  font-size: clamp(28px, 4vw, 48px);
+  letter-spacing:-0.02em;
+  font-weight:800;
+  color: #fff;
+}
+.lead{
+  margin-top:0.75rem;
+  color:var(--muted);
+  font-size:1.05rem;
+  line-height:1.45;
+}
+.cta{
+  display:inline-block;
+  margin-top:1.5rem;
+  padding:0.6rem 1rem;
+  border-radius:10px;
+  background: linear-gradient(90deg,var(--accent), #60a5fa);
+  color:#01203a;
+  font-weight:700;
+  box-shadow: 0 6px 18px rgba(13,42,75,0.35);
+}
+.muted{
+  margin-top:0.75rem;
+  color:var(--muted);
+  font-size:0.9rem;
+}
+.footer{
+  margin-top:1.75rem;
+  color:#8eaedb;
+  font-size:0.9rem;
+}
+.visual{
+  position:relative;
+  height:260px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.orb{
+  border-radius:999px;
+  filter: blur(28px);
+  opacity:0.95;
+}
+.orb-a{
+  width:220px;
+  height:220px;
+  background: radial-gradient(circle at 30% 30%, rgba(125,211,252,0.9), rgba(125,211,252,0.12) 40%, transparent 60%);
+  transform:translate(-20px, -10px);
+}
+.orb-b{
+  width:160px;
+  height:160px;
+  background: radial-gradient(circle at 70% 60%, rgba(96,165,250,0.95), rgba(96,165,250,0.14) 35%, transparent 55%);
+  transform:translate(30px, 20px);
+}
+@media (max-width:880px){
+  .wrap{grid-template-columns:1fr; gap:1.25rem}
+  .visual{height:160px; order: -1}
+}
+

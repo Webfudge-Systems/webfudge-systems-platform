@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Coming Soon — Webfudge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <section class="card" role="region" aria-labelledby="coming-title">
+        <h1 id="coming-title">Coming Soon</h1>
+        <p class="lead">We're hard at work building something great. Check back soon.</p>
+        <div class="cta" aria-hidden="true">Stay tuned</div>
+        <p class="muted">No email collection — simple static page.</p>
+        <footer class="footer">© <span id="year"></span> Webfudge</footer>
+      </section>
+
+      <div class="visual" aria-hidden="true">
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+      </div>
+    </main>
+
+    <script>
+      // set year dynamically
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
+
