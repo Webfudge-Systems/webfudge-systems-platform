@@ -6,24 +6,25 @@
     <title>Coming Soon — Webfudge</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Jura:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="wrap">
-      <section class="card" role="region" aria-labelledby="coming-title">
-        <h1 id="coming-title">Coming Soon</h1>
-        <p class="lead">We're hard at work building something great. Check back soon.</p>
-        <div class="cta" aria-hidden="true">Stay tuned</div>
-        <p class="muted">No email collection — simple static page.</p>
-        <footer class="footer">© <span id="year"></span> Webfudge</footer>
-      </section>
+    <div class="hero-wrap">
+      <!-- Background vector (same used on landing) -->
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-corner-gradient" aria-hidden="true"></div>
+      <!-- Center logo (top-middle) -->
+      <img src="images/hero_center_logo.png" alt="Webfudge" class="hero-logo" />
 
-      <div class="visual" aria-hidden="true">
-        <div class="orb orb-a"></div>
-        <div class="orb orb-b"></div>
-      </div>
-    </main>
+      <header class="hero-content" role="banner" aria-label="Coming soon hero">
+        <h1 class="hero-title">Coming Soon</h1>
+        <p class="hero-sub">We're building something great — see you soon.</p>
+      </header>
+
+      <!-- Background vector (animated) is provided by .hero-bg using Vector.svg -->
+      <footer class="hero-footer">© <span id="year"></span> Webfudge</footer>
+    </div>
 
     <script>
       // set year dynamically
