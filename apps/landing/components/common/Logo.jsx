@@ -9,10 +9,10 @@ export default function Logo() {
       <Image
         src="/ws_logo.png"
         alt="Webfudge Systems"
-        width={140}
-        height={140}
+        width={160}
+        height={160}
         priority
-        className="h-9 w-auto md:h-10 md:w-auto"
+        className="h-10 w-auto md:h-12 md:w-auto"
       />
     </Link>
   )

@@ -1,7 +1,14 @@
 'use client'
 
 import { useAuth } from '@webfudge/auth'
-import { HeroSection, AppUISection, QuoteSection, TrustedBySection, FAQSection } from '../components/sections'
+import {
+  HeroSection,
+  AppUISection,
+  QuoteSection,
+  TrustedBySection,
+  FAQSection,
+  ContactSection,
+} from '../components/sections'
 
 export default function Home() {
   const { isAuthenticated } = useAuth()
@@ -13,6 +20,7 @@ export default function Home() {
       <QuoteSection />
       <TrustedBySection />
       <FAQSection />
+      <ContactSection />
     </main>
   )
 }
