@@ -76,7 +76,7 @@ export function Accordion({
               aria-controls={`accordion-content-${item.id}`}
               id={`accordion-trigger-${item.id}`}
             >
-              <span className="text-[15px] leading-snug">{item.label}</span>
+              <span className="text-base md:text-lg font-medium leading-snug text-gray-900">{item.label}</span>
               <ChevronDown className="w-5 h-5 text-gray-600" aria-hidden />
             </button>
             <div
@@ -91,7 +91,7 @@ export function Accordion({
               <div className="overflow-hidden">
                 <div
                   className={clsx(
-                    'px-5 pb-4 pt-0 text-gray-600 text-sm leading-relaxed border-t',
+                    'px-5 pb-4 pt-0 text-gray-700 text-base md:text-lg leading-relaxed border-t',
                     currentItemVariant
                   )}
                 >

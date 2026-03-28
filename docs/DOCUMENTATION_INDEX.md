@@ -36,6 +36,16 @@ Your complete guide to the Webfudge Platform documentation.
 | **[PROJECT_CHECKLIST.md](./PROJECT_CHECKLIST.md)** | Track implementation progress | 15 min | 🟢 Low |
 | **[COMPLETION_REPORT.md](./COMPLETION_REPORT.md)** | Initialization completion details | 10 min | 🟢 Low |
 
+### 📝 Change summaries / Updates
+
+| Document | Description |
+|----------|-------------|
+| **[PM_APP_SETUP.md](./PM_APP_SETUP.md)** | Full PM app setup: dashboard, projects, tasks, analytics, inbox, messages — UI consistent with CRM |
+| **[PM_SIDEBAR_CRM_ALIGNMENT.md](./PM_SIDEBAR_CRM_ALIGNMENT.md)** | PM sidebar restyled to match CRM: glass shell, Quick Actions, Card Tools/footer, `@webfudge/ui` components |
+| **[PM_TABLE_EMPTY_STATE_UPDATE.md](./PM_TABLE_EMPTY_STATE_UPDATE.md)** | PM list empty states aligned with CRM: `TableResultsCount`, `TableEmptyBelow`, `Table` variant `modernEmbedded` |
+| **[CRM_ADD_LEAD_COMPANY_PAGE_UPDATE.md](./CRM_ADD_LEAD_COMPANY_PAGE_UPDATE.md)** | Add New Lead Company page rebuild (CRM) – form sections, validation, contacts, strapiClient users |
+| **[SAAS_ARCHITECTURE_UPDATE.md](./SAAS_ARCHITECTURE_UPDATE.md)** | Multi-tenant architecture: org scoping, X-Organization-Id header, notifications API, PostgreSQL path, auth org context |
+
 ---
 
 ## 🎯 Documentation by Role

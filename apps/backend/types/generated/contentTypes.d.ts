@@ -451,6 +451,55 @@ export interface ApiInvitationInvitation extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
+  collectionName: 'lead_companies'
+  info: {
+    description: 'CRM lead companies (potential clients)'
+    displayName: 'Lead Company'
+    pluralName: 'lead-companies'
+    singularName: 'lead-company'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    address: Schema.Attribute.String
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    city: Schema.Attribute.String
+    companyName: Schema.Attribute.String & Schema.Attribute.Required
+    country: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    dealValue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    description: Schema.Attribute.Text
+    email: Schema.Attribute.Email
+    employees: Schema.Attribute.String
+    founded: Schema.Attribute.String
+    healthScore: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    industry: Schema.Attribute.String
+    linkedIn: Schema.Attribute.String
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::lead-company.lead-company'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    phone: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    score: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    segment: Schema.Attribute.String & Schema.Attribute.DefaultTo<'WARM'>
+    source: Schema.Attribute.String & Schema.Attribute.DefaultTo<'WEBSITE'>
+    state: Schema.Attribute.String
+    status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'NEW'>
+    subType: Schema.Attribute.String
+    twitter: Schema.Attribute.String
+    type: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    website: Schema.Attribute.String
+    zipCode: Schema.Attribute.String
+  }
+}
+
 export interface ApiModuleModule extends Struct.CollectionTypeSchema {
   collectionName: 'modules'
   info: {
@@ -480,6 +529,54 @@ export interface ApiModuleModule extends Struct.CollectionTypeSchema {
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiNotificationNotification extends Struct.CollectionTypeSchema {
+  collectionName: 'notifications'
+  info: {
+    description: 'In-app notifications for users within an organization'
+    displayName: 'Notification'
+    pluralName: 'notifications'
+    singularName: 'notification'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    data: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    isRead: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::notification.notification'> &
+      Schema.Attribute.Private
+    message: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    readAt: Schema.Attribute.DateTime
+    title: Schema.Attribute.String & Schema.Attribute.Required
+    type: Schema.Attribute.Enumeration<
+      [
+        'info',
+        'success',
+        'warning',
+        'error',
+        'lead_created',
+        'lead_updated',
+        'lead_assigned',
+        'deal_created',
+        'deal_updated',
+        'task_assigned',
+        'invite_sent',
+        'invite_accepted',
+        'system',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'info'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    user: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
   }
 }
 
@@ -1042,7 +1139,9 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser
       'api::app.app': ApiAppApp
       'api::invitation.invitation': ApiInvitationInvitation
+      'api::lead-company.lead-company': ApiLeadCompanyLeadCompany
       'api::module.module': ApiModuleModule
+      'api::notification.notification': ApiNotificationNotification
       'api::organization-user.organization-user': ApiOrganizationUserOrganizationUser
       'api::organization.organization': ApiOrganizationOrganization
       'api::subscription.subscription': ApiSubscriptionSubscription

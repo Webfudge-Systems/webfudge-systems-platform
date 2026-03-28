@@ -37,12 +37,12 @@ export default function QuoteSection() {
               'radial-gradient(circle, rgba(253, 186, 116, 0.65) 0%, rgba(251, 191, 36, 0.35) 45%, transparent 70%)',
             filter: 'blur(38px)',
           }}
-        />
+        />  
       </div>
-      {/* SVG background — cover, soft blend */}
-      <div className="absolute inset-0 opacity-80 z-[1]" aria-hidden>
+      {/* Background image — cunic_bg.png */}
+      <div className="absolute inset-0 z-[1]" aria-hidden>
         <Image
-          src="/images/cubic_glass.svg"
+          src="/images/cubic_glass.png"
           alt=""
           fill
           className="object-cover object-center"
@@ -50,8 +50,8 @@ export default function QuoteSection() {
           priority={false}
         />
       </div>
-      {/* Optional overlay for text readability */}
-      <div className="absolute inset-0 bg-brand-light/40" aria-hidden />
+      {/* Light overlay for text readability */}
+      <div className="absolute inset-0 bg-white/30 z-[2]" aria-hidden />
       {/* Content */}
       <Container className="relative z-10 flex flex-col items-center justify-center min-h-screen text-center">
         <blockquote className="max-w-3xl">

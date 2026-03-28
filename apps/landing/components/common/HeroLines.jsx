@@ -2,7 +2,29 @@
 
 /**
  * Hero radiating lines SVG - base lines always visible; glowing segment moves along to show current flow.
+ * Icons are placed at the yellow-marked positions along the animated lines (left and right).
  */
+const HERO_ICON_POSITIONS = [
+  { x: 360, y: 106, side: 'left', line: 'top' },
+  { x: 360, y: 140, side: 'left', line: 'upper' },
+  { x: 360, y: 225, side: 'left', line: 'bottom' },
+  { x: 1155, y: 106, side: 'right', line: 'top' },
+  { x: 1155, y: 194, side: 'right', line: 'lower' },
+  { x: 1155, y: 225, side: 'right', line: 'bottom' },
+]
+
+function HeroLineIcon({ x, y }) {
+  return (
+    <g className="hero-line-icon" transform={`translate(${x}, ${y})`} filter="url(#hero-icon-shadow)">
+      <circle r="14" fill="#FF9B7A" stroke="#FFC7A8" strokeWidth="2" />
+      {/* App window icon - fits inside r=14 circle */}
+      <g fill="white" stroke="none">
+        <path d="M-8-8h16v16H-8z M-8-5h16v2H-8z M-8 5h16v2H-8z" />
+      </g>
+    </g>
+  )
+}
+
 export default function HeroLines() {
   return (
     <svg
@@ -19,6 +41,9 @@ export default function HeroLines() {
             <feMergeNode in="blur" />
             <feMergeNode in="SourceGraphic" />
           </feMerge>
+        </filter>
+        <filter id="hero-icon-shadow" x="-100%" y="-100%" width="300%" height="300%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#E85D2E" floodOpacity="0.4" />
         </filter>
       </defs>
       {/* Base lines — always fully visible */}
@@ -90,6 +115,10 @@ export default function HeroLines() {
         filter="url(#hero-line-glow)"
         pathLength="1000"
       />
+      {/* Icons at yellow-marked positions along the lines */}
+      {HERO_ICON_POSITIONS.map((pos, i) => (
+        <HeroLineIcon key={i} x={pos.x} y={pos.y} />
+      ))}
     </svg>
   )
 }

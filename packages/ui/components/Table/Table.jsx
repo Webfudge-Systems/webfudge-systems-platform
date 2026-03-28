@@ -7,6 +7,7 @@ export function Table({
   headerClassName,
   bodyClassName,
   rowClassName,
+  getRowClassName,
   onRowClick,
   keyField = 'id',
   variant = 'default',
@@ -41,6 +42,16 @@ export function Table({
       row: 'hover:bg-gray-50 transition-colors',
       cell: 'px-4 py-3 text-sm text-gray-700',
     },
+    /** Same as modern but no outer border/radius — use inside `rounded-xl border` shell with `TableEmptyBelow`. */
+    modernEmbedded: {
+      container: 'overflow-x-auto bg-white',
+      table: 'min-w-full',
+      header: 'bg-gray-50 border-b border-gray-200',
+      headerCell: 'px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wide',
+      body: 'bg-white divide-y divide-gray-100',
+      row: 'hover:bg-blue-50/50 transition-all duration-200 group',
+      cell: 'px-6 py-4 text-sm text-gray-700 group-hover:text-gray-900',
+    },
   }
 
   const styles = variants[variant] || variants.default
@@ -73,7 +84,12 @@ export function Table({
           {data.map((row, rowIndex) => (
             <tr
               key={row[keyField] || row.id || rowIndex}
-              className={clsx(styles.row, onRowClick && 'cursor-pointer', rowClassName)}
+              className={clsx(
+                styles.row,
+                onRowClick && 'cursor-pointer',
+                rowClassName,
+                getRowClassName?.(row, rowIndex)
+              )}
               onClick={() => onRowClick && onRowClick(row, rowIndex)}
             >
               {columns.map((column, colIndex) => (

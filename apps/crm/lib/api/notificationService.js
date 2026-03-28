@@ -27,7 +27,6 @@ class NotificationService {
 
       const response = await strapiClient.get('/notifications', params);
 
-
       // Handle different response structures
       let notifications = [];
       if (response?.data && Array.isArray(response.data)) {
@@ -38,21 +37,14 @@ class NotificationService {
         notifications = response;
       }
 
-
-      // Log first notification if any
-      if (notifications.length > 0) {
-      }
-
       return notifications;
     } catch (error) {
+      // 404 = notifications API not implemented yet; return empty without logging
+      const is404 = error?.message?.includes('404') || error?.message?.includes('Not Found');
+      if (is404) {
+        return [];
+      }
       console.error('Error fetching notifications:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response,
-        responseData: error.response?.data,
-        userId: userId,
-        userIdType: typeof userId
-      });
       return [];
     }
   }

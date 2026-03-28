@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import authService from "../services/authService";
 
 const AuthContext = createContext();
@@ -18,7 +18,11 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Initialize auth state on mount
+  // Multi-tenant: list of orgs the user belongs to, and the active one
+  const [organizations, setOrganizations] = useState([]);
+  const [currentOrg, setCurrentOrgState] = useState(null);
+
+  // Initialize auth + org state on mount
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -26,35 +30,44 @@ export const AuthProvider = ({ children }) => {
         const token = authService.getToken();
 
         if (token) {
-          // Verify token by getting current user
           try {
             const userData = await authService.getCurrentUser();
             if (userData) {
               setUser(userData);
               setIsAuthenticated(true);
+              // Restore stored org data
+              const storedOrgs = authService.getStoredOrganizations();
+              const storedOrg  = authService.getCurrentOrg();
+              setOrganizations(storedOrgs);
+              setCurrentOrgState(storedOrg);
             } else {
-              // Token is invalid, clear it
               authService.logout();
               setUser(null);
               setIsAuthenticated(false);
+              setOrganizations([]);
+              setCurrentOrgState(null);
             }
           } catch (apiError) {
             console.error("Token verification failed:", apiError);
-            // If API call fails, assume token is invalid
             authService.logout();
             setUser(null);
             setIsAuthenticated(false);
+            setOrganizations([]);
+            setCurrentOrgState(null);
           }
         } else {
-          // No token found, user is not authenticated
           setUser(null);
           setIsAuthenticated(false);
+          setOrganizations([]);
+          setCurrentOrgState(null);
         }
       } catch (error) {
         console.error("Auth initialization error:", error);
         authService.logout();
         setUser(null);
         setIsAuthenticated(false);
+        setOrganizations([]);
+        setCurrentOrgState(null);
       } finally {
         setLoading(false);
       }
@@ -70,7 +83,13 @@ export const AuthProvider = ({ children }) => {
       if (response.user && response.token) {
         setUser(response.user);
         setIsAuthenticated(true);
-        return { success: true, user: response.user };
+
+        const orgs = response.organizations || authService.getStoredOrganizations();
+        const org  = authService.getCurrentOrg();
+        setOrganizations(orgs);
+        setCurrentOrgState(org);
+
+        return { success: true, user: response.user, organizations: orgs, currentOrg: org };
       } else {
         throw new Error("Invalid response from server");
       }
@@ -78,16 +97,13 @@ export const AuthProvider = ({ children }) => {
       console.error("Login error in AuthContext:", error);
       setUser(null);
       setIsAuthenticated(false);
+      setOrganizations([]);
+      setCurrentOrgState(null);
 
-      // Extract error message properly
       let errorMessage = "Login failed. Please try again.";
-      if (error.message) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
-      } else if (error.error?.message) {
-        errorMessage = error.error.message;
-      }
+      if (error.message) errorMessage = error.message;
+      else if (typeof error === "string") errorMessage = error;
+      else if (error.error?.message) errorMessage = error.error.message;
 
       return { success: false, error: errorMessage };
     }
@@ -97,7 +113,21 @@ export const AuthProvider = ({ children }) => {
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
+    setOrganizations([]);
+    setCurrentOrgState(null);
   };
+
+  /**
+   * Switch the active organization.
+   * Returns false if orgId is not in the user's org list.
+   */
+  const switchOrg = useCallback((orgId) => {
+    const switched = authService.setCurrentOrg(orgId);
+    if (switched) {
+      setCurrentOrgState(authService.getCurrentOrg());
+    }
+    return switched;
+  }, []);
 
   const hasPermission = (module, action) => {
     if (!user) return false;
@@ -124,6 +154,10 @@ export const AuthProvider = ({ children }) => {
     hasPermission,
     hasRole,
     isAdmin,
+    // Org / tenant
+    organizations,
+    currentOrg,
+    switchOrg,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -18,6 +18,7 @@ export { Avatar } from './Avatar';
 export { Table } from './Table';
 export { Pagination } from './Pagination';
 export { EmptyState } from './EmptyState';
+export { TableResultsCount, TableEmptyBelow } from './TableEmptyBelow';
 export { KPICard } from './KPICard';
 
 // NAVIGATION COMPONENTS

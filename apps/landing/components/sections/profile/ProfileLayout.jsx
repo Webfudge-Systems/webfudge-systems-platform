@@ -44,7 +44,7 @@ export default function ProfileLayout({
 
         {/* Main Content */}
         <div className="flex-1 h-[calc(100vh-2rem)] flex flex-col overflow-hidden">
-          <div className="flex-1 backdrop-blur-xl bg-white/80 rounded-2xl shadow-soft border border-white/60 flex flex-col overflow-hidden">
+          <div className="flex-1 backdrop-blur-xl bg-white rounded-2xl shadow-soft border border-white/60 flex flex-col overflow-hidden">
             {/* Header */}
             <div className="border-b border-gray-200/50 px-8 py-6 flex-shrink-0">
               <div className="flex items-center justify-between">

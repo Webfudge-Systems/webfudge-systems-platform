@@ -10,36 +10,70 @@ module.exports = (config, { strapi }) => {
     try {
       // Get token from Authorization header
       const authHeader = ctx.request.headers.authorization;
-      
+
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        // No token - continue without user (public routes)
         return await next();
       }
 
       const token = authHeader.replace('Bearer ', '');
 
-      // Verify JWT token
       let decoded;
       try {
         decoded = jwt.verify(token, JWT_SECRET);
       } catch (err) {
-        // Invalid token - continue without user
         return await next();
       }
 
-      // Type guard to ensure 'decoded' is an object with an 'id' property
       if (typeof decoded === 'string' || !decoded || !('id' in decoded)) {
         return await next();
       }
 
       // Get user from database
       const user = await strapi.query('plugin::users-permissions.user').findOne({
-        where: { id: decoded.id }
+        where: { id: decoded.id },
       });
 
       if (user && !user.blocked) {
-        // Set user in context for controllers to use
         ctx.state.user = user;
+
+        // Resolve active organization from X-Organization-Id header
+        const orgIdHeader = ctx.request.headers['x-organization-id'];
+        if (orgIdHeader) {
+          const orgId = parseInt(orgIdHeader, 10);
+          if (!isNaN(orgId) && orgId > 0) {
+            // Verify the user actually belongs to this org and is active
+            const membership = await strapi.entityService.findMany(
+              'api::organization-user.organization-user',
+              {
+                filters: { user: user.id, organization: orgId, isActive: true },
+                limit: 1,
+              }
+            );
+            if (membership.length > 0) {
+              ctx.state.orgId = orgId;
+              ctx.state.orgRole = membership[0].role || 'Member';
+              ctx.state.orgPermissions = membership[0].customPermissions || {};
+            }
+          }
+        }
+
+        // Fallback: if no org header, auto-pick the first active org for this user
+        if (!ctx.state.orgId) {
+          const firstMembership = await strapi.entityService.findMany(
+            'api::organization-user.organization-user',
+            {
+              filters: { user: user.id, isActive: true },
+              sort: { joinedAt: 'ASC' },
+              limit: 1,
+              populate: { organization: true },
+            }
+          );
+          if (firstMembership.length > 0 && firstMembership[0].organization) {
+            ctx.state.orgId = firstMembership[0].organization.id;
+            ctx.state.orgRole = firstMembership[0].role || 'Member';
+            ctx.state.orgPermissions = firstMembership[0].customPermissions || {};
+          }
+        }
       }
 
       return await next();

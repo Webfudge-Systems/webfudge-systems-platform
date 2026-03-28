@@ -21,7 +21,7 @@ export default function ProfileSidebar({ user, activeSection, onSectionChange, o
   ]
 
   return (
-    <div className="w-64 h-[calc(100vh-2rem)] backdrop-blur-xl bg-white/80 rounded-2xl shadow-soft border border-white/60 flex flex-col overflow-hidden">
+    <div className="w-64 h-[calc(100vh-2rem)] backdrop-blur-xl bg-white rounded-2xl shadow-soft border border-white/60 flex flex-col overflow-hidden">
       {/* Logo */}
       <div className="p-6 border-b border-gray-200/50 flex-shrink-0">
         <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">

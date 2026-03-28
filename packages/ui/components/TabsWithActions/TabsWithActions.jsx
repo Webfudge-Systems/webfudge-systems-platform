@@ -1,7 +1,7 @@
 'use client'
 
 import { clsx } from 'clsx'
-import { Search, Plus, List, LayoutGrid, Download, Eye, Filter } from 'lucide-react'
+import { Search, Plus, List, LayoutGrid, Download, Eye, Filter, ListChecks } from 'lucide-react'
 
 /**
  * Advanced Tabs component with integrated actions, search, and view toggles
@@ -30,6 +30,11 @@ export function TabsWithActions({
   showFilter = false,
   onFilterClick,
   filterTitle = 'Filter',
+
+  showBulkEdit = false,
+  onBulkEditClick,
+  bulkEditActive = false,
+  bulkEditTitle = 'Bulk edit',
 
   showColumnVisibility = false,
   onColumnVisibilityClick,
@@ -167,6 +172,24 @@ export function TabsWithActions({
             title={filterTitle}
           >
             <Filter className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Bulk edit — toggles row selection mode (consumers handle selection UX) */}
+        {showBulkEdit && onBulkEditClick && (
+          <button
+            type="button"
+            onClick={onBulkEditClick}
+            className={clsx(
+              'flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all duration-300 shadow-md whitespace-nowrap',
+              bulkEditActive
+                ? 'bg-orange-500 text-white border-orange-500/50 shadow-lg'
+                : 'bg-white/80 backdrop-blur-sm border-white/40 text-gray-700 hover:bg-white/90'
+            )}
+            title={bulkEditTitle}
+          >
+            <ListChecks className="w-4 h-4 flex-shrink-0" />
+            <span className="hidden lg:inline">{bulkEditTitle}</span>
           </button>
         )}
 

@@ -80,6 +80,16 @@ class AuthService {
         localStorage.setItem('auth-user', JSON.stringify(data.user));
         localStorage.setItem('user-role', data.user.role || data.user.primaryRole?.name || 'User');
 
+        // Persist organizations returned by login
+        const orgs = data.organizations || [];
+        localStorage.setItem('auth-organizations', JSON.stringify(orgs));
+
+        // Auto-select the first org as current if none set yet
+        const existingOrgId = localStorage.getItem('current-org-id');
+        if (!existingOrgId && orgs.length > 0) {
+          localStorage.setItem('current-org-id', String(orgs[0].id));
+        }
+
         // Also store in cookies for middleware access
         document.cookie = `auth-token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
       }
@@ -89,6 +99,7 @@ class AuthService {
         ...data,
         token: data.jwt || data.token,
         user: data.user,
+        organizations: data.organizations || [],
       };
     } catch (error) {
       console.error('Login error:', error);
@@ -160,6 +171,16 @@ class AuthService {
         localStorage.setItem('auth-user', JSON.stringify(data.user));
         localStorage.setItem('user-role', data.user.role || data.user.primaryRole?.name || 'User');
 
+        // Persist organizations returned by signup
+        const orgs = data.organizations || [];
+        localStorage.setItem('auth-organizations', JSON.stringify(orgs));
+
+        // Auto-select the first org as current if none set yet
+        const existingOrgId = localStorage.getItem('current-org-id');
+        if (!existingOrgId && orgs.length > 0) {
+          localStorage.setItem('current-org-id', String(orgs[0].id));
+        }
+
         // Also store in cookies for middleware access
         document.cookie = `auth-token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
       }
@@ -169,6 +190,7 @@ class AuthService {
         ...data,
         token: data.jwt || data.token,
         user: data.user,
+        organizations: data.organizations || [],
       };
     } catch (error) {
       console.error('Signup error:', error);
@@ -231,8 +253,9 @@ class AuthService {
     localStorage.removeItem('auth-token');
     localStorage.removeItem('auth-user');
     localStorage.removeItem('user-role');
+    localStorage.removeItem('auth-organizations');
+    localStorage.removeItem('current-org-id');
 
-    // Also clear the cookie
     if (typeof document !== 'undefined') {
       document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
@@ -264,6 +287,53 @@ class AuthService {
   getStoredUserRole() {
     if (typeof window === 'undefined') return null;
     return localStorage.getItem('user-role') || 'User';
+  }
+
+  /**
+   * Get all organizations the user belongs to.
+   * @returns {Array} - Array of org objects
+   */
+  getStoredOrganizations() {
+    if (typeof window === 'undefined') return [];
+    try {
+      return JSON.parse(localStorage.getItem('auth-organizations') || '[]');
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /**
+   * Get the currently active organization id.
+   * @returns {number|null}
+   */
+  getCurrentOrgId() {
+    if (typeof window === 'undefined') return null;
+    const id = localStorage.getItem('current-org-id');
+    return id ? parseInt(id, 10) : null;
+  }
+
+  /**
+   * Get the currently active organization object.
+   * @returns {Object|null}
+   */
+  getCurrentOrg() {
+    const id = this.getCurrentOrgId();
+    if (!id) return null;
+    return this.getStoredOrganizations().find((o) => o.id === id) || null;
+  }
+
+  /**
+   * Switch to a different org (must be one the user belongs to).
+   * @param {number} orgId
+   * @returns {boolean} - true if switched, false if org not found
+   */
+  setCurrentOrg(orgId) {
+    if (typeof window === 'undefined') return false;
+    const orgs = this.getStoredOrganizations();
+    const found = orgs.find((o) => o.id === orgId || o.id === parseInt(orgId, 10));
+    if (!found) return false;
+    localStorage.setItem('current-org-id', String(found.id));
+    return true;
   }
 
   /**

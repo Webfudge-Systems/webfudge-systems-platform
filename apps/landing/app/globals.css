@@ -104,6 +104,21 @@
     }
 }
 
+/* Hero: Vector.svg grid — gentle opacity pulse */
+@keyframes hero-grid-pulse {
+    0%,
+    100% {
+        opacity: 0.85;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+.animate-hero-grid-pulse {
+    animation: hero-grid-pulse 3s ease-in-out infinite;
+}
+
 /* Quote section: animated blobs — circular motion, more visible */
 /* Circle: radius ~100px, 8 steps (0°, 45°, 90° …) */
 @keyframes blob-circle-1 {

@@ -1,14 +1,20 @@
-import './globals.css'
+import './globals.css';
+import { AuthProvider } from '@webfudge/auth';
+import LayoutContent from '../components/LayoutContent';
 
 export const metadata = {
-  title: 'Project Management - Webfudge Platform',
-  description: 'Project Management Application',
+  title: 'PM - Webfudge Platform',
+  description: 'Project Management for tracking projects, tasks, teams, and delivery.',
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-white">
+        <AuthProvider>
+          <LayoutContent>{children}</LayoutContent>
+        </AuthProvider>
+      </body>
     </html>
-  )
+  );
 }

@@ -19,6 +19,8 @@ export {
   Table,
   Pagination,
   EmptyState,
+  TableResultsCount,
+  TableEmptyBelow,
   KPICard,
   // Navigation Components
   Tabs,

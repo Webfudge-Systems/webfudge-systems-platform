@@ -18,12 +18,14 @@ class StrapiClient {
   }
 
   /**
-   * Get authentication token
+   * Get authentication token.
+   * Uses strapi_token first, then auth-token (set by @webfudge/auth on CRM login).
    */
   getToken() {
     if (this.token) return this.token;
     if (typeof window !== 'undefined') {
-      this.token = localStorage.getItem('strapi_token');
+      this.token =
+        localStorage.getItem('strapi_token') || localStorage.getItem('auth-token');
     }
     return this.token;
   }
@@ -39,16 +41,27 @@ class StrapiClient {
   }
 
   /**
+   * Get the currently active organization id (set by @webfudge/auth after login).
+   */
+  getCurrentOrgId() {
+    if (typeof window === 'undefined') return null;
+    const id = localStorage.getItem('current-org-id');
+    return id ? id : null;
+  }
+
+  /**
    * Make authenticated request
    */
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}/api${endpoint}`;
     const token = this.getToken();
+    const orgId = this.getCurrentOrgId();
 
     const config = {
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
+        ...(orgId && { 'X-Organization-Id': orgId }),
         ...options.headers,
       },
       ...options,
@@ -147,6 +160,20 @@ class StrapiClient {
    */
   async delete(endpoint) {
     return this.request(endpoint, { method: 'DELETE' });
+  }
+
+  /**
+   * Fetch Xtrawrkx users (e.g. for assignment dropdowns).
+   * Supports pagination and populate. Uses /users or custom endpoint if available.
+   */
+  async getXtrawrkxUsers(params = {}) {
+    const queryParams = {
+      'pagination[page]': params['pagination[page]'] ?? params.page ?? 1,
+      'pagination[pageSize]': params['pagination[pageSize]'] ?? params.pageSize ?? 25,
+      ...(params.populate && { populate: params.populate }),
+    };
+    const response = await this.get('/users', queryParams);
+    return response;
   }
 }
 
