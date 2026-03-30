@@ -22,7 +22,12 @@ import {
   CheckCheck,
 } from 'lucide-react'
 import { Card, Avatar, Button, LoadingSpinner } from '@webfudge/ui'
-import { useAuth } from '@webfudge/auth'
+import {
+  useAuth,
+  resolveUserDisplayName,
+  resolveUserInitials,
+  resolveUserRole,
+} from '@webfudge/auth'
 import GlobalSearchModal from './GlobalSearchModal'
 import notificationService from '../lib/api/notificationService'
 
@@ -164,121 +169,6 @@ export default function CRMPageHeader({
     }
   }
 
-  const getUserInitials = () => {
-    if (!user) {
-      return 'U'
-    }
-
-    // Handle different user data structures
-    const userData = user.attributes || user
-
-    const firstName = userData.firstName || userData.name?.split(' ')[0] || ''
-    const lastName = userData.lastName || userData.name?.split(' ')[1] || ''
-
-    const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase()
-    if (initials && initials !== ' ' && initials.length === 2) {
-      return initials
-    }
-
-    // Fallback to email first letter
-    if (userData.email) {
-      return userData.email.charAt(0).toUpperCase()
-    }
-
-    return 'U'
-  }
-
-  const getUserDisplayName = () => {
-    if (!user) {
-      return 'User'
-    }
-
-    // Handle different user data structures
-    const userData = user.attributes || user
-
-    // Try firstName and lastName first
-    if (userData.firstName && userData.lastName) {
-      return `${userData.firstName} ${userData.lastName}`.trim()
-    }
-
-    // Try firstName only
-    if (userData.firstName) {
-      return userData.firstName
-    }
-
-    // Try name field
-    if (userData.name) {
-      return userData.name
-    }
-
-    // Try username
-    if (userData.username) {
-      return userData.username
-    }
-
-    // Fallback to email
-    if (userData.email) {
-      return userData.email.split('@')[0]
-    }
-
-    return 'User'
-  }
-
-  const getUserRole = () => {
-    if (!user) {
-      return 'User'
-    }
-
-    // Handle different user data structures
-    const userData = user.attributes || user
-
-    // Try primaryRole first
-    if (userData.primaryRole) {
-      const roleName =
-        typeof userData.primaryRole === 'object'
-          ? userData.primaryRole.name ||
-            userData.primaryRole.attributes?.name ||
-            userData.primaryRole.data?.attributes?.name ||
-            userData.primaryRole.data?.name
-          : userData.primaryRole
-      if (roleName) {
-        return roleName
-      }
-    }
-
-    // Try userRoles array
-    if (userData.userRoles && Array.isArray(userData.userRoles) && userData.userRoles.length > 0) {
-      const firstRole = userData.userRoles[0]
-      const roleName =
-        typeof firstRole === 'object'
-          ? firstRole.name ||
-            firstRole.attributes?.name ||
-            firstRole.data?.attributes?.name ||
-            firstRole.data?.name
-          : firstRole
-      if (roleName) {
-        return roleName
-      }
-    }
-
-    // Fallback to role field
-    if (userData.role) {
-      const roleName =
-        typeof userData.role === 'object'
-          ? userData.role.name ||
-            userData.role.attributes?.name ||
-            userData.role.data?.attributes?.name ||
-            userData.role.data?.name ||
-            userData.role
-          : userData.role
-      if (roleName) {
-        return roleName
-      }
-    }
-
-    return 'User'
-  }
-
   // Build breadcrumb from pathname if not provided
   const breadcrumbItems =
     breadcrumb.length > 0
@@ -350,22 +240,11 @@ export default function CRMPageHeader({
             {/* Search Bar */}
             {showSearch && (
               <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-brand-text-light" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   placeholder={searchPlaceholder || 'Search... (⌘K)'}
-                  onFocus={() => {
-                    // If no custom search handler, open global search modal
-                    if (!onSearchChange) {
-                      setShowGlobalSearch(true)
-                    }
-                  }}
-                  onClick={() => {
-                    // If no custom search handler, open global search modal
-                    if (!onSearchChange) {
-                      setShowGlobalSearch(true)
-                    }
-                  }}
+                  // "No pop": don't open the global search modal just by focusing/clicking
                   value={searchInputValue}
                   onChange={(e) => {
                     const value = e.target.value
@@ -380,11 +259,11 @@ export default function CRMPageHeader({
                     // Open global search modal on Enter key
                     if (e.key === 'Enter') {
                       e.preventDefault()
-                      // Open modal with current search value
-                      setShowGlobalSearch(true)
+                      // Only open the modal when no custom search handler is provided
+                      if (!onSearchChange) setShowGlobalSearch(true)
                     }
                   }}
-                  className="w-64 pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:bg-white/15 transition-all duration-300 placeholder:text-brand-text-light shadow-lg cursor-pointer"
+                  className="w-64 pl-10 pr-4 py-2.5 bg-white border border-orange-500/40 rounded-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all duration-300 placeholder:text-gray-400 text-gray-800"
                 />
               </div>
             )}
@@ -446,16 +325,21 @@ export default function CRMPageHeader({
 
             {/* Custom Actions */}
             {actions &&
-              actions.map((action, index) => (
-                <button
-                  key={index}
-                  onClick={action.onClick}
-                  className={`p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg ${
-                    action.className || ''
-                  }`}
-                >
-                  {action.icon && <action.icon className="w-5 h-5 text-brand-text-light" />}
-                </button>
+              (Array.isArray(actions) ? (
+                actions.map((action, index) => (
+                  <button
+                    key={index}
+                    onClick={action.onClick}
+                    className={`p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg ${
+                      action.className || ''
+                    }`}
+                  >
+                    {action.icon && <action.icon className="w-5 h-5 text-brand-text-light" />}
+                  </button>
+                ))
+              ) : (
+                // Some pages pass a single ReactNode for `actions` (ex: <Button ... />)
+                <div className="flex items-center gap-2">{actions}</div>
               ))}
           </div>
         )}
@@ -570,16 +454,16 @@ export default function CRMPageHeader({
               >
                 <div className="flex items-center gap-3">
                   <Avatar
-                    fallback={getUserInitials()}
-                    alt={getUserDisplayName()}
+                    fallback={resolveUserInitials(user)}
+                    alt={resolveUserDisplayName(user)}
                     size="md"
                     className="bg-white/10 backdrop-blur-md border border-white/20 shadow-lg text-brand-primary"
                   />
                   <div className="text-left hidden lg:block">
                     <p className="text-sm font-semibold text-brand-foreground">
-                      {getUserDisplayName()}
+                      {resolveUserDisplayName(user)}
                     </p>
-                    <p className="text-xs text-brand-text-light">{getUserRole()}</p>
+                    <p className="text-xs text-brand-text-light">{resolveUserRole(user)}</p>
                   </div>
                 </div>
                 <ChevronDown
@@ -605,14 +489,14 @@ export default function CRMPageHeader({
                     <div className="p-4 border-b border-white/20">
                       <div className="flex items-center gap-3">
                         <Avatar
-                          fallback={getUserInitials()}
-                          alt={getUserDisplayName()}
+                          fallback={resolveUserInitials(user)}
+                          alt={resolveUserDisplayName(user)}
                           size="xl"
                           className="bg-white/20 backdrop-blur-md border border-white/30 shadow-lg text-brand-primary"
                         />
                         <div>
                           <p className="font-semibold text-brand-foreground">
-                            {getUserDisplayName()}
+                            {resolveUserDisplayName(user)}
                           </p>
                           <p className="text-sm text-brand-text-light">{user?.email}</p>
                         </div>

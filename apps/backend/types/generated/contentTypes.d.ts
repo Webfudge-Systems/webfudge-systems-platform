@@ -418,6 +418,33 @@ export interface ApiAppApp extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiDirectMessageDirectMessage extends Struct.CollectionTypeSchema {
+  collectionName: 'direct_messages'
+  info: {
+    description: '1:1 messages between users in an organization'
+    displayName: 'Direct Message'
+    pluralName: 'direct-messages'
+    singularName: 'direct-message'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    content: Schema.Attribute.Text & Schema.Attribute.Required
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::direct-message.direct-message'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    recipient: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    sender: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiInvitationInvitation extends Struct.CollectionTypeSchema {
   collectionName: 'invitations'
   info: {
@@ -669,6 +696,42 @@ export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema
   }
 }
 
+export interface ApiProjectProject extends Struct.CollectionTypeSchema {
+  collectionName: 'projects'
+  info: {
+    description: 'PM projects scoped to an organization'
+    displayName: 'Project'
+    pluralName: 'projects'
+    singularName: 'project'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    budget: Schema.Attribute.Decimal
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    endDate: Schema.Attribute.DateTime
+    icon: Schema.Attribute.String
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::project.project'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    projectManager: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    publishedAt: Schema.Attribute.DateTime
+    slug: Schema.Attribute.UID<'name'>
+    startDate: Schema.Attribute.DateTime
+    status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'PLANNING'>
+    tasks: Schema.Attribute.Relation<'manyToMany', 'api::task.task'>
+    teamMembers: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiSubscriptionSubscription extends Struct.CollectionTypeSchema {
   collectionName: 'subscriptions'
   info: {
@@ -704,6 +767,47 @@ export interface ApiSubscriptionSubscription extends Struct.CollectionTypeSchema
     status: Schema.Attribute.Enumeration<['trial', 'active', 'suspended', 'cancelled']> &
       Schema.Attribute.DefaultTo<'trial'>
     totalUsers: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiTaskTask extends Struct.CollectionTypeSchema {
+  collectionName: 'tasks'
+  info: {
+    description: 'PM and CRM tasks scoped to an organization'
+    displayName: 'Task'
+    pluralName: 'tasks'
+    singularName: 'task'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    assignee: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    collaborators: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::task.task'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    parent: Schema.Attribute.Relation<'manyToOne', 'api::task.task'>
+    priority: Schema.Attribute.Enumeration<['low', 'medium', 'high']> &
+      Schema.Attribute.DefaultTo<'medium'>
+    progress: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    projects: Schema.Attribute.Relation<'manyToMany', 'api::project.project'>
+    publishedAt: Schema.Attribute.DateTime
+    scheduledDate: Schema.Attribute.DateTime
+    status: Schema.Attribute.Enumeration<
+      ['SCHEDULED', 'IN_PROGRESS', 'INTERNAL_REVIEW', 'COMPLETED', 'CANCELLED', 'OVERDUE']
+    > &
+      Schema.Attribute.DefaultTo<'SCHEDULED'>
+    subtasks: Schema.Attribute.Relation<'oneToMany', 'api::task.task'>
+    tags: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
@@ -1138,13 +1242,16 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission
       'admin::user': AdminUser
       'api::app.app': ApiAppApp
+      'api::direct-message.direct-message': ApiDirectMessageDirectMessage
       'api::invitation.invitation': ApiInvitationInvitation
       'api::lead-company.lead-company': ApiLeadCompanyLeadCompany
       'api::module.module': ApiModuleModule
       'api::notification.notification': ApiNotificationNotification
       'api::organization-user.organization-user': ApiOrganizationUserOrganizationUser
       'api::organization.organization': ApiOrganizationOrganization
+      'api::project.project': ApiProjectProject
       'api::subscription.subscription': ApiSubscriptionSubscription
+      'api::task.task': ApiTaskTask
       'plugin::content-releases.release': PluginContentReleasesRelease
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction
       'plugin::i18n.locale': PluginI18NLocale

@@ -44,7 +44,14 @@ Your complete guide to the Webfudge Platform documentation.
 | **[PM_SIDEBAR_CRM_ALIGNMENT.md](./PM_SIDEBAR_CRM_ALIGNMENT.md)** | PM sidebar restyled to match CRM: glass shell, Quick Actions, Card Tools/footer, `@webfudge/ui` components |
 | **[PM_TABLE_EMPTY_STATE_UPDATE.md](./PM_TABLE_EMPTY_STATE_UPDATE.md)** | PM list empty states aligned with CRM: `TableResultsCount`, `TableEmptyBelow`, `Table` variant `modernEmbedded` |
 | **[CRM_ADD_LEAD_COMPANY_PAGE_UPDATE.md](./CRM_ADD_LEAD_COMPANY_PAGE_UPDATE.md)** | Add New Lead Company page rebuild (CRM) – form sections, validation, contacts, strapiClient users |
+| **[PM_DASHBOARD_WIDGETS_UPDATE.md](./PM_DASHBOARD_WIDGETS_UPDATE.md)** | PM dashboard widgets (“My Tasks” + “Projects”) updated to match reference layout |
+| **[PM_PROJECTS_VIEW_UPDATE.md](./PM_PROJECTS_VIEW_UPDATE.md)** | PM Projects view-all page updated to match reference UI |
+| **[PM_ADD_PROJECT_FORM_UPDATE.md](./PM_ADD_PROJECT_FORM_UPDATE.md)** | PM Add New Project form aligned to reference labels/layout/sections |
+| **[PM_MY_TASKS_HEADER_UPDATE.md](./PM_MY_TASKS_HEADER_UPDATE.md)** | PM “My Tasks” header updated to match Projects header layout |
+| **[PM_ADD_TASK_PAGE_UPDATE.md](./PM_ADD_TASK_PAGE_UPDATE.md)** | PM “Add Task” now uses a dedicated page route (no modal pop) |
+| **[PM_ANALYTICS_PAGE_UI_UPDATE.md](./PM_ANALYTICS_PAGE_UI_UPDATE.md)** | PM Analytics page UI updated to match reference (empty + non-empty) layouts |
 | **[SAAS_ARCHITECTURE_UPDATE.md](./SAAS_ARCHITECTURE_UPDATE.md)** | Multi-tenant architecture: org scoping, X-Organization-Id header, notifications API, PostgreSQL path, auth org context |
+| **[DIRECT_MESSAGES_API.md](./DIRECT_MESSAGES_API.md)** | PM direct messages: `direct-message` content type, `/api/direct-messages`, org member list, permissions |
 
 ---
 

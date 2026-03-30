@@ -26,30 +26,48 @@ import {
   Plus,
   Trash2,
   Eye,
+  Edit3,
   AlertCircle,
   LayoutGrid,
+  CalendarDays,
 } from 'lucide-react'
 import PMPageHeader from '../../components/PMPageHeader'
 import projectService from '../../lib/api/projectService'
-import { transformProject, formatDate } from '../../lib/api/dataTransformers'
+import { transformProject, formatDate, transformProjectStatus } from '../../lib/api/dataTransformers'
 
 const STATUS_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'SCHEDULED', label: 'Scheduled' },
-  { id: 'IN_PROGRESS', label: 'In Progress' },
+  { id: 'all', label: 'All Projects' },
+  { id: 'ACTIVE', label: 'Active' },
+  { id: 'PLANNING', label: 'Planning' },
   { id: 'COMPLETED', label: 'Completed' },
-  { id: 'CANCELLED', label: 'Cancelled' },
+  { id: 'ON_HOLD', label: 'On Hold' },
+  { id: 'OVERDUE', label: 'Overdue' },
 ]
 
 function getProjectStatusBadge(status) {
   const map = {
-    SCHEDULED: { variant: 'primary', label: 'Scheduled' },
+    ACTIVE: { variant: 'primary', label: 'Active' },
+    PLANNING: { variant: 'warning', label: 'Planning' },
     IN_PROGRESS: { variant: 'warning', label: 'In Progress' },
+    ON_HOLD: { variant: 'purple', label: 'On Hold' },
     COMPLETED: { variant: 'success', label: 'Completed' },
     CANCELLED: { variant: 'danger', label: 'Cancelled' },
-    INTERNAL_REVIEW: { variant: 'purple', label: 'In Review' },
   }
   return map[status] || { variant: 'default', label: status || '—' }
+}
+
+function isProjectOverdue(project) {
+  if (!project?.endDate) return false
+  const due = new Date(project.endDate)
+  if (Number.isNaN(due.getTime())) return false
+  return due < new Date() && project.strapiStatus !== 'COMPLETED' && project.strapiStatus !== 'CANCELLED'
+}
+
+function formatNumericDate(dateString) {
+  if (!dateString) return '—'
+  const d = new Date(dateString)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
 }
 
 export default function ProjectsPage() {
@@ -75,12 +93,15 @@ export default function ProjectsPage() {
         page: currentPage,
         sort: 'updatedAt:desc',
       }
-      if (activeTab !== 'all') params.status = activeTab
+      if (activeTab !== 'all' && activeTab !== 'OVERDUE') params.status = activeTab
       if (searchQuery) params.search = searchQuery
 
       const res = await projectService.getAllProjects(params)
       const raw = res?.data || []
-      setProjects(raw.map(transformProject).filter(Boolean))
+      const transformed = raw.map(transformProject).filter(Boolean)
+      const filtered =
+        activeTab === 'OVERDUE' ? transformed.filter(isProjectOverdue) : transformed
+      setProjects(filtered)
       setTotalProjects(res?.meta?.pagination?.total || raw.length)
     } catch (err) {
       console.error('Load projects error:', err)
@@ -130,8 +151,10 @@ export default function ProjectsPage() {
     ...tab,
     badge:
       tab.id === 'all'
-        ? projects.length
-        : projects.filter((p) => p.strapiStatus === tab.id).length,
+        ? totalProjects
+        : tab.id === 'OVERDUE'
+          ? projects.filter(isProjectOverdue).length
+          : projects.filter((p) => p.strapiStatus === tab.id).length,
   }))
 
   const totalPages = Math.ceil(totalProjects / pageSize)
@@ -140,20 +163,34 @@ export default function ProjectsPage() {
   const columns = [
     {
       key: 'name',
-      title: 'Project',
+      title: 'Project Name',
       render: (value, row) => (
         <button
           onClick={() => router.push(`/projects/${row.slug || row.id}`)}
           className="flex items-center gap-3 hover:text-orange-600 transition-colors text-left"
         >
-          <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
-            <FolderOpen className="w-4 h-4 text-orange-600" />
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900 text-sm">{value || '—'}</p>
-            {row.clientName && (
-              <p className="text-xs text-gray-500">{row.clientName}</p>
-            )}
+          {(() => {
+            const colors = [
+              'bg-orange-500',
+              'bg-blue-500',
+              'bg-green-500',
+              'bg-purple-500',
+              'bg-pink-500',
+              'bg-yellow-500',
+            ]
+            const color = colors[(row?.name?.charCodeAt?.(0) || 0) % colors.length]
+            return (
+              <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
+                <span className="text-white text-sm font-bold">
+                  {(row?.name || 'P').charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )
+          })()}
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-sm truncate">
+              {value || '—'}
+            </p>
           </div>
         </button>
       ),
@@ -161,40 +198,79 @@ export default function ProjectsPage() {
     {
       key: 'status',
       title: 'Status',
-      render: (value, row) => {
-        const s = getProjectStatusBadge(row.strapiStatus)
-        return <Badge variant={s.variant}>{s.label}</Badge>
+      render: (_, row) => {
+        const label = transformProjectStatus(row.strapiStatus)
+        return (
+          <div onClick={(e) => e.stopPropagation()}>
+            <select
+              value={row.strapiStatus}
+              className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-200 bg-white cursor-pointer"
+              aria-label="Project status"
+              onChange={() => {
+                // UI-only dropdown in this view; real update handled in project detail.
+              }}
+            >
+              {['ACTIVE', 'PLANNING', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED'].map((k) => (
+                <option key={k} value={k}>
+                  {transformProjectStatus(k)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )
       },
     },
     {
-      key: 'startDate',
-      title: 'Start',
-      render: (value) => (
-        <span className="text-sm text-gray-600">{formatDate(value, 'short') || '—'}</span>
-      ),
+      key: 'projectManager',
+      title: 'Project Lead',
+      render: (_, row) => {
+        const lead = row.projectManager
+        if (!lead) return <span className="text-xs text-gray-400">—</span>
+        return (
+          <div className="flex items-center gap-2">
+            <Avatar
+              size="sm"
+              fallback={(lead.name || 'U').charAt(0).toUpperCase()}
+              className="bg-white/0"
+            />
+            <span className="text-sm text-gray-700 truncate max-w-[160px]">{lead.name}</span>
+          </div>
+        )
+      },
     },
     {
-      key: 'endDate',
-      title: 'End / Deadline',
-      render: (value) => (
-        <span className="text-sm text-gray-600">{formatDate(value, 'short') || '—'}</span>
-      ),
+      key: 'progress',
+      title: 'Progress',
+      render: (_, row) => {
+        const progress = typeof row.progress === 'number' ? row.progress : 0
+        return (
+          <div className="min-w-[180px]">
+            <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-orange-500 rounded-full"
+                style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+              />
+            </div>
+            <div className="text-xs text-gray-600 mt-2">{progress}%</div>
+          </div>
+        )
+      },
     },
     {
       key: 'team',
       title: 'Team',
-      render: (value, row) => {
-        const team = row.team || []
-        if (team.length === 0) return <span className="text-xs text-gray-400">—</span>
+      render: (_, row) => {
+        const team = row.teamMembers || []
+        if (!team.length) return <span className="text-xs text-gray-400">—</span>
         return (
           <div className="flex items-center -space-x-2">
             {team.slice(0, 4).map((member, i) => (
               <Avatar
                 key={i}
-                fallback={(member.name || member.username || '?').charAt(0).toUpperCase()}
                 size="sm"
+                fallback={(member.name || '?').charAt(0).toUpperCase()}
                 className="border-2 border-white"
-                title={member.name || member.username}
+                title={member.name}
               />
             ))}
             {team.length > 4 && (
@@ -207,24 +283,63 @@ export default function ProjectsPage() {
       },
     },
     {
-      key: 'actions',
-      title: '',
+      key: 'dates',
+      title: 'Dates',
       render: (_, row) => (
-        <div className="flex items-center gap-1 justify-end">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
+            <span>{formatNumericDate(row.startDate)}</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <CalendarDays className="w-3.5 h-3.5 text-gray-400" />
+            <span>{formatNumericDate(row.endDate)}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'tasks',
+      title: 'Tasks',
+      render: (_, row) => (
+        <span className="text-sm text-gray-700">{row.totalTasks ?? 0}</span>
+      ),
+    },
+    {
+      key: 'actions',
+      title: 'Actions',
+      render: (_, row) => (
+        <div className="flex items-center gap-2 justify-end">
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); router.push(`/projects/${row.slug || row.id}`) }}
-            title="View"
+            className="!px-2 !py-1 text-orange-500 hover:text-orange-600"
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push(`/projects/${row.slug || row.id}`)
+            }}
           >
             <Eye className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => { e.stopPropagation(); setDeleteModal({ open: true, project: row }) }}
-            title="Delete"
-            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+            className="!px-2 !py-1 text-orange-500 hover:text-orange-600"
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push(`/projects/${row.slug || row.id}`)
+            }}
+          >
+            <Edit3 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="!px-2 !py-1 text-red-500 hover:text-red-700 hover:bg-red-50"
+            onClick={(e) => {
+              e.stopPropagation()
+              setDeleteModal({ open: true, project: row })
+            }}
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -233,30 +348,39 @@ export default function ProjectsPage() {
     },
   ]
 
+  const overdueCount = projects.filter(isProjectOverdue).length
+  const activeCount = projects.filter((p) => p.strapiStatus === 'ACTIVE').length
+  const planningCount = projects.filter((p) => p.strapiStatus === 'PLANNING').length
+  const completedCount = projects.filter((p) => p.strapiStatus === 'COMPLETED').length
+
   const stats = [
     {
-      title: 'Total Projects',
-      value: String(totalProjects),
+      title: 'Active Projects',
+      value: String(activeCount),
+      subtitle: activeCount === 0 ? 'No projects' : `${activeCount} projects`,
       icon: FolderOpen,
+      colorScheme: 'orange',
+    },
+    {
+      title: 'Planning Projects',
+      value: String(planningCount),
+      subtitle: planningCount === 0 ? 'No projects' : `${planningCount} projects`,
+      icon: Clock,
       colorScheme: 'blue',
     },
     {
-      title: 'In Progress',
-      value: String(projects.filter((p) => p.strapiStatus === 'IN_PROGRESS').length),
-      icon: Clock,
-      colorScheme: 'yellow',
-    },
-    {
-      title: 'Completed',
-      value: String(projects.filter((p) => p.strapiStatus === 'COMPLETED').length),
+      title: 'Completed Projects',
+      value: String(completedCount),
+      subtitle: completedCount === 0 ? 'No projects' : `${completedCount} projects`,
       icon: FolderCheck,
       colorScheme: 'green',
     },
     {
-      title: 'Team Members',
-      value: String([...new Set(projects.flatMap((p) => (p.team || []).map((m) => m.id)))].length),
-      icon: Users,
-      colorScheme: 'purple',
+      title: 'Overdue Projects',
+      value: String(overdueCount),
+      subtitle: overdueCount === 0 ? 'No projects' : `${overdueCount} overdue`,
+      icon: AlertCircle,
+      colorScheme: 'red',
     },
   ]
 
@@ -266,12 +390,21 @@ export default function ProjectsPage() {
         title="Projects"
         subtitle="Manage and track all your projects"
         showProfile
-        actions={
-          <Button variant="primary" onClick={() => router.push('/projects/add')}>
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
-          </Button>
-        }
+        breadcrumb={[
+          { label: 'Dashboard', href: '/' },
+          { label: 'Projects' },
+        ]}
+        showSearch
+        searchPlaceholder="Search projects..."
+        onSearchChange={(q) => {
+          setSearchQuery(q)
+          setCurrentPage(1)
+        }}
+        showActions
+        onAddClick={() => router.push('/projects/add')}
+        // Only for matching the reference header layout; actual filtering is handled by tabs/search.
+        onFilterClick={() => {}}
+        onExportClick={handleExport}
       />
 
       {/* KPI stats */}
@@ -292,16 +425,9 @@ export default function ProjectsPage() {
         tabs={tabsWithBadges}
         activeTab={activeTab}
         onTabChange={(id) => { setActiveTab(id); setCurrentPage(1) }}
-        showSearch
-        searchQuery={searchQuery}
-        onSearchChange={(q) => { setSearchQuery(q); setCurrentPage(1) }}
-        searchPlaceholder="Search projects..."
-        showAdd
-        onAddClick={() => router.push('/projects/add')}
-        addTitle="New Project"
-        showExport
-        onExportClick={handleExport}
-        exportTitle="Export CSV"
+        showSearch={false}
+        showAdd={false}
+        showExport={false}
         showViewToggle
         activeView={activeView}
         onViewChange={setActiveView}
@@ -311,7 +437,7 @@ export default function ProjectsPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-lg overflow-hidden">
           <div className="p-12 flex justify-center">
             <TableSkeleton rows={5} columns={5} />
           </div>
@@ -319,13 +445,7 @@ export default function ProjectsPage() {
       ) : projects.length === 0 ? (
         <>
           <TableResultsCount count={0} />
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <Table
-              columns={columns}
-              data={[]}
-              keyField="id"
-              variant="modernEmbedded"
-            />
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-lg overflow-hidden">
             <TableEmptyBelow
               icon={FolderOpen}
               title="No projects found"
@@ -348,7 +468,7 @@ export default function ProjectsPage() {
       ) : activeView === 'list' ? (
         <>
           <TableResultsCount count={totalProjects} />
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white/95 backdrop-blur-md rounded-xl shadow-lg overflow-hidden">
             <Table
               columns={columns}
               data={projects}
@@ -357,7 +477,7 @@ export default function ProjectsPage() {
               onRowClick={(row) => router.push(`/projects/${row.slug || row.id}`)}
             />
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white">
+              <div className="flex items-center justify-between px-6 py-4 bg-white/50 backdrop-blur-md">
                 <p className="text-sm text-gray-500">
                   Page {currentPage} of {totalPages} ({totalProjects} total)
                 </p>

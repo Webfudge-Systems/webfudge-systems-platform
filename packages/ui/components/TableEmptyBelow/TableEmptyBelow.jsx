@@ -17,7 +17,7 @@ export function TableResultsCount({ count, className }) {
  */
 export function TableEmptyBelow({ icon: Icon, title, description, action, className }) {
   return (
-    <div className={clsx('p-12 text-center border-t border-gray-200 bg-white', className)}>
+    <div className={clsx('p-12 text-center bg-transparent', className)}>
       {Icon && (
         <div className="text-gray-400 mb-2">
           <Icon className="w-12 h-12 mx-auto mb-3 opacity-50" strokeWidth={1.25} />

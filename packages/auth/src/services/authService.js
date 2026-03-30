@@ -1,5 +1,7 @@
 // Use environment variable or fallback to production URL
 // Use environment variable for API URL, fallback to localhost for development
+import { flattenUser } from '../utils/userProfile';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337';
 
 class AuthService {
@@ -207,33 +209,104 @@ class AuthService {
       const token = this.getToken();
       if (!token) return null;
 
-      // Try to get user from API with populated relationships
+      const mergeStored = (authUser) => {
+        const prev = this.getStoredUser() || {};
+        return {
+          ...prev,
+          ...authUser,
+          id: authUser.id ?? prev.id,
+          documentId: authUser.documentId ?? prev.documentId,
+          email: authUser.email ?? prev.email,
+          username: authUser.username ?? prev.username,
+          firstName: authUser.firstName ?? prev.firstName,
+          lastName: authUser.lastName ?? prev.lastName,
+        };
+      };
+
+      // Prefer custom /api/auth/me — returns firstName/lastName from DB (same as login)
       try {
-        const response = await fetch(`${this.baseURL}/api/users/me?populate=primaryRole,userRoles`, {
+        const authRes = await fetch(`${this.baseURL}/api/auth/me`, {
           method: 'GET',
           headers: {
-            'Authorization': `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
         });
 
+        if (authRes.ok) {
+          const data = await authRes.json();
+          const authUser = flattenUser(data.user);
+          const organizations = data.organizations || [];
+          if (authUser) {
+            const merged = mergeStored(authUser);
+            localStorage.setItem('auth-user', JSON.stringify(merged));
+            if (organizations.length > 0) {
+              localStorage.setItem('auth-organizations', JSON.stringify(organizations));
+            }
+            // Optional: enrich with Strapi users/me (role relations) when available
+            try {
+              const extRes = await fetch(
+                `${this.baseURL}/api/users/me?populate=role`,
+                {
+                  method: 'GET',
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                  },
+                }
+              );
+              if (extRes.ok) {
+                const extData = await extRes.json();
+                const ext = flattenUser(extData.user || extData);
+                if (ext && typeof ext === 'object') {
+                  const enriched = {
+                    ...merged,
+                    ...ext,
+                    firstName: merged.firstName ?? ext.firstName,
+                    lastName: merged.lastName ?? ext.lastName,
+                    email: merged.email ?? ext.email,
+                  };
+                  localStorage.setItem('auth-user', JSON.stringify(enriched));
+                  return enriched;
+                }
+              }
+            } catch (_) {
+              /* ignore enrich failures */
+            }
+            return merged;
+          }
+        } else if (authRes.status === 401) {
+          console.warn('Token expired or invalid (auth/me)');
+        }
+      } catch (e) {
+        console.warn('auth/me request failed:', e);
+      }
+
+      // Fallback: Strapi users/me only
+      try {
+        const response = await fetch(
+          `${this.baseURL}/api/users/me?populate=role`,
+          {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
         if (response.ok) {
           const data = await response.json();
-          const userData = data.user || data;
-
-          // Update stored user with fresh data
-          localStorage.setItem('auth-user', JSON.stringify(userData));
-          return userData;
-        } else if (response.status === 401) {
-          // Token expired or invalid, use stored data
-          console.warn('Token expired, using stored user data');
+          const userData = flattenUser(data.user || data);
+          if (userData) {
+            localStorage.setItem('auth-user', JSON.stringify(userData));
+            return userData;
+          }
         }
       } catch (apiError) {
-        // API call failed, use stored data
         console.warn('API call error, using stored user data:', apiError);
       }
 
-      // Fallback to stored user data
       const storedUser = this.getStoredUser();
       if (storedUser) {
         return storedUser;

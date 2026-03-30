@@ -2,6 +2,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import {
   KPICard,
@@ -50,6 +51,7 @@ const STATUS_TABS = [
   { id: 'IN_PROGRESS', label: 'In Progress' },
   { id: 'INTERNAL_REVIEW', label: 'In Review' },
   { id: 'COMPLETED', label: 'Completed' },
+  { id: 'OVERDUE', label: 'Overdue' },
 ]
 
 const STATUS_OPTIONS = [
@@ -88,6 +90,7 @@ function getPriorityBadge(p) {
 
 export default function MyTasksPage() {
   const { user } = useAuth()
+  const router = useRouter()
 
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
@@ -113,6 +116,21 @@ export default function MyTasksPage() {
     dueDate: '', projectId: '', assigneeId: '',
   })
 
+  const getDefaultStatusForAdd = () => {
+    // Create new task should default to the selected tab.
+    // "All Tasks" and "Overdue" map to "SCHEDULED" because those are UI-derived groups.
+    if (activeTab === 'all' || activeTab === 'OVERDUE') return 'SCHEDULED'
+    return activeTab
+  }
+
+  const isTaskOverdue = (t) => {
+    if (!t?.dueDate) return false
+    if (!t?.strapiStatus) return false
+    const due = new Date(t.dueDate)
+    if (Number.isNaN(due.getTime())) return false
+    return due < new Date() && t.strapiStatus !== 'COMPLETED' && t.strapiStatus !== 'CANCELLED'
+  }
+
   const getUserId = useCallback(() => {
     if (!user) return null
     const u = user.attributes || user
@@ -124,7 +142,7 @@ export default function MyTasksPage() {
       setLoading(true)
       const userId = getUserId()
       const params = { pageSize: 200, sort: 'updatedAt:desc' }
-      if (activeTab !== 'all') params.status = activeTab
+      if (activeTab !== 'all' && activeTab !== 'OVERDUE') params.status = activeTab
       if (filters.priority) params.priority = filters.priority
       if (filters.project) params.project = filters.project
 
@@ -136,6 +154,10 @@ export default function MyTasksPage() {
       }
 
       let rawTasks = (res?.data || []).map(transformTask).filter(Boolean)
+
+      if (activeTab === 'OVERDUE') {
+        rawTasks = rawTasks.filter(isTaskOverdue)
+      }
 
       if (searchQuery) {
         const q = searchQuery.toLowerCase()
@@ -154,6 +176,29 @@ export default function MyTasksPage() {
       setLoading(false)
     }
   }, [getUserId, activeTab, filters, searchQuery])
+
+  const handleExport = () => {
+    const rows = tasks.map((t) => [
+      t.name,
+      t.strapiStatus,
+      t.priority,
+      t.dueDate,
+      t.project,
+    ])
+    const csv = [
+      ['Task', 'Status', 'Priority', 'Due Date', 'Project'],
+      ...rows,
+    ]
+      .map((r) => r.map((cell) => (cell == null ? '' : String(cell).replaceAll(',', ' '))).join(','))
+      .join('\n')
+
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'tasks.csv'
+    a.click()
+  }
 
   const loadProjects = useCallback(async () => {
     try {
@@ -286,7 +331,12 @@ export default function MyTasksPage() {
 
   const tabsWithBadges = STATUS_TABS.map((tab) => ({
     ...tab,
-    badge: tab.id === 'all' ? tasks.length : tasks.filter((t) => t.strapiStatus === tab.id).length,
+    badge:
+      tab.id === 'all'
+        ? tasks.length
+        : tab.id === 'OVERDUE'
+          ? tasks.filter((t) => isTaskOverdue(t)).length
+          : tasks.filter((t) => t.strapiStatus === tab.id).length,
   }))
 
   const stats = [
@@ -440,14 +490,10 @@ export default function MyTasksPage() {
         title="My Tasks"
         subtitle="Track and manage all your assigned tasks"
         showProfile
-        actions={
-          <Button variant="primary" onClick={() => {
-            setTaskForm({ name: '', description: '', status: 'SCHEDULED', priority: 'medium', dueDate: '', projectId: '', assigneeId: '' })
-            setTaskModal({ open: true, task: null })
-          }}>
-            <Plus className="w-4 h-4 mr-2" /> New Task
-          </Button>
-        }
+        breadcrumb={[
+          { label: 'Dashboard', href: '/' },
+          { label: 'My Tasks', href: '/my-tasks' },
+        ]}
       />
 
       {/* KPI Stats */}
@@ -467,14 +513,18 @@ export default function MyTasksPage() {
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search tasks..."
         showAdd
-        onAddClick={() => {
-          setTaskForm({ name: '', description: '', status: 'SCHEDULED', priority: 'medium', dueDate: '', projectId: '', assigneeId: '' })
-          setTaskModal({ open: true, task: null })
+        onAddClick={(e) => {
+          e?.preventDefault?.()
+          const defaultStatus = getDefaultStatusForAdd()
+          router.push(`/my-tasks/add?status=${encodeURIComponent(defaultStatus)}`)
         }}
         addTitle="New Task"
         showFilter
         onFilterClick={() => setFilterOpen(true)}
         filterTitle="Filter"
+        showExport
+        onExportClick={handleExport}
+        exportTitle="Export CSV"
         showBulkEdit
         bulkEditActive={bulkEditMode}
         onBulkEditClick={toggleBulkEditMode}
@@ -528,53 +578,46 @@ export default function MyTasksPage() {
         <>
           <TableResultsCount count={tasks.length} />
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <Table
-              columns={columns}
-              data={tasks}
-              keyField="id"
-              variant="modernEmbedded"
-              onRowClick={
-                bulkEditMode
-                  ? (row) => {
-                      toggleSelect(row.id)
-                    }
-                  : undefined
-              }
-              getRowClassName={(row) =>
-                bulkEditMode && selectedTasks.has(row.id)
-                  ? 'bg-orange-50/90 ring-1 ring-inset ring-orange-200'
-                  : undefined
-              }
-            />
-            {tasks.length === 0 && (
+            {tasks.length === 0 ? (
               <TableEmptyBelow
                 icon={CheckSquare}
-                title="No tasks found"
-                description={
-                  searchQuery || activeTab !== 'all' || filters.priority || filters.project
-                    ? 'Try adjusting your search or filters.'
-                    : 'Create your first task to get started.'
+                title={
+                  activeTab !== 'all' || searchQuery || filters.priority || filters.project
+                    ? 'No tasks found for the selected status'
+                    : 'No tasks found'
                 }
                 action={
-                  !searchQuery && activeTab === 'all' && !filters.priority && !filters.project ? (
-                    <Button
-                      variant="primary"
-                      onClick={() => {
-                        setTaskForm({
-                          name: '',
-                          description: '',
-                          status: 'SCHEDULED',
-                          priority: 'medium',
-                          dueDate: '',
-                          projectId: '',
-                          assigneeId: '',
-                        })
-                        setTaskModal({ open: true, task: null })
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-2" /> Create Task
-                    </Button>
-                  ) : null
+                  <Button
+                    variant="primary"
+                    rounded="pill"
+                    type="button"
+                    onClick={(e) => {
+                      e?.preventDefault?.()
+                      const defaultStatus = getDefaultStatusForAdd()
+                      router.push(`/my-tasks/add?status=${encodeURIComponent(defaultStatus)}`)
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Add Task
+                  </Button>
+                }
+              />
+            ) : (
+              <Table
+                columns={columns}
+                data={tasks}
+                keyField="id"
+                variant="modernEmbedded"
+                onRowClick={
+                  bulkEditMode
+                    ? (row) => {
+                        toggleSelect(row.id)
+                      }
+                    : undefined
+                }
+                getRowClassName={(row) =>
+                  bulkEditMode && selectedTasks.has(row.id)
+                    ? 'bg-orange-50/90 ring-1 ring-inset ring-orange-200'
+                    : undefined
                 }
               />
             )}
