@@ -180,7 +180,7 @@ export default function ProjectsPage() {
             ]
             const color = colors[(row?.name?.charCodeAt?.(0) || 0) % colors.length]
             return (
-              <div className={`w-9 h-9 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
+              <div className={`w-9 h-9 rounded-lg ${color} flex items-center justify-center flex-shrink-0`}>
                 <span className="text-white text-sm font-bold">
                   {(row?.name || 'P').charAt(0).toUpperCase()}
                 </span>
@@ -416,6 +416,7 @@ export default function ProjectsPage() {
             value={stat.value}
             icon={stat.icon}
             colorScheme={stat.colorScheme}
+            iconBgColorScheme="orange"
           />
         ))}
       </div>
@@ -517,7 +518,7 @@ export default function ProjectsPage() {
                 onClick={() => router.push(`/projects/${project.slug || project.id}`)}
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
                     <FolderOpen className="w-5 h-5 text-orange-600" />
                   </div>
                   <Badge variant={s.variant}>{s.label}</Badge>

@@ -38,7 +38,7 @@ export function Tabs({
       activeTab: "bg-orange-500 text-white shadow-lg border-transparent",
     },
     glass: {
-      tabs: "gap-2 bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl p-3",
+      tabs: "gap-2 bg-white/70 backdrop-blur-xl border border-white/40 rounded-lg shadow-xl p-3",
       tab: "bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-white/90 border border-white/40 shadow-md",
       activeTab: "bg-orange-500 text-white shadow-lg border-transparent",
     },
@@ -57,7 +57,7 @@ export function Tabs({
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={clsx(
-                "flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap",
+                "flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 whitespace-nowrap",
                 currentVariant.tab,
                 activeTab === tab.id ? currentVariant.activeTab : ""
               )}

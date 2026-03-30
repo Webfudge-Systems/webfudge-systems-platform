@@ -1,17 +1,19 @@
-# PM Add Task Page Update
+# PM Add Task — modal + legacy route
 
 ## Summary
-Replaced the “Add Task” modal pop-up in the PM “My Tasks” page with a dedicated route: `apps/pm/app/my-tasks/add/page.js`.
+Creating a task is done in a **modal on `/my-tasks`** (no full-page flow). The old route **`/my-tasks/add`** is kept as a **server redirect** to `/my-tasks?createTask=1` (optional `&status=` preserved) so bookmarks and old links still work.
 
 ## Scope
-- App route added: `apps/pm/app/my-tasks/add/page.js`
-- “Add Task” navigation updated in: `apps/pm/app/my-tasks/page.js`
-- Sidebar quick action updated: `apps/pm/components/PMSidebar.jsx`
+- **Create / edit UI:** `apps/pm/app/my-tasks/page.js` — `Modal` with title, optional subtitle, footer actions (`rounded-lg` buttons via `@webfudge/ui`).
+- **Suspense:** `apps/pm/app/my-tasks/layout.js` — wraps the segment for `useSearchParams` usage.
+- **Legacy redirect:** `apps/pm/app/my-tasks/add/page.js` — `redirect()` to `/my-tasks?createTask=1`.
+- **Sidebar:** `apps/pm/components/PMSidebar.jsx` — Quick Action “New Task” → `/my-tasks?createTask=1`.
+- **Modal package:** `packages/ui/components/Modal/Modal.jsx` — optional **`subtitle`** prop.
 
-## Behavior Changes
-- `My Tasks` “Add Task” now navigates to `/my-tasks/add` (optionally preselecting `status` via query param).
-- The modal is kept only for editing existing tasks; creating new tasks is done on the new page.
+## Behavior
+- **New Task** (toolbar, empty state, sidebar) opens the create modal; default **status** follows the selected tab (same rules as before).
+- **`?createTask=1`** on `/my-tasks` opens the create modal once and then **`router.replace('/my-tasks')`** cleans the URL.
+- **`/my-tasks/add?status=…`** redirects to **`/my-tasks?createTask=1&status=…`**.
 
 ## UI Notes
-- The new page uses `@webfudge/ui` components and matches the section/card structure style used in the PM project add page (icon badges inline with section titles).
-
+- Create flow uses header **“Create New Task”** + subtitle **“Add a new task to your project”**, **Basic information** row with orange icon tile, and a **gray footer bar** for Cancel / Create Task.

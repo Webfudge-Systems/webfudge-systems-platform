@@ -1,8 +1,8 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import {
   KPICard,
@@ -35,6 +35,7 @@ import {
   ChevronDown,
   Filter,
   X,
+  Target,
 } from 'lucide-react'
 import PMPageHeader from '../../components/PMPageHeader'
 import taskService from '../../lib/api/taskService'
@@ -91,6 +92,8 @@ function getPriorityBadge(p) {
 export default function MyTasksPage() {
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const openedCreateFromQuery = useRef(false)
 
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
@@ -122,6 +125,59 @@ export default function MyTasksPage() {
     if (activeTab === 'all' || activeTab === 'OVERDUE') return 'SCHEDULED'
     return activeTab
   }
+
+  const closeTaskModal = () => {
+    setTaskModal({ open: false, task: null })
+    setTaskForm({
+      name: '',
+      description: '',
+      status: 'SCHEDULED',
+      priority: 'medium',
+      dueDate: '',
+      projectId: '',
+      assigneeId: '',
+    })
+  }
+
+  const openCreateModal = () => {
+    const defaultStatus = getDefaultStatusForAdd()
+    setTaskForm({
+      name: '',
+      description: '',
+      status: defaultStatus,
+      priority: 'medium',
+      dueDate: '',
+      projectId: '',
+      assigneeId: '',
+    })
+    setTaskModal({ open: true, task: null })
+  }
+
+  // Open create modal from ?createTask=1 (sidebar / legacy links); optional &status=
+  useEffect(() => {
+    const create = searchParams.get('createTask')
+    if (create !== '1' && create !== 'true') {
+      openedCreateFromQuery.current = false
+      return
+    }
+    if (openedCreateFromQuery.current) return
+    openedCreateFromQuery.current = true
+    const statusParam = searchParams.get('status')
+    const allowed = new Set(STATUS_OPTIONS.map((s) => s.value))
+    let initialStatus = 'SCHEDULED'
+    if (statusParam && allowed.has(statusParam)) initialStatus = statusParam
+    setTaskForm({
+      name: '',
+      description: '',
+      status: initialStatus,
+      priority: 'medium',
+      dueDate: '',
+      projectId: '',
+      assigneeId: '',
+    })
+    setTaskModal({ open: true, task: null })
+    router.replace('/my-tasks', { scroll: false })
+  }, [searchParams, router])
 
   const isTaskOverdue = (t) => {
     if (!t?.dueDate) return false
@@ -240,8 +296,7 @@ export default function MyTasksPage() {
         await taskService.createTask(payload)
       }
 
-      setTaskModal({ open: false, task: null })
-      setTaskForm({ name: '', description: '', status: 'SCHEDULED', priority: 'medium', dueDate: '', projectId: '', assigneeId: '' })
+      closeTaskModal()
       loadTasks()
     } catch (err) {
       console.error(err)
@@ -499,7 +554,14 @@ export default function MyTasksPage() {
       {/* KPI Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s) => (
-          <KPICard key={s.title} title={s.title} value={s.value} icon={s.icon} colorScheme={s.colorScheme} />
+          <KPICard
+            key={s.title}
+            title={s.title}
+            value={s.value}
+            icon={s.icon}
+            colorScheme={s.colorScheme}
+            iconBgColorScheme="orange"
+          />
         ))}
       </div>
 
@@ -515,8 +577,7 @@ export default function MyTasksPage() {
         showAdd
         onAddClick={(e) => {
           e?.preventDefault?.()
-          const defaultStatus = getDefaultStatusForAdd()
-          router.push(`/my-tasks/add?status=${encodeURIComponent(defaultStatus)}`)
+          openCreateModal()
         }}
         addTitle="New Task"
         showFilter
@@ -534,7 +595,7 @@ export default function MyTasksPage() {
 
       {/* Bulk edit: select-all (replaces header checkbox) + row-click selection */}
       {bulkEditMode && tasks.length > 0 && (
-        <div className="flex items-center gap-3 flex-wrap px-4 py-2.5 bg-amber-50/90 border border-amber-200 rounded-xl">
+        <div className="flex items-center gap-3 flex-wrap px-4 py-2.5 bg-amber-50/90 border border-amber-200 rounded-lg">
           <p className="text-sm text-gray-700 flex-1 min-w-[200px]">
             <span className="font-semibold text-gray-900">Bulk edit on</span>
             {' — '}
@@ -546,7 +607,7 @@ export default function MyTasksPage() {
         </div>
       )}
       {selectedTasks.size > 0 && (
-        <div className="flex items-center gap-3 flex-wrap px-4 py-2 bg-orange-50 border border-orange-200 rounded-xl">
+        <div className="flex items-center gap-3 flex-wrap px-4 py-2 bg-orange-50 border border-orange-200 rounded-lg">
           <span className="text-sm font-medium text-orange-700">
             {selectedTasks.size} task{selectedTasks.size > 1 ? 's' : ''} selected
           </span>
@@ -581,22 +642,20 @@ export default function MyTasksPage() {
             {tasks.length === 0 ? (
               <TableEmptyBelow
                 icon={CheckSquare}
-                title={
-                  activeTab !== 'all' || searchQuery || filters.priority || filters.project
-                    ? 'No tasks found for the selected status'
-                    : 'No tasks found'
-                }
+                title="No tasks found"
+                description={(() => {
+                  const q = searchQuery?.trim()
+                  const hasExtraFilters = Boolean(q || filters.priority || filters.project)
+                  if (activeTab === 'all' && !hasExtraFilters) {
+                    return 'Create your first task to get started.'
+                  }
+                  if (activeTab !== 'all' && !hasExtraFilters) {
+                    return 'No tasks found for the selected status.'
+                  }
+                  return 'No tasks match your filters or search. Try adjusting your criteria.'
+                })()}
                 action={
-                  <Button
-                    variant="primary"
-                    rounded="pill"
-                    type="button"
-                    onClick={(e) => {
-                      e?.preventDefault?.()
-                      const defaultStatus = getDefaultStatusForAdd()
-                      router.push(`/my-tasks/add?status=${encodeURIComponent(defaultStatus)}`)
-                    }}
-                  >
+                  <Button variant="primary" type="button" onClick={() => openCreateModal()}>
                     <Plus className="w-4 h-4 mr-2" /> Add Task
                   </Button>
                 }
@@ -628,26 +687,35 @@ export default function MyTasksPage() {
       {/* Create / Edit Task Modal */}
       <Modal
         isOpen={taskModal.open}
-        onClose={() => setTaskModal({ open: false, task: null })}
-        title={taskModal.task ? 'Edit Task' : 'New Task'}
-        size="md"
+        onClose={closeTaskModal}
+        title={taskModal.task ? 'Edit Task' : 'Create New Task'}
+        subtitle={taskModal.task ? undefined : 'Add a new task to your project'}
+        size={taskModal.task ? 'md' : 'lg'}
       >
         <div className="space-y-4">
+          {!taskModal.task && (
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500 text-white shrink-0">
+                <Target className="h-4 w-4" aria-hidden />
+              </span>
+              Basic information
+            </div>
+          )}
           <Input
             label="Task Name"
             required
             value={taskForm.name}
             onChange={(e) => setTaskForm((p) => ({ ...p, name: e.target.value }))}
-            placeholder="What needs to be done?"
+            placeholder="Enter task title"
           />
           <Textarea
             label="Description"
             value={taskForm.description}
             onChange={(e) => setTaskForm((p) => ({ ...p, description: e.target.value }))}
             rows={3}
-            placeholder="Add more details (optional)"
+            placeholder="Describe the task requirements"
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Status"
               value={taskForm.status}
@@ -661,7 +729,7 @@ export default function MyTasksPage() {
               onChange={(val) => setTaskForm((p) => ({ ...p, priority: val }))}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Due Date"
               type="date"
@@ -681,15 +749,18 @@ export default function MyTasksPage() {
             value={taskForm.assigneeId}
             options={[{ value: '', label: 'Unassigned' }, ...userOptions]}
             onChange={(val) => setTaskForm((p) => ({ ...p, assigneeId: val }))}
-            placeholder="Assign to..."
+            placeholder="Select assignee"
           />
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setTaskModal({ open: false, task: null })}>Cancel</Button>
+          <div className="flex flex-wrap justify-end gap-3 pt-2 mt-2 border-t border-gray-200 bg-gray-50 -mx-6 -mb-6 px-6 py-4">
+            <Button variant="outline" onClick={closeTaskModal}>
+              Cancel
+            </Button>
             <Button
               variant="primary"
               onClick={handleCreateOrUpdateTask}
               disabled={saving || !taskForm.name.trim()}
             >
+              {!taskModal.task && !saving && <Plus className="w-4 h-4 mr-2" />}
               {saving ? 'Saving...' : taskModal.task ? 'Update Task' : 'Create Task'}
             </Button>
           </div>

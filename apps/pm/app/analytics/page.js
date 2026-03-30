@@ -40,13 +40,22 @@ function PieLegend({ items, className = '' }) {
   )
 }
 
-function ChartEmpty({ icon: Icon, title = 'No tasks yet' }) {
+function ChartEmpty({
+  icon: Icon,
+  title = 'No tasks yet',
+  description = 'Data will appear when you have activity to analyze.',
+}) {
   return (
-    <div className="py-20 flex flex-col items-center justify-center text-center">
-      <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center">
-        {Icon ? <Icon className="w-6 h-6 text-gray-400" /> : null}
-      </div>
-      <h3 className="mt-6 text-sm font-semibold text-gray-900">{title}</h3>
+    <div className="py-20 flex flex-col items-center justify-center text-center px-4">
+      {Icon ? (
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center text-gray-400">
+          <Icon className="h-10 w-10" strokeWidth={1.25} />
+        </div>
+      ) : null}
+      <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+      {description ? (
+        <p className="mt-1.5 text-sm text-gray-500 max-w-sm mx-auto leading-relaxed">{description}</p>
+      ) : null}
     </div>
   )
 }
@@ -289,6 +298,7 @@ export default function AnalyticsPage() {
             subtitle={card.subtitle}
             icon={card.icon}
             colorScheme={card.colorScheme}
+            iconBgColorScheme="orange"
           />
         ))}
       </div>

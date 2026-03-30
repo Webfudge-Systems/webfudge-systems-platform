@@ -50,6 +50,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[PM_MY_TASKS_HEADER_UPDATE.md](./PM_MY_TASKS_HEADER_UPDATE.md)** | PM “My Tasks” header updated to match Projects header layout |
 | **[PM_ADD_TASK_PAGE_UPDATE.md](./PM_ADD_TASK_PAGE_UPDATE.md)** | PM “Add Task” now uses a dedicated page route (no modal pop) |
 | **[PM_ANALYTICS_PAGE_UI_UPDATE.md](./PM_ANALYTICS_PAGE_UI_UPDATE.md)** | PM Analytics page UI updated to match reference (empty + non-empty) layouts |
+| **[PM_UI_ROUNDED_LG_CONSISTENCY.md](./PM_UI_ROUNDED_LG_CONSISTENCY.md)** | PM + `@webfudge/ui`: `rounded-lg` for buttons, search, and tab/action controls |
 | **[SAAS_ARCHITECTURE_UPDATE.md](./SAAS_ARCHITECTURE_UPDATE.md)** | Multi-tenant architecture: org scoping, X-Organization-Id header, notifications API, PostgreSQL path, auth org context |
 | **[DIRECT_MESSAGES_API.md](./DIRECT_MESSAGES_API.md)** | PM direct messages: `direct-message` content type, `/api/direct-messages`, org member list, permissions |
 

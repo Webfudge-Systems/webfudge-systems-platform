@@ -202,7 +202,7 @@ export default function InboxPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search notifications..."
-                  className="rounded-xl"
+                  className="rounded-lg"
                   containerClassName="mb-0"
                 />
               </div>
@@ -217,6 +217,7 @@ export default function InboxPage() {
                 <EmptyState
                   icon={BellOff}
                   title="No notifications found"
+                  description="When you receive updates, they will appear here."
                 />
               </div>
             ) : (

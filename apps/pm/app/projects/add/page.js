@@ -279,7 +279,7 @@ export default function AddProjectPage() {
                 return (
                   <label
                     key={u.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border ${
+                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors border ${
                       checked
                         ? 'bg-orange-50 border-orange-200'
                         : 'bg-white border-gray-100 hover:bg-gray-50'

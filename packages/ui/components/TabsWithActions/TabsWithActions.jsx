@@ -59,9 +59,9 @@ export function TabsWithActions({
 
   const containerClasses = {
     glass:
-      'flex items-center justify-between gap-3 bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl p-3',
+      'flex items-center justify-between gap-3 bg-white/70 backdrop-blur-xl border border-white/40 rounded-lg shadow-xl p-3',
     modern:
-      'flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl shadow-lg p-3',
+      'flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg shadow-lg p-3',
     default: 'flex items-center justify-between gap-3 bg-white border-b border-gray-200 pb-3',
   }
 
@@ -79,7 +79,7 @@ export function TabsWithActions({
               key={tabId}
               onClick={() => handleTabClick(tabId)}
               className={clsx(
-                'flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap',
+                'flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 whitespace-nowrap',
                 activeTab === tabId
                   ? 'bg-orange-500 text-white shadow-lg'
                   : 'bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-white/90 border border-white/40 hover:shadow-md'
@@ -113,7 +113,7 @@ export function TabsWithActions({
                 placeholder={searchPlaceholder}
                 value={searchQuery}
                 onChange={(e) => onSearchChange?.(e.target.value)}
-                className="w-64 pl-10 pr-4 py-2.5 rounded-xl bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/50 focus:bg-white/90 transition-all duration-300 shadow-md placeholder:text-gray-400"
+                className="w-64 pl-10 pr-4 py-2.5 rounded-lg bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/50 focus:bg-white/90 transition-all duration-300 shadow-md placeholder:text-gray-400"
               />
             </div>
           </div>
@@ -123,7 +123,7 @@ export function TabsWithActions({
         {showAdd && onAddClick && (
           <button
             onClick={onAddClick}
-            className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-white/40 text-orange-500 hover:bg-orange-50 hover:text-orange-600 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
+            className="w-10 h-10 rounded-lg bg-white/80 backdrop-blur-sm border border-white/40 text-orange-500 hover:bg-orange-50 hover:text-orange-600 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
             title={addTitle}
           >
             <Plus className="w-5 h-5" />
@@ -137,7 +137,7 @@ export function TabsWithActions({
               <button
                 onClick={() => onViewChange?.('list')}
                 className={clsx(
-                  'w-10 h-10 rounded-full backdrop-blur-sm border transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center',
+                  'w-10 h-10 rounded-lg backdrop-blur-sm border transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center',
                   activeView === 'list'
                     ? 'bg-orange-500 text-white border-orange-500/50'
                     : 'bg-white/80 text-gray-700 border-white/40 hover:bg-white/90'
@@ -151,7 +151,7 @@ export function TabsWithActions({
               <button
                 onClick={() => onViewChange?.('board')}
                 className={clsx(
-                  'w-10 h-10 rounded-full backdrop-blur-sm border transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center',
+                  'w-10 h-10 rounded-lg backdrop-blur-sm border transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center',
                   activeView === 'board'
                     ? 'bg-orange-500 text-white border-orange-500/50'
                     : 'bg-white/80 text-gray-700 border-white/40 hover:bg-white/90'
@@ -168,7 +168,7 @@ export function TabsWithActions({
         {showFilter && onFilterClick && (
           <button
             onClick={onFilterClick}
-            className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 hover:bg-white/90 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
+            className="w-10 h-10 rounded-lg bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 hover:bg-white/90 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
             title={filterTitle}
           >
             <Filter className="w-5 h-5" />
@@ -181,7 +181,7 @@ export function TabsWithActions({
             type="button"
             onClick={onBulkEditClick}
             className={clsx(
-              'flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all duration-300 shadow-md whitespace-nowrap',
+              'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-semibold transition-all duration-300 shadow-md whitespace-nowrap',
               bulkEditActive
                 ? 'bg-orange-500 text-white border-orange-500/50 shadow-lg'
                 : 'bg-white/80 backdrop-blur-sm border-white/40 text-gray-700 hover:bg-white/90'
@@ -197,7 +197,7 @@ export function TabsWithActions({
         {showColumnVisibility && onColumnVisibilityClick && (
           <button
             onClick={onColumnVisibilityClick}
-            className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 hover:bg-white/90 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
+            className="w-10 h-10 rounded-lg bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 hover:bg-white/90 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
             title={columnVisibilityTitle}
           >
             <Eye className="w-5 h-5" />
@@ -208,7 +208,7 @@ export function TabsWithActions({
         {showExport && onExportClick && (
           <button
             onClick={onExportClick}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 font-medium text-sm hover:bg-white/90 transition-all duration-300 shadow-md whitespace-nowrap"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 font-medium text-sm hover:bg-white/90 transition-all duration-300 shadow-md whitespace-nowrap"
             title={exportTitle}
           >
             <Download className="w-4 h-4" />

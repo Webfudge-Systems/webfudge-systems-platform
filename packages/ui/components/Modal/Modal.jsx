@@ -8,6 +8,7 @@ export function Modal({
   isOpen,
   onClose,
   title,
+  subtitle,
   children,
   size = "md",
   className,
@@ -56,15 +57,22 @@ export function Modal({
           {...props}
         >
           {/* Header */}
-          {(title || showCloseButton) && (
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              {title && (
-                <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-              )}
+          {(title || subtitle || showCloseButton) && (
+            <div className="flex items-start justify-between gap-4 p-6 border-b border-gray-200">
+              <div className="min-w-0 flex-1 pr-2">
+                {title && (
+                  <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                )}
+                {subtitle && (
+                  <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
+                )}
+              </div>
               {showCloseButton && (
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors shrink-0"
+                  aria-label="Close"
                 >
                   <X className="w-5 h-5 text-gray-500" />
                 </button>

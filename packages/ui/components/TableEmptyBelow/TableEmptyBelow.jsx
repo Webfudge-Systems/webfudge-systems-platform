@@ -19,15 +19,19 @@ export function TableEmptyBelow({ icon: Icon, title, description, action, classN
   return (
     <div className={clsx('p-12 text-center bg-transparent', className)}>
       {Icon && (
-        <div className="text-gray-400 mb-2">
-          <Icon className="w-12 h-12 mx-auto mb-3 opacity-50" strokeWidth={1.25} />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center text-gray-400">
+          <Icon className="h-10 w-10 opacity-90" strokeWidth={1.25} />
         </div>
       )}
-      {title && <h3 className="text-lg font-semibold text-gray-700 mb-2">{title}</h3>}
-      {description && (
-        <p className="text-sm text-gray-500 mb-4 max-w-md mx-auto">{description}</p>
+      {title && (
+        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
       )}
-      {action ? <div>{action}</div> : null}
+      {description && (
+        <p className="mt-1.5 text-sm text-gray-500 max-w-md mx-auto leading-relaxed">
+          {description}
+        </p>
+      )}
+      {action ? <div className="mt-6">{action}</div> : null}
     </div>
   )
 }

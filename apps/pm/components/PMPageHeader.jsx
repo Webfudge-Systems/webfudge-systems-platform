@@ -261,7 +261,7 @@ export default function PMPageHeader({
                       if (!onSearchChange) setShowGlobalSearch(true)
                     }
                   }}
-                  className="w-64 pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all duration-300 placeholder:text-gray-400 text-gray-800"
+                  className="w-64 pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all duration-300 placeholder:text-gray-400 text-gray-800"
                 />
               </div>
             )}
@@ -273,7 +273,7 @@ export default function PMPageHeader({
                   {onAddClick && (
                     <button
                       onClick={onAddClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 text-brand-primary rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 group shadow-lg"
+                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 text-brand-primary rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 group shadow-lg"
                     >
                       <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
                     </button>
@@ -282,7 +282,7 @@ export default function PMPageHeader({
                   {onFilterClick && (
                     <button
                       onClick={onFilterClick}
-                      className="relative p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
+                      className="relative p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
                     >
                       <Filter className="w-5 h-5 text-brand-text-light" />
                       {hasActiveFilters && (
@@ -294,7 +294,7 @@ export default function PMPageHeader({
                   {onImportClick && (
                     <button
                       onClick={onImportClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
+                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
                     >
                       <Upload className="w-5 h-5 text-brand-text-light" />
                     </button>
@@ -303,7 +303,7 @@ export default function PMPageHeader({
                   {onExportClick && (
                     <button
                       onClick={onExportClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
+                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
                     >
                       <Download className="w-5 h-5 text-brand-text-light" />
                     </button>
@@ -312,7 +312,7 @@ export default function PMPageHeader({
                   {onShareImageClick && (
                     <button
                       onClick={onShareImageClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
+                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
                       title="Share Image"
                     >
                       <Image className="w-5 h-5 text-brand-text-light" />
@@ -328,7 +328,7 @@ export default function PMPageHeader({
                   <button
                     key={index}
                     onClick={action.onClick}
-                    className={`p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg ${
+                    className={`p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg ${
                       action.className || ''
                     }`}
                   >
@@ -349,7 +349,7 @@ export default function PMPageHeader({
             <div className="relative" ref={notificationDropdownRef}>
               <button
                 onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
-                className="relative p-2.5 rounded-xl hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300"
+                className="relative p-2.5 rounded-lg hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300"
                 title="Notifications"
               >
                 <Bell className="w-5 h-5 text-brand-text-light" />
@@ -368,7 +368,7 @@ export default function PMPageHeader({
                     onClick={() => setShowNotificationDropdown(false)}
                   />
                   <div
-                    className="fixed right-6 top-20 w-96 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 z-[99999] max-h-[600px] flex flex-col"
+                    className="fixed right-6 top-20 w-96 bg-white/95 backdrop-blur-xl rounded-lg shadow-2xl border border-white/30 z-[99999] max-h-[600px] flex flex-col"
                     style={{ zIndex: 99999 }}
                   >
                     {/* Header */}
@@ -446,7 +446,7 @@ export default function PMPageHeader({
             {/* User Profile */}
             <div className="relative">
               <button
-                className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300"
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300"
                 onMouseEnter={() => setShowProfileDropdown(true)}
                 onMouseLeave={() => setShowProfileDropdown(false)}
               >
@@ -479,7 +479,7 @@ export default function PMPageHeader({
                     onClick={() => setShowProfileDropdown(false)}
                   />
                   <div
-                    className="fixed right-6 top-20 w-72 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 z-[99999]"
+                    className="fixed right-6 top-20 w-72 bg-white/95 backdrop-blur-xl rounded-lg shadow-2xl border border-white/30 z-[99999]"
                     onMouseEnter={() => setShowProfileDropdown(true)}
                     onMouseLeave={() => setShowProfileDropdown(false)}
                     style={{ zIndex: 99999 }}

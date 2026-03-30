@@ -10,6 +10,7 @@ import {
   Button,
   Avatar,
   Input,
+  EmptyState,
 } from '@webfudge/ui'
 import {
   CheckSquare,
@@ -19,7 +20,6 @@ import {
   FolderOpen,
   Users,
   Calendar,
-  Menu,
   ChevronUp,
   ChevronDown,
   ArrowRight,
@@ -246,34 +246,30 @@ export default function DashboardPage() {
               icon={card.icon}
               colorScheme={colorSchemes[index] || colorSchemes[0]}
               iconColorScheme="orange"
+              iconBgColorScheme="orange"
             />
           ))}
         </div>
       </div>
 
-      {/* My Tasks + Projects */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+      {/* My Tasks + Projects — match People/Notepad padding (p-6); equal height on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6 lg:items-stretch">
         {/* My Tasks */}
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 flex h-full min-h-0">
           <Card
-            padding={false}
             glass={true}
+            className="w-full h-full flex flex-col"
             title="My Tasks"
             subtitle="Tasks where you are a collaborator"
           >
-            <div className="px-6 pb-4">
+            <div className="flex flex-1 flex-col min-h-[min(320px,50vh)] min-h-0">
               {collaboratorTasks.length === 0 ? (
-                <div className="py-20 flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center">
-                    <Menu className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <h3 className="mt-6 text-sm font-semibold text-gray-900">
-                    You don't have any tasks
-                  </h3>
-                  <p className="mt-2 text-xs text-gray-500 max-w-[240px]">
-                    Tasks where you are a collaborator will appear here.
-                  </p>
-                </div>
+                <EmptyState
+                  icon={CheckSquare}
+                  title="No tasks yet"
+                  description="Tasks where you are a collaborator will appear here."
+                  className="flex flex-1 flex-col justify-center py-10 px-2"
+                />
               ) : (
                 <div className="space-y-1 pt-2">
                   {collaboratorTasks.slice(0, 8).map((task) => {
@@ -312,10 +308,10 @@ export default function DashboardPage() {
         </div>
 
         {/* Projects */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 flex h-full min-h-0">
           <Card
-            padding={false}
             glass={true}
+            className="w-full h-full flex flex-col"
             title="Projects"
             subtitle="Track your current projects"
             actions={
@@ -324,20 +320,36 @@ export default function DashboardPage() {
               </Button>
             }
           >
-            <div className="px-4 pb-4 space-y-3">
-              <Button
-                variant="primary"
-                rounded="pill"
-                className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
-                onClick={() => router.push('/projects/add')}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create New Project
-              </Button>
-
-              {projects.length > 0 && (
-                <div className="pt-1">
-                  <div className="grid grid-cols-[1fr_auto] gap-4 px-4 pb-2">
+            <div className="flex flex-1 flex-col min-h-0 min-h-[min(320px,50vh)]">
+              {projects.length === 0 ? (
+                <EmptyState
+                  icon={FolderOpen}
+                  title="No projects yet"
+                  description="Projects you have access to will appear here."
+                  className="flex flex-1 flex-col justify-center py-10 px-2"
+                  action={
+                    <Button
+                      variant="primary"
+                      className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                      onClick={() => router.push('/projects/add')}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create New Project
+                    </Button>
+                  }
+                />
+              ) : (
+                <div className="flex flex-1 flex-col min-h-0 space-y-3">
+                  <Button
+                    variant="primary"
+                    className="w-full shrink-0 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                    onClick={() => router.push('/projects/add')}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create New Project
+                  </Button>
+                  <div className="pt-1 flex-1 min-h-0">
+                  <div className="grid grid-cols-[1fr_auto] gap-4 pb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
                         Project
@@ -363,7 +375,7 @@ export default function DashboardPage() {
                       <button
                         key={project.id}
                         onClick={() => router.push(`/projects/${project.slug || project.id}`)}
-                        className="w-full grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
+                        className="w-full grid grid-cols-[1fr_auto] items-center gap-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <Avatar
@@ -384,6 +396,7 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 </div>
+                </div>
               )}
             </div>
           </Card>
@@ -398,15 +411,18 @@ export default function DashboardPage() {
           title={`People (${peopleCount || people.length})`}
           subtitle="Team members and collaborators"
           actions={
-            <div className="w-10 h-10 bg-brand-primary/10 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
               <Users className="w-5 h-5 text-brand-primary" />
             </div>
           }
         >
           {people.length === 0 ? (
-            <p className="text-center text-sm text-gray-500 py-8">
-              No team members yet.
-            </p>
+            <EmptyState
+              icon={Users}
+              title="No team members yet"
+              description="People in your workspace will appear here."
+              className="py-10 px-4"
+            />
           ) : (
             <div className="space-y-4">
               <Input
@@ -480,12 +496,12 @@ export default function DashboardPage() {
           subtitle="Your personal notes"
           actions={
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                 <FileText className="w-5 h-5 text-green-600" />
               </div>
               <button
                 type="button"
-                className="w-10 h-10 rounded-xl hover:bg-green-50 transition-colors flex items-center justify-center"
+                className="w-10 h-10 rounded-lg hover:bg-green-50 transition-colors flex items-center justify-center"
                 aria-label="Notepad menu"
               >
                 <MoreHorizontal className="w-5 h-5 text-green-600" />
@@ -503,7 +519,7 @@ export default function DashboardPage() {
             const chars = notepad.length
             return (
               <div className="space-y-3">
-                <div className="bg-white/60 border border-gray-100 rounded-xl p-4">
+                <div className="bg-white/60 border border-gray-100 rounded-lg p-4">
                   <textarea
                     value={notepad}
                     onChange={(e) => setNotepad(e.target.value)}
@@ -553,7 +569,7 @@ export default function DashboardPage() {
                       <span className="text-gray-400">Priority</span>
                       <select
                         defaultValue="medium"
-                        className="text-[11px] border border-gray-200 rounded-md px-2 py-0.5 bg-white/50 focus:outline-none focus:ring-2 focus:ring-orange-200"
+                        className="text-[11px] border border-gray-200 rounded-lg px-2 py-0.5 bg-white/50 focus:outline-none focus:ring-2 focus:ring-orange-200"
                       >
                         <option value="low">Low</option>
                         <option value="medium">Medium</option>

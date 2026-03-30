@@ -65,7 +65,7 @@ export default function GlobalSearchModal({ isOpen, onClose, initialQuery = '' }
   return (
     <div className="fixed inset-0 z-[99999] flex items-start justify-center pt-20 px-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-brand-border overflow-hidden">
+      <div className="relative w-full max-w-2xl bg-white rounded-lg shadow-2xl border border-brand-border overflow-hidden">
         {/* Search Input */}
         <div className="flex items-center gap-3 px-4 py-4 border-b border-brand-border">
           <Search className="w-5 h-5 text-brand-text-light flex-shrink-0" />
@@ -94,13 +94,21 @@ export default function GlobalSearchModal({ isOpen, onClose, initialQuery = '' }
           )}
 
           {!loading && query && !hasResults && (
-            <div className="p-8 text-center text-brand-text-light text-sm">No results for &quot;{query}&quot;</div>
+            <div className="p-8 text-center px-4">
+              <p className="text-base font-semibold text-brand-foreground">No results found</p>
+              <p className="mt-1.5 text-sm text-brand-text-light">
+                Nothing matched &quot;{query}&quot;. Try different keywords.
+              </p>
+            </div>
           )}
 
           {!loading && !query && (
-            <div className="p-6 text-center text-brand-text-light text-sm">
-              <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
-              <p>Type to search tasks and projects</p>
+            <div className="p-8 text-center px-4">
+              <Search className="w-10 h-10 mx-auto mb-4 text-brand-text-light opacity-40" strokeWidth={1.25} />
+              <p className="text-base font-semibold text-brand-foreground">Search tasks and projects</p>
+              <p className="mt-1.5 text-sm text-brand-text-light">
+                Type to find tasks and projects across your workspace.
+              </p>
             </div>
           )}
 

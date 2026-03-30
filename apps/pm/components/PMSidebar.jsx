@@ -21,6 +21,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft,
+  ChevronUp,
   Search,
   FileText,
   Calendar,
@@ -56,7 +57,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
     {
       label: 'New Task',
       icon: CheckSquare,
-      href: '/my-tasks/add',
+      href: '/my-tasks?createTask=1',
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       borderColor: 'border-orange-200',
@@ -205,7 +206,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
             <input
               type="text"
               placeholder="Search here..."
-              className="w-full pl-10 pr-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:bg-white/25 transition-[background-color,border-color,box-shadow] duration-300 text-sm placeholder:text-brand-text-light shadow-lg"
+              className="w-full pl-10 pr-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:bg-white/25 transition-[background-color,border-color,box-shadow] duration-300 text-sm placeholder:text-brand-text-light shadow-lg"
             />
           </div>
         )}
@@ -216,7 +217,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
             onClick={toggleQuickActions}
             className={`w-full bg-gradient-to-r from-orange-500/20 to-orange-600/10 backdrop-blur-md border ${
               quickActionsOpen ? 'border-orange-300/60' : 'border-white/30 hover:border-orange-200/50'
-            } text-brand-foreground rounded-xl py-3 px-4 flex items-center ${
+            } text-brand-foreground rounded-lg py-3 px-4 flex items-center ${
               collapsed ? 'justify-center' : 'justify-between gap-2'
             } shadow-lg hover:shadow-xl transition-all duration-300 group`}
           >
@@ -238,7 +239,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           </button>
 
           {quickActionsOpen && !collapsed && (
-            <div className="absolute left-0 top-full mt-2 w-full bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
+            <div className="absolute left-0 top-full mt-2 w-full bg-white rounded-lg shadow-2xl border border-gray-200 z-50 overflow-hidden">
               <div className="p-2">
                 <div className="px-3 py-2 mb-1 border-b border-gray-100">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -251,10 +252,10 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                     <button
                       key={index}
                       onClick={() => handleQuickActionClick(item.href)}
-                      className="w-full flex items-center gap-3 p-3.5 text-sm text-gray-800 rounded-xl hover:bg-gray-50 transition-all duration-200 group/item"
+                      className="w-full flex items-center gap-3 p-3.5 text-sm text-gray-800 rounded-lg hover:bg-gray-50 transition-all duration-200 group/item"
                     >
                       <div
-                        className={`w-10 h-10 ${item.bgColor} ${item.borderColor} border rounded-xl flex items-center justify-center shadow-sm group-hover/item:scale-110 group-hover/item:shadow-md transition-all duration-200`}
+                        className={`w-10 h-10 ${item.bgColor} ${item.borderColor} border rounded-lg flex items-center justify-center shadow-sm group-hover/item:scale-110 group-hover/item:shadow-md transition-all duration-200`}
                       >
                         <Icon className={`w-5 h-5 ${item.color}`} />
                       </div>
@@ -286,7 +287,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                       ? 'bg-brand-primary text-white border-brand-primary/50'
                       : 'bg-white/20 backdrop-blur-md border border-white/30 text-brand-foreground hover:bg-white/30 hover:border-white/40'
                   } 
-                      rounded-xl p-4 flex flex-col items-center gap-3 transition-[background-color,border-color,color] duration-300 shadow-lg group`}
+                      rounded-lg p-4 flex flex-col items-center gap-3 transition-[background-color,border-color,color] duration-300 shadow-lg group`}
                   title={collapsed ? item.label : undefined}
                 >
                   <Icon className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
@@ -304,7 +305,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
         <div className="flex-1">
           <div className="px-3 mb-2">
             <div
-              className={`rounded-xl p-2.5 shadow-lg transition-all duration-200 backdrop-blur-md ${
+              className={`rounded-lg p-2.5 shadow-lg transition-all duration-200 backdrop-blur-md ${
                 projectsSectionActive
                   ? 'bg-orange-50/90 border border-orange-200'
                   : 'bg-white/10 border border-white/30'
@@ -331,7 +332,12 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                     <LoadingSpinner size="sm" />
                   </div>
                 ) : projects.length === 0 ? (
-                  <div className="text-center py-4 text-xs text-brand-text-light">No projects yet</div>
+                  <div className="text-center py-4 px-2">
+                    <p className="text-xs font-semibold text-brand-foreground">No projects yet</p>
+                    <p className="mt-1 text-[11px] text-brand-text-light leading-snug">
+                      Projects you have access to will appear here.
+                    </p>
+                  </div>
                 ) : (
                   <>
                     {displayedProjects.map((project) => (
@@ -357,7 +363,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                       <button
                         type="button"
                         onClick={() => setShowAllProjects(!showAllProjects)}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-[11px] rounded-xl transition-all duration-200 border ${
+                        className={`w-full flex items-center justify-between px-3 py-2 text-[11px] rounded-lg transition-all duration-200 border ${
                           showAllProjects
                             ? 'bg-white/50 border-orange-200 text-orange-700'
                             : 'bg-orange-50/80 border-orange-200 text-orange-700'
@@ -373,7 +379,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                     )}
                     <Link
                       href="/projects"
-                      className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-[11px] text-orange-700 bg-orange-50/30 border border-orange-200 hover:bg-orange-50/60 transition-colors"
+                      className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[11px] text-orange-700 bg-orange-50/30 border border-orange-200 hover:bg-orange-50/60 transition-colors"
                     >
                       <FolderOpen className="w-3.5 h-3.5" />
                       <span className="font-medium">All projects</span>
@@ -450,7 +456,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                   <Link
                     key={item.id}
                     href={item.href || '/'}
-                    className="w-full bg-white/15 backdrop-blur-md border border-white/25 text-brand-text-light rounded-xl p-3 flex flex-col items-center gap-2 shadow-md hover:bg-white/20 transition-colors"
+                    className="w-full bg-white/15 backdrop-blur-md border border-white/25 text-brand-text-light rounded-lg p-3 flex flex-col items-center gap-2 shadow-md hover:bg-white/20 transition-colors"
                     title={collapsed ? item.label : undefined}
                   >
                     <Icon className="w-5 h-5" />

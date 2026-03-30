@@ -158,7 +158,7 @@ export default function MessagesPage() {
                 placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:bg-white/25 transition-[background-color,border-color,box-shadow] duration-300 text-sm placeholder:text-brand-text-light shadow-lg"
+                className="w-full pl-10 pr-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:bg-white/25 transition-[background-color,border-color,box-shadow] duration-300 text-sm placeholder:text-brand-text-light shadow-lg"
               />
             </div>
           </div>
@@ -228,7 +228,7 @@ export default function MessagesPage() {
             <Card
               variant="elevated"
               padding={false}
-              className="flex min-h-[min(400px,60vh)] flex-1 flex-col items-center justify-center overflow-hidden rounded-xl border border-gray-100 shadow-md"
+              className="flex min-h-[min(400px,60vh)] flex-1 flex-col items-center justify-center overflow-hidden rounded-lg border border-gray-100 shadow-md"
             >
               <EmptyState
                 icon={MessageSquare}
@@ -291,7 +291,7 @@ export default function MessagesPage() {
                           className={`flex max-w-xs flex-col ${isOwn ? 'items-end' : 'items-start'}`}
                         >
                           <div
-                            className={`rounded-2xl px-3 py-2 text-sm ${
+                            className={`rounded-lg px-3 py-2 text-sm ${
                               isOwn
                                 ? 'rounded-tr-none bg-orange-500 text-white'
                                 : 'rounded-tl-none bg-gray-100 text-gray-800'
@@ -322,7 +322,7 @@ export default function MessagesPage() {
                     }
                   }}
                   placeholder={`Message ${getListDisplayName(selectedUser)}...`}
-                  className="flex-1 rounded-xl border-gray-200 py-2.5 text-sm"
+                  className="flex-1 rounded-lg border-gray-200 py-2.5 text-sm"
                   containerClassName="flex-1 mb-0"
                 />
                 <Button

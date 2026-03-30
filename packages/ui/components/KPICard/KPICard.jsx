@@ -14,7 +14,8 @@ import { Card } from '../Card'
  * @param {string} changeType - Type of change: 'increase' or 'decrease'
  * @param {React.Component} icon - Icon component to display (from lucide-react or similar)
  * @param {string} colorScheme - Color scheme: 'orange', 'yellow', 'green', 'red', 'blue', 'purple', 'emerald', 'indigo'
- * @param {string} iconColorScheme - Optional override for the inner icon color (keeps the card's `colorScheme` background + dot)
+ * @param {string} iconColorScheme - Optional override for the inner icon color
+ * @param {string} iconBgColorScheme - Optional override for icon background color
  * @param {function} onClick - Optional click handler for the card
  * @param {string} className - Optional additional CSS classes
  */
@@ -27,6 +28,7 @@ const KPICard = ({
   icon: Icon,
   colorScheme = 'blue',
   iconColorScheme = 'orange',
+  iconBgColorScheme,
   onClick,
   className = '',
 }) => {
@@ -75,6 +77,7 @@ const KPICard = ({
 
   const colors = colorClasses[colorScheme] || colorClasses.blue
   const iconColors = iconColorScheme ? colorClasses[iconColorScheme] || colors : colors
+  const iconBgColors = iconBgColorScheme ? colorClasses[iconBgColorScheme] || colors : colors
 
   return (
     <Card
@@ -110,7 +113,7 @@ const KPICard = ({
         </div>
         {Icon && (
           <div
-            className={`overflow-hidden ${colors.iconBg} relative w-32 h-32 rounded-2xl rounded-tr-[0] rounded-bl-[0] flex items-center justify-center flex-shrink-0`}
+            className={`overflow-hidden ${iconBgColors.iconBg} relative w-32 h-32 rounded-2xl rounded-tr-[0] rounded-bl-[0] flex items-center justify-center flex-shrink-0`}
           >
             <Icon className={`w-full h-full absolute -bottom-7 -right-7 ${iconColors.iconColor}`} />
           </div>
