@@ -74,9 +74,9 @@ export function TabsWithActions({
 
   const containerClasses = {
     glass:
-      'flex items-center justify-between gap-3 bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl p-3',
+      'flex items-center justify-between gap-3 bg-white/70 backdrop-blur-xl border border-white/40 rounded-lg shadow-xl p-3',
     modern:
-      'flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl shadow-lg p-3',
+      'flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg shadow-lg p-3',
     default: 'flex items-center justify-between gap-3 bg-white border-b border-gray-200 pb-3',
   }
 
@@ -123,7 +123,12 @@ export function TabsWithActions({
       {tabs.map((tab) => {
         const tabId = tab.id || tab.key
         return (
-          <button key={tabId} type="button" onClick={() => handleTabClick(tabId)} className={tabButtonClass(tabId)}>
+          <button
+            key={tabId}
+            type="button"
+            onClick={() => handleTabClick(tabId)}
+            className={tabButtonClass(tabId)}
+          >
             <span>{tab.label}</span>
             {tab.badge !== undefined && tab.badge !== null && tab.badge !== '' && (
               <span className={badgeClass(tabId)}>{tab.badge}</span>
@@ -261,7 +266,10 @@ export function TabsWithActions({
   }
 
   return (
-    <div className={clsx(containerClasses[variant] || containerClasses.glass, className)} {...props}>
+    <div
+      className={clsx(containerClasses[variant] || containerClasses.glass, className)}
+      {...props}
+    >
       {tabRow}
       {rightPanel}
     </div>

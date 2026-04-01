@@ -18,7 +18,7 @@ export default function UnauthorizedPage() {
         </p>
         <button
           onClick={() => router.push('/')}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-brand-primary text-white rounded-xl hover:bg-brand-primary/90 transition-colors font-medium"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-brand-primary text-white rounded-lg hover:bg-brand-primary/90 transition-colors font-medium"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard

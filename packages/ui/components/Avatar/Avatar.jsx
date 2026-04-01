@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function Avatar({
   src,
@@ -6,6 +7,8 @@ export function Avatar({
   size = "md",
   fallback,
   className,
+  /** `circle` (default) or `rounded` for a soft rounded-square tile (sidebar-style logo) */
+  shape = "circle",
   ...props
 }) {
   const sizes = {
@@ -16,14 +19,19 @@ export function Avatar({
     xl: "w-12 h-12 text-base",
   };
 
+  const roundClass = shape === "rounded" ? "rounded-2xl" : "rounded-full";
+
   const initials = fallback || (alt ? alt.charAt(0).toUpperCase() : "?");
 
   return (
     <div
-      className={clsx(
-        "inline-flex items-center justify-center rounded-full bg-gray-500 font-medium text-white flex-shrink-0",
-        sizes[size],
-        className
+      className={twMerge(
+        clsx(
+          "inline-flex items-center justify-center bg-gray-500 font-medium text-white flex-shrink-0",
+          roundClass,
+          sizes[size],
+          className
+        )
       )}
       {...props}
     >
@@ -31,7 +39,7 @@ export function Avatar({
         <img
           src={src}
           alt={alt}
-          className="w-full h-full rounded-full object-cover"
+          className={clsx("w-full h-full object-cover", roundClass)}
         />
       ) : (
         <span className="select-none">{initials}</span>

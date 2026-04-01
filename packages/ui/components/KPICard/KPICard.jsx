@@ -14,6 +14,8 @@ import { Card } from '../Card'
  * @param {string} changeType - Type of change: 'increase' or 'decrease'
  * @param {React.Component} icon - Icon component to display (from lucide-react or similar)
  * @param {string} colorScheme - Color scheme: 'orange', 'yellow', 'green', 'red', 'blue', 'purple', 'emerald', 'indigo'
+ * @param {string} iconColorScheme - Optional override for the inner icon color
+ * @param {string} iconBgColorScheme - Optional override for icon background color
  * @param {function} onClick - Optional click handler for the card
  * @param {string} className - Optional additional CSS classes
  * @param {boolean} compact - Tighter padding, no subtitle/change footer (e.g. entity detail header KPIs)
@@ -26,6 +28,8 @@ const KPICard = ({
   changeType = 'increase',
   icon: Icon,
   colorScheme = 'blue',
+  iconColorScheme = 'orange',
+  iconBgColorScheme,
   onClick,
   className = '',
   compact = false,
@@ -91,20 +95,12 @@ const KPICard = ({
       className={`${paddingClass} ${onClick ? 'cursor-pointer hover:shadow-[0_6px_26px_rgba(15,23,42,0.13),0_3px_8px_rgba(15,23,42,0.07)] transition-shadow' : ''} ${className}`}
       onClick={onClick}
     >
-      <div
-        className={`flex justify-between ${compact ? 'items-center' : 'items-start'}`}
-      >
+      <div className={`flex justify-between ${compact ? 'items-center' : 'items-start'}`}>
         <div className="min-w-0 flex-1 pr-2">
-          <p
-            className={`text-sm font-medium text-gray-600 ${compact ? 'mb-0.5' : 'mb-2'}`}
-          >
+          <p className={`text-sm font-medium text-gray-600 ${compact ? 'mb-0.5' : 'mb-2'}`}>
             {title}
           </p>
-          <p
-            className={`text-4xl font-bold text-gray-900 ${showFooter ? 'mb-2' : ''}`}
-          >
-            {value}
-          </p>
+          <p className={`text-4xl font-bold text-gray-900 ${showFooter ? 'mb-2' : ''}`}>{value}</p>
           {showFooter && change && (
             <div className="flex items-center gap-1.5 text-sm text-gray-500">
               <span className={`h-2 w-2 rounded-full ${colors.dotColor}`}></span>

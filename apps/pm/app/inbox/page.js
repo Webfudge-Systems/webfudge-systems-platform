@@ -9,6 +9,8 @@ import {
   Badge,
   Button,
   LoadingSpinner,
+  TabsWithActions,
+  Input,
 } from '@webfudge/ui'
 import {
   Bell,
@@ -16,7 +18,6 @@ import {
   Check,
   CheckCheck,
   Search,
-  RefreshCw,
   Info,
   AlertTriangle,
   AlertCircle,
@@ -61,17 +62,25 @@ export default function InboxPage() {
   const [selectedId, setSelectedId] = useState(null)
   const [markingRead, setMarkingRead] = useState(false)
 
+  const getCurrentUserId = () => {
+    if (!user) return null
+    const u = user.attributes || user
+    // Prefer numeric id, fallback to documentId.
+    return u.id || user.id || u.documentId || user.documentId || null
+  }
+
   const loadNotifications = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await notificationService.getNotifications({ pageSize: 100 })
-      setNotifications(res?.data || [])
+      const userId = getCurrentUserId()
+      const res = await notificationService.getNotifications(userId, { pageSize: 100 })
+      setNotifications(Array.isArray(res) ? res : res?.data || [])
     } catch {
       setNotifications([])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     loadNotifications()
@@ -84,7 +93,18 @@ export default function InboxPage() {
       setMarkingRead(true)
       await notificationService.markAsRead(id)
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, attributes: { ...n.attributes, read: true, isRead: true } } : n))
+        prev.map((n) =>
+          n.id === id
+            ? {
+                ...n,
+                attributes: {
+                  ...(n.attributes || {}),
+                  read: true,
+                  isRead: true,
+                },
+              }
+            : n,
+        ),
       )
     } catch {}
     finally { setMarkingRead(false) }
@@ -93,9 +113,17 @@ export default function InboxPage() {
   const handleMarkAllRead = async () => {
     try {
       setMarkingRead(true)
-      await notificationService.markAllAsRead()
+      const userId = getCurrentUserId()
+      await notificationService.markAllAsRead(userId)
       setNotifications((prev) =>
-        prev.map((n) => ({ ...n, attributes: { ...n.attributes, read: true, isRead: true } }))
+        prev.map((n) => ({
+          ...n,
+          attributes: {
+            ...(n.attributes || {}),
+            read: true,
+            isRead: true,
+          },
+        }))
       )
     } catch {}
     finally { setMarkingRead(false) }
@@ -118,22 +146,30 @@ export default function InboxPage() {
 
   const unreadCount = notifications.filter((n) => {
     const attrs = n.attributes || n
-    return !attrs.read && !attrs.isRead
+    return !(attrs.read || attrs.isRead)
   }).length
 
-  const tabsWithBadges = TABS.map((t) => ({
-    ...t,
-    badge: t.id === 'unread' ? unreadCount : t.id === 'all' ? notifications.length : undefined,
-  }))
+  const readCount = Math.max(0, notifications.length - unreadCount)
 
-  const selectedNotification = selectedId ? filtered.find((n) => n.id === selectedId) : null
+  const tabsWithBadges = [
+    { id: 'all', label: 'All', badge: notifications.length },
+    { id: 'unread', label: 'Unread', badge: unreadCount },
+    { id: 'read', label: 'Read', badge: readCount },
+  ]
+
+  // Keep showing the selected notification even if it falls out of the current filtered list.
+  const selectedNotification = selectedId ? notifications.find((n) => n.id === selectedId) : null
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4">
       <PMPageHeader
         title="Inbox"
-        subtitle="Your notifications and updates"
+        subtitle="Stay updated with all your notifications"
         showProfile
+        breadcrumb={[
+          { label: 'Dashboard', href: '/' },
+          { label: 'Inbox', href: '/inbox' },
+        ]}
         actions={
           unreadCount > 0 ? (
             <Button variant="outline" size="sm" onClick={handleMarkAllRead} disabled={markingRead}>
@@ -144,52 +180,33 @@ export default function InboxPage() {
         }
       />
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2">
-        {tabsWithBadges.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              activeTab === tab.id
-                ? 'bg-orange-500 text-white shadow-sm'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {tab.label}
-            {tab.badge !== undefined && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                activeTab === tab.id ? 'bg-white/30 text-white' : 'bg-gray-300 text-gray-700'
-              }`}>
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        ))}
-        <div className="ml-auto">
-          <Button variant="ghost" size="sm" onClick={loadNotifications} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </div>
+      {/* Tabs (matches `ref-image 2` capsule style) */}
+      <TabsWithActions
+        variant="modern"
+        className="max-w-md"
+        tabs={tabsWithBadges}
+        activeTab={activeTab}
+        onTabChange={(id) => setActiveTab(id)}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Notification List */}
         <div className="lg:col-span-2">
-          <Card padding={false} variant="default">
-            {/* Search */}
-            <div className="p-3 border-b border-gray-100">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+          <Card padding={false} variant="elevated">
+            {/* Search (hidden when there are no notifications, matching the reference empty view) */}
+            {notifications.length > 0 && (
+              <div className="p-3 border-b border-gray-100">
+                <Input
+                  icon={Search}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search notifications..."
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="rounded-lg"
+                  containerClassName="mb-0"
                 />
               </div>
-            </div>
+            )}
 
             {loading ? (
               <div className="flex items-center justify-center h-48">
@@ -199,12 +216,8 @@ export default function InboxPage() {
               <div className="p-6">
                 <EmptyState
                   icon={BellOff}
-                  title="No notifications"
-                  description={
-                    activeTab === 'unread'
-                      ? "You're all caught up!"
-                      : 'No notifications found.'
-                  }
+                  title="No notifications found"
+                  description="When you receive updates, they will appear here."
                 />
               </div>
             ) : (
@@ -311,11 +324,14 @@ export default function InboxPage() {
               })()}
             </Card>
           ) : (
-            <Card variant="default" className="h-full min-h-[300px] flex items-center justify-center">
+            <Card
+              variant="elevated"
+              className="h-full min-h-[300px] flex items-center justify-center"
+            >
               <EmptyState
                 icon={Bell}
-                title="Select a notification"
-                description="Click a notification from the list to view its details."
+                title="No notification selected"
+                description="Select a notification from the list to view details."
               />
             </Card>
           )}

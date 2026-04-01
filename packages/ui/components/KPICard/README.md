@@ -42,6 +42,7 @@ function Dashboard() {
 | `changeType`  | `string`             | `'increase'` | Type of change: 'increase' or 'decrease' (affects color)                                |
 | `icon`        | `React.Component`    | `undefined`  | Icon component to display (from lucide-react or similar)                                |
 | `colorScheme` | `string`             | `'blue'`     | Color scheme: 'orange', 'yellow', 'green', 'red', 'blue', 'purple', 'emerald', 'indigo' |
+| `iconColorScheme` | `string`        | `'orange'`   | Override for the inner icon color scheme (background dot remains driven by `colorScheme`) |
 | `onClick`     | `function`           | `undefined`  | Optional click handler for the card                                                     |
 | `className`   | `string`             | `''`         | Optional additional CSS classes                                                         |
 

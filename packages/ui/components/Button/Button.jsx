@@ -4,7 +4,7 @@ export function Button({
   children,
   variant = 'primary',
   size = 'md',
-  rounded = 'default', // "default" = rounded-md (corners only), "pill" = rounded-full (both sides)
+  rounded = 'default', // "default" = rounded-lg, "pill" = rounded-full
   className,
   disabled,
   as: Component = 'button',
@@ -26,7 +26,7 @@ export function Button({
   }
 
   const roundedStyles = {
-    default: 'rounded-md',
+    default: 'rounded-lg',
     pill: 'rounded-full',
   }
 

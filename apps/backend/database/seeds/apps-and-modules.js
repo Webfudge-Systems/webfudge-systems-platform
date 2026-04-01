@@ -8,7 +8,7 @@ const seedData = {
     {
       name: 'CRM',
       slug: 'crm',
-      description: 'Complete Customer Relationship Management solution',
+      description: 'Complete Customer Relationship Management',
       category: 'Sales & Marketing',
       basePrice: 49.00,
       icon: '👥',
@@ -158,45 +158,40 @@ const seedData = {
   ]
 };
 
-async function seed() {
+async function seed(strapi) {
   console.log('🌱 Starting seed process...');
 
+  const moduleCount = seedData.apps.reduce((sum, a) => sum + a.modules.length, 0);
+
   try {
-    for (const appData of seedData.apps) {
-      console.log(`\n📦 Seeding app: ${appData.name}`);
+    for (const rawApp of seedData.apps) {
+      const { modules, ...appPayload } = rawApp;
+      console.log(`\n📦 Seeding app: ${appPayload.name}`);
 
-      const modules = appData.modules;
-      delete appData.modules;
-
-      // Check if app already exists
       const existingApp = await strapi.entityService.findMany('api::app.app', {
-        filters: { slug: appData.slug },
-        limit: 1
+        filters: { slug: appPayload.slug },
+        limit: 1,
       });
 
       let app;
       if (existingApp && existingApp.length > 0) {
-        console.log(`   ℹ️  App ${appData.name} already exists, updating...`);
+        console.log(`   ℹ️  App ${appPayload.name} already exists, updating...`);
         app = await strapi.entityService.update('api::app.app', existingApp[0].id, {
-          data: appData
+          data: appPayload,
         });
       } else {
-        console.log(`   ✨ Creating app ${appData.name}...`);
+        console.log(`   ✨ Creating app ${appPayload.name}...`);
         app = await strapi.entityService.create('api::app.app', {
-          data: {
-            ...appData,
-            publishedAt: new Date()
-          }
+          data: appPayload,
         });
       }
 
-      // Seed modules for this app
       for (const moduleData of modules) {
         console.log(`   📋 Seeding module: ${moduleData.name}`);
 
         const existingModule = await strapi.entityService.findMany('api::module.module', {
           filters: { slug: moduleData.slug },
-          limit: 1
+          limit: 1,
         });
 
         if (existingModule && existingModule.length > 0) {
@@ -204,8 +199,8 @@ async function seed() {
           await strapi.entityService.update('api::module.module', existingModule[0].id, {
             data: {
               ...moduleData,
-              app: app.id
-            }
+              app: app.id,
+            },
           });
         } else {
           console.log(`      ✨ Creating module ${moduleData.name}...`);
@@ -213,8 +208,7 @@ async function seed() {
             data: {
               ...moduleData,
               app: app.id,
-              publishedAt: new Date()
-            }
+            },
           });
         }
       }
@@ -223,8 +217,7 @@ async function seed() {
     console.log('\n✅ Seed process completed successfully!');
     console.log('\n📊 Summary:');
     console.log(`   - Apps created/updated: ${seedData.apps.length}`);
-    console.log(`   - Total modules: ${seedData.apps.reduce((sum, app) => sum + app.modules.length, 0)}`);
-
+    console.log(`   - Total modules: ${moduleCount}`);
   } catch (error) {
     console.error('❌ Seed process failed:', error);
     throw error;

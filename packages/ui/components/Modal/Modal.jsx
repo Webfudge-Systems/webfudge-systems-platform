@@ -8,6 +8,7 @@ export function Modal({
   isOpen,
   onClose,
   title,
+  subtitle,
   children,
   size = 'md',
   className,

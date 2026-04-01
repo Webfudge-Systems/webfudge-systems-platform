@@ -134,7 +134,7 @@ export default function PageHeader({
                       onSearchChange(value);
                     }
                   }}
-                  className="w-64 pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:bg-white/15 transition-all duration-300 placeholder:text-gray-400 shadow-lg"
+                  className="w-64 pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:bg-white/15 transition-all duration-300 placeholder:text-gray-400 shadow-lg"
                 />
               </div>
             )}
@@ -146,7 +146,7 @@ export default function PageHeader({
                   {onAddClick && (
                     <button
                       onClick={onAddClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 text-orange-500 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 group shadow-lg"
+                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 text-orange-500 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 group shadow-lg"
                     >
                       <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
                     </button>
@@ -155,7 +155,7 @@ export default function PageHeader({
                   {onFilterClick && (
                     <button
                       onClick={onFilterClick}
-                      className="relative p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
+                      className="relative p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
                     >
                       <Filter className="w-5 h-5 text-gray-600" />
                       {hasActiveFilters && (
@@ -167,7 +167,7 @@ export default function PageHeader({
                   {onImportClick && (
                     <button
                       onClick={onImportClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
+                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
                     >
                       <Upload className="w-5 h-5 text-gray-600" />
                     </button>
@@ -176,7 +176,7 @@ export default function PageHeader({
                   {onExportClick && (
                     <button
                       onClick={onExportClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
+                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
                     >
                       <Download className="w-5 h-5 text-gray-600" />
                     </button>
@@ -185,7 +185,7 @@ export default function PageHeader({
                   {onShareImageClick && (
                     <button
                       onClick={onShareImageClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
+                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
                       title="Share Image"
                     >
                       <Image className="w-5 h-5 text-gray-600" />
@@ -200,7 +200,7 @@ export default function PageHeader({
                 <button
                   key={index}
                   onClick={action.onClick}
-                  className={`p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg ${
+                  className={`p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg ${
                     action.className || ""
                   }`}
                 >
@@ -217,12 +217,12 @@ export default function PageHeader({
           <div className="flex items-center gap-3 ml-4">
             <div className="relative">
               <button
-                className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300"
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300"
                 onMouseEnter={() => setShowProfileDropdown(true)}
                 onMouseLeave={() => setShowProfileDropdown(false)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center shadow-lg">
+                  <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg flex items-center justify-center shadow-lg">
                     <span className="text-orange-500 text-sm font-medium">
                       U
                     </span>

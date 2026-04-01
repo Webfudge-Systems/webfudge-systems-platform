@@ -14,16 +14,20 @@ import {
 } from '@webfudge/ui'
 import {
   ArrowLeft,
-  FolderPlus,
+  Plus,
+  FolderOpen,
+  CalendarDays,
+  DollarSign,
 } from 'lucide-react'
 import PMPageHeader from '../../../components/PMPageHeader'
 import projectService from '../../../lib/api/projectService'
 import strapiClient from '../../../lib/strapiClient'
 
 const STATUS_OPTIONS = [
-  { value: 'SCHEDULED', label: 'Scheduled' },
+  { value: 'PLANNING', label: 'Planning' },
+  { value: 'ACTIVE', label: 'Active' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'INTERNAL_REVIEW', label: 'Internal Review' },
+  { value: 'ON_HOLD', label: 'On Hold' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'CANCELLED', label: 'Cancelled' },
 ]
@@ -40,9 +44,10 @@ export default function AddProjectPage() {
   const [form, setForm] = useState({
     name: '',
     description: '',
-    status: 'SCHEDULED',
+    status: 'PLANNING',
     startDate: '',
     endDate: '',
+    budget: '',
     clientId: '',
     projectManagerId: '',
     teamMemberIds: [],
@@ -87,6 +92,7 @@ export default function AddProjectPage() {
         status: form.status,
         startDate: form.startDate || null,
         endDate: form.endDate || null,
+        budget: form.budget ? Number(form.budget) : null,
       }
       if (form.clientId) payload.client = Number(form.clientId)
       if (form.projectManagerId) payload.projectManager = Number(form.projectManagerId)
@@ -132,56 +138,76 @@ export default function AddProjectPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <PMPageHeader
-        title="Create New Project"
-        subtitle="Fill in the details below to create a project"
+        title="Add New Project"
+        subtitle="Create a new project and assign team members"
         showProfile
-        breadcrumbs={[
+        breadcrumb={[
+          { label: 'Dashboard', href: '/' },
           { label: 'Projects', href: '/projects' },
-          { label: 'New Project' },
+          { label: 'Add', href: '#' },
         ]}
-        actions={
-          <Button variant="outline" size="sm" onClick={() => router.push('/projects')}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
-        }
       />
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {errors.submit && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
             {errors.submit}
           </div>
         )}
 
-        {/* Basic Info */}
-        <Card title="Basic Information" variant="default">
+        {/* Project Information */}
+        <Card
+          title={
+            <span className="inline-flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0">
+                <FolderOpen className="w-4 h-4 text-white" />
+              </span>
+              <span>Project Information</span>
+            </span>
+          }
+          subtitle="Basic information about the project"
+          variant="default"
+        >
           <div className="space-y-4">
-            <Input
-              label="Project Name"
-              required
-              value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              error={errors.name}
-              placeholder="Enter project name"
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <Input
+                label="Project Name"
+                required
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                error={errors.name}
+                placeholder="Enter project name"
+              />
+              <Select
+                label="Status"
+                value={form.status}
+                options={STATUS_OPTIONS}
+                onChange={(val) => setForm((p) => ({ ...p, status: val }))}
+              />
+            </div>
             <Textarea
-              label="Description"
+              label="Project Description"
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
               rows={4}
-              placeholder="Describe the project objectives and scope..."
-            />
-            <Select
-              label="Status"
-              value={form.status}
-              options={STATUS_OPTIONS}
-              onChange={(val) => setForm((p) => ({ ...p, status: val }))}
+              placeholder="Describe the project goals and requirements..."
             />
           </div>
         </Card>
 
-        {/* Timeline */}
-        <Card title="Timeline" variant="default">
+        {/* Project Timeline */}
+        <Card
+          title={
+            <span className="inline-flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                <CalendarDays className="w-4 h-4 text-white" />
+              </span>
+              <span>Project Timeline</span>
+            </span>
+          }
+          subtitle="Set the start and end dates for the project"
+          variant="default"
+        >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Start Date"
@@ -190,7 +216,7 @@ export default function AddProjectPage() {
               onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
             />
             <Input
-              label="End Date / Deadline"
+              label="End Date"
               type="date"
               value={form.endDate}
               onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
@@ -199,9 +225,28 @@ export default function AddProjectPage() {
           </div>
         </Card>
 
-        {/* Assignment */}
-        <Card title="Assignment" variant="default">
+        {/* Budget & Assignment */}
+        <Card
+          title={
+            <span className="inline-flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                <DollarSign className="w-4 h-4 text-white" />
+              </span>
+              <span>Budget & Assignment</span>
+            </span>
+          }
+          subtitle="Set project budget and assign project manager"
+          variant="default"
+        >
           <div className="space-y-4">
+            <Input
+              label="Budget"
+              type="number"
+              min="0"
+              value={form.budget}
+              onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
+              placeholder="Enter project budget (optional)"
+            />
             {clientOptions.length > 0 && (
               <Select
                 label="Client"
@@ -234,7 +279,7 @@ export default function AddProjectPage() {
                 return (
                   <label
                     key={u.id}
-                    className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border ${
+                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors border ${
                       checked
                         ? 'bg-orange-50 border-orange-200'
                         : 'bg-white border-gray-100 hover:bg-gray-50'
@@ -265,8 +310,26 @@ export default function AddProjectPage() {
         )}
 
         {/* Submit */}
-        <div className="flex items-center gap-4">
-          <Button type="submit" variant="primary" disabled={loading}>
+        <div className="flex items-center justify-between gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            rounded="default"
+            className="!border-gray-300 !text-gray-700 hover:!bg-gray-50 px-5"
+            onClick={() => router.push('/projects')}
+            disabled={loading}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Cancel
+          </Button>
+
+          <Button
+            type="submit"
+            variant="primary"
+            rounded="pill"
+            className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 shadow-lg px-6"
+            disabled={loading}
+          >
             {loading ? (
               <>
                 <LoadingSpinner size="sm" />
@@ -274,18 +337,10 @@ export default function AddProjectPage() {
               </>
             ) : (
               <>
-                <FolderPlus className="w-4 h-4 mr-2" />
+                <Plus className="w-4 h-4 mr-2" />
                 Create Project
               </>
             )}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/projects')}
-            disabled={loading}
-          >
-            Cancel
           </Button>
         </div>
       </form>

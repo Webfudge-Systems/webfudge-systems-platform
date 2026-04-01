@@ -3,7 +3,12 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useAuth } from '@webfudge/auth'
+import {
+  useAuth,
+  resolveUserDisplayName,
+  resolveUserInitials,
+  resolveUserRole,
+} from '@webfudge/auth'
 import { Card, Avatar, LoadingSpinner } from '@webfudge/ui'
 import {
   LayoutDashboard,
@@ -697,75 +702,26 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
               }`}
             >
               <Avatar
-                fallback={(() => {
-                  if (!user) return 'U'
-                  const userData = user.attributes || user
-                  const firstName = userData.firstName || userData.name?.split(' ')[0] || ''
-                  const lastName = userData.lastName || userData.name?.split(' ')[1] || ''
-                  const initials = (firstName.charAt(0) + lastName.charAt(0)).toUpperCase()
-                  return initials && initials !== ' '
-                    ? initials
-                    : userData.email?.charAt(0).toUpperCase() || 'U'
-                })()}
-                alt={(() => {
-                  if (!user) return 'User'
-                  const userData = user.attributes || user
-                  if (userData.firstName && userData.lastName)
-                    return `${userData.firstName} ${userData.lastName}`
-                  if (userData.name) return userData.name
-                  if (userData.email) return userData.email.split('@')[0]
-                  return 'User'
-                })()}
-                size="sm"
-                className="bg-white/30 backdrop-blur-md border border-white/40 shadow-lg text-brand-primary"
+                shape="rounded"
+                fallback={resolveUserInitials(user)}
+                alt={resolveUserDisplayName(user)}
+                size="lg"
+                className="bg-white shadow-md border border-gray-200/80 text-brand-primary font-semibold ring-1 ring-black/5"
               />
               {!collapsed && (
                 <>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-brand-foreground truncate">
-                      {(() => {
-                        if (!user) return 'User'
-                        const userData = user.attributes || user
-                        if (userData.firstName && userData.lastName)
-                          return `${userData.firstName} ${userData.lastName}`
-                        if (userData.name) return userData.name
-                        if (userData.email) return userData.email.split('@')[0]
-                        return 'User'
-                      })()}
+                    <p className="text-sm font-semibold text-brand-foreground truncate">
+                      {resolveUserDisplayName(user)}
                     </p>
                     <p className="text-xs text-brand-text-light truncate">
-                      {(() => {
-                        if (!user) return 'User'
-                        const userData = user.attributes || user
-                        if (userData.primaryRole) {
-                          const roleName =
-                            typeof userData.primaryRole === 'object'
-                              ? userData.primaryRole.name || userData.primaryRole.attributes?.name
-                              : userData.primaryRole
-                          if (roleName) return roleName
-                        }
-                        if (
-                          userData.userRoles &&
-                          Array.isArray(userData.userRoles) &&
-                          userData.userRoles.length > 0
-                        ) {
-                          const firstRole = userData.userRoles[0]
-                          const roleName =
-                            typeof firstRole === 'object'
-                              ? firstRole.name || firstRole.attributes?.name
-                              : firstRole
-                          if (roleName) return roleName
-                        }
-                        if (userData.role) {
-                          return typeof userData.role === 'object'
-                            ? userData.role.name || userData.role.attributes?.name || userData.role
-                            : userData.role
-                        }
-                        return 'User'
-                      })()}
+                      {resolveUserRole(user)}
                     </p>
                   </div>
-                  <button className="text-brand-text-light">
+                  <button
+                    type="button"
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
                     <ChevronDown className="w-4 h-4" />
                   </button>
                 </>

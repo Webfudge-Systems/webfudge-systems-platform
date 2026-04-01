@@ -84,6 +84,11 @@ export const AuthProvider = ({ children }) => {
         setUser(response.user);
         setIsAuthenticated(true);
 
+        // Merge DB profile + orgs from /api/auth/me (firstName/lastName, etc.)
+        authService.getCurrentUser().then((fresh) => {
+          if (fresh) setUser(fresh);
+        }).catch(() => {});
+
         const orgs = response.organizations || authService.getStoredOrganizations();
         const org  = authService.getCurrentOrg();
         setOrganizations(orgs);

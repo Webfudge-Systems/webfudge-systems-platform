@@ -205,3 +205,17 @@ All tabs now:
 - Add ability to customize tab colors per page
 - Add keyboard shortcuts for tab navigation
 - Add tab presets/saved filters
+
+---
+
+## PM Dashboard Update: Orange Inside Icons
+
+### What changed
+`KPICard` now supports an `iconColorScheme` prop that overrides ONLY the inner icon color, while preserving the `colorScheme`-driven icon background and status dot color.
+
+### Why
+The PM dashboard KPI cards need the same colored backgrounds/dots as the status (To Do/In Progress/Done/Overdue), but with orange icons inside (per the reference design).
+
+### Usage
+- In `apps/pm/app/page.js`, the cards now use `colorSchemes = ['blue', 'yellow', 'green', 'red']`
+- And each KPI card sets `iconColorScheme="orange"` to force orange inner icons

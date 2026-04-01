@@ -404,7 +404,7 @@ export default function ProjectDetailPage() {
       />
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+      <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg w-fit">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -493,7 +493,7 @@ export default function ProjectDetailPage() {
                 <EmptyState
                   icon={CheckSquare}
                   title="No tasks yet"
-                  description="Add tasks to track project progress."
+                  description="Tasks will appear here once you add them."
                 />
               ) : (
                 <div className="space-y-2">
@@ -526,7 +526,11 @@ export default function ProjectDetailPage() {
               </Button>
             }>
               {(project.team || []).length === 0 ? (
-                <EmptyState icon={Users} title="No team members" description="Add members to collaborate." />
+                <EmptyState
+                  icon={Users}
+                  title="No team members yet"
+                  description="Add members to collaborate on this project."
+                />
               ) : (
                 <div className="space-y-3">
                   {(project.team || []).map((member) => (
@@ -577,7 +581,7 @@ export default function ProjectDetailPage() {
                   <TableEmptyBelow
                     icon={CheckSquare}
                     title="No tasks yet"
-                    description="Create tasks to track your project progress."
+                    description="Tasks will appear here once you add them."
                     action={
                       <Button
                         variant="primary"
@@ -680,7 +684,7 @@ export default function ProjectDetailPage() {
                 <EmptyState
                   icon={MessageSquare}
                   title="No messages yet"
-                  description="Start the conversation with your team."
+                  description="Start the conversation with your team below."
                 />
               ) : (
                 messages.map((msg, i) => {
@@ -698,7 +702,7 @@ export default function ProjectDetailPage() {
                       <Avatar fallback={senderName.charAt(0).toUpperCase()} size="sm" />
                       <div className={`max-w-xs ${isCurrentUser ? 'items-end' : 'items-start'} flex flex-col`}>
                         <p className="text-xs text-gray-500 mb-1">{senderName}</p>
-                        <div className={`px-3 py-2 rounded-2xl text-sm ${
+                        <div className={`px-3 py-2 rounded-lg text-sm ${
                           isCurrentUser
                             ? 'bg-orange-500 text-white rounded-tr-none'
                             : 'bg-gray-100 text-gray-800 rounded-tl-none'
@@ -722,7 +726,7 @@ export default function ProjectDetailPage() {
                 onChange={(e) => setNewMessage(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                 placeholder="Type a message..."
-                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
               <Button
                 variant="primary"
