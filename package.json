@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "turbo run dev --filter=!backend",
     "dev:all": "turbo run dev",
+    "dev:books": "turbo run dev --filter=@webfudge/books",
     "dev:backend": "turbo run dev --filter=backend",
     "build": "turbo run build",
     "start": "turbo run start",

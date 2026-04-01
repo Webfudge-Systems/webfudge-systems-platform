@@ -42,22 +42,38 @@ export function Tabs({
       tab: "bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-white/90 border border-white/40 shadow-md",
       activeTab: "bg-orange-500 text-white shadow-lg border-transparent",
     },
+    /** Full pill rail: white container, orange active pill + white label (CRM-style). */
+    segmented: {
+      tabs:
+        "gap-1 w-full flex flex-wrap sm:flex-nowrap items-center rounded-full border border-gray-200 bg-white shadow-sm p-1.5 overflow-x-auto",
+      tab: "rounded-full px-4 py-2 text-sm font-medium text-gray-700 transition-colors duration-200 hover:bg-gray-50 flex-shrink-0",
+      activeTab: "bg-orange-500 text-white shadow-sm hover:bg-orange-500 hover:text-white",
+    },
   };
 
   const currentVariant = variants[variant] || variants.default;
 
-  // Modern/Glass variants render differently
-  if (variant === "modern" || variant === "glass") {
+  // Modern / Glass / Segmented — same layout (pill rail + optional badges)
+  if (variant === "modern" || variant === "glass" || variant === "segmented") {
     return (
       <div className={clsx("w-full", className)} {...props}>
         {/* Tab Headers with Badge Support */}
-        <div className={clsx("flex items-center overflow-x-auto", currentVariant.tabs, tabsClassName)}>
+        <div
+          className={clsx(
+            "flex items-center overflow-x-auto",
+            currentVariant.tabs,
+            tabsClassName
+          )}
+        >
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={clsx(
-                "flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300 whitespace-nowrap",
+                "flex items-center whitespace-nowrap",
+                variant === "segmented"
+                  ? ""
+                  : "px-4 py-2.5 rounded-lg text-sm font-semibold transition-all duration-300",
                 currentVariant.tab,
                 activeTab === tab.id ? currentVariant.activeTab : ""
               )}

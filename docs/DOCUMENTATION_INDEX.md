@@ -53,6 +53,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[PM_UI_ROUNDED_LG_CONSISTENCY.md](./PM_UI_ROUNDED_LG_CONSISTENCY.md)** | PM + `@webfudge/ui`: `rounded-lg` for buttons, search, and tab/action controls |
 | **[SAAS_ARCHITECTURE_UPDATE.md](./SAAS_ARCHITECTURE_UPDATE.md)** | Multi-tenant architecture: org scoping, X-Organization-Id header, notifications API, PostgreSQL path, auth org context |
 | **[DIRECT_MESSAGES_API.md](./DIRECT_MESSAGES_API.md)** | PM direct messages: `direct-message` content type, `/api/direct-messages`, org member list, permissions |
+| **[BOOKS_APP_UPDATE.md](./BOOKS_APP_UPDATE.md)** | New `apps/books` app scaffold with agency-focused accounting routes, shared UI shell, typed Strapi/Supabase data layer |
 
 ---
 
