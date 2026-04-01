@@ -163,8 +163,29 @@ class StrapiClient {
   }
 
   /**
-   * Fetch Xtrawrkx users (e.g. for assignment dropdowns).
-   * Supports pagination and populate. Uses /users or custom endpoint if available.
+   * Flatten `GET /organizations/:id/users` → `{ success, data: [{ user }] }` into CRM user rows.
+   */
+  static normalizeOrganizationUsersResponse(body) {
+    const rows = body?.data;
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .map((row) => {
+        const u = row?.user;
+        if (u == null) return null;
+        if (typeof u === 'object' && u.attributes) {
+          return { id: u.id, documentId: u.documentId ?? u.id, ...u.attributes };
+        }
+        if (typeof u === 'object' && u.id != null) {
+          return { ...u };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  }
+
+  /**
+   * Fetch users in the active organization (assignment dropdowns).
+   * Prefers `GET /organizations/:orgId/users` (backend custom route). Falls back to `/users` if no org id.
    */
   async getXtrawrkxUsers(params = {}) {
     const queryParams = {
@@ -172,8 +193,34 @@ class StrapiClient {
       'pagination[pageSize]': params['pagination[pageSize]'] ?? params.pageSize ?? 25,
       ...(params.populate && { populate: params.populate }),
     };
-    const response = await this.get('/users', queryParams);
-    return response;
+
+    const orgId = this.getCurrentOrgId();
+    if (orgId) {
+      try {
+        const response = await this.get(
+          `/organizations/${encodeURIComponent(orgId)}/users`
+        );
+        const users = StrapiClient.normalizeOrganizationUsersResponse(response);
+        return {
+          data: users,
+          meta: response?.meta ?? {
+            pagination: {
+              page: 1,
+              pageSize: users.length,
+              pageCount: 1,
+              total: users.length,
+            },
+          },
+        };
+      } catch (e) {
+        console.warn(
+          'strapiClient.getXtrawrkxUsers: organization users failed, trying /users',
+          e?.message || e
+        );
+      }
+    }
+
+    return this.get('/users', queryParams);
   }
 }
 

@@ -20,6 +20,18 @@ export { Pagination } from './Pagination';
 export { EmptyState } from './EmptyState';
 export { TableResultsCount, TableEmptyBelow } from './TableEmptyBelow';
 export { KPICard } from './KPICard';
+export {
+  TableCellCreated,
+  TableCellDateOnly,
+  TableCellOwner,
+  TableCellStatusPill,
+  TableCellRole,
+  TableCellLeadStatus,
+  formatRelativeTime,
+  formatTableDate,
+  ownerDisplayFromUser,
+} from './TableCrmCells';
+export { TableRowActionMenuPortal } from './TableRowActionMenuPortal';
 
 // NAVIGATION COMPONENTS
 export { Tabs } from './Tabs';

@@ -2,6 +2,7 @@
  * Lead company API - uses Strapi backend at NEXT_PUBLIC_API_URL
  */
 import strapiClient from '../strapiClient';
+import contactService from './contactService';
 
 const ENDPOINT = '/lead-companies';
 
@@ -40,6 +41,23 @@ function normalizeEntry(entry) {
     }
     return flat;
   }
+  // Flat API payloads: contacts may be Strapi-style { data: [...] }
+  if (
+    entry.contacts &&
+    typeof entry.contacts === 'object' &&
+    !Array.isArray(entry.contacts) &&
+    entry.contacts.data !== undefined
+  ) {
+    const d = entry.contacts.data;
+    return {
+      ...entry,
+      contacts: Array.isArray(d)
+        ? d.map(normalizeEntry).filter(Boolean)
+        : d
+          ? [normalizeEntry(d)]
+          : [],
+    };
+  }
   return entry;
 }
 
@@ -57,28 +75,63 @@ function normalizeOneResponse(response) {
   return { data: normalizeEntry(data) };
 }
 
+/** Same source as lead company detail Contacts tab: GET /contacts scoped by org, grouped by leadCompany.id */
+async function mergeContactsOntoLeadCompanies(companies) {
+  if (!companies?.length) return companies;
+  const { data: allContacts = [] } = await contactService.getAll({
+    'pagination[pageSize]': 2000,
+    sort: 'createdAt:desc',
+    populate: ['leadCompany'],
+  });
+  const byLead = new Map();
+  for (const c of allContacts) {
+    const lc = c.leadCompany;
+    const lid = lc && typeof lc === 'object' ? lc.id ?? lc.documentId : lc;
+    if (lid == null) continue;
+    const key = String(lid);
+    if (!byLead.has(key)) byLead.set(key, []);
+    byLead.get(key).push(c);
+  }
+  for (const list of byLead.values()) {
+    list.sort((a, b) => Number(!!b.isPrimaryContact) - Number(!!a.isPrimaryContact));
+  }
+  return companies.map((co) => {
+    const cid = co.id ?? co.documentId;
+    if (cid == null) return co;
+    const merged = byLead.get(String(cid));
+    if (!merged?.length) return co;
+    return { ...co, contacts: merged };
+  });
+}
+
 export default {
   async getAll(params = {}) {
+    const { mergeContactsFromContactsApi, ...rest } = params;
     const query = {};
-    if (params.sort) query.sort = params.sort;
-    if (params['pagination[page]'] != null) query['pagination[page]'] = params['pagination[page]'];
-    if (params['pagination[pageSize]'] != null) query['pagination[pageSize]'] = params['pagination[pageSize]'];
-    if (params.pagination) {
-      query['pagination[page]'] = params.pagination.page ?? 1;
-      query['pagination[pageSize]'] = params.pagination.pageSize ?? 25;
+    if (rest.sort) query.sort = rest.sort;
+    if (rest['pagination[page]'] != null) query['pagination[page]'] = rest['pagination[page]'];
+    if (rest['pagination[pageSize]'] != null) query['pagination[pageSize]'] = rest['pagination[pageSize]'];
+    if (rest.pagination) {
+      query['pagination[page]'] = rest.pagination.page ?? 1;
+      query['pagination[pageSize]'] = rest.pagination.pageSize ?? 25;
     }
-    if (params.populate) {
-      query.populate = Array.isArray(params.populate) ? params.populate.join(',') : params.populate;
+    if (rest.populate) {
+      query.populate = Array.isArray(rest.populate) ? rest.populate.join(',') : rest.populate;
     }
-    if (params.filters) query.filters = params.filters;
+    if (rest.filters) query.filters = rest.filters;
 
     const response = await strapiClient.get(ENDPOINT, query);
-    return normalizeListResponse(response);
+    const normalized = normalizeListResponse(response);
+    if (mergeContactsFromContactsApi && normalized.data?.length) {
+      normalized.data = await mergeContactsOntoLeadCompanies(normalized.data);
+    }
+    return normalized;
   },
 
-  async getOne(id) {
+  async getOne(id, options = {}) {
+    const populate = options.populate ?? ['assignedTo', 'organization', 'contacts', 'convertedAccount'];
     const response = await strapiClient.get(`${ENDPOINT}/${id}`, {
-      populate: ['contacts', 'assignedTo', 'deals'],
+      populate,
     });
     return normalizeOneResponse(response);
   },
@@ -90,7 +143,8 @@ export default {
     }
     const response = await strapiClient.post(ENDPOINT, { data });
     const result = response?.data ?? response;
-    return { data: normalizeEntry(result), id: result?.id };
+    const normalized = normalizeEntry(result);
+    return { data: normalized, id: normalized?.id ?? result?.id };
   },
 
   async update(id, payload) {
@@ -106,6 +160,28 @@ export default {
   async delete(id) {
     await strapiClient.delete(`${ENDPOINT}/${id}`);
     return {};
+  },
+
+  /**
+   * Convert a lead company to a client account.
+   * POST /lead-companies/:id/convert
+   * Returns { data: { leadCompany, clientAccount } }
+   */
+  async convertToClient(id) {
+    const response = await strapiClient.post(`${ENDPOINT}/${id}/convert`, {});
+    const raw = response?.data ?? response;
+    return {
+      data: {
+        leadCompany: normalizeEntry(raw?.leadCompany ?? null),
+        clientAccount: normalizeEntry(raw?.clientAccount ?? null),
+      },
+    };
+  },
+
+  async getStatuses() {
+    const response = await strapiClient.get(`${ENDPOINT}/statuses`);
+    const data = response?.data ?? response ?? [];
+    return Array.isArray(data) ? data : [];
   },
 
   /**

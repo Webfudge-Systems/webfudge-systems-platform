@@ -418,6 +418,143 @@ export interface ApiAppApp extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiClientAccountClientAccount extends Struct.CollectionTypeSchema {
+  collectionName: 'client_accounts'
+  info: {
+    description: 'Converted client companies and business accounts'
+    displayName: 'Client Account'
+    pluralName: 'client-accounts'
+    singularName: 'client-account'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    accountType: Schema.Attribute.String & Schema.Attribute.DefaultTo<'STANDARD'>
+    address: Schema.Attribute.String
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    billingCycle: Schema.Attribute.String & Schema.Attribute.DefaultTo<'MONTHLY'>
+    city: Schema.Attribute.String
+    companyName: Schema.Attribute.String & Schema.Attribute.Required
+    contacts: Schema.Attribute.Relation<'oneToMany', 'api::contact.contact'>
+    contractEndDate: Schema.Attribute.DateTime
+    contractStartDate: Schema.Attribute.DateTime
+    conversionDate: Schema.Attribute.DateTime
+    convertedFromLead: Schema.Attribute.Relation<'oneToOne', 'api::lead-company.lead-company'>
+    country: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    dealValue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    description: Schema.Attribute.Text
+    email: Schema.Attribute.Email
+    employees: Schema.Attribute.String
+    founded: Schema.Attribute.String
+    healthScore: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<75>
+    industry: Schema.Attribute.String
+    linkedIn: Schema.Attribute.String
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::client-account.client-account'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    onboardingDate: Schema.Attribute.DateTime
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paymentTerms: Schema.Attribute.String & Schema.Attribute.DefaultTo<'NET_30'>
+    phone: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    state: Schema.Attribute.String
+    status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'ACTIVE'>
+    subType: Schema.Attribute.String
+    twitter: Schema.Attribute.String
+    type: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    website: Schema.Attribute.String
+    zipCode: Schema.Attribute.String
+  }
+}
+
+export interface ApiContactContact extends Struct.CollectionTypeSchema {
+  collectionName: 'contacts'
+  info: {
+    description: 'CRM contacts (people)'
+    displayName: 'Contact'
+    pluralName: 'contacts'
+    singularName: 'contact'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    address: Schema.Attribute.String
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    birthDate: Schema.Attribute.Date
+    city: Schema.Attribute.String
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    companyName: Schema.Attribute.String
+    companyWebsite: Schema.Attribute.String
+    contactRole: Schema.Attribute.String
+    country: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    department: Schema.Attribute.String
+    email: Schema.Attribute.Email & Schema.Attribute.Required
+    firstName: Schema.Attribute.String & Schema.Attribute.Required
+    isPrimaryContact: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    jobTitle: Schema.Attribute.String
+    lastName: Schema.Attribute.String & Schema.Attribute.Required
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    linkedIn: Schema.Attribute.String
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::contact.contact'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    phone: Schema.Attribute.String
+    preferredContactMethod: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    source: Schema.Attribute.String & Schema.Attribute.DefaultTo<'OTHER'>
+    state: Schema.Attribute.String
+    status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'ACTIVE'>
+    timezone: Schema.Attribute.String
+    twitter: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    zipCode: Schema.Attribute.String
+  }
+}
+
+export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
+  collectionName: 'crm_activities'
+  info: {
+    description: 'Audit timeline entries for CRM entities (contacts, lead companies, etc.)'
+    displayName: 'CRM Activity'
+    pluralName: 'crm-activities'
+    singularName: 'crm-activity'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    action: Schema.Attribute.Enumeration<['create', 'update', 'delete', 'comment']> &
+      Schema.Attribute.Required
+    actor: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::crm-activity.crm-activity'> &
+      Schema.Attribute.Private
+    meta: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    subjectId: Schema.Attribute.Integer & Schema.Attribute.Required
+    subjectType: Schema.Attribute.String & Schema.Attribute.Required
+    summary: Schema.Attribute.Text & Schema.Attribute.Required
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiInvitationInvitation extends Struct.CollectionTypeSchema {
   collectionName: 'invitations'
   info: {
@@ -467,6 +604,9 @@ export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
     assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     city: Schema.Attribute.String
     companyName: Schema.Attribute.String & Schema.Attribute.Required
+    contacts: Schema.Attribute.Relation<'oneToMany', 'api::contact.contact'>
+    convertedAccount: Schema.Attribute.Relation<'oneToOne', 'api::client-account.client-account'>
+    convertedAt: Schema.Attribute.DateTime
     country: Schema.Attribute.String
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
@@ -1138,6 +1278,9 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission
       'admin::user': AdminUser
       'api::app.app': ApiAppApp
+      'api::client-account.client-account': ApiClientAccountClientAccount
+      'api::contact.contact': ApiContactContact
+      'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity
       'api::invitation.invitation': ApiInvitationInvitation
       'api::lead-company.lead-company': ApiLeadCompanyLeadCompany
       'api::module.module': ApiModuleModule

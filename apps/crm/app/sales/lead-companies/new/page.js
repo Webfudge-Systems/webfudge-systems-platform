@@ -32,7 +32,13 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
+  Layers,
 } from 'lucide-react';
+import {
+  industryOptions,
+  companyTypes,
+  subTypeOptionsByCompanyType,
+} from '../../../../lib/leadCompanyProfileOptions';
 
 export default function AddLeadCompanyPage() {
   const router = useRouter();
@@ -84,18 +90,6 @@ export default function AddLeadCompanyPage() {
     },
   ]);
 
-  const industryOptions = [
-    { value: 'technology', label: 'Technology' },
-    { value: 'healthcare', label: 'Healthcare' },
-    { value: 'finance', label: 'Finance' },
-    { value: 'manufacturing', label: 'Manufacturing' },
-    { value: 'retail', label: 'Retail' },
-    { value: 'education', label: 'Education' },
-    { value: 'real-estate', label: 'Real Estate' },
-    { value: 'consulting', label: 'Consulting' },
-    { value: 'other', label: 'Other' },
-  ];
-
   const leadSourceOptions = [
     { value: 'WEBSITE', label: 'Website' },
     { value: 'REFERRAL', label: 'Referral' },
@@ -115,6 +109,7 @@ export default function AddLeadCompanyPage() {
   ];
 
   const contactRoleOptions = [
+    { value: 'PRIMARY_CONTACT', label: 'Primary contact' },
     { value: 'DECISION_MAKER', label: 'Decision Maker' },
     { value: 'INFLUENCER', label: 'Influencer' },
     { value: 'CONTACT', label: 'Contact' },
@@ -130,36 +125,7 @@ export default function AddLeadCompanyPage() {
     { value: 'SIZE_1000_PLUS', label: '1000+ employees' },
   ];
 
-  const companyTypes = [
-    { id: 'startup-corporate', name: 'Startup and Corporates' },
-    { id: 'investor', name: 'Investors' },
-    { id: 'enablers-academia', name: 'Enablers & Academia' },
-  ];
-
-  const subTypeOptions = {
-    'startup-corporate': [
-      'EV 2W', 'EV 3W', 'EV OEM', 'EV 4W', 'Motor OEM', 'Motor Controller OEM',
-      'Batteries', 'Charging Infra', 'Drones', 'AGVs', 'Consumer electronics',
-      'Incubator / accelerator', 'Power electronics', 'Other OE', 'Group', 'EV Fleet',
-      'E-commerce companies', '3rd party logistics', 'Vehicle Smarts', 'Swapping',
-      'EV Leasing', 'EV Rentals', 'EV NBFC', 'Power electronics+Vechicle smart',
-      'Electronics Components', '1DL/MDL', 'Franchisee', 'Smart Battery', 'Dealer',
-      'Motor Parts', 'Spare Part', 'Traditional Auto', 'Smart Electronic', 'Mech Parts',
-      'Energy Storing', 'Automotive Parts_ EV manufacturers', 'IOT', 'Inverter', 'Aggregator',
-    ],
-    investor: [
-      'Future Founder', 'Private Lender P2P', 'Angel', 'Angel Network', 'Micro VC', 'VC',
-      'Family Office', 'Private Equity PE', 'Debt', 'WC Working Capital', 'NBFC',
-      'Bill discounting', 'Investment Bank', 'Banks', 'Asset Investor', 'Asset Financier',
-      'Asset Leasing', 'Op Franchisee', 'Franchise Network', 'Incubation Center', 'Accelerator',
-      'Industry body', 'Gov Body', 'Gov Policy', 'Alternative Investment Platform',
-      'Strategic investor', 'CVC', 'HNI',
-    ],
-    'enablers-academia': [
-      'Incubator', 'Accelerator', 'Venture Studio', 'Academia', 'Government Office',
-      'Mentor', 'Investment Banker',
-    ],
-  };
+  const subTypeOptions = subTypeOptionsByCompanyType;
 
   const getSubTypeOptions = () => {
     if (!companyData.type) return [];
@@ -344,30 +310,34 @@ export default function AddLeadCompanyPage() {
       const createdCompany = await leadCompanyService.create(leadCompanyPayload);
       const companyId = createdCompany?.id ?? createdCompany?.data?.id;
 
-      if (contacts.length > 0 && contactService?.create) {
+      if (companyId && contacts.length > 0 && contactService?.create) {
         const validContacts = contacts.filter(
-          (c) => c.firstName?.trim() && c.lastName?.trim()
+          (c) =>
+            c.firstName?.trim() &&
+            c.lastName?.trim() &&
+            c.email?.trim()
         );
         for (const contact of validContacts) {
           const contactData = {
-            firstName: contact.firstName,
-            lastName: contact.lastName,
-            email: contact.email,
-            phone: contact.phone,
-            title: contact.jobTitle,
-            department: contact.department,
-            role: contact.role,
+            firstName: contact.firstName.trim(),
+            lastName: contact.lastName.trim(),
+            email: contact.email.trim(),
+            phone: contact.phone?.trim(),
+            jobTitle: contact.jobTitle?.trim(),
+            department: contact.department?.trim(),
+            contactRole: contact.role,
             status: 'ACTIVE',
-            source: 'LEAD_CONVERSION',
+            source: 'LEAD_COMPANY',
             leadCompany: companyId,
-            isPrimary: contact.isPrimary || false,
+            isPrimaryContact: !!contact.isPrimary,
+            companyName: companyData.companyName.trim(),
           };
           if (companyData.assignedTo) {
             contactData.assignedTo = parseInt(companyData.assignedTo, 10);
           }
           try {
             await contactService.create(contactData);
-    } catch (err) {
+          } catch (err) {
             console.error('Error creating contact:', err);
           }
         }
@@ -523,6 +493,7 @@ export default function AddLeadCompanyPage() {
                   options={industryOptions}
                   error={errors.industry}
                   placeholder="Select industry"
+                  icon={Building2}
                 />
               </div>
 
@@ -533,6 +504,7 @@ export default function AddLeadCompanyPage() {
                   onChange={(value) => handleCompanyChange('type', value)}
                   options={companyTypes.map((t) => ({ value: t.id, label: t.name }))}
                   placeholder="Select company type"
+                  icon={Layers}
                 />
               </div>
               <div>
@@ -543,6 +515,7 @@ export default function AddLeadCompanyPage() {
                   options={getSubTypeOptions()}
                   placeholder={companyData.type ? 'Select sub-type' : 'Select company type first'}
                   disabled={!companyData.type}
+                  icon={Layers}
                 />
               </div>
 

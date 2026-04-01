@@ -17,7 +17,9 @@ export function Card({
 }) {
   const variants = {
     default: "bg-white border border-gray-100 shadow-sm",
-    elevated: "bg-white border border-gray-100 shadow-md",
+    // Material elevation — slightly deeper shadow for clearer separation from page bg
+    elevated:
+      "bg-white border-0 shadow-[0_3px_16px_rgba(15,23,42,0.10),0_2px_5px_rgba(15,23,42,0.06)]",
     outlined: "bg-white border border-gray-200",
     ghost: "bg-transparent border-0",
     glass: "bg-white/95 backdrop-blur-xl border border-white/30 shadow-lg",
@@ -50,6 +52,9 @@ export function Card({
   const getHoverClasses = () => {
     if (glass || gradient) {
       return "hover:shadow-2xl hover:border-white/40 hover:scale-[1.02] hover:bg-white/95";
+    }
+    if (variant === "elevated") {
+      return "hover:shadow-[0_6px_26px_rgba(15,23,42,0.13),0_3px_8px_rgba(15,23,42,0.07)]";
     }
     return "hover:shadow-md hover:border-gray-200";
   };

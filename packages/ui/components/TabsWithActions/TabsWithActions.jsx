@@ -6,6 +6,10 @@ import { Search, Plus, List, LayoutGrid, Download, Eye, Filter, ListChecks } fro
 /**
  * Advanced Tabs component with integrated actions, search, and view toggles
  * Perfect for CRM-style list/board views with filtering and actions
+ *
+ * Variants:
+ * - glass | modern | default — toolbar + tabs (list pages)
+ * - pill — white pill-shaped track, evenly spaced tabs; active = solid orange pill, inactive = text only (detail pages)
  */
 export function TabsWithActions({
   tabs,
@@ -57,6 +61,17 @@ export function TabsWithActions({
     }
   }
 
+  const hasRightPanel =
+    showSearch ||
+    (showAdd && onAddClick) ||
+    (showExport && onExportClick) ||
+    (showFilter && onFilterClick) ||
+    (showBulkEdit && onBulkEditClick) ||
+    (showColumnVisibility && onColumnVisibilityClick) ||
+    showViewToggle
+
+  const isPill = variant === 'pill'
+
   const containerClasses = {
     glass:
       'flex items-center justify-between gap-3 bg-white/70 backdrop-blur-xl border border-white/40 rounded-2xl shadow-xl p-3',
@@ -65,157 +80,190 @@ export function TabsWithActions({
     default: 'flex items-center justify-between gap-3 bg-white border-b border-gray-200 pb-3',
   }
 
-  return (
+  const tabButtonClass = (tabId) => {
+    const active = activeTab === tabId
+    if (isPill) {
+      return clsx(
+        'flex min-w-[5rem] flex-1 basis-0 items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-sm transition-all duration-200',
+        active
+          ? 'bg-[#FF7A20] font-semibold text-white shadow-sm'
+          : 'bg-transparent font-normal text-gray-800 hover:bg-gray-100/90'
+      )
+    }
+    return clsx(
+      'flex items-center whitespace-nowrap rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-300',
+      active
+        ? 'bg-orange-500 text-white shadow-lg'
+        : 'border border-white/40 bg-white/80 text-gray-700 backdrop-blur-sm hover:bg-white/90 hover:shadow-md'
+    )
+  }
+
+  const badgeClass = (tabId) => {
+    const active = activeTab === tabId
+    if (isPill) {
+      return clsx(
+        'rounded-full px-2 py-0.5 text-xs font-bold transition-all duration-200',
+        active ? 'bg-white/25 text-white' : 'bg-gray-200/90 text-gray-700'
+      )
+    }
+    return clsx(
+      'ml-2 rounded-full px-2 py-0.5 text-xs font-bold transition-all duration-300',
+      active ? 'bg-white/30 text-white' : 'bg-gray-100 text-gray-700'
+    )
+  }
+
+  const tabRow = (
     <div
-      className={clsx(containerClasses[variant] || containerClasses.glass, className)}
-      {...props}
+      className={clsx(
+        isPill
+          ? 'flex min-h-[48px] w-full min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,23,42,0.09),0_1px_3px_rgba(15,23,42,0.05)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+          : 'flex flex-1 items-center gap-2 overflow-x-auto'
+      )}
     >
-      {/* Left: Tabs with Badges */}
-      <div className="flex items-center gap-2 flex-1 overflow-x-auto">
-        {tabs.map((tab) => {
-          const tabId = tab.id || tab.key
-          return (
-            <button
-              key={tabId}
-              onClick={() => handleTabClick(tabId)}
-              className={clsx(
-                'flex items-center px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap',
-                activeTab === tabId
-                  ? 'bg-orange-500 text-white shadow-lg'
-                  : 'bg-white/80 backdrop-blur-sm text-gray-700 hover:bg-white/90 border border-white/40 hover:shadow-md'
-              )}
-            >
-              <span>{tab.label}</span>
-              {tab.badge !== undefined && (
-                <span
-                  className={clsx(
-                    'ml-2 px-2 py-0.5 text-xs font-bold rounded-full transition-all duration-300',
-                    activeTab === tabId ? 'bg-white/30 text-white' : 'bg-gray-100 text-gray-700'
-                  )}
-                >
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+      {tabs.map((tab) => {
+        const tabId = tab.id || tab.key
+        return (
+          <button key={tabId} type="button" onClick={() => handleTabClick(tabId)} className={tabButtonClass(tabId)}>
+            <span>{tab.label}</span>
+            {tab.badge !== undefined && tab.badge !== null && tab.badge !== '' && (
+              <span className={badgeClass(tabId)}>{tab.badge}</span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
 
-      {/* Right: Search and Actions */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Search Bar */}
-        {showSearch && (
-          <div className="hidden lg:flex items-center">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => onSearchChange?.(e.target.value)}
-                className="w-64 pl-10 pr-4 py-2.5 rounded-xl bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500/50 focus:bg-white/90 transition-all duration-300 shadow-md placeholder:text-gray-400"
-              />
-            </div>
+  const rightPanel = (
+    <div className="flex flex-shrink-0 items-center gap-2">
+      {showSearch && (
+        <div className="hidden lg:flex items-center">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              value={searchQuery}
+              onChange={(e) => onSearchChange?.(e.target.value)}
+              className="w-64 rounded-xl border border-white/40 bg-white/80 py-2.5 pl-10 pr-4 text-sm text-gray-700 shadow-md backdrop-blur-sm transition-all duration-300 placeholder:text-gray-400 focus:border-orange-500/50 focus:bg-white/90 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+            />
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Add Button */}
-        {showAdd && onAddClick && (
-          <button
-            onClick={onAddClick}
-            className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-white/40 text-orange-500 hover:bg-orange-50 hover:text-orange-600 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
-            title={addTitle}
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        )}
+      {showAdd && onAddClick && (
+        <button
+          onClick={onAddClick}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-white/80 text-orange-500 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-orange-50 hover:text-orange-600 hover:shadow-lg"
+          title={addTitle}
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+      )}
 
-        {/* View Toggle */}
-        {showViewToggle && (
-          <>
-            {viewOptions.includes('list') && (
-              <button
-                onClick={() => onViewChange?.('list')}
-                className={clsx(
-                  'w-10 h-10 rounded-full backdrop-blur-sm border transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center',
-                  activeView === 'list'
-                    ? 'bg-orange-500 text-white border-orange-500/50'
-                    : 'bg-white/80 text-gray-700 border-white/40 hover:bg-white/90'
-                )}
-                title="List View"
-              >
-                <List className="w-5 h-5" />
-              </button>
-            )}
-            {viewOptions.includes('board') && (
-              <button
-                onClick={() => onViewChange?.('board')}
-                className={clsx(
-                  'w-10 h-10 rounded-full backdrop-blur-sm border transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center',
-                  activeView === 'board'
-                    ? 'bg-orange-500 text-white border-orange-500/50'
-                    : 'bg-white/80 text-gray-700 border-white/40 hover:bg-white/90'
-                )}
-                title="Board View"
-              >
-                <LayoutGrid className="w-5 h-5" />
-              </button>
-            )}
-          </>
-        )}
+      {showViewToggle && (
+        <>
+          {viewOptions.includes('list') && (
+            <button
+              onClick={() => onViewChange?.('list')}
+              className={clsx(
+                'flex h-10 w-10 items-center justify-center rounded-full border shadow-md backdrop-blur-sm transition-all duration-300 hover:shadow-lg',
+                activeView === 'list'
+                  ? 'border-orange-500/50 bg-orange-500 text-white'
+                  : 'border-white/40 bg-white/80 text-gray-700 hover:bg-white/90'
+              )}
+              title="List View"
+            >
+              <List className="h-5 w-5" />
+            </button>
+          )}
+          {viewOptions.includes('board') && (
+            <button
+              onClick={() => onViewChange?.('board')}
+              className={clsx(
+                'flex h-10 w-10 items-center justify-center rounded-full border shadow-md backdrop-blur-sm transition-all duration-300 hover:shadow-lg',
+                activeView === 'board'
+                  ? 'border-orange-500/50 bg-orange-500 text-white'
+                  : 'border-white/40 bg-white/80 text-gray-700 hover:bg-white/90'
+              )}
+              title="Board View"
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </button>
+          )}
+        </>
+      )}
 
-        {/* Filter Button */}
-        {showFilter && onFilterClick && (
-          <button
-            onClick={onFilterClick}
-            className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 hover:bg-white/90 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
-            title={filterTitle}
-          >
-            <Filter className="w-5 h-5" />
-          </button>
-        )}
+      {showFilter && onFilterClick && (
+        <button
+          onClick={onFilterClick}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-white/80 text-gray-700 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-white/90 hover:shadow-lg"
+          title={filterTitle}
+        >
+          <Filter className="h-5 w-5" />
+        </button>
+      )}
 
-        {/* Bulk edit — toggles row selection mode (consumers handle selection UX) */}
-        {showBulkEdit && onBulkEditClick && (
-          <button
-            type="button"
-            onClick={onBulkEditClick}
-            className={clsx(
-              'flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all duration-300 shadow-md whitespace-nowrap',
-              bulkEditActive
-                ? 'bg-orange-500 text-white border-orange-500/50 shadow-lg'
-                : 'bg-white/80 backdrop-blur-sm border-white/40 text-gray-700 hover:bg-white/90'
-            )}
-            title={bulkEditTitle}
-          >
-            <ListChecks className="w-4 h-4 flex-shrink-0" />
-            <span className="hidden lg:inline">{bulkEditTitle}</span>
-          </button>
-        )}
+      {showBulkEdit && onBulkEditClick && (
+        <button
+          type="button"
+          onClick={onBulkEditClick}
+          className={clsx(
+            'flex items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold shadow-md transition-all duration-300',
+            bulkEditActive
+              ? 'border-orange-500/50 bg-orange-500 text-white shadow-lg'
+              : 'border-white/40 bg-white/80 text-gray-700 backdrop-blur-sm hover:bg-white/90'
+          )}
+          title={bulkEditTitle}
+        >
+          <ListChecks className="h-4 w-4 flex-shrink-0" />
+          <span className="hidden lg:inline">{bulkEditTitle}</span>
+        </button>
+      )}
 
-        {/* Column Visibility Button */}
-        {showColumnVisibility && onColumnVisibilityClick && (
-          <button
-            onClick={onColumnVisibilityClick}
-            className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 hover:bg-white/90 transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center"
-            title={columnVisibilityTitle}
-          >
-            <Eye className="w-5 h-5" />
-          </button>
-        )}
+      {showColumnVisibility && onColumnVisibilityClick && (
+        <button
+          onClick={onColumnVisibilityClick}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-white/80 text-gray-700 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-white/90 hover:shadow-lg"
+          title={columnVisibilityTitle}
+        >
+          <Eye className="h-5 w-5" />
+        </button>
+      )}
 
-        {/* Export Button */}
-        {showExport && onExportClick && (
-          <button
-            onClick={onExportClick}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/80 backdrop-blur-sm border border-white/40 text-gray-700 font-medium text-sm hover:bg-white/90 transition-all duration-300 shadow-md whitespace-nowrap"
-            title={exportTitle}
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden lg:inline">{exportTitle}</span>
-          </button>
+      {showExport && onExportClick && (
+        <button
+          onClick={onExportClick}
+          className="flex items-center gap-2 whitespace-nowrap rounded-xl border border-white/40 bg-white/80 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-white/90"
+          title={exportTitle}
+        >
+          <Download className="h-4 w-4" />
+          <span className="hidden lg:inline">{exportTitle}</span>
+        </button>
+      )}
+    </div>
+  )
+
+  if (isPill) {
+    return (
+      <div
+        className={clsx(
+          'flex w-full items-center gap-3',
+          hasRightPanel && 'justify-between',
+          className
         )}
+        {...props}
+      >
+        {tabRow}
+        {hasRightPanel ? rightPanel : null}
       </div>
+    )
+  }
+
+  return (
+    <div className={clsx(containerClasses[variant] || containerClasses.glass, className)} {...props}>
+      {tabRow}
+      {rightPanel}
     </div>
   )
 }

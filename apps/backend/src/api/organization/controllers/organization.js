@@ -101,6 +101,10 @@ module.exports = createCoreController('api::organization.organization', ({ strap
     const { id } = ctx.params;
     const user = ctx.state.user;
 
+    if (!user) {
+      return ctx.unauthorized('Missing or invalid credentials');
+    }
+
     try {
       const hasAccess = await strapi.service('api::organization.organization').checkUserAccess(id, user.id);
       if (!hasAccess) {

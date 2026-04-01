@@ -1,25 +1,26 @@
-import { clsx } from "clsx";
-import { ChevronDown } from "lucide-react";
+import { clsx } from 'clsx'
+import { ChevronDown } from 'lucide-react'
 
 export function Select({
   label,
   error,
   options = [],
-  placeholder = "Select an option",
+  placeholder = 'Select an option',
   required = false,
   className,
   containerClassName,
+  icon: Icon,
   onChange,
   ...props
 }) {
   const handleChange = (e) => {
     if (onChange) {
-      onChange(e.target.value);
+      onChange(e.target.value)
     }
-  };
+  }
 
   return (
-    <div className={clsx("w-full", containerClassName)}>
+    <div className={clsx('w-full', containerClassName)}>
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {label}
@@ -27,13 +28,20 @@ export function Select({
         </label>
       )}
       <div className="relative">
+        {Icon && (
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <Icon className="h-5 w-5 text-gray-400" />
+          </div>
+        )}
         <select
           className={clsx(
-            "block w-full rounded-lg border shadow-sm appearance-none",
-            "px-3 py-2.5 pr-10 text-gray-900",
-            "focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent",
-            "transition-colors duration-200",
-            error ? "border-red-300" : "border-gray-300",
+            'block w-full rounded-lg border shadow-sm appearance-none',
+            'py-2.5 pr-10 text-gray-900',
+            Icon ? 'pl-10' : 'px-3',
+            'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent',
+            'transition-colors duration-200',
+            'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500',
+            error ? 'border-red-300' : 'border-gray-300',
             className
           )}
           onChange={handleChange}
@@ -52,7 +60,7 @@ export function Select({
       </div>
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
-  );
+  )
 }
 
-export default Select;
+export default Select

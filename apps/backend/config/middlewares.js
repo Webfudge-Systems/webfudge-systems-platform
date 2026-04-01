@@ -16,7 +16,13 @@ module.exports = [
       ],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      headers: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
+      headers: [
+        'Content-Type',
+        'Authorization',
+        'Origin',
+        'Accept',
+        'X-Organization-Id', // CRM / apps send active org; must match preflight Allow-Headers
+      ],
     },
   },
   'strapi::poweredBy',
