@@ -65,6 +65,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[CRM_TABLE_DELETE_MODAL_STANDARDIZATION.md](./CRM_TABLE_DELETE_MODAL_STANDARDIZATION.md)**             | Unified CRM table delete confirmations with shared `Modal`; replaced `window.confirm`/custom overlay and fixed lead delete modal top gap                       |
 | **[CRM_FILTER_MODALS_LEADS_CONTACTS_CLIENTS.md](./CRM_FILTER_MODALS_LEADS_CONTACTS_CLIENTS.md)**         | Added working filter modals for Lead Companies, Contacts, and Client Accounts with apply/clear flow and page-specific criteria                                 |
 | **[CRM_LEAD_COMPANY_COMMENTS.md](./CRM_LEAD_COMPANY_COMMENTS.md)**                                       | Lead Companies table comment popover with backend persistence via `crm-activity` comment actions and comments thread rendering                                 |
+| **[CRM_REUSABLE_FORM_SECTION_CARD_UPDATE.md](./CRM_REUSABLE_FORM_SECTION_CARD_UPDATE.md)**               | Moved repeated CRM/PM UI wrappers (form sections, page headers, app shell) into shared `@webfudge/ui` for create/edit/list/detail/table page consistency         |
 | **[DIRECT_MESSAGES_API.md](./DIRECT_MESSAGES_API.md)**                                                   | PM direct messages: `direct-message` content type, `/api/direct-messages`, org member list, permissions                                                        |
 
 ---

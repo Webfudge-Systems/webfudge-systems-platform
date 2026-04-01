@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Card,
   Button,
   Input,
   Select,
   Textarea,
   Modal,
+  FormSectionCard,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
@@ -359,16 +359,13 @@ export default function NewClientAccountPage() {
           )}
 
           {/* Company Information */}
-          <Card className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Company Information</h3>
-                <p className="text-sm text-gray-600">Basic information about the client company</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={Building2}
+            title="Company Information"
+            description="Basic information about the client company"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            iconContainerClassName="bg-gradient-to-br from-sky-500 to-blue-600"
+          >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
@@ -456,19 +453,16 @@ export default function NewClientAccountPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Address */}
-          <Card className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                <MapPinned className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Address Information</h3>
-                <p className="text-sm text-gray-600">Location and contact address details</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={MapPinned}
+            title="Address Information"
+            description="Location and contact address details"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
+          >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-3">
@@ -513,19 +507,16 @@ export default function NewClientAccountPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Account details */}
-          <Card className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Account Details</h3>
-                <p className="text-sm text-gray-600">Account type, status, and business metrics</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={Briefcase}
+            title="Account Details"
+            description="Account type, status, and business metrics"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            iconContainerClassName="bg-gradient-to-br from-emerald-500 to-teal-600"
+          >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
@@ -606,19 +597,16 @@ export default function NewClientAccountPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Contract & billing */}
-          <Card className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Contract &amp; Billing</h3>
-                <p className="text-sm text-gray-600">Contract dates and billing preferences</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={Calendar}
+            title="Contract &amp; Billing"
+            description="Contract dates and billing preferences"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            iconContainerClassName="bg-gradient-to-br from-orange-500 to-amber-500"
+          >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
@@ -665,21 +653,16 @@ export default function NewClientAccountPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Social & notes */}
-          <Card className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Social &amp; Additional Information
-                </h3>
-                <p className="text-sm text-gray-600">Social media profiles and additional notes</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={FileText}
+            title="Social &amp; Additional Information"
+            description="Social media profiles and additional notes"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            iconContainerClassName="bg-gradient-to-br from-blue-500 to-indigo-600"
+          >
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -711,7 +694,7 @@ export default function NewClientAccountPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {errors.submit && (
             <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex items-center gap-3">

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Input, Select, Textarea, Modal } from '@webfudge/ui';
+import { Button, Input, Select, Textarea, Modal, FormSectionCard } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import contactService from '../../../../lib/api/contactService';
 import strapiClient from '../../../../lib/strapiClient';
@@ -303,16 +303,13 @@ export default function NewContactPage() {
           )}
 
           {/* Basic information */}
-          <Card className="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600">
-                <User className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Basic information</h3>
-                <p className="text-sm text-gray-600">Essential contact details and personal information</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={User}
+            title="Basic information"
+            description="Essential contact details and personal information"
+            cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
+            iconContainerClassName="bg-gradient-to-br from-purple-500 to-indigo-600"
+          >
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Input
@@ -394,19 +391,16 @@ export default function NewContactPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Professional information */}
-          <Card className="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-teal-600">
-                <Briefcase className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Professional information</h3>
-                <p className="text-sm text-gray-600">Work-related details and company information</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={Briefcase}
+            title="Professional information"
+            description="Work-related details and company information"
+            cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
+            iconContainerClassName="bg-gradient-to-br from-green-500 to-teal-600"
+          >
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Input
@@ -440,19 +434,16 @@ export default function NewContactPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Address information */}
-          <Card className="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-500">
-                <MapPin className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Address information</h3>
-                <p className="text-sm text-gray-600">Location and contact address details</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={MapPin}
+            title="Address information"
+            description="Location and contact address details"
+            cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
+            iconContainerClassName="bg-gradient-to-br from-pink-500 to-rose-500"
+          >
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="lg:col-span-3">
@@ -491,19 +482,16 @@ export default function NewContactPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Social & additional */}
-          <Card className="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl">
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600">
-                <MessageSquare className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Social &amp; additional information</h3>
-                <p className="text-sm text-gray-600">Social media profiles and additional notes</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={MessageSquare}
+            title="Social &amp; additional information"
+            description="Social media profiles and additional notes"
+            cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
+            iconContainerClassName="bg-gradient-to-br from-blue-500 to-cyan-600"
+          >
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <Input
@@ -530,7 +518,7 @@ export default function NewContactPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {errors.submit && (
             <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">

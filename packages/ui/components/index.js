@@ -20,6 +20,8 @@ export { Pagination } from './Pagination';
 export { EmptyState } from './EmptyState';
 export { TableResultsCount, TableEmptyBelow } from './TableEmptyBelow';
 export { KPICard } from './KPICard';
+export { FormSectionCard } from './FormSectionCard';
+export { WorkspaceHeader } from './WorkspaceHeader';
 export {
   TableCellCreated,
   TableCellDateOnly,

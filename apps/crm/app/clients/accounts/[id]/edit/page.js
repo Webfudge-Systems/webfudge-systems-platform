@@ -5,11 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Button,
-  Card,
   Input,
   LoadingSpinner,
   Select,
   Textarea,
+  FormSectionCard,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../../lib/api/clientAccountService';
@@ -406,16 +406,13 @@ export default function EditClientAccountPage() {
               </p>
             ) : null}
 
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                  <Building2 className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Company Information</h2>
-                  <p className="text-sm text-gray-500">Basic information about the client company</p>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={Building2}
+              title="Company Information"
+              description="Basic information about the client company"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <div className="lg:col-span-2">
@@ -500,18 +497,15 @@ export default function EditClientAccountPage() {
                   />
                 </div>
               </div>
-            </Card>
+            </FormSectionCard>
 
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                  <MapPin className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Address Information</h2>
-                  <p className="text-sm text-gray-500">Primary location on file</p>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={MapPin}
+              title="Address Information"
+              description="Primary location on file"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="md:col-span-2">
@@ -535,18 +529,15 @@ export default function EditClientAccountPage() {
                   onChange={(e) => handleChange('zipCode', e.target.value)}
                 />
               </div>
-            </Card>
+            </FormSectionCard>
 
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                  <Briefcase className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Account Details</h2>
-                  <p className="text-sm text-gray-500">Status, ownership, and commercial fields</p>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={Briefcase}
+              title="Account Details"
+              description="Status, ownership, and commercial fields"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Select
@@ -593,18 +584,15 @@ export default function EditClientAccountPage() {
                   icon={TrendingUp}
                 />
               </div>
-            </Card>
+            </FormSectionCard>
 
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                  <Calendar className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Contract &amp; billing</h2>
-                  <p className="text-sm text-gray-500">Dates and billing preferences</p>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={Calendar}
+              title="Contract &amp; billing"
+              description="Dates and billing preferences"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Input
@@ -648,18 +636,15 @@ export default function EditClientAccountPage() {
                   options={paymentTermsOptions}
                 />
               </div>
-            </Card>
+            </FormSectionCard>
 
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                  <Hash className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Social &amp; additional information</h2>
-                  <p className="text-sm text-gray-500">Social profiles and notes</p>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={Hash}
+              title="Social &amp; additional information"
+              description="Social profiles and notes"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Input
@@ -687,7 +672,7 @@ export default function EditClientAccountPage() {
                   />
                 </div>
               </div>
-            </Card>
+            </FormSectionCard>
 
             <div className="flex flex-col-reverse items-center justify-end gap-3 pt-2 md:flex-row md:gap-3">
               <Link href={id ? `/clients/accounts/${id}` : '/clients/accounts'} className="w-full md:w-auto">

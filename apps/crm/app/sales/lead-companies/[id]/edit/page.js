@@ -8,6 +8,7 @@ import {
   Badge,
   Button,
   Card,
+  FormSectionCard,
   Input,
   LoadingSpinner,
   Modal,
@@ -41,6 +42,7 @@ import {
   Plus,
   Save,
   Trash2,
+  Users,
 } from 'lucide-react';
 
 export default function EditLeadCompanyPage() {
@@ -590,18 +592,13 @@ export default function EditLeadCompanyPage() {
           </Card>
         ) : (
           <div className="mt-6 space-y-6">
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-6 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                    <Building2 className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Company Information</h2>
-                    <p className="text-sm text-gray-500">Update company details and contact info</p>
-                  </div>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={Building2}
+              title="Company Information"
+              description="Update company details and contact info"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <div className="lg:col-span-2">
@@ -683,18 +680,15 @@ export default function EditLeadCompanyPage() {
                   />
                 </div>
               </div>
-            </Card>
+            </FormSectionCard>
 
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                  <MapPin className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Address Information</h2>
-                  <p className="text-sm text-gray-500">Primary location on file</p>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={MapPin}
+              title="Address Information"
+              description="Primary location on file"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="md:col-span-2">
@@ -714,18 +708,15 @@ export default function EditLeadCompanyPage() {
                 <Input label="Country" value={draft.country} onChange={(e) => setDraftField('country', e.target.value)} />
                 <Input label="ZIP / postal code" value={draft.zipCode} onChange={(e) => setDraftField('zipCode', e.target.value)} />
               </div>
-            </Card>
+            </FormSectionCard>
 
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                  <Calendar className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Lead Information</h2>
-                  <p className="text-sm text-gray-500">Status, value, and timing</p>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={Calendar}
+              title="Lead Information"
+              description="Status, value, and timing"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Input
@@ -753,18 +744,15 @@ export default function EditLeadCompanyPage() {
                   max={new Date().getFullYear()}
                 />
               </div>
-            </Card>
+            </FormSectionCard>
 
-            <Card variant="elevated" className="rounded-xl p-6">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm">
-                  <AlignLeft className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Social & Additional Information</h2>
-                  <p className="text-sm text-gray-500">Social profiles and notes</p>
-                </div>
-              </div>
+            <FormSectionCard
+              icon={AlignLeft}
+              title="Social & Additional Information"
+              description="Social profiles and notes"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Input
@@ -798,7 +786,7 @@ export default function EditLeadCompanyPage() {
                   />
                 </div>
               </div>
-            </Card>
+            </FormSectionCard>
 
             {submitError ? (
               <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl p-4 text-center">
@@ -806,12 +794,15 @@ export default function EditLeadCompanyPage() {
               </p>
             ) : null}
 
-            <Card variant="elevated" className="rounded-xl p-6">
+            <FormSectionCard
+              icon={Users}
+              title="Contacts"
+              description="Manage contacts linked to this lead company"
+              cardClassName="rounded-xl p-6"
+              iconContainerClassName="bg-brand-primary shadow-sm"
+            >
               <div className="mb-4 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Contacts</h2>
-                  <p className="text-sm text-gray-500">Manage contacts linked to this lead company</p>
-                </div>
+                <div />
                 <Button
                   type="button"
                   variant="primary"
@@ -854,7 +845,7 @@ export default function EditLeadCompanyPage() {
                   />
                 )}
               </div>
-            </Card>
+            </FormSectionCard>
           </div>
         )}
 

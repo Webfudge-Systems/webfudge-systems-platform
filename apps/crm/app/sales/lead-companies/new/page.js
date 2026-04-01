@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Card,
   Button,
   Input,
   Select,
   Textarea,
   Badge,
   Modal,
+  FormSectionCard,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
@@ -464,16 +464,13 @@ export default function AddLeadCompanyPage() {
           )}
 
           {/* Company Information */}
-          <Card className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Company Information</h3>
-                <p className="text-sm text-gray-600">Basic information about the lead company</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={Building2}
+            title="Company Information"
+            description="Basic information about the lead company"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            iconContainerClassName="bg-gradient-to-br from-orange-500 to-pink-500"
+          >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
@@ -686,20 +683,18 @@ export default function AddLeadCompanyPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Contact Information */}
-          <Card className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
+          <FormSectionCard
+            icon={Users}
+            title="Contact Information"
+            description="Add contacts for this lead company"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            iconContainerClassName="bg-gradient-to-br from-blue-500 to-purple-500"
+          >
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Contact Information</h3>
-                  <p className="text-sm text-gray-600">Add contacts for this lead company</p>
-                </div>
-              </div>
+              <div />
               <Button
                 type="button"
                 onClick={addContact}
@@ -832,19 +827,16 @@ export default function AddLeadCompanyPage() {
                 </div>
               ))}
             </div>
-          </Card>
+          </FormSectionCard>
 
           {/* Lead Status */}
-          <Card className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-teal-500 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Lead Status</h3>
-                <p className="text-sm text-gray-600">Set the initial status for this lead</p>
-              </div>
-            </div>
+          <FormSectionCard
+            icon={Calendar}
+            title="Lead Status"
+            description="Set the initial status for this lead"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            iconContainerClassName="bg-gradient-to-br from-green-500 to-teal-500"
+          >
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -864,7 +856,7 @@ export default function AddLeadCompanyPage() {
                 />
               </div>
             </div>
-          </Card>
+          </FormSectionCard>
 
           {errors.submit && (
             <div className="rounded-xl bg-red-50 border border-red-200 p-4 flex items-center gap-3">

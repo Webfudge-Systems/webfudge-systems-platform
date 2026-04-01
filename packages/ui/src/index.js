@@ -22,6 +22,8 @@ export {
   TableResultsCount,
   TableEmptyBelow,
   KPICard,
+  FormSectionCard,
+  WorkspaceHeader,
   TableCellCreated,
   TableCellDateOnly,
   TableCellOwner,
@@ -43,6 +45,7 @@ export {
   Container,
   Section,
   PageHeader,
+  AppShell,
 } from '../layouts';
 
 // FEEDBACK - Loading states and user feedback
