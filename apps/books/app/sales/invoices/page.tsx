@@ -1,9 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Badge, Button, Card, Select, Table } from '@webfudge/ui'
+import { useEffect, useMemo, useState } from 'react'
+import { Badge } from '@webfudge/ui'
 import { booksApi } from '@/lib/api'
 import type { Invoice } from '@/lib/types'
+import { Calendar, FileText, Receipt, TrendingUp } from 'lucide-react'
+import { formatCurrency } from '@webfudge/utils'
+import BooksSalesListShell from '../_components/BooksSalesListShell'
 
 type InvoiceRow = {
   id: number
@@ -12,8 +15,8 @@ type InvoiceRow = {
   customer: string
   status: string
   dueDate: string
-  amount: string
-  balance: string
+  amount: number
+  balance: number
 }
 
 const statusVariant: Record<string, 'gray' | 'primary' | 'info' | 'warning' | 'success' | 'danger'> = {
@@ -26,63 +29,86 @@ const statusVariant: Record<string, 'gray' | 'primary' | 'info' | 'warning' | 's
   Void: 'gray',
 }
 
-const fallbackRows: InvoiceRow[] = [
-  { id: 1, date: '2026-03-01', number: 'INV-1001', customer: 'Acme Studio', status: 'Sent', dueDate: '2026-03-14', amount: '$8,500', balance: '$8,500' },
-  { id: 2, date: '2026-03-07', number: 'INV-1002', customer: 'Northline', status: 'Partial', dueDate: '2026-03-20', amount: '$12,200', balance: '$2,200' },
-  { id: 3, date: '2026-02-22', number: 'INV-0999', customer: 'Orbit Labs', status: 'Overdue', dueDate: '2026-03-01', amount: '$6,000', balance: '$6,000' },
-]
-
 export default function InvoicesPage() {
   const [rows, setRows] = useState<Invoice[]>([])
+  const [activeTab, setActiveTab] = useState<'all' | 'draft' | 'sent' | 'paid' | 'overdue'>('all')
 
   useEffect(() => {
     booksApi.fetchInvoices().then((res) => setRows(res.data ?? [])).catch(() => setRows([]))
   }, [])
 
-  const tableData: InvoiceRow[] = rows.length
-    ? rows.map((item) => ({
+  const tableData: InvoiceRow[] = useMemo(
+    () =>
+      rows.map((item) => ({
         id: item.id,
         date: item.date,
         number: item.number,
-        customer: String(item.customerId),
+        customer: String(item.customerId ?? ''),
         status: item.status,
         dueDate: item.dueDate,
-        amount: `$${item.total.toFixed(2)}`,
-        balance: `$${(item.balanceDue ?? item.total).toFixed(2)}`,
-      }))
-    : fallbackRows
+        amount: item.total ?? 0,
+        balance: item.balanceDue ?? item.total ?? 0,
+      })),
+    [rows]
+  )
+
+  const invoiceStats = useMemo(() => {
+    const norm = (s: string) => String(s || '').toLowerCase()
+    const draft = tableData.filter((i) => norm(i.status) === 'draft').length
+    const sent = tableData.filter((i) => norm(i.status) === 'sent' || norm(i.status) === 'viewed' || norm(i.status) === 'partial').length
+    const paid = tableData.filter((i) => norm(i.status) === 'paid').length
+    const overdue = tableData.filter((i) => norm(i.status) === 'overdue').length
+    return { all: tableData.length, draft, sent, paid, overdue }
+  }, [tableData])
+
+  const filtered = useMemo(() => {
+    const norm = (s: string) => String(s || '').toLowerCase()
+    if (activeTab === 'all') return tableData
+    if (activeTab === 'draft') return tableData.filter((i) => norm(i.status) === 'draft')
+    if (activeTab === 'paid') return tableData.filter((i) => norm(i.status) === 'paid')
+    if (activeTab === 'overdue') return tableData.filter((i) => norm(i.status) === 'overdue')
+    // sent
+    return tableData.filter((i) => ['sent', 'viewed', 'partial'].includes(norm(i.status)))
+  }, [activeTab, tableData])
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Invoices</h1>
-        <div className="flex gap-2">
-          <Button>+ New</Button>
-          <Button variant="secondary">Import</Button>
-          <Button variant="secondary">Export</Button>
-          <Button variant="secondary">Print</Button>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <Select options={[{ value: '', label: 'Status' }, { value: 'draft', label: 'Draft' }, { value: 'paid', label: 'Paid' }]} />
-        <Select options={[{ value: '', label: 'Date Range' }, { value: '30', label: 'Last 30 Days' }, { value: '90', label: 'Last 90 Days' }]} />
-        <Select options={[{ value: '', label: 'Customer' }, { value: 'acme', label: 'Acme Studio' }]} />
-      </div>
-      <Card className="p-0 overflow-hidden">
-        <Table
-          variant="modernEmbedded"
-          columns={[
-            { key: 'date', title: 'Date' },
-            { key: 'number', title: 'Invoice#' },
-            { key: 'customer', title: 'Customer Name' },
-            { key: 'status', title: 'Status', render: (value: string) => <Badge variant={statusVariant[value]}>{value}</Badge> },
-            { key: 'dueDate', title: 'Due Date' },
-            { key: 'amount', title: 'Amount' },
-            { key: 'balance', title: 'Balance Due' },
-          ]}
-          data={tableData}
-        />
-      </Card>
-    </div>
+    <BooksSalesListShell
+      title="Invoices"
+      subtitle="Manage invoices and track payment status"
+      kpis={[
+        { title: 'All Invoices', value: invoiceStats.all, subtitle: invoiceStats.all === 0 ? 'No invoices' : 'Total invoices', icon: Receipt, colorScheme: 'orange' },
+        { title: 'Draft', value: invoiceStats.draft, subtitle: invoiceStats.draft === 0 ? 'No drafts' : 'Needs review', icon: FileText, colorScheme: 'orange' },
+        { title: 'Sent', value: invoiceStats.sent, subtitle: invoiceStats.sent === 0 ? 'No sent invoices' : 'Awaiting payment', icon: TrendingUp, colorScheme: 'orange' },
+        { title: 'Overdue', value: invoiceStats.overdue, subtitle: invoiceStats.overdue === 0 ? 'No overdue' : 'Needs attention', icon: Calendar, colorScheme: 'orange' },
+      ]}
+      tabs={[
+        { key: 'all', label: 'All Invoices', count: invoiceStats.all },
+        { key: 'draft', label: 'Draft', count: invoiceStats.draft },
+        { key: 'sent', label: 'Sent', count: invoiceStats.sent },
+        { key: 'paid', label: 'Paid', count: invoiceStats.paid },
+        { key: 'overdue', label: 'Overdue', count: invoiceStats.overdue },
+      ]}
+      activeTab={activeTab}
+      onTabChange={(t) => setActiveTab(t as any)}
+      columns={[
+        { key: 'date', label: 'DATE' },
+        { key: 'number', label: 'INVOICE#' },
+        { key: 'customer', label: 'CUSTOMER' },
+        {
+          key: 'status',
+          label: 'STATUS',
+          render: (value: string) => <Badge variant={statusVariant[value] ?? 'gray'}>{value}</Badge>,
+        },
+        { key: 'dueDate', label: 'DUE DATE' },
+        { key: 'amount', label: 'AMOUNT', render: (v: number) => formatCurrency(v ?? 0) },
+        { key: 'balance', label: 'BALANCE DUE', render: (v: number) => formatCurrency(v ?? 0) },
+      ]}
+      data={filtered}
+      emptyIcon={Receipt}
+      emptyTitle="No invoices found"
+      emptyDescription="Create your first invoice to get started"
+      addHref="/sales/invoices/new"
+      addLabel="Add Invoice"
+    />
   )
 }

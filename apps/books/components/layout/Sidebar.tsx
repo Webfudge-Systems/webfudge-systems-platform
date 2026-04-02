@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Avatar, Card } from '@webfudge/ui'
+import SubSidebar from './SubSidebar'
 import { resolveUserDisplayName, resolveUserInitials, resolveUserRole, useAuth } from '@webfudge/auth'
 import {
   ArrowUpRight,
@@ -13,16 +14,18 @@ import {
   Boxes,
   Briefcase,
   Building2,
+  CheckSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  DollarSign,
   FileMinus,
   FileText,
-  FolderOpen,
   Home,
   Landmark,
   ListOrdered,
+  MessageSquare,
   Package,
   Plus,
   Receipt,
@@ -30,7 +33,6 @@ import {
   Search,
   ShoppingCart,
   Target,
-  Timer,
   Truck,
   Users,
   Wallet,
@@ -39,6 +41,9 @@ import {
   Settings,
   LogOut,
   Lock,
+  Phone,
+  Calendar,
+  GitBranch,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -49,65 +54,6 @@ type SidebarProps = {
 }
 
 type NavItem = { label: string; href?: string; icon: any; children?: Array<{ label: string; href: string }> }
-type NavChild = { id: string; label: string; href: string; icon?: any }
-type NavSection = { id: string; label: string; children: NavChild[] }
-
-function SubSidebar({
-  isOpen,
-  onClose,
-  currentSection,
-  navigationData,
-  onNavigate,
-}: {
-  isOpen: boolean
-  onClose: () => void
-  currentSection: string | null
-  navigationData: NavSection[]
-  onNavigate: () => void
-}) {
-  const pathname = usePathname()
-  const isActive = (href: string) => pathname.startsWith(href)
-
-  if (!isOpen || !currentSection) return null
-  const sectionData = navigationData.find((item) => item.id === currentSection)
-  if (!sectionData) return null
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-black/25 z-50" onClick={onClose} />
-      <aside className="fixed right-4 top-4 bottom-4 w-80 bg-white overflow-hidden shadow-xl rounded-2xl z-[60]">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-3">
-            <button onClick={onClose} className="p-1 hover:bg-gray-200 rounded-lg transition-colors">
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 capitalize">{sectionData.label}</h2>
-              <p className="text-sm text-gray-600">Navigation</p>
-            </div>
-          </div>
-        </div>
-        <div className="p-4 space-y-2 max-h-[calc(100vh-88px)] overflow-y-auto">
-          {sectionData.children.map((item) => (
-            <Link
-              key={item.id}
-              href={item.href}
-              onClick={onNavigate}
-              className={`flex items-center gap-3 p-3 rounded-lg transition-colors duration-150 ${
-                isActive(item.href)
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              {item.icon && <item.icon className="w-4 h-4" />}
-              <span className="text-sm font-medium">{item.label}</span>
-            </Link>
-          ))}
-        </div>
-      </aside>
-    </>
-  )
-}
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/home', icon: Home },
@@ -174,15 +120,53 @@ function iconForPurchasesChild(label: string): LucideIcon {
   return map[label] ?? Briefcase
 }
 
+const mainNavigationItems = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    href: '/home',
+    hasSubNav: false,
+    priority: 'high' as const,
+  },
+  {
+    id: 'sales',
+    label: 'Sales',
+    icon: DollarSign,
+    hasSubNav: true,
+    priority: 'high' as const,
+  },
+  {
+    id: 'purchases',
+    label: 'Purchases',
+    icon: Briefcase,
+    hasSubNav: true,
+    priority: 'high' as const,
+  },
+  {
+    id: 'accountant',
+    label: 'Accountant',
+    icon: BookOpen,
+    hasSubNav: true,
+    priority: 'high' as const,
+  },
+  {
+    id: 'system',
+    label: 'Analytics',
+    icon: BarChart3,
+    hasSubNav: true,
+    priority: 'low' as const,
+  },
+]
+
 export default function Sidebar({ collapsed, onToggle, onConfigureFeatures }: SidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const [quickActionsOpen, setQuickActionsOpen] = useState(false)
   const [toolsCollapsed, setToolsCollapsed] = useState(true)
   const [subSidebarOpen, setSubSidebarOpen] = useState(false)
   const [currentSection, setCurrentSection] = useState<string | null>(null)
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const quickActionsRef = useRef<HTMLDivElement | null>(null)
 
   const features = useMemo(() => {
@@ -191,7 +175,15 @@ export default function Sidebar({ collapsed, onToggle, onConfigureFeatures }: Si
     return raw ? JSON.parse(raw) : {}
   }, [])
 
-  const isActive = (href?: string) => !!href && pathname.startsWith(href)
+  const isActive = (href?: string) => {
+    if (!href) return false
+    if (href === '/home') return pathname === '/home' || pathname === '/'
+    return pathname.startsWith(href)
+  }
+
+  const isSalesActive = () => pathname.startsWith('/sales/')
+  const isPurchasesActive = () => pathname.startsWith('/purchases/')
+  const isAccountantActive = () => pathname.startsWith('/accountant/')
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -257,422 +249,395 @@ export default function Sidebar({ collapsed, onToggle, onConfigureFeatures }: Si
     {
       id: 'sales',
       label: 'Sales',
-      children: navItems
-        .find((item) => item.label === 'Sales')
-        ?.children?.filter((child) => allowChild(child.label))
-        .map((child) => ({
-          id: child.href,
-          label: child.label,
-          icon: iconForSalesChild(child.label),
-          href: child.href,
-        })) ?? [],
+      children:
+        navItems
+          .find((item) => item.label === 'Sales')
+          ?.children?.filter((child) => allowChild(child.label))
+          .map((child) => ({
+            id: child.href,
+            label: child.label,
+            icon: iconForSalesChild(child.label),
+            href: child.href,
+          })) ?? [],
     },
     {
       id: 'purchases',
       label: 'Purchases',
-      children: navItems
-        .find((item) => item.label === 'Purchases')
-        ?.children?.filter((child) => allowChild(child.label))
-        .map((child) => ({
-          id: child.href,
-          label: child.label,
-          icon: iconForPurchasesChild(child.label),
-          href: child.href,
-        })) ?? [],
+      children:
+        navItems
+          .find((item) => item.label === 'Purchases')
+          ?.children?.filter((child) => allowChild(child.label))
+          .map((child) => ({
+            id: child.href,
+            label: child.label,
+            icon: iconForPurchasesChild(child.label),
+            href: child.href,
+          })) ?? [],
     },
     {
       id: 'system',
       label: 'System',
       children: [
-        { id: 'analytics', label: 'Analytics', icon: BarChart3, href: '/reports' },
-        { id: 'documents', label: 'Documents', icon: FolderOpen, href: '/documents' },
-        { id: 'time-tracking', label: 'Time Tracking', icon: Timer, href: '/time-tracking/projects' },
+        {
+          id: 'reports',
+          label: 'Reports & Forecasts',
+          icon: BarChart3,
+          href: '/reports',
+        },
       ],
     },
   ]
 
-  const collapsedPrimary = [
-    { label: 'Dashboard', href: '/home', icon: LayoutDashboard },
-    { label: 'Items', href: '/items', icon: Package },
-    { label: 'Banking', href: '/banking', icon: Banknote },
-    { label: 'Sales', href: '/sales/customers', icon: ShoppingCart },
-    { label: 'Purchases', href: '/purchases/vendors', icon: Briefcase },
-    { label: 'Accountant', href: '/accountant/manual-journals', icon: BookOpen },
+  /** Mirrors CRM `crmTools` labels and structure; Books routes + Configure Features. */
+  const booksTools = useMemo(
+    () =>
+      [
+        {
+          label: 'Priority / Automation Rules',
+          icon: Target,
+          href: '/coming-soon?feature=Priority / Automation Rules',
+        },
+        { label: 'Invoices & Payments', icon: Receipt, href: '/sales/invoices' },
+        {
+          label: 'Meetings & Calls',
+          icon: Phone,
+          href: '/coming-soon?feature=Meetings & Calls',
+        },
+        { label: 'Calendar', icon: Calendar, href: '/coming-soon?feature=Calendar' },
+        {
+          label: 'Integrations',
+          icon: GitBranch,
+          href: '/coming-soon?feature=Integrations',
+        },
+        { label: 'Configure Features', icon: Settings, onClick: onConfigureFeatures },
+      ] as const,
+    [onConfigureFeatures]
+  )
+
+  const quickActionItems = [
+    {
+      label: 'New Invoice',
+      icon: Receipt,
+      href: '/sales/invoices/new',
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
+    },
+    {
+      label: 'New Customer',
+      icon: Users,
+      href: '/sales/customers/new',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-200',
+    },
+    {
+      label: 'New Expense',
+      icon: Receipt,
+      href: '/purchases/expenses',
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-200',
+    },
+    {
+      label: 'New Project',
+      icon: CheckSquare,
+      href: '/time-tracking/projects/new',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-200',
+    },
   ]
 
-  const booksTools = [
-    { label: 'Configure Features', icon: Target, onClick: onConfigureFeatures },
-    { label: 'Documents', icon: FolderOpen, href: '/documents' },
-    { label: 'Time Tracking', icon: Timer, href: '/time-tracking/projects' },
-  ]
-
-  if (collapsed) {
-    return (
-      <aside className="w-16 h-full bg-white backdrop-blur-xl border-r border-white/30 flex flex-col shadow-xl overflow-y-auto transition-[width] duration-300 flex-shrink-0">
-        <div className="p-2 border-b border-white/20 flex justify-center">
-          <button onClick={onToggle} className="p-2 rounded-lg hover:bg-gray-50 transition-colors">
-            <ChevronRight className="w-5 h-5 text-brand-foreground" />
-          </button>
-        </div>
-
-        <div className="p-2 space-y-3">
-          <Card variant="glass" padding={true} className="p-2 flex justify-center">
-            <button
-              onClick={() => setQuickActionsOpen((v) => !v)}
-              className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md"
-              title="Quick Actions"
-            >
-              <Plus className="w-5 h-5 text-white" />
-            </button>
-          </Card>
-
-          <div className="space-y-2">
-            {collapsedPrimary.map((item) => {
-              const Icon = item.icon
-              const active = isActive(item.href)
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  title={item.label}
-                  className={`mx-auto w-11 h-11 rounded-lg border shadow-md flex items-center justify-center transition-[background-color,border-color,color] duration-300 ${
-                    active
-                      ? 'bg-brand-primary text-white border-brand-primary/50'
-                      : 'bg-white text-brand-foreground border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="mt-auto p-2 space-y-2">
-          <button
-            className="mx-auto w-11 h-11 rounded-lg border shadow-md bg-white text-brand-foreground border-gray-200 hover:bg-gray-50 flex items-center justify-center"
-            onClick={onConfigureFeatures}
-            title="Configure Features List"
-          >
-            <Target className="w-5 h-5" />
-          </button>
-          <Card variant="glass" padding={true} className="p-2">
-            <div className="flex justify-center">
-              <Avatar
-                shape="rounded"
-                fallback={resolveUserInitials(user)}
-                alt={resolveUserDisplayName(user)}
-                size="lg"
-                className="bg-white shadow-md border border-gray-200/80 text-brand-primary font-semibold ring-1 ring-black/5"
-              />
-            </div>
-          </Card>
-        </div>
-      </aside>
-    )
+  const handleQuickActionClick = (href: string) => {
+    setQuickActionsOpen(false)
+    router.push(href)
   }
+
+  const toggleQuickActions = () => setQuickActionsOpen(!quickActionsOpen)
 
   return (
     <>
-    <aside
-      className={`${
-        collapsed ? 'w-16' : 'w-64'
-      } h-full min-h-0 bg-white backdrop-blur-xl border-r border-white/30 flex flex-col shadow-xl overflow-hidden transition-[width] duration-300 flex-shrink-0`}
-    >
-      <div className="p-4 border-b border-white/20">
-        <div className="flex items-center justify-between mb-4">
-          {!collapsed && <span className="font-bold text-xl text-brand-foreground">Webfudge Books</span>}
-          <button onClick={onToggle} className="p-2 rounded-lg hover:bg-gray-50 transition-colors">
-            {collapsed ? (
-              <ChevronRight className="w-5 h-5 text-brand-foreground" />
-            ) : (
-              <ChevronLeft className="w-5 h-5 text-brand-foreground" />
-            )}
-          </button>
-        </div>
-
-        {!collapsed && (
-          <div className="relative mb-3">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-text-light" />
-            <input
-              type="text"
-              placeholder="Search here..."
-              className="w-full pl-10 pr-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:bg-white/25 transition-[background-color,border-color,box-shadow] duration-300 text-sm placeholder:text-brand-text-light shadow-lg"
-            />
+      <aside
+        className={`${
+          collapsed ? 'w-16' : 'w-64'
+        } flex h-full min-h-0 flex-shrink-0 flex-col border-r border-white/30 bg-white shadow-xl backdrop-blur-xl transition-[width] duration-300 overflow-y-auto`}
+      >
+        <div className="border-b border-white/20 p-4">
+          <div className="mb-4 flex items-center justify-between">
+            {!collapsed && <span className="text-xl font-bold text-brand-foreground">Webfudge Books</span>}
+            <button type="button" onClick={onToggle} className="rounded-lg p-2 transition-colors hover:bg-gray-50">
+              {collapsed ? (
+                <ChevronRight className="h-5 w-5 text-brand-foreground" />
+              ) : (
+                <ChevronLeft className="h-5 w-5 text-brand-foreground" />
+              )}
+            </button>
           </div>
-        )}
 
-        <div className="relative" ref={quickActionsRef}>
-          <button
-            onClick={() => setQuickActionsOpen((v) => !v)}
-            className={`w-full bg-gradient-to-r from-orange-500/20 to-orange-600/10 backdrop-blur-md border ${
-              quickActionsOpen ? 'border-orange-300/60' : 'border-white/30 hover:border-orange-200/50'
-            } text-brand-foreground rounded-xl py-3 px-4 flex items-center ${
-              collapsed ? 'justify-center' : 'justify-between gap-2'
-            } shadow-lg hover:shadow-xl transition-all duration-300 group`}
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
-                <Plus className="w-4 h-4 text-white" />
-              </div>
-              {!collapsed && <span className="text-sm font-semibold text-gray-800">Quick Actions</span>}
-            </div>
-            {!collapsed && (
-              <ChevronDown
-                className={`w-4 h-4 text-gray-600 transition-transform duration-300 ${
-                  quickActionsOpen ? 'rotate-180' : ''
-                }`}
+          {!collapsed && (
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-text-light" />
+              <input
+                type="text"
+                placeholder="Search here..."
+                className="w-full rounded-xl border border-white/30 bg-white/20 py-2 pl-10 pr-4 text-sm shadow-lg backdrop-blur-md transition-[background-color,border-color,box-shadow] duration-300 placeholder:text-brand-text-light focus:border-brand-primary focus:bg-white/25 focus:outline-none focus:ring-2 focus:ring-brand-primary/30"
               />
-            )}
-          </button>
-
-          {quickActionsOpen && !collapsed && (
-            <div className="absolute left-0 top-full mt-2 w-full bg-white rounded-lg shadow-2xl border border-gray-200 z-50 overflow-hidden">
-              <div className="p-2">
-                {[
-                  { label: 'New Invoice', href: '/sales/invoices/new' },
-                  { label: 'New Customer', href: '/sales/customers/new' },
-                  { label: 'New Expense', href: '/purchases/expenses' },
-                  { label: 'New Project', href: '/time-tracking/projects/new' },
-                ].map((item) => (
-                  <button
-                    key={item.label}
-                    onClick={() => {
-                      setQuickActionsOpen(false)
-                      router.push(item.href)
-                    }}
-                    className="w-full flex items-center gap-3 p-3 text-sm text-gray-800 rounded-lg hover:bg-gray-50 transition-all duration-200"
-                  >
-                    <Plus className="w-4 h-4 text-orange-600" />
-                    <span className="font-medium text-gray-900">{item.label}</span>
-                  </button>
-                ))}
-              </div>
             </div>
           )}
-        </div>
-      </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
-        <nav className="space-y-3">
-        {!collapsed && (
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { id: 'dashboard', label: 'Dashboard', href: '/home', icon: LayoutDashboard, hasSubNav: false },
-              { id: 'sales', label: 'Sales', href: '/sales/customers', icon: ShoppingCart, hasSubNav: true },
-              { id: 'purchases', label: 'Purchases', href: '/purchases/vendors', icon: Briefcase, hasSubNav: true },
-              { id: 'accountant', label: 'Accountant', href: '/accountant/manual-journals', icon: BookOpen, hasSubNav: true },
-            ].map((item) => {
-              const Icon = item.icon
-              const active = isActive(item.href)
-              if (item.hasSubNav) {
-                return (
-                  <button
-                    key={item.label}
-                    onClick={() => handleTopLevelClick(item.id)}
-                    className={`rounded-xl p-4 w-full flex flex-col items-center gap-3 transition-[background-color,border-color,color] duration-300 shadow-lg border ${
-                      active
-                        ? 'bg-brand-primary text-white border-brand-primary/50'
-                        : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/30 hover:border-white/40'
-                    }`}
-                  >
-                    <Icon className="w-6 h-6" />
-                    <span className="text-xs font-medium text-center">{item.label}</span>
-                  </button>
-                )
-              }
-              return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={`rounded-xl p-4 flex flex-col items-center gap-3 transition-[background-color,border-color,color] duration-300 shadow-lg border ${
-                    active
-                      ? 'bg-brand-primary text-white border-brand-primary/50'
-                      : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/30 hover:border-white/40'
-                  }`}
-                >
-                  <Icon className="w-6 h-6" />
-                  <span className="text-xs font-medium text-center">{item.label}</span>
-                </Link>
-              )
-            })}
-          </div>
-        )}
+          <div className="relative" ref={quickActionsRef}>
+            <button
+              type="button"
+              onClick={toggleQuickActions}
+              className={`group flex w-full items-center rounded-xl border bg-gradient-to-r from-orange-500/20 to-orange-600/10 py-3 px-4 text-brand-foreground shadow-lg backdrop-blur-md transition-all duration-300 hover:shadow-xl ${
+                quickActionsOpen ? 'border-orange-300/60' : 'border-white/30 hover:border-orange-200/50'
+              } ${collapsed ? 'justify-center' : 'justify-between gap-2'}`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 shadow-md transition-transform duration-300 group-hover:scale-110">
+                  <Plus className="h-4 w-4 text-white" />
+                </div>
+                {!collapsed && <span className="text-sm font-semibold text-gray-800">Quick Actions</span>}
+              </div>
+              {!collapsed && (
+                <ChevronDown
+                  className={`h-4 w-4 text-gray-600 transition-transform duration-300 ${quickActionsOpen ? 'rotate-180' : ''}`}
+                />
+              )}
+            </button>
 
-        {!collapsed && (
-          <div className="rounded-xl p-3 shadow-lg transition-all duration-200 backdrop-blur-md bg-white/10 border border-white/30">
-            <div className="flex items-center justify-between text-sm font-medium text-brand-foreground mb-2">
-              <span className="flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5" />
-                Latest Conversations
-              </span>
-              <button
-                type="button"
-                className="w-5 h-5 bg-white/20 backdrop-blur-md rounded-lg flex items-center justify-center hover:bg-white/30 transition-all duration-200 shadow-sm border border-white/20"
-              >
-                <ChevronRight className="w-2.5 h-2.5 text-gray-600" />
-              </button>
-            </div>
-            <div className="text-center py-4 text-xs text-brand-text-light">No conversations yet</div>
-          </div>
-        )}
-        </nav>
-
-        <div>
-        {!collapsed && (
-          <div className="mb-4">
-            <Card variant="glass" padding={true} className="p-4 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setToolsCollapsed((prev) => !prev)}
-                className="flex items-center justify-between w-full text-sm font-medium text-brand-foreground mb-3 hover:opacity-80 transition-opacity"
-              >
-                <span className="flex items-center gap-2">
-                  <Target className="w-4 h-4" />
-                  Tools
-                </span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${toolsCollapsed ? '' : 'rotate-180'}`} />
-              </button>
-
-              {!toolsCollapsed && (
-                <div className="space-y-2">
-                  {booksTools.map((item) => {
+            {quickActionsOpen && !collapsed && (
+              <div className="absolute left-0 top-full z-50 mt-2 w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+                <div className="p-2">
+                  <div className="mb-1 border-b border-gray-100 px-3 py-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Quick Create</p>
+                  </div>
+                  {quickActionItems.map((item, index) => {
                     const Icon = item.icon
-                    if (item.onClick) {
-                      return (
-                        <button
-                          key={item.label}
-                          onClick={item.onClick}
-                          className="w-full flex items-center gap-3 text-xs text-brand-text-light p-2 rounded-lg hover:bg-white/20 transition-colors"
-                        >
-                          <Icon className="w-4 h-4" />
-                          <span className="font-medium">{item.label}</span>
-                        </button>
-                      )
-                    }
                     return (
-                      <Link
-                        key={item.label}
-                        href={item.href ?? '/'}
-                        className="flex items-center gap-3 text-xs text-brand-text-light p-2 rounded-lg hover:bg-white/20 transition-colors"
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleQuickActionClick(item.href)}
+                        className="group/item flex w-full items-center gap-3 rounded-xl p-3.5 text-left text-sm text-gray-800 transition-all duration-200 hover:bg-gray-50"
                       >
-                        <Icon className="w-4 h-4" />
-                        <span className="font-medium">{item.label}</span>
-                      </Link>
+                        <div
+                          className={`flex h-10 w-10 items-center justify-center rounded-xl border shadow-sm transition-all duration-200 ${item.bgColor} ${item.borderColor} group-hover/item:scale-110 group-hover/item:shadow-md`}
+                        >
+                          <Icon className={`h-5 w-5 ${item.color}`} />
+                        </div>
+                        <span className="flex-1 font-medium text-gray-900">{item.label}</span>
+                        <ChevronRight className="h-4 w-4 text-gray-400 opacity-0 transition-opacity duration-200 group-hover/item:opacity-100" />
+                      </button>
                     )
                   })}
                 </div>
-              )}
-            </Card>
-          </div>
-        )}
-
-        <div className="mb-4">
-          {!collapsed && (
-            <div className="flex items-center gap-4 px-2 mb-4">
-              <div className="flex-1 h-px bg-white/20" />
-              <span className="text-xs text-brand-text-light font-medium">System</span>
-              <div className="flex-1 h-px bg-white/20" />
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={() => handleTopLevelClick('system')}
-            className="w-full bg-white/15 backdrop-blur-md border border-white/25 text-brand-text-light rounded-xl p-3 flex flex-col items-center gap-2 shadow-md hover:bg-white/20 transition-colors"
-            title="Analytics"
-          >
-            <BarChart3 className="w-5 h-5" />
-            {!collapsed && <span className="text-xs font-medium text-center">Analytics</span>}
-          </button>
-        </div>
-
-        <div className="pt-4 border-t border-white/20">
-          <div
-            className="relative"
-            onMouseEnter={() => setShowProfileDropdown(true)}
-            onMouseLeave={() => setShowProfileDropdown(false)}
-          >
-            <Card
-              variant="glass"
-              padding={true}
-              className={`flex items-center gap-3 p-3 hover:bg-white/25 transition-colors cursor-pointer ${
-                collapsed ? 'justify-center' : ''
-              }`}
-            >
-              <Avatar
-                shape="rounded"
-                fallback={resolveUserInitials(user)}
-                alt={resolveUserDisplayName(user)}
-                size="lg"
-                className="bg-white shadow-md border border-gray-200/80 text-brand-primary font-semibold ring-1 ring-black/5"
-              />
-              {!collapsed && (
-                <>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-brand-foreground truncate">{resolveUserDisplayName(user)}</p>
-                    <p className="text-xs text-brand-text-light truncate">{resolveUserRole(user)}</p>
-                  </div>
-                  <ChevronDown
-                    className={`w-4 h-4 text-gray-400 transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`}
-                  />
-                </>
-              )}
-            </Card>
-
-            {!collapsed && showProfileDropdown && (
-              <Card
-                variant="glass"
-                padding={true}
-                className="absolute left-0 right-0 bottom-full mb-2 z-[70] p-0 overflow-hidden shadow-2xl border border-white/40"
-              >
-                <div className="p-4 border-b border-white/20">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      shape="rounded"
-                      fallback={resolveUserInitials(user)}
-                      alt={resolveUserDisplayName(user)}
-                      size="xl"
-                      className="bg-white shadow-md border border-gray-200/80 text-brand-primary font-semibold ring-1 ring-black/5"
-                    />
-                    <div className="min-w-0">
-                      <p className="font-semibold text-brand-foreground truncate">{resolveUserDisplayName(user)}</p>
-                      <p className="text-sm text-brand-text-light truncate">{(user?.attributes || user)?.email || user?.email}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-2">
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/30 rounded-lg transition-colors">
-                    <User className="w-4 h-4 text-brand-text-light" />
-                    <span className="text-sm text-brand-foreground">View Profile</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/30 rounded-lg transition-colors">
-                    <Settings className="w-4 h-4 text-brand-text-light" />
-                    <span className="text-sm text-brand-foreground">Settings</span>
-                  </button>
-                  <div className="h-px bg-white/30 my-2 mx-3" />
-                  <button
-                    onClick={logout}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-red-50 rounded-lg transition-colors text-red-600"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span className="text-sm">Sign Out</span>
-                  </button>
-                </div>
-              </Card>
+              </div>
             )}
           </div>
         </div>
+
+        <div className="space-y-4 p-4">
+          <div className={`grid gap-3 ${collapsed ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            {mainNavigationItems
+              .filter((item) => item.priority === 'high')
+              .map((item) => {
+                const Icon = item.icon
+                const active = item.href ? isActive(item.href) : false
+                const isSalesSection = item.id === 'sales' && isSalesActive()
+                const isPurchasesSection = item.id === 'purchases' && isPurchasesActive()
+                const isAccountantSection = item.id === 'accountant' && isAccountantActive()
+
+                if (item.hasSubNav) {
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleTopLevelClick(item.id)}
+                      title={collapsed ? item.label : undefined}
+                      className={`group flex w-full flex-col items-center gap-3 rounded-xl p-4 shadow-lg transition-[background-color,border-color] duration-300 ${
+                        isSalesSection || isPurchasesSection || isAccountantSection
+                          ? 'border border-yellow-300/50 bg-gradient-to-br from-yellow-400/30 to-yellow-500/20 text-yellow-800'
+                          : 'border border-white/30 bg-white/20 text-brand-foreground backdrop-blur-md hover:border-white/40 hover:bg-white/30'
+                      }`}
+                    >
+                      <Icon className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
+                      {!collapsed && <span className="text-center text-xs font-medium">{item.label}</span>}
+                    </button>
+                  )
+                }
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href || '/home'}
+                    title={collapsed ? item.label : undefined}
+                    className={`group flex flex-col items-center gap-3 rounded-xl p-4 shadow-lg transition-[background-color,border-color,color] duration-300 ${
+                      active
+                        ? 'border border-brand-primary/50 bg-brand-primary text-white'
+                        : 'border border-white/30 bg-white/20 text-brand-foreground backdrop-blur-md hover:border-white/40 hover:bg-white/30'
+                    }`}
+                  >
+                    <Icon className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
+                    {!collapsed && <span className="text-center text-xs font-medium">{item.label}</span>}
+                  </Link>
+                )
+              })}
+          </div>
         </div>
-      </div>
-    </aside>
-    <SubSidebar
-      isOpen={subSidebarOpen}
-      onClose={closeSubSidebar}
-      currentSection={currentSection}
-      navigationData={navigationData}
-      onNavigate={closeSubSidebar}
-    />
+
+        {!collapsed && (
+          <div className="flex-1">
+            <div className="mb-2 px-3">
+              <div
+                className={`rounded-xl p-2.5 shadow-lg backdrop-blur-md transition-all duration-200 ${
+                  pathname.startsWith('/threads') ? 'border border-orange-200 bg-orange-50/90' : 'border border-white/30 bg-white/10'
+                }`}
+              >
+                <div className="mb-2 flex items-center justify-between text-sm font-medium text-brand-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Latest Conversations
+                  </span>
+                  <Link
+                    href="/threads"
+                    title="View all conversations"
+                    className="flex h-5 w-5 items-center justify-center rounded-lg border border-white/20 bg-white/20 shadow-sm backdrop-blur-md transition-all duration-200 hover:bg-white/30"
+                  >
+                    <ChevronRight className="h-2.5 w-2.5 text-gray-600 transition-colors group-hover:text-gray-900" />
+                  </Link>
+                </div>
+
+                <div className="max-h-80 space-y-1.5 overflow-y-auto">
+                  <div className="py-4 text-center text-xs text-brand-text-light">No conversations yet</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!collapsed && (
+          <div className="flex-1">
+            <div className="mb-4 px-4">
+              <Card variant="glass" padding={true} className="p-4">
+                <button
+                  type="button"
+                  onClick={() => setToolsCollapsed(!toolsCollapsed)}
+                  className="mb-3 flex w-full items-center justify-between text-sm font-medium text-brand-foreground transition-opacity hover:opacity-80"
+                >
+                  <span className="flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Tools
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform duration-200 ${toolsCollapsed ? '' : 'rotate-180'}`}
+                  />
+                </button>
+
+                {!toolsCollapsed && (
+                  <div className="space-y-2">
+                    {booksTools.map((item) => {
+                      const Icon = item.icon
+                      if ('onClick' in item) {
+                        return (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={item.onClick}
+                            className="flex w-full items-center gap-3 rounded-lg p-2 text-left text-xs text-brand-text-light transition-colors hover:bg-white/20"
+                          >
+                            <Icon className="h-4 w-4 shrink-0" />
+                            <span className="font-medium">{item.label}</span>
+                          </button>
+                        )
+                      }
+                      return (
+                        <Link
+                          key={item.label}
+                          href={item.href}
+                          className="flex items-center gap-3 rounded-lg p-2 text-xs text-brand-text-light transition-colors hover:bg-white/20"
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="font-medium">{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-auto">
+          <div className="mb-4 px-4">
+            {!collapsed && (
+              <div className="mb-4 flex items-center gap-4 px-2">
+                <div className="h-px flex-1 bg-white/20" />
+                <span className="text-xs text-brand-text-light font-medium">System</span>
+                <div className="h-px flex-1 bg-white/20" />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              {mainNavigationItems
+                .filter((item) => item.priority === 'low')
+                .map((item) => {
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleTopLevelClick(item.id)}
+                      title={collapsed ? item.label : undefined}
+                      className="w-full bg-white/15 backdrop-blur-md border border-white/25 text-brand-text-light rounded-xl p-3 flex flex-col items-center gap-2 shadow-md hover:bg-white/20 transition-colors"
+                    >
+                      <Icon className="h-5 w-5" />
+                      {!collapsed && <span className="text-center text-xs font-medium">{item.label}</span>}
+                    </button>
+                  )
+                })}
+            </div>
+          </div>
+
+          <div className="border-t border-white/20 p-4">
+            <div className="relative">
+              <Card
+                variant="glass"
+                padding={true}
+                className={`flex cursor-pointer items-center gap-3 p-3 transition-colors hover:bg-white/25 ${
+                  collapsed ? 'justify-center' : ''
+                }`}
+              >
+                <Avatar
+                  shape="rounded"
+                  fallback={resolveUserInitials(user)}
+                  alt={resolveUserDisplayName(user)}
+                  size="lg"
+                  className="border border-gray-200/80 bg-white font-semibold text-brand-primary shadow-md ring-1 ring-black/5"
+                />
+                {!collapsed && (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-brand-foreground">{resolveUserDisplayName(user)}</p>
+                      <p className="truncate text-xs text-brand-text-light">{resolveUserRole(user)}</p>
+                    </div>
+                  </>
+                )}
+              </Card>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <SubSidebar
+        isOpen={subSidebarOpen}
+        onClose={closeSubSidebar}
+        currentSection={currentSection}
+        navigationData={navigationData}
+        onNavigate={closeSubSidebar}
+      />
     </>
   )
 }

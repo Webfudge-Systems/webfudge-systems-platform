@@ -38,9 +38,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   return (
     <div className="h-screen flex bg-white">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((v) => !v)} onConfigureFeatures={() => setShowConfigure(true)} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
-        <main className="flex-1 overflow-auto p-4">{children}</main>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-white">
+          <div className="min-h-full space-y-4 p-4">
+            <Topbar />
+            {children}
+          </div>
+        </main>
       </div>
       <ConfigureFeaturesModal
         isOpen={showConfigure}

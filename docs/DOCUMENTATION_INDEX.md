@@ -67,6 +67,18 @@ Your complete guide to the Webfudge Platform documentation.
 | **[CRM_LEAD_COMPANY_COMMENTS.md](./CRM_LEAD_COMPANY_COMMENTS.md)**                                       | Lead Companies table comment popover with backend persistence via `crm-activity` comment actions and comments thread rendering                                 |
 | **[CRM_REUSABLE_FORM_SECTION_CARD_UPDATE.md](./CRM_REUSABLE_FORM_SECTION_CARD_UPDATE.md)**               | Moved repeated CRM/PM UI wrappers (form sections, page headers, app shell) into shared `@webfudge/ui` for create/edit/list/detail/table page consistency         |
 | **[DIRECT_MESSAGES_API.md](./DIRECT_MESSAGES_API.md)**                                                   | PM direct messages: `direct-message` content type, `/api/direct-messages`, org member list, permissions                                                        |
+| **[MODAL_NAV_PANEL_BOOKS_CRM.md](./MODAL_NAV_PANEL_BOOKS_CRM.md)**                                     | `Modal` `navPanel` variant for Books/CRM module nav; default modal `subtitle` support                                                                         |
+| **[BOOKS_DASHBOARD_QUICK_ACCESS_TEMPLATES_ACTIVITY.md](./BOOKS_DASHBOARD_QUICK_ACCESS_TEMPLATES_ACTIVITY.md)** | Books dashboard “Dashboard” tab: Quick Access cards + Templates + Recent Activity (CRM-mirrored UI)                                                                |
+| **[BOOKS_FINANCIAL_CHARTS_MOVED_TO_SYSTEM.md](./BOOKS_FINANCIAL_CHARTS_MOVED_TO_SYSTEM.md)** | Books dashboard charts moved to `System → Analytics` (`/reports`); Dashboard now shows Sales Analytics + Invoices Pipeline blocks |
+| **[BOOKS_SYSTEM_ANALYTICS_UI_UPDATE.md](./BOOKS_SYSTEM_ANALYTICS_UI_UPDATE.md)** | Books “System Analytics” (`/reports`) upgraded to a full KPI + charts dashboard using `@webfudge/ui` components |
+| **[UI_SELECT_CRM_STYLE_ALIGNMENT.md](./UI_SELECT_CRM_STYLE_ALIGNMENT.md)** | `@webfudge/ui` `Select` styling aligned to match CRM dropdown controls |
+| **[BOOKS_SALES_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_SALES_PAGES_CRM_UI_ALIGNMENT.md)** | Books Sales pages (`/sales/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
+| **[BOOKS_PURCHASES_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_PURCHASES_PAGES_CRM_UI_ALIGNMENT.md)** | Books Purchases pages (`/purchases/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
+| **[BOOKS_ACCOUNTANT_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_ACCOUNTANT_PAGES_CRM_UI_ALIGNMENT.md)** | Books Accountant pages (`/accountant/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
+| **[BOOKS_CRM_STYLE_ADD_PAGES.md](./BOOKS_CRM_STYLE_ADD_PAGES.md)** | CRM-style “Add” pages for Sales/Purchases/Accountant, consistent create UI using `@webfudge/ui` |
+| **[BOOKS_TABLE_COLUMN_PICKER.md](./BOOKS_TABLE_COLUMN_PICKER.md)** | CRM-style column visibility dropdown (eye icon) on Books Sales/Purchases/Accountant list bars |
+| **[BOOKS_HOME_GETTING_STARTED_TABS.md](./BOOKS_HOME_GETTING_STARTED_TABS.md)** | Home page tabs: Getting Started onboarding UI + Announcements / Recent Updates empty states |
+| **[BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md](./BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md)** | Added Books `/threads` (“Conversations”) page aligned with CRM latest conversations UI |
 
 ---
 

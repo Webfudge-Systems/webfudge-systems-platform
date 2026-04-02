@@ -8,6 +8,7 @@ declare module '@webfudge/ui' {
   export const Card: any
   export const Badge: any
   export const Avatar: any
+  export const WorkspaceHeader: any
   export const Table: any
   export const Pagination: any
   export const EmptyState: any

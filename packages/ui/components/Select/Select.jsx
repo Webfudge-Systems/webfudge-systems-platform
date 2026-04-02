@@ -35,10 +35,10 @@ export function Select({
         )}
         <select
           className={clsx(
-            'block w-full rounded-lg border shadow-sm appearance-none',
-            'py-2.5 pr-10 text-gray-900',
-            Icon ? 'pl-10' : 'px-3',
-            'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent',
+            'block w-full rounded-lg border border-gray-300 bg-white',
+            'px-3 py-2.5 pr-10 text-sm text-gray-900 shadow-none appearance-none',
+            Icon ? 'pl-10' : '',
+            'focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500',
             'transition-colors duration-200',
             'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500',
             error ? 'border-red-300' : 'border-gray-300',

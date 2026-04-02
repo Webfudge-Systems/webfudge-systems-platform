@@ -1,17 +1,15 @@
 'use client'
 
-import { Card, Tabs } from '@webfudge/ui'
+import { Tabs } from '@webfudge/ui'
 import DashboardTab, { KpiCards } from './components/DashboardTab'
+import QuickActionsWidget from './components/QuickActionsWidget'
+import ActivityFeedWidget from './components/ActivityFeedWidget'
+import BooksGettingStartedPanel from './components/BooksGettingStartedPanel'
+import BooksAnnouncementsPanel from './components/BooksAnnouncementsPanel'
+import BooksRecentUpdatesPanel from './components/BooksRecentUpdatesPanel'
 import { useEffect, useMemo, useState } from 'react'
 import { booksApi } from '@/lib/api'
 import type { Expense, Invoice, TimeEntry } from '@/lib/types'
-
-const TabPanel = ({ title, body }: { title: string; body: string }) => (
-  <Card className="p-6">
-    <h3 className="text-base font-semibold">{title}</h3>
-    <p className="text-sm text-gray-600 mt-2">{body}</p>
-  </Card>
-)
 
 export default function HomePage() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -33,15 +31,29 @@ export default function HomePage() {
   }, [expenses, invoices, timeEntries])
 
   return (
-    <div className="space-y-4 bg-white min-h-full">
+    <div className="-mx-4 min-h-full space-y-4 bg-slate-50 px-4 pb-8">
       <KpiCards metrics={metrics} />
       <Tabs
-        variant="segmented"
+        variant="default"
         tabs={[
-          { id: 'dashboard', label: 'Dashboard', content: <DashboardTab hideKpis /> },
-          { id: 'getting-started', label: 'Getting Started', content: <TabPanel title="Getting Started" body="Connect accounts, configure invoice settings, and create your first agency client." /> },
-          { id: 'announcements', label: 'Announcements', content: <TabPanel title="Announcements" body="Release notes and product updates for Books are shown here." /> },
-          { id: 'recent-updates', label: 'Recent Updates', content: <TabPanel title="Recent Updates" body="Track recently updated invoices, projects, and expenses." /> },
+          {
+            id: 'dashboard',
+            label: 'Dashboard',
+            content: (
+              <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+                <div className="space-y-6 xl:col-span-2">
+                  <DashboardTab hideKpis />
+                </div>
+                <div className="space-y-6">
+                  <QuickActionsWidget />
+                  <ActivityFeedWidget />
+                </div>
+              </div>
+            ),
+          },
+          { id: 'getting-started', label: 'Getting Started', content: <BooksGettingStartedPanel /> },
+          { id: 'announcements', label: 'Announcements', content: <BooksAnnouncementsPanel /> },
+          { id: 'recent-updates', label: 'Recent Updates', content: <BooksRecentUpdatesPanel /> },
         ]}
       />
     </div>

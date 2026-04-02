@@ -39,3 +39,6 @@ export { TableRowActionMenuPortal } from './TableRowActionMenuPortal';
 export { Tabs } from './Tabs';
 export { TabsWithActions } from './TabsWithActions';
 export { Modal } from './Modal';
+
+// FEEDBACK (re-export for internal component use)
+export { default as LoadingSpinner } from '../feedback/LoadingSpinner';
