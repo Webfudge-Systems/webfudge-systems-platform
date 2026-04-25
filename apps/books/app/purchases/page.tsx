@@ -1,8 +1,10 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@webfudge/ui'
 import { CreditCard, FileText, Receipt, Repeat, ShoppingCart, Users } from 'lucide-react'
+import { isPurchasesHubModuleEnabled, readBooksFeaturesFromStorage } from '@/lib/books-features'
 
 const purchaseModules = [
   { title: 'Vendors', subtitle: 'View and manage', icon: Users, href: '/purchases/vendors' },
@@ -17,16 +19,33 @@ const purchaseModules = [
 
 export default function PurchasesPage() {
   const router = useRouter()
+  const [features, setFeatures] = useState<Record<string, unknown>>({})
+
+  useEffect(() => {
+    const refresh = () => setFeatures(readBooksFeaturesFromStorage())
+    refresh()
+    window.addEventListener('storage', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.removeEventListener('storage', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
+
+  const visibleModules = useMemo(
+    () => purchaseModules.filter((m) => isPurchasesHubModuleEnabled(m.title, features)),
+    [features]
+  )
 
   return (
-    <div className="space-y-6 bg-white min-h-full">
+    <div className="min-h-full space-y-6 bg-white">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Purchases</h1>
-        <p className="text-sm text-gray-600 mt-1">Manage vendors, expenses, bills, and purchase orders.</p>
+        <p className="mt-1 text-sm text-gray-600">Manage vendors, expenses, bills, and purchase orders.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {purchaseModules.map((m) => {
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {visibleModules.map((m) => {
           const Icon = m.icon
           return (
             <Card

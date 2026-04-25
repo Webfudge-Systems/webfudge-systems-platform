@@ -153,7 +153,8 @@ export function useBooksTableColumnPicker({ columns, storageKey }: { columns: Co
       return
     }
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    const place = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+    const place: 'before' | 'after' =
+      e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
     const hint = { targetKey: key, place }
     columnDropIndicatorRef.current = hint
     setColumnDropIndicator(hint)

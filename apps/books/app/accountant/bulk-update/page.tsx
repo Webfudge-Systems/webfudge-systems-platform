@@ -1,8 +1,8 @@
 'use client'
 
-import { Card } from '@webfudge/ui'
 import { ClipboardList, FileText, Target, Users } from 'lucide-react'
 import BooksAccountantListShell from '../_components/BooksAccountantListShell'
+import BooksChartPlaceholderCard from '../_components/BooksChartPlaceholderCard'
 
 export default function BulkUpdatePage() {
   return (
@@ -22,20 +22,8 @@ export default function BulkUpdatePage() {
       onTabChange={() => {}}
       topBlocks={
         <>
-          <Card variant="elevated" padding={false} className="p-5">
-            <h3 className="text-base font-semibold text-gray-900">Bulk Update Activity</h3>
-            <p className="text-sm text-gray-600 mt-1">Chart will appear here when connected to backend</p>
-            <div className="mt-4 h-44 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-sm text-gray-500">
-              0 data
-            </div>
-          </Card>
-          <Card variant="elevated" padding={false} className="p-5">
-            <h3 className="text-base font-semibold text-gray-900">Most Updated Fields</h3>
-            <p className="text-sm text-gray-600 mt-1">Chart will appear here when connected to backend</p>
-            <div className="mt-4 h-44 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-sm text-gray-500">
-              0 data
-            </div>
-          </Card>
+          <BooksChartPlaceholderCard title="Bulk Update Activity" />
+          <BooksChartPlaceholderCard title="Most Updated Fields" />
         </>
       }
       columns={[

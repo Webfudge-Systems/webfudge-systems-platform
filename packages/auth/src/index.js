@@ -9,6 +9,7 @@ export { default as authService } from './services/authService';
 export {
   flattenUser,
   resolveUserDisplayName,
+  resolveUserGreetingName,
   resolveUserInitials,
   resolveUserRole,
 } from './utils/userProfile';

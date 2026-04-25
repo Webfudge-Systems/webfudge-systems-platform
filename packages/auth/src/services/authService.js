@@ -2,7 +2,9 @@
 // Use environment variable for API URL, fallback to localhost for development
 import { flattenUser } from '../utils/userProfile';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337';
+// Match apps that only set NEXT_PUBLIC_STRAPI_URL (e.g. Books)
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_STRAPI_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337';
 
 class AuthService {
   constructor() {
@@ -209,19 +211,47 @@ class AuthService {
       const token = this.getToken();
       if (!token) return null;
 
+      const coalesceTrimmed = (...vals) => {
+        for (const v of vals) {
+          if (v == null) continue
+          const s = String(v).trim()
+          if (s) return s
+        }
+        return ''
+      }
+
       const mergeStored = (authUser) => {
-        const prev = this.getStoredUser() || {};
-        return {
+        const prev = this.getStoredUser() || {}
+        const merged = {
           ...prev,
           ...authUser,
           id: authUser.id ?? prev.id,
           documentId: authUser.documentId ?? prev.documentId,
           email: authUser.email ?? prev.email,
           username: authUser.username ?? prev.username,
-          firstName: authUser.firstName ?? prev.firstName,
-          lastName: authUser.lastName ?? prev.lastName,
-        };
-      };
+        }
+        const fn = coalesceTrimmed(
+          authUser.firstName,
+          authUser.first_name,
+          merged.firstName,
+          merged.first_name,
+          prev.firstName,
+          prev.first_name
+        )
+        const ln = coalesceTrimmed(
+          authUser.lastName,
+          authUser.last_name,
+          merged.lastName,
+          merged.last_name,
+          prev.lastName,
+          prev.last_name
+        )
+        return {
+          ...merged,
+          ...(fn ? { firstName: fn } : {}),
+          ...(ln ? { lastName: ln } : {}),
+        }
+      }
 
       // Prefer custom /api/auth/me — returns firstName/lastName from DB (same as login)
       try {
@@ -259,13 +289,25 @@ class AuthService {
                 const extData = await extRes.json();
                 const ext = flattenUser(extData.user || extData);
                 if (ext && typeof ext === 'object') {
+                  const fn = coalesceTrimmed(
+                    merged.firstName,
+                    merged.first_name,
+                    ext.firstName,
+                    ext.first_name
+                  )
+                  const ln = coalesceTrimmed(
+                    merged.lastName,
+                    merged.last_name,
+                    ext.lastName,
+                    ext.last_name
+                  )
                   const enriched = {
                     ...merged,
                     ...ext,
-                    firstName: merged.firstName ?? ext.firstName,
-                    lastName: merged.lastName ?? ext.lastName,
                     email: merged.email ?? ext.email,
-                  };
+                    ...(fn ? { firstName: fn } : {}),
+                    ...(ln ? { lastName: ln } : {}),
+                  }
                   localStorage.setItem('auth-user', JSON.stringify(enriched));
                   return enriched;
                 }

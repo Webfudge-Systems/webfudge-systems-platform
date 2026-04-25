@@ -1,61 +1,400 @@
 'use client'
 
-import { Tabs } from '@webfudge/ui'
-import DashboardTab, { KpiCards } from './components/DashboardTab'
-import QuickActionsWidget from './components/QuickActionsWidget'
-import ActivityFeedWidget from './components/ActivityFeedWidget'
-import BooksGettingStartedPanel from './components/BooksGettingStartedPanel'
-import BooksAnnouncementsPanel from './components/BooksAnnouncementsPanel'
-import BooksRecentUpdatesPanel from './components/BooksRecentUpdatesPanel'
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Briefcase, Coins, Cpu, Plane, ShoppingBag, Smartphone, Sparkles, TrendingUp, Wallet } from 'lucide-react'
+import { formatCurrency } from '@webfudge/utils'
+import {
+  BooksChartViewSwitcher,
+  FintechMetricsQuad,
+  MonthlySpendingLimitCard,
+  RecentActivitiesTable,
+  StackedBankCards,
+  TotalBalanceCard,
+} from '@webfudge/ui/book-components'
+import type { ActivityTableRow, AnalyticsAreaPoint, ProfitLossMonth } from '@webfudge/ui/book-components'
 import { booksApi } from '@/lib/api'
-import type { Expense, Invoice, TimeEntry } from '@/lib/types'
+import type { Customer, Expense, Invoice, InvoiceStatus, TimeEntry } from '@/lib/types'
+
+const DEFAULT_MONTHLY_SPEND_LIMIT = 0
+
+const ACTIVITY_ICONS = [Smartphone, Plane, ShoppingBag, Sparkles, Cpu] as const
+
+/** Map MoM trend to KPICard `change` / `changeType` (CRM-style footer). */
+function trendToKpiProps(
+  trend: { text: string; up: boolean },
+  /** Payables: higher spend → red (treat like "decrease" sentiment in UI). */
+  invertSentiment?: boolean
+): {
+  change?: string
+  changeType: 'increase' | 'decrease'
+  subtitle?: string
+} {
+  const t = trend.text.trim()
+  if (!t.includes('%')) {
+    return { subtitle: t || '—', changeType: 'increase' }
+  }
+  const m = t.match(/↑\s*(\d+)|↓\s*(\d+)/)
+  const pct = m ? (m[1] ?? m[2] ?? '0') : '0'
+  const arrowUp = t.includes('↑')
+  const changeStr = arrowUp ? `+${pct}%` : `-${pct}%`
+  let changeType: 'increase' | 'decrease' = arrowUp ? 'increase' : 'decrease'
+  if (invertSentiment) changeType = arrowUp ? 'decrease' : 'increase'
+  return { change: changeStr, changeType }
+}
+
+function sumInvoicedInMonth(invoices: Invoice[], y: number, month: number) {
+  return invoices.reduce((sum, inv) => {
+    if (!inv.date) return sum
+    const d = new Date(inv.date)
+    if (d.getFullYear() !== y || d.getMonth() !== month) return sum
+    return sum + (inv.total ?? 0)
+  }, 0)
+}
+
+function sumExpensesInMonth(expenses: Expense[], y: number, month: number) {
+  return expenses.reduce((sum, e) => {
+    if (!e.date) return sum
+    const d = new Date(e.date)
+    if (d.getFullYear() !== y || d.getMonth() !== month) return sum
+    return sum + (e.amount ?? 0)
+  }, 0)
+}
+
+function countInvoicesInMonth(invoices: Invoice[], y: number, month: number) {
+  return invoices.filter((inv) => {
+    if (!inv.date) return false
+    const d = new Date(inv.date)
+    return d.getFullYear() === y && d.getMonth() === month
+  }).length
+}
+
+function monthTrendLabel(current: number, previous: number): { text: string; up: boolean } {
+  if (previous === 0 && current === 0) return { text: '— This month', up: true }
+  if (previous === 0) return { text: '↑ 100% This month', up: true }
+  const raw = ((current - previous) / previous) * 100
+  const pct = Math.min(999, Math.round(Math.abs(raw)))
+  const up = raw >= 0
+  return { text: `${up ? '↑' : '↓'} ${pct}% This month`, up }
+}
+
+function buildAnalyticsAreaMonthly(invoices: Invoice[]): AnalyticsAreaPoint[] {
+  const result: AnalyticsAreaPoint[] = []
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() - i)
+    const y = d.getFullYear()
+    const m = d.getMonth()
+    const label = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+    let amount = 0
+    for (const inv of invoices) {
+      if (!inv.date) continue
+      const dt = new Date(inv.date)
+      if (dt.getFullYear() === y && dt.getMonth() === m) amount += inv.total ?? 0
+    }
+    result.push({ month: label, amount })
+  }
+  return result
+}
+
+function buildProfitLossMonthly(invoices: Invoice[], expenses: Expense[]): ProfitLossMonth[] {
+  const result: ProfitLossMonth[] = []
+  for (let i = 7; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() - i)
+    const y = d.getFullYear()
+    const m = d.getMonth()
+    const label = d.toLocaleDateString('en-US', { month: 'short' })
+    let profit = 0
+    let loss = 0
+    for (const inv of invoices) {
+      if (!inv.date) continue
+      const dt = new Date(inv.date)
+      if (dt.getFullYear() === y && dt.getMonth() === m) profit += inv.total ?? 0
+    }
+    for (const e of expenses) {
+      if (!e.date) continue
+      const dt = new Date(e.date)
+      if (dt.getFullYear() === y && dt.getMonth() === m) loss += e.amount ?? 0
+    }
+    result.push({ month: label, profit, loss })
+  }
+  return result
+}
+
+function mapInvoiceActivityStatus(status: InvoiceStatus): ActivityTableRow['status'] {
+  if (status === 'Paid') return 'completed'
+  if (status === 'Partial' || status === 'Sent' || status === 'Viewed') return 'in_progress'
+  return 'pending'
+}
+
+function formatOrderId(number: string) {
+  const n = String(number || '').trim()
+  if (/^inv[_-]/i.test(n)) return n.replace(/-/g, '_').toUpperCase()
+  return `INV_${n.replace(/\s+/g, '_')}`.toUpperCase()
+}
+
+function formatActivityRowDate(dateStr: string, fallback?: string) {
+  const d = new Date(dateStr || fallback || '')
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+}
+
+function formatDueDateLabel(dateStr: string) {
+  const d = new Date(dateStr || '')
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
 export default function HomePage() {
+  const router = useRouter()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
-
+  const [customers, setCustomers] = useState<Customer[]>([])
   useEffect(() => {
     booksApi.fetchInvoices().then((res) => setInvoices(res.data ?? [])).catch(() => setInvoices([]))
     booksApi.fetchExpenses().then((res) => setExpenses(res.data ?? [])).catch(() => setExpenses([]))
     booksApi.fetchTimeEntries().then((res) => setTimeEntries(res.data ?? [])).catch(() => setTimeEntries([]))
+    booksApi.fetchCustomers().then((res) => setCustomers(res.data ?? [])).catch(() => setCustomers([]))
   }, [])
+
+  const customerNameById = useMemo(() => {
+    const m = new Map<number, string>()
+    for (const c of customers) {
+      const label = (c.company && c.company.trim()) || c.name || `Customer #${c.id}`
+      m.set(c.id, label)
+    }
+    return m
+  }, [customers])
 
   const metrics = useMemo(() => {
     const totalReceivables = invoices.reduce((sum, invoice) => sum + (invoice.balanceDue ?? invoice.total ?? 0), 0)
     const totalPayables = expenses.reduce((sum, expense) => sum + (expense.amount ?? 0), 0)
-    const unbilledHours = timeEntries.filter((item) => item.billable && !item.invoiced).reduce((sum, item) => sum + item.hours, 0)
+    const totalInvoiced = invoices.reduce((sum, inv) => sum + (inv.total ?? 0), 0)
+    const unbilledHours = timeEntries
+      .filter((item) => item.billable && !item.invoiced)
+      .reduce((sum, item) => sum + item.hours, 0)
     const unbilledExpenses = expenses.filter((item) => item.billable).reduce((sum, item) => sum + item.amount, 0)
-    return { totalReceivables, totalPayables, unbilledHours, unbilledExpenses }
+    return { totalReceivables, totalPayables, totalInvoiced, unbilledHours, unbilledExpenses }
   }, [expenses, invoices, timeEntries])
 
+  const spentThisMonth = useMemo(() => {
+    const now = new Date()
+    return expenses.reduce((sum, e) => {
+      if (!e.date) return sum
+      const d = new Date(e.date)
+      if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return sum
+      return sum + (e.amount ?? 0)
+    }, 0)
+  }, [expenses])
+
+  /** When no explicit limit is configured, derive a display cap so the gauge remains meaningful. */
+  const monthlySpendLimitDisplay = useMemo(() => {
+    if (DEFAULT_MONTHLY_SPEND_LIMIT > 0) return DEFAULT_MONTHLY_SPEND_LIMIT
+    if (spentThisMonth <= 0) return 0
+    return Math.max(Math.ceil(spentThisMonth * 1.15), 1000)
+  }, [spentThisMonth])
+
+  const chartData = useMemo(() => buildProfitLossMonthly(invoices, expenses), [expenses, invoices])
+  const analyticsAreaData = useMemo(() => buildAnalyticsAreaMonthly(invoices), [invoices])
+
+  const netPosition = useMemo(
+    () => Math.max(0, metrics.totalReceivables - metrics.totalPayables),
+    [metrics.totalPayables, metrics.totalReceivables]
+  )
+
+  const conversionDisplay = useMemo(() => {
+    if (invoices.length === 0) return '—'
+    const paid = invoices.filter((i) => i.status === 'Paid').length
+    return `${((paid / invoices.length) * 100).toFixed(2)}%`
+  }, [invoices])
+
+  const wallets = useMemo(
+    () => [
+      {
+        code: 'INR',
+        balanceLabel: formatCurrency(metrics.totalReceivables, 'INR', 'en-IN'),
+        limitLabel: 'Primary',
+        active: true,
+      },
+      {
+        code: 'USD',
+        balanceLabel: formatCurrency(0, 'USD', 'en-US'),
+        limitLabel: 'Operating',
+        active: true,
+      },
+      {
+        code: 'EUR',
+        balanceLabel: formatCurrency(0, 'EUR', 'de-DE'),
+        limitLabel: 'Reserve',
+        active: false,
+      },
+    ],
+    [metrics.totalReceivables]
+  )
+
+  const activityRows: ActivityTableRow[] = useMemo(() => {
+    const sorted = [...invoices].sort((a, b) => {
+      const ta = new Date(a.date || a.updatedAt || 0).getTime()
+      const tb = new Date(b.date || b.updatedAt || 0).getTime()
+      return tb - ta
+    })
+    return sorted.slice(0, 12).map((inv, i) => {
+      const line = inv.lineItems?.[0]
+      const label = (line?.description && line.description.trim()) || 'Invoice'
+      const Icon = ACTIVITY_ICONS[i % ACTIVITY_ICONS.length]
+      const balanceDue = inv.balanceDue ?? inv.total ?? 0
+      const balanceLabel =
+        inv.status === 'Paid' ? '—' : formatCurrency(Math.max(0, balanceDue))
+      return {
+        id: String(inv.id),
+        orderId: formatOrderId(inv.number),
+        activityLabel: label,
+        Icon,
+        priceLabel: formatCurrency(inv.total ?? 0),
+        status: mapInvoiceActivityStatus(inv.status),
+        dateLabel: formatActivityRowDate(inv.date, inv.updatedAt),
+        customerLabel: customerNameById.get(inv.customerId) ?? `Customer #${inv.customerId}`,
+        dueDateLabel: formatDueDateLabel(inv.dueDate),
+        balanceLabel,
+      }
+    })
+  }, [customerNameById, invoices])
+
+  const booksHomeFintechMetrics = useMemo(() => {
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = now.getMonth()
+    const prev = new Date(y, m - 1)
+    const py = prev.getFullYear()
+    const pm = prev.getMonth()
+
+    const invThis = sumInvoicedInMonth(invoices, y, m)
+    const invLast = sumInvoicedInMonth(invoices, py, pm)
+    const expThis = sumExpensesInMonth(expenses, y, m)
+    const expLast = sumExpensesInMonth(expenses, py, pm)
+    const cntThis = countInvoicesInMonth(invoices, y, m)
+    const cntLast = countInvoicesInMonth(invoices, py, pm)
+    const netThis = invThis - expThis
+    const netLast = invLast - expLast
+
+    const invTrend = monthTrendLabel(invThis, invLast)
+    const expTrend = monthTrendLabel(expThis, expLast)
+    const cntTrend = monthTrendLabel(cntThis, cntLast)
+    const netTrend = monthTrendLabel(netThis, netLast)
+
+    const a = trendToKpiProps(invTrend, false)
+    const b = trendToKpiProps(expTrend, true)
+    const c = trendToKpiProps(cntTrend, false)
+    const d = trendToKpiProps(netTrend, false)
+
+    return [
+      {
+        title: 'Total receivables',
+        value: formatCurrency(metrics.totalReceivables),
+        icon: Wallet,
+        ...a,
+      },
+      {
+        title: 'Total payables',
+        value: formatCurrency(metrics.totalPayables),
+        icon: Briefcase,
+        ...b,
+      },
+      {
+        title: 'This month billing',
+        value: formatCurrency(invThis),
+        icon: Coins,
+        ...c,
+      },
+      {
+        title: 'Net position',
+        value: formatCurrency(netPosition),
+        icon: TrendingUp,
+        ...d,
+      },
+    ].map((row, index) => ({
+      title: row.title,
+      value: row.value,
+      icon: row.icon,
+      trendLabel: row.change ?? row.subtitle ?? '—',
+      trendDirection: (row.changeType === 'increase' ? 'up' : 'down') as 'up' | 'down',
+      highlight: false,
+    }))
+  }, [expenses, invoices, metrics.totalPayables, metrics.totalReceivables, netPosition])
+
   return (
-    <div className="-mx-4 min-h-full space-y-4 bg-slate-50 px-4 pb-8">
-      <KpiCards metrics={metrics} />
-      <Tabs
-        variant="default"
-        tabs={[
-          {
-            id: 'dashboard',
-            label: 'Dashboard',
-            content: (
-              <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
-                <div className="space-y-6 xl:col-span-2">
-                  <DashboardTab hideKpis />
-                </div>
-                <div className="space-y-6">
-                  <QuickActionsWidget />
-                  <ActivityFeedWidget />
-                </div>
-              </div>
-            ),
-          },
-          { id: 'getting-started', label: 'Getting Started', content: <BooksGettingStartedPanel /> },
-          { id: 'announcements', label: 'Announcements', content: <BooksAnnouncementsPanel /> },
-          { id: 'recent-updates', label: 'Recent Updates', content: <BooksRecentUpdatesPanel /> },
-        ]}
-      />
+    <div className="-mx-4 min-h-full space-y-6 px-4 pb-8 md:-mx-6 md:px-6">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
+        {/* Left rail */}
+        <div className="flex min-h-0 flex-col gap-6 xl:col-span-4">
+          <TotalBalanceCard
+            className="h-[340px] w-full"
+            balanceLabel={formatCurrency(netPosition)}
+            trendLabel="+ 5% than last month"
+            trendPositive
+            wallets={wallets}
+            showWallets={false}
+            onTransfer={() => router.push('/banking')}
+            onRequest={() => router.push('/sales/invoices')}
+          />
+          <MonthlySpendingLimitCard
+            className="w-full"
+            spent={spentThisMonth}
+            limit={monthlySpendLimitDisplay}
+            spentLabel={formatCurrency(spentThisMonth)}
+            limitLabel={
+              monthlySpendLimitDisplay > 0
+                ? formatCurrency(monthlySpendLimitDisplay)
+                : formatCurrency(0)
+            }
+          />
+          <StackedBankCards
+            className="w-full"
+            showCardIcon
+            onAddNew={() => router.push('/banking')}
+            addNewLabel="Add new"
+          />
+        </div>
+
+        {/* Main canvas: top metrics + analytics, bottom recent activities */}
+        <div className="grid min-h-0 min-w-0 grid-cols-1 gap-6 xl:col-span-8 xl:grid-cols-12">
+          <div className="min-h-0 min-w-0 xl:col-span-5">
+            <FintechMetricsQuad className="h-[340px]" items={booksHomeFintechMetrics} />
+          </div>
+          <div className="flex min-h-0 min-w-0 xl:col-span-7">
+            <BooksChartViewSwitcher
+              className="h-[340px] w-full"
+              salesValue={formatCurrency(metrics.totalInvoiced)}
+              conversionValue={conversionDisplay}
+              analyticsData={analyticsAreaData}
+              profitLossData={chartData}
+              defaultView="pl"
+              lockView
+              plHeaderTitle="Total Income"
+              plSubtitle="View your income in a certain period of time"
+              sectionTitle="Profit and Loss"
+            />
+          </div>
+          <div className="min-h-0 min-w-0 xl:col-span-12">
+            <RecentActivitiesTable className="min-h-[760px] w-full" rows={activityRows} searchPlaceholder="Search..." />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

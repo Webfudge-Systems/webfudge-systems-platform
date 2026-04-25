@@ -1,0 +1,12 @@
+{
+  "attributes": {
+    "firstName": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "lastName": {
+      "type": "string",
+      "maxLength": 80
+    }
+  }
+}

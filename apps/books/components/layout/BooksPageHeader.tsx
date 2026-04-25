@@ -4,15 +4,13 @@ import type { ReactNode } from 'react'
 import { WorkspaceHeader } from '@webfudge/ui'
 import notificationService from '@/lib/notificationService'
 
-const BOOKS_SEARCH_INPUT_CLASS =
-  'w-64 pl-10 pr-4 py-2.5 bg-white border border-orange-500/40 rounded-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all duration-300 placeholder:text-gray-400 text-gray-800'
-
 type BreadcrumbItem = string | { label: string; href: string }
 
 type BooksPageHeaderProps = {
   title: string
-  subtitle: string
+  subtitle: ReactNode
   breadcrumb?: BreadcrumbItem[]
+  showBreadcrumb?: boolean
   showSearch?: boolean
   showActions?: boolean
   showProfile?: boolean
@@ -32,6 +30,7 @@ export default function BooksPageHeader({
   title,
   subtitle,
   breadcrumb = [],
+  showBreadcrumb = true,
   showSearch = false,
   showActions = false,
   showProfile = true,
@@ -51,6 +50,7 @@ export default function BooksPageHeader({
       title={title}
       subtitle={subtitle}
       breadcrumb={breadcrumb}
+      showBreadcrumb={showBreadcrumb}
       showSearch={showSearch}
       showActions={showActions}
       showProfile={showProfile}
@@ -63,7 +63,6 @@ export default function BooksPageHeader({
       onShareImageClick={onShareImageClick}
       hasActiveFilters={hasActiveFilters}
       actions={actions}
-      searchInputClassName={BOOKS_SEARCH_INPUT_CLASS}
       notificationService={notificationService}
     >
       {children}

@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Card, KPICard, Select } from '@webfudge/ui'
+import { Card, Select } from '@webfudge/ui'
 import { Banknote, Clock3, Receipt, Wallet } from 'lucide-react'
 import { booksApi } from '@/lib/api'
 import type { BankAccount, Expense, Invoice, Project, TimeEntry } from '@/lib/types'
 import { formatCurrency } from '@webfudge/utils'
 import BooksFinancialCharts from './BooksFinancialCharts'
+import { BooksKPICard } from '@webfudge/ui/book-components'
 
 export default function BooksSystemAnalytics() {
   const [timeRange, setTimeRange] = useState<'this_fiscal_year' | 'previous_fiscal_year' | 'last_12_months'>('this_fiscal_year')
@@ -98,19 +99,17 @@ export default function BooksSystemAnalytics() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-2">
-        <KPICard
+        <BooksKPICard
           title="Total Receivables"
           value={formatCurrency(displayKpis.totalReceivables)}
           subtitle={zeroMode ? '0 for selected range' : 'Current + overdue'}
           icon={Receipt}
-          colorScheme="orange"
         />
-        <KPICard
+        <BooksKPICard
           title="Total Payables"
           value={formatCurrency(displayKpis.totalPayables)}
           subtitle={zeroMode ? '0 for selected range' : 'Current + overdue'}
           icon={Wallet}
-          colorScheme="orange"
         />
       </div>
 
@@ -119,7 +118,7 @@ export default function BooksSystemAnalytics() {
           <Select
             value={timeRange}
             options={timeRangeOptions}
-            onChange={(v) => setTimeRange(v as typeof timeRange)}
+            onChange={(v: string) => setTimeRange(v as typeof timeRange)}
           />
         </div>
       </div>
@@ -127,38 +126,42 @@ export default function BooksSystemAnalytics() {
       <BooksFinancialCharts timeRange={timeRange} />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <Card variant="elevated" padding={false} className="p-4">
+        <Card
+          variant="elevated"
+          padding={false}
+          className="p-4 !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]"
+        >
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-900">Projects</h3>
+            <h3 className="text-sm font-medium text-[var(--books-text-primary,#111827)]">Projects</h3>
           </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-gray-600">
+              <span className="flex items-center gap-2 text-[var(--books-text-secondary,#6b7280)]">
                 <Clock3 className="h-4 w-4" />
                 Unbilled Hours
               </span>
-              <span className="font-medium text-gray-900">{displayKpis.unbilledHours.toFixed(1)}h</span>
+              <span className="font-medium text-[var(--books-text-primary,#111827)]">{displayKpis.unbilledHours.toFixed(1)}h</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-2 text-gray-600">
+              <span className="flex items-center gap-2 text-[var(--books-text-secondary,#6b7280)]">
                 <Banknote className="h-4 w-4" />
                 Unbilled Expenses
               </span>
-              <span className="font-medium text-gray-900">{formatCurrency(displayKpis.unbilledExpenses)}</span>
+              <span className="font-medium text-[var(--books-text-primary,#111827)]">{formatCurrency(displayKpis.unbilledExpenses)}</span>
             </div>
           </div>
 
           <div className="mt-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Project list</h4>
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--books-text-tertiary,#9ca3af)]">Project list</h4>
             {topProjects.length === 0 ? (
-              <div className="text-xs text-gray-500 py-4 text-center">No projects yet</div>
+              <div className="py-4 text-center text-xs text-[var(--books-text-tertiary,#9ca3af)]">No projects yet</div>
             ) : (
               <div className="space-y-2">
                 {topProjects.map((p) => (
                   <div key={p.id} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="min-w-0 truncate text-gray-700">{p.name}</span>
-                    <span className="text-xs text-gray-500">{p.status}</span>
+                    <span className="min-w-0 truncate text-[var(--books-text-secondary,#4b5563)]">{p.name}</span>
+                    <span className="text-xs text-[var(--books-text-tertiary,#9ca3af)]">{p.status}</span>
                   </div>
                 ))}
               </div>
@@ -166,19 +169,23 @@ export default function BooksSystemAnalytics() {
           </div>
         </Card>
 
-        <Card variant="elevated" padding={false} className="p-4">
+        <Card
+          variant="elevated"
+          padding={false}
+          className="p-4 !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]"
+        >
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-900">Bank and Credit Cards</h3>
+            <h3 className="text-sm font-medium text-[var(--books-text-primary,#111827)]">Bank and Credit Cards</h3>
           </div>
 
           <div className="space-y-2">
             {topBankAccounts.length === 0 ? (
-              <div className="text-xs text-gray-500 py-4 text-center">No bank accounts yet</div>
+              <div className="py-4 text-center text-xs text-[var(--books-text-tertiary,#9ca3af)]">No bank accounts yet</div>
             ) : (
               topBankAccounts.map((acc) => (
                 <div key={acc.id} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="min-w-0 truncate text-gray-700">{acc.name}</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(zeroMode ? 0 : acc.balance ?? 0)}</span>
+                  <span className="min-w-0 truncate text-[var(--books-text-secondary,#4b5563)]">{acc.name}</span>
+                  <span className="font-medium text-[var(--books-text-primary,#111827)]">{formatCurrency(zeroMode ? 0 : acc.balance ?? 0)}</span>
                 </div>
               ))
             )}

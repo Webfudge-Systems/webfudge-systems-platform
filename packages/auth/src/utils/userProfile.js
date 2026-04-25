@@ -11,6 +11,46 @@ export function flattenUser(user) {
   return user
 }
 
+function looksLikeEmail(str) {
+  if (typeof str !== 'string') return false
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str.trim())
+}
+
+/** Strapi / REST may use camelCase or snake_case; merge with flattened `attributes`. */
+function pickFirstName(u) {
+  if (!u) return ''
+  const v = u.firstName ?? u.first_name ?? u.given_name
+  return v != null ? String(v).trim() : ''
+}
+
+function pickLastName(u) {
+  if (!u) return ''
+  const v = u.lastName ?? u.last_name ?? u.family_name
+  return v != null ? String(v).trim() : ''
+}
+
+/**
+ * Greeting / welcome line: DB firstName + lastName only, then a plain full name.
+ * Never uses email, username-as-email, or Strapi "name" when it equals an email.
+ * @param {object|null|undefined} user
+ * @returns {string}
+ */
+export function resolveUserGreetingName(user) {
+  const u = flattenUser(user)
+  if (!u) return 'User'
+  const fn = pickFirstName(u)
+  const ln = pickLastName(u)
+  if (fn || ln) return [fn, ln].filter(Boolean).join(' ')
+
+  const name = u.name != null ? String(u.name).trim() : ''
+  if (name && !looksLikeEmail(name)) return name
+
+  const username = u.username != null ? String(u.username).trim() : ''
+  if (username && !looksLikeEmail(username)) return username
+
+  return 'User'
+}
+
 /**
  * Display name: prefer DB first + last name, then name, username, email local part.
  * @param {object|null|undefined} user
@@ -19,11 +59,13 @@ export function flattenUser(user) {
 export function resolveUserDisplayName(user) {
   const u = flattenUser(user)
   if (!u) return 'User'
-  const fn = (u.firstName != null ? String(u.firstName) : '').trim()
-  const ln = (u.lastName != null ? String(u.lastName) : '').trim()
+  const fn = pickFirstName(u)
+  const ln = pickLastName(u)
   if (fn || ln) return [fn, ln].filter(Boolean).join(' ')
-  if (u.name && String(u.name).trim()) return String(u.name).trim()
-  if (u.username && String(u.username).trim()) return String(u.username).trim()
+  const name = u.name != null ? String(u.name).trim() : ''
+  if (name && !looksLikeEmail(name)) return name
+  const username = u.username != null ? String(u.username).trim() : ''
+  if (username && !looksLikeEmail(username)) return username
   if (u.email) return u.email.split('@')[0]
   return 'User'
 }
@@ -36,8 +78,8 @@ export function resolveUserDisplayName(user) {
 export function resolveUserInitials(user) {
   const u = flattenUser(user)
   if (!u) return 'U'
-  const fn = (u.firstName != null ? String(u.firstName) : '').trim()
-  const ln = (u.lastName != null ? String(u.lastName) : '').trim()
+  const fn = pickFirstName(u)
+  const ln = pickLastName(u)
   if (fn && ln) return (fn.charAt(0) + ln.charAt(0)).toUpperCase()
   if (fn.length >= 2) return fn.slice(0, 2).toUpperCase()
   if (fn.length === 1 && ln) return (fn.charAt(0) + ln.charAt(0)).toUpperCase()

@@ -3,7 +3,15 @@
 import type { ReactNode } from 'react'
 import { useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Button, Card, KPICard, Modal, Table, TableEmptyBelow, TableResultsCount, TabsWithActions } from '@webfudge/ui'
+import { Button, Modal, TabsWithActions } from '@webfudge/ui'
+import {
+  BooksDataTable,
+  BooksKPICard,
+  BooksListTableCard,
+  BooksTableEmptyBelow,
+  BooksTableResultsCount,
+  booksToolbarSearchInputClassName,
+} from '@webfudge/ui/book-components'
 import { Plus } from 'lucide-react'
 import { useBooksTableColumnPicker } from '@/app/_components/BooksTableColumnPicker'
 
@@ -101,16 +109,15 @@ export default function BooksAccountantListShell<T extends Record<string, any>>(
   }
 
   return (
-    <div className="space-y-6 bg-white min-h-full">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="min-h-full space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi, idx) => (
-          <KPICard
+          <BooksKPICard
             key={idx}
             title={kpi.title}
             value={kpi.value}
             subtitle={kpi.subtitle}
             icon={kpi.icon}
-            colorScheme={(kpi.colorScheme as any) ?? 'orange'}
           />
         ))}
       </div>
@@ -137,51 +144,54 @@ export default function BooksAccountantListShell<T extends Record<string, any>>(
           showExport={true}
           onExportClick={exportCsv}
           exportTitle="Export"
-          variant="modern"
+          variant="booksModern"
+          searchInputClassName={booksToolbarSearchInputClassName}
         />
         {columnPickerDropdown}
       </div>
 
-      <TableResultsCount count={filtered.length} />
+      <BooksTableResultsCount count={filtered.length} />
 
-      <Card className="p-0 overflow-hidden border border-gray-200" padding={false}>
-        <Table
-          columns={visibleColumns.length ? visibleColumns : columns}
-          data={filtered}
+      <BooksListTableCard>
+        <BooksDataTable
+          columns={(visibleColumns.length ? visibleColumns : columns) as any}
+          data={filtered as Record<string, unknown>[]}
           keyField={keyField}
-          variant="modern"
+          layout="list"
           onRowClick={
             onRowClickHref
-              ? (row: any) => {
-                  const href = onRowClickHref(row)
+              ? (row) => {
+                  const href = onRowClickHref(row as T)
                   if (href) router.push(href)
                 }
               : undefined
           }
         />
 
-        {filtered.length === 0 && (
-          <TableEmptyBelow
-            className="border-t border-gray-200"
+        {filtered.length === 0 ? (
+          <BooksTableEmptyBelow
+            className="border-t border-[color:var(--books-border,rgba(0,0,0,0.08))]"
             icon={EmptyIcon}
             title={emptyTitle}
             description={emptyDescription}
             action={
               addHref ? (
                 <Button variant="primary" onClick={() => router.push(addHref)}>
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="mr-2 h-4 w-4" />
                   {addLabel}
                 </Button>
               ) : null
             }
           />
-        )}
-      </Card>
+        ) : null}
+      </BooksListTableCard>
 
       <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filters" size="lg">
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">Filter UI is being aligned with CRM. This modal confirms the filter action is working.</p>
-          <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+          <p className="text-sm text-[var(--books-text-secondary,#6b7280)]">
+            Filter UI is being aligned with CRM. This modal confirms the filter action is working.
+          </p>
+          <div className="flex justify-end gap-2 border-t border-[color:var(--books-border)] pt-4">
             <Button variant="muted" onClick={() => setFilterOpen(false)}>
               Close
             </Button>

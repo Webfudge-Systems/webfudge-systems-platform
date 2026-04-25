@@ -1,5 +1,5 @@
-import ModulePage from '@/app/_components/ModulePage'
+import BankingOverview from './BankingOverview'
 
 export default function BankingPage() {
-  return <ModulePage title="Banking Overview" subtitle="Accounts, balances, and uncategorized transactions." />
+  return <BankingOverview />
 }

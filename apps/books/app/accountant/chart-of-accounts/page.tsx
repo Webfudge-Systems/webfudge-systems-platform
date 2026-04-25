@@ -1,8 +1,8 @@
 'use client'
 
-import { Card } from '@webfudge/ui'
 import { BarChart3, FileText, Receipt, Wallet } from 'lucide-react'
 import BooksAccountantListShell from '../_components/BooksAccountantListShell'
+import BooksChartPlaceholderCard from '../_components/BooksChartPlaceholderCard'
 
 export default function ChartOfAccountsPage() {
   return (
@@ -24,20 +24,8 @@ export default function ChartOfAccountsPage() {
       onTabChange={() => {}}
       topBlocks={
         <>
-          <Card variant="elevated" padding={false} className="p-5">
-            <h3 className="text-base font-semibold text-gray-900">Balances by Type</h3>
-            <p className="text-sm text-gray-600 mt-1">Chart will appear here when connected to backend</p>
-            <div className="mt-4 h-44 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-sm text-gray-500">
-              0 data
-            </div>
-          </Card>
-          <Card variant="elevated" padding={false} className="p-5">
-            <h3 className="text-base font-semibold text-gray-900">Top Accounts</h3>
-            <p className="text-sm text-gray-600 mt-1">Chart will appear here when connected to backend</p>
-            <div className="mt-4 h-44 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-sm text-gray-500">
-              0 data
-            </div>
-          </Card>
+          <BooksChartPlaceholderCard title="Balances by Type" />
+          <BooksChartPlaceholderCard title="Top Accounts" />
         </>
       }
       columns={[

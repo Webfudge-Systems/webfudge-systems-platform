@@ -21,12 +21,14 @@ import {
 } from 'lucide-react'
 import { useAuth, resolveUserDisplayName, resolveUserInitials, resolveUserRole } from '@webfudge/auth'
 import { Avatar, Card } from '../index'
+import { Input, workspaceSearchInputClassName } from '../Input'
 import LoadingSpinner from '../../feedback/LoadingSpinner'
 
 export function WorkspaceHeader({
   title,
   subtitle,
   breadcrumb = [],
+  showBreadcrumb = true,
   showSearch = false,
   showActions = false,
   showProfile = true,
@@ -135,8 +137,9 @@ export function WorkspaceHeader({
     }
   }
 
-  const breadcrumbItems =
-    breadcrumb.length > 0
+  const breadcrumbItems = !showBreadcrumb
+    ? []
+    : breadcrumb.length > 0
       ? breadcrumb.map((item) => {
           if (typeof item === 'string') {
             const segments = pathname.split('/').filter(Boolean)
@@ -162,9 +165,7 @@ export function WorkspaceHeader({
     actionButtonClassName ||
     'p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg'
 
-  const resolvedSearchClass =
-    searchInputClassName ||
-    'w-64 pl-10 pr-4 py-2.5 bg-white border border-orange-500/40 rounded-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all duration-300 placeholder:text-gray-400 text-gray-800'
+  const resolvedSearchClass = searchInputClassName || workspaceSearchInputClassName
 
   return (
     <Card glass className="relative z-[40]">
@@ -186,16 +187,24 @@ export function WorkspaceHeader({
               ))}
             </div>
           )}
-          <h1 className="text-5xl font-light text-brand-foreground mb-1 tracking-tight">{title}</h1>
-          {subtitle ? <p className="text-brand-text-light">{subtitle}</p> : null}
+          {title ? (
+            <h1 className="text-5xl font-light text-brand-foreground mb-1 tracking-tight">{title}</h1>
+          ) : null}
+          {subtitle != null && subtitle !== '' ? (
+            typeof subtitle === 'string' ? (
+              <p className="text-brand-text-light">{subtitle}</p>
+            ) : (
+              subtitle
+            )
+          ) : null}
         </div>
 
         {(children || showSearch || showActions || actions) && (
           <div className="flex items-center gap-4 ml-4">
             {showSearch && (
-              <div className="relative hidden md:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+              <div className="hidden md:block shrink-0">
+                <Input
+                  icon={Search}
                   type="text"
                   placeholder={searchPlaceholder || 'Search... (⌘K)'}
                   value={searchInputValue}
@@ -210,6 +219,7 @@ export function WorkspaceHeader({
                       setShowGlobalSearch(true)
                     }
                   }}
+                  containerClassName="w-64 min-w-[16rem]"
                   className={resolvedSearchClass}
                 />
               </div>

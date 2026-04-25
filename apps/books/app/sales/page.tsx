@@ -1,8 +1,10 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@webfudge/ui'
 import { Clock3, CreditCard, FileText, Package, Receipt, Repeat, Truck, Users, Wallet } from 'lucide-react'
+import { isSalesHubModuleEnabled, readBooksFeaturesFromStorage } from '@/lib/books-features'
 
 const salesModules = [
   {
@@ -63,16 +65,33 @@ const salesModules = [
 
 export default function SalesPage() {
   const router = useRouter()
+  const [features, setFeatures] = useState<Record<string, unknown>>({})
+
+  useEffect(() => {
+    const refresh = () => setFeatures(readBooksFeaturesFromStorage())
+    refresh()
+    window.addEventListener('storage', refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.removeEventListener('storage', refresh)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [])
+
+  const visibleModules = useMemo(
+    () => salesModules.filter((m) => isSalesHubModuleEnabled(m.title, features)),
+    [features]
+  )
 
   return (
-    <div className="space-y-6 bg-white min-h-full">
+    <div className="min-h-full space-y-6 bg-white">
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Sales</h1>
-        <p className="text-sm text-gray-600 mt-1">Manage customers, estimates, invoices, and recurring billing.</p>
+        <p className="mt-1 text-sm text-gray-600">Manage customers, estimates, invoices, and recurring billing.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {salesModules.map((m) => {
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {visibleModules.map((m) => {
           const Icon = m.icon
           return (
             <Card

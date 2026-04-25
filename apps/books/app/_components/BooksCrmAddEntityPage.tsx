@@ -1,6 +1,6 @@
 'use client'
 
-import type { FormEvent, InputHTMLAttributes } from 'react'
+import type { ChangeEvent, FormEvent, InputHTMLAttributes } from 'react'
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AlertCircle, ArrowLeft, Save } from 'lucide-react'
@@ -155,7 +155,8 @@ export default function BooksCrmAddEntityPage({
                         type={field.inputType ?? 'text'}
                         error={errors[field.key]}
                         value={common.value}
-                        onChange={(e) => common.onChange(e.target.value)}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                          common.onChange(e.target.value)}
                       />
                     </div>
                   )
@@ -170,7 +171,7 @@ export default function BooksCrmAddEntityPage({
                         required={field.required}
                         error={errors[field.key]}
                         value={common.value}
-                        onChange={(v) => common.onChange(v)}
+                        onChange={(v: string) => common.onChange(v)}
                         options={field.options}
                       />
                     </div>
@@ -186,7 +187,8 @@ export default function BooksCrmAddEntityPage({
                       rows={field.rows ?? 3}
                       error={errors[field.key]}
                       value={common.value}
-                      onChange={(e) => common.onChange(e.target.value)}
+                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                        common.onChange(e.target.value)}
                     />
                   </div>
                 )

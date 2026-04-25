@@ -64,6 +64,58 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::organization.organization"
+    },
+    "billingMethod": {
+      "type": "enumeration",
+      "enum": ["hourly", "daily_rate_per_user", "fixed_cost", "based_on_tasks", "milestone", "non_billable"],
+      "default": "hourly"
+    },
+    "budgetAmount": {
+      "type": "integer",
+      "default": 0
+    },
+    "budgetType": {
+      "type": "enumeration",
+      "enum": ["hours", "amount"],
+      "default": "amount"
+    },
+    "hourlyRate": {
+      "type": "integer",
+      "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "INR"
+    },
+    "billableStatus": {
+      "type": "enumeration",
+      "enum": ["billable", "non_billable"],
+      "default": "billable"
+    },
+    "totalLoggedHours": {
+      "type": "decimal",
+      "default": 0
+    },
+    "billableHours": {
+      "type": "decimal",
+      "default": 0
+    },
+    "unbilledAmount": {
+      "type": "integer",
+      "default": 0
+    },
+    "projectCode": {
+      "type": "string"
+    },
+    "booksStatus": {
+      "type": "enumeration",
+      "enum": ["active", "completed", "archived"],
+      "default": "active"
+    },
+    "customer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::contact.contact"
     }
   }
 }

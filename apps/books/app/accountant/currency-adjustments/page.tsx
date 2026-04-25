@@ -1,8 +1,8 @@
 'use client'
 
-import { Card } from '@webfudge/ui'
 import { Banknote, FileText, TrendingUp, Users } from 'lucide-react'
 import BooksAccountantListShell from '../_components/BooksAccountantListShell'
+import BooksChartPlaceholderCard from '../_components/BooksChartPlaceholderCard'
 
 export default function CurrencyAdjustmentsPage() {
   return (
@@ -22,20 +22,8 @@ export default function CurrencyAdjustmentsPage() {
       onTabChange={() => {}}
       topBlocks={
         <>
-          <Card variant="elevated" padding={false} className="p-5">
-            <h3 className="text-base font-semibold text-gray-900">Exchange Difference Trend</h3>
-            <p className="text-sm text-gray-600 mt-1">Chart will appear here when connected to backend</p>
-            <div className="mt-4 h-44 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-sm text-gray-500">
-              0 data
-            </div>
-          </Card>
-          <Card variant="elevated" padding={false} className="p-5">
-            <h3 className="text-base font-semibold text-gray-900">Adjustments by Currency</h3>
-            <p className="text-sm text-gray-600 mt-1">Chart will appear here when connected to backend</p>
-            <div className="mt-4 h-44 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-sm text-gray-500">
-              0 data
-            </div>
-          </Card>
+          <BooksChartPlaceholderCard title="Exchange Difference Trend" />
+          <BooksChartPlaceholderCard title="Adjustments by Currency" />
         </>
       }
       columns={[

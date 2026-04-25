@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Finance dashboard widget</title>
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --surface: #ffffff;
+        --border: #e8eaed;
+        --text: #1a1d21;
+        --muted: #6b7280;
+        --orange: #ea580c;
+        --profit: #d85a30;
+        --loss: #2c2c2a;
+        --red-badge-bg: #fef2f2;
+        --red-badge-text: #b91c1c;
+        --green-badge-bg: #ecfdf5;
+        --green-badge-text: #047857;
+        --radius: 12px;
+        --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        padding: clamp(12px, 3vw, 24px);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .widget {
+        max-width: 720px;
+        margin: 0 auto;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+      }
+
+      .widget-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: clamp(16px, 4vw, 20px) clamp(16px, 4vw, 20px) 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .widget-header h1 {
+        margin: 0;
+        font-size: clamp(1.125rem, 2.5vw, 1.25rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .widget-header .sub {
+        margin: 4px 0 0;
+        font-size: 0.8125rem;
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .mode-select {
+        appearance: none;
+        min-width: 160px;
+        padding: 10px 36px 10px 14px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      .mode-select:hover,
+      .mode-select:focus {
+        outline: none;
+        border-color: #fdba74;
+        box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.15);
+      }
+
+      .views {
+        position: relative;
+        min-height: 320px;
+      }
+
+      .view {
+        padding: clamp(16px, 4vw, 20px);
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.35s ease, transform 0.35s ease, visibility 0.35s;
+      }
+
+      .view.is-hidden {
+        position: absolute;
+        inset: 0;
+        visibility: hidden;
+        opacity: 0;
+        transform: translateY(8px);
+        pointer-events: none;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .metric-card {
+        padding: 14px 16px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+      }
+
+      .metric-card .label {
+        margin: 0 0 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+
+      .metric-card .value {
+        margin: 0 0 8px;
+        font-size: clamp(1.5rem, 4vw, 1.75rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        padding: 4px 8px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        border-radius: 999px;
+      }
+
+      .badge--down {
+        background: var(--red-badge-bg);
+        color: var(--red-badge-text);
+      }
+
+      .badge--up {
+        background: var(--green-badge-bg);
+        color: var(--green-badge-text);
+      }
+
+      .chart-wrap {
+        position: relative;
+        height: min(280px, 55vw);
+        width: 100%;
+      }
+
+      .pl-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 12px;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .pl-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pl-legend i {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .dot-profit {
+        background: var(--profit);
+      }
+
+      .dot-loss {
+        background: var(--loss);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="widget" id="widget">
+      <header class="widget-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p class="sub">This year</p>
+        </div>
+        <label class="sr-only" for="modeSelect">View</label>
+        <select class="mode-select" id="modeSelect" aria-label="Dashboard view">
+          <option value="analytics" selected>Analytics</option>
+          <option value="pl">Profit &amp; Loss</option>
+        </select>
+      </header>
+
+      <div class="views">
+        <div class="view" id="viewAnalytics" data-view="analytics">
+          <div class="metrics">
+            <div class="metric-card">
+              <p class="label">Sales</p>
+              <p class="value">₹0</p>
+              <span class="badge badge--down">↓ 0.4%</span>
+            </div>
+            <div class="metric-card">
+              <p class="label">Conv. rate</p>
+              <p class="value">—</p>
+              <span class="badge badge--up">↑ 13%</span>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="lineChart" aria-label="Sales trend line chart"></canvas>
+          </div>
+        </div>
+
+        <div class="view is-hidden" id="viewPl" data-view="pl">
+          <div class="pl-legend">
+            <span><i class="dot-profit" aria-hidden="true"></i> Profit</span>
+            <span><i class="dot-loss" aria-hidden="true"></i> Loss</span>
+          </div>
+          <div class="chart-wrap">
+            <canvas id="barChart" aria-label="Profit and loss stacked bar chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+    <script>
+      (function () {
+        const PROFIT = '#D85A30'
+        const LOSS = '#2c2c2a'
+        const ORANGE_LINE = '#f97316'
+
+        const monthsLine = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr']
+        const lineData = monthsLine.map(() => 0)
+
+        const barLabels = ['Oct 25', 'Dec 25', 'Feb 26', 'Apr 26']
+        const profitBars = [1.2, 1.8, 1.4, 2.1]
+        const lossBars = [0.8, 1.1, 0.9, 1.3]
+
+        const select = document.getElementById('modeSelect')
+        const viewAnalytics = document.getElementById('viewAnalytics')
+        const viewPl = document.getElementById('viewPl')
+
+        let lineChart = null
+        let barChart = null
+
+        const gridColor = 'rgba(107, 114, 128, 0.25)'
+
+        function commonChartOptions() {
+          return {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 450, easing: 'easeOutQuart' },
+          }
+        }
+
+        function ensureLineChart() {
+          if (lineChart) return
+          const ctx = document.getElementById('lineChart').getContext('2d')
+          lineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: monthsLine,
+              datasets: [
+                {
+                  label: 'Sales',
+                  data: lineData,
+                  borderColor: ORANGE_LINE,
+                  backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                  borderWidth: 2.5,
+                  pointRadius: 5,
+                  pointBackgroundColor: ORANGE_LINE,
+                  pointBorderColor: '#fff',
+                  pointBorderWidth: 2,
+                  pointHoverRadius: 6,
+                  tension: 0.25,
+                  fill: false,
+                },
+              ],
+            },
+            options: {
+              ...commonChartOptions(),
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: function (ctx) {
+                      return ' ₹' + ctx.parsed.y
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  grid: { color: gridColor, borderDash: [4, 4] },
+                  ticks: { font: { size: 11 }, color: '#6b7280' },
+                },
+                y: {
+                  min: 0,
+                  max: 4,
+                  ticks: {
+                    stepSize: 1,
+                    font: { size: 11 },
+                    color: '#6b7280',
+                  },
+                  grid: { color: gridColor, borderDash: [4, 4] },
+                },
+              },
+            },
+          })
+        }
+
+        function ensureBarChart() {
+          if (barChart) return
+          const ctx = document.getElementById('barChart').getContext('2d')
+          barChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: barLabels,
+              datasets: [
+                {
+                  label: 'Loss',
+                  data: lossBars,
+                  backgroundColor: LOSS,
+                  borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 6, bottomRight: 6 },
+                  borderSkipped: false,
+                  stack: 's',
+                },
+                {
+                  label: 'Profit',
+                  data: profitBars,
+                  backgroundColor: PROFIT,
+                  borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
+                  borderSkipped: false,
+                  stack: 's',
+                },
+              ],
+            },
+            options: {
+              ...commonChartOptions(),
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: function (ctx) {
+                      return ctx.dataset.label + ': ₹' + ctx.parsed.y.toFixed(2)
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  stacked: true,
+                  grid: { display: false },
+                  ticks: { font: { size: 11 }, color: '#6b7280' },
+                },
+                y: {
+                  stacked: true,
+                  beginAtZero: true,
+                  grid: { color: gridColor, borderDash: [4, 4] },
+                  ticks: { font: { size: 11 }, color: '#6b7280' },
+                },
+              },
+            },
+          })
+        }
+
+        function afterLayout(fn) {
+          requestAnimationFrame(function () {
+            requestAnimationFrame(fn)
+          })
+        }
+
+        function showView(mode) {
+          const isAnalytics = mode === 'analytics'
+          viewAnalytics.classList.toggle('is-hidden', !isAnalytics)
+          viewPl.classList.toggle('is-hidden', isAnalytics)
+
+          if (isAnalytics) {
+            afterLayout(function () {
+              ensureLineChart()
+              lineChart.resize()
+            })
+          } else {
+            afterLayout(function () {
+              ensureBarChart()
+              barChart.resize()
+            })
+          }
+        }
+
+        select.addEventListener('change', function () {
+          showView(this.value)
+        })
+
+        afterLayout(function () {
+          ensureLineChart()
+          lineChart.resize()
+        })
+      })()
+    </script>
+  </body>
+</html>

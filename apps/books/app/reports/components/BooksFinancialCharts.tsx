@@ -26,8 +26,10 @@ const monthKeys = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
 
 const chartTooltipStyle = {
   borderRadius: '0.75rem',
-  border: '1px solid #e5e7eb',
-  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.07)',
+  border: '1px solid var(--books-border, #e5e7eb)',
+  backgroundColor: 'var(--books-tooltip-bg, #ffffff)',
+  color: 'var(--books-tooltip-text, #111827)',
+  boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
 }
 
 function formatAxisTick(n: number) {
@@ -35,6 +37,12 @@ function formatAxisTick(n: number) {
   if (n >= 10_000) return `${Math.round(n / 1000)}k`
   if (n >= 1000) return `${(n / 1000).toFixed(0)}k`
   return String(n)
+}
+
+function tooltipNumber(value: unknown) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const n = Number(value)
+  return Number.isFinite(n) ? n : 0
 }
 
 export default function BooksFinancialCharts({ timeRange = 'this_fiscal_year' }: { timeRange?: string }) {
@@ -213,10 +221,14 @@ export default function BooksFinancialCharts({ timeRange = 'this_fiscal_year' }:
 
   return (
     <div className="space-y-4">
-      <Card variant="elevated" padding={false} className="p-4 sm:p-5">
+      <Card
+        variant="elevated"
+        padding={false}
+        className="p-4 sm:p-5 !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]"
+      >
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-gray-900">Cash Flow</h3>
-          <span className="text-xs font-medium text-gray-500">This Fiscal Year</span>
+          <h3 className="text-base font-semibold text-[var(--books-text-primary,#111827)]">Cash Flow</h3>
+          <span className="text-xs font-medium text-[var(--books-text-tertiary,#9ca3af)]">This Fiscal Year</span>
         </div>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
           <div className="h-64 w-full xl:flex-1">
@@ -228,41 +240,44 @@ export default function BooksFinancialCharts({ timeRange = 'this_fiscal_year' }:
                     <stop offset="100%" stopColor="#f97316" stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--books-chart-grid,#e2e8f0)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--books-chart-tick,#64748b)' }} axisLine={false} tickLine={false} />
                 <YAxis
-                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  tick={{ fontSize: 12, fill: 'var(--books-chart-tick,#64748b)' }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={formatAxisTick}
                 />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={chartTooltipStyle} />
+                <Tooltip
+                  formatter={(value) => formatCurrency(tooltipNumber(value))}
+                  contentStyle={chartTooltipStyle}
+                />
                 <Area type="monotone" dataKey="amount" stroke="#f97316" strokeWidth={2} fill={`url(#${cashFlowGradientId})`} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="rounded-2xl border border-gray-100 bg-white/60 backdrop-blur-sm p-4 w-full xl:w-64">
-            <div className="text-xs font-medium text-gray-600">Summary</div>
-            <div className="mt-3 space-y-3 text-xs text-gray-600">
+          <div className="w-full rounded-2xl border border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-elevated,#f9fafb)] p-4 xl:w-64">
+            <div className="text-xs font-medium text-[var(--books-text-secondary,#6b7280)]">Summary</div>
+            <div className="mt-3 space-y-3 text-xs text-[var(--books-text-secondary,#6b7280)]">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-gray-500">Cash on hand on {cashSummary.startLabel}</span>
-                <span className="font-medium text-gray-900">{formatCurrency(cashSummary.cashOnHandStart)}</span>
+                <span className="text-[var(--books-text-tertiary,#9ca3af)]">Cash on hand on {cashSummary.startLabel}</span>
+                <span className="font-medium text-[var(--books-text-primary,#111827)]">{formatCurrency(cashSummary.cashOnHandStart)}</span>
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <span className="text-gray-500">Income</span>
-                <span className="font-medium text-gray-900">{formatCurrency(cashSummary.totalIncome)}</span>
+                <span className="text-[var(--books-text-tertiary,#9ca3af)]">Income</span>
+                <span className="font-medium text-[var(--books-text-primary,#111827)]">{formatCurrency(cashSummary.totalIncome)}</span>
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <span className="text-gray-500">Outgo</span>
-                <span className="font-medium text-gray-900">{formatCurrency(cashSummary.totalOutgoing)}</span>
+                <span className="text-[var(--books-text-tertiary,#9ca3af)]">Outgo</span>
+                <span className="font-medium text-[var(--books-text-primary,#111827)]">{formatCurrency(cashSummary.totalOutgoing)}</span>
               </div>
 
               <div className="flex items-center justify-between gap-3">
-                <span className="text-gray-500">Cash on hand on {cashSummary.endLabel}</span>
-                <span className="font-medium text-gray-900">{formatCurrency(cashSummary.cashOnHandEnd)}</span>
+                <span className="text-[var(--books-text-tertiary,#9ca3af)]">Cash on hand on {cashSummary.endLabel}</span>
+                <span className="font-medium text-[var(--books-text-primary,#111827)]">{formatCurrency(cashSummary.cashOnHandEnd)}</span>
               </div>
             </div>
           </div>
@@ -270,20 +285,27 @@ export default function BooksFinancialCharts({ timeRange = 'this_fiscal_year' }:
       </Card>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <Card variant="elevated" padding={false} className="p-4 sm:p-5 xl:col-span-2">
-          <h3 className="mb-4 text-base font-semibold text-gray-900">Income and Expense</h3>
+        <Card
+          variant="elevated"
+          padding={false}
+          className="p-4 sm:p-5 xl:col-span-2 !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]"
+        >
+          <h3 className="mb-4 text-base font-semibold text-[var(--books-text-primary,#111827)]">Income and Expense</h3>
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={incomeVsExpense} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--books-chart-grid,#e2e8f0)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'var(--books-chart-tick,#64748b)' }} axisLine={false} tickLine={false} />
                 <YAxis
-                  tick={{ fontSize: 12, fill: '#64748b' }}
+                  tick={{ fontSize: 12, fill: 'var(--books-chart-tick,#64748b)' }}
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={formatAxisTick}
                 />
-                <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={chartTooltipStyle} />
+                <Tooltip
+                  formatter={(value) => formatCurrency(tooltipNumber(value))}
+                  contentStyle={chartTooltipStyle}
+                />
                 <Bar dataKey="income" name="Income" fill="#60a5fa" radius={[0, 0, 0, 0]} />
                 <Bar dataKey="expense" name="Expense" fill="#f97316" radius={[0, 0, 0, 0]} />
               </BarChart>
@@ -291,8 +313,12 @@ export default function BooksFinancialCharts({ timeRange = 'this_fiscal_year' }:
           </div>
         </Card>
 
-        <Card variant="elevated" padding={false} className="p-4 sm:p-5">
-          <h3 className="mb-4 text-base font-semibold text-gray-900">Top Expenses</h3>
+        <Card
+          variant="elevated"
+          padding={false}
+          className="p-4 sm:p-5 !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]"
+        >
+          <h3 className="mb-4 text-base font-semibold text-[var(--books-text-primary,#111827)]">Top Expenses</h3>
           <div className="flex items-center gap-6 h-60">
             <div className="w-56 h-full flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
@@ -312,7 +338,8 @@ export default function BooksFinancialCharts({ timeRange = 'this_fiscal_year' }:
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number) => (zeroMode ? formatCurrency(0) : pieTooltipFormatter(value))}
+                    formatter={(value) =>
+                      zeroMode ? formatCurrency(0) : pieTooltipFormatter(tooltipNumber(value))}
                     contentStyle={chartTooltipStyle}
                   />
                 </PieChart>
@@ -324,9 +351,9 @@ export default function BooksFinancialCharts({ timeRange = 'this_fiscal_year' }:
                 {topExpensesLegend.map((it) => (
                   <div key={it.name} className="flex items-center gap-3">
                     <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: it.color }} />
-                    <div className="text-sm text-gray-900 leading-snug break-words">
+                    <div className="text-sm leading-snug break-words text-[var(--books-text-primary,#111827)]">
                       {it.name}{' '}
-                      <span className="text-gray-600">({it.percent.toFixed(2)}%)</span>
+                      <span className="text-[var(--books-text-secondary,#6b7280)]">({it.percent.toFixed(2)}%)</span>
                     </div>
                   </div>
                 ))}
