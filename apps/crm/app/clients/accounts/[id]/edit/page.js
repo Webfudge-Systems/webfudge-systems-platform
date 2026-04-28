@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
+  Card,
   Button,
   Input,
   LoadingSpinner,

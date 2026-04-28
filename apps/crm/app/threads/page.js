@@ -379,7 +379,7 @@ function ThreadListItem({ thread, active, onClick }) {
           </Badge>
           {preview ? (
             <p className="text-xs text-gray-500 leading-relaxed line-clamp-1 min-w-0 flex-1 italic">
-              "{preview}"
+              &ldquo;{preview}&rdquo;
             </p>
           ) : (
             <p className="text-xs text-gray-300 italic">No comments yet</p>
