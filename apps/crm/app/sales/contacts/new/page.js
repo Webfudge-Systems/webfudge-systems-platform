@@ -308,7 +308,6 @@ export default function NewContactPage() {
             title="Basic information"
             description="Essential contact details and personal information"
             cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
-            iconContainerClassName="bg-gradient-to-br from-purple-500 to-indigo-600"
           >
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -399,7 +398,6 @@ export default function NewContactPage() {
             title="Professional information"
             description="Work-related details and company information"
             cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
-            iconContainerClassName="bg-gradient-to-br from-green-500 to-teal-600"
           >
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -442,7 +440,6 @@ export default function NewContactPage() {
             title="Address information"
             description="Location and contact address details"
             cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
-            iconContainerClassName="bg-gradient-to-br from-pink-500 to-rose-500"
           >
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -490,7 +487,6 @@ export default function NewContactPage() {
             title="Social &amp; additional information"
             description="Social media profiles and additional notes"
             cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
-            iconContainerClassName="bg-gradient-to-br from-blue-500 to-cyan-600"
           >
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

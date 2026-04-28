@@ -64,6 +64,12 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::organization.organization"
+    },
+    "sourceDeal": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::deal.deal",
+      "inversedBy": "deliveryProject"
     }
   }
 }

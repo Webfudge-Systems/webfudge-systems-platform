@@ -18,8 +18,6 @@ export default function SalesAccountDetailPage() {
           { label: 'Accounts', href: '/sales/accounts' },
           { label: id, href: `/sales/accounts/${id}` },
         ]}
-        showActions
-        onAddClick={() => {}}
       />
       <Container>
         <Card variant="default" padding title="Overview">

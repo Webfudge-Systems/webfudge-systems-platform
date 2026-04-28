@@ -30,6 +30,13 @@ export {
   TableCellStatusPill,
   TableCellRole,
   TableCellLeadStatus,
+  TableCellText,
+  TableCellOrangePill,
+  TableCellSource,
+  TableCellMultiline,
+  TableCellPrimaryContact,
+  TableCellTitleSubtitle,
+  TableCellProbability,
   formatRelativeTime,
   formatTableDate,
   ownerDisplayFromUser,
@@ -38,6 +45,9 @@ export {
   Tabs,
   TabsWithActions,
   Modal,
+  // Automation / Workflow Components
+  NodeHandle,
+  WorkflowStatusBadge,
 } from '../components';
 
 // LAYOUTS - Page structure and containers

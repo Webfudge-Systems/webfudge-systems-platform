@@ -39,6 +39,16 @@ const FIELD_LABELS = {
   score: 'Lead score',
   healthScore: 'Health score',
   dealValue: 'Deal value',
+  name: 'Name',
+  value: 'Value',
+  stage: 'Stage',
+  priority: 'Priority',
+  probability: 'Probability',
+  visibility: 'Visibility',
+  dealGroup: 'Deal group',
+  expectedCloseDate: 'Expected close date',
+  clientAccount: 'Client account',
+  contact: 'Primary contact',
 };
 
 function contactLabel(entity) {
@@ -55,6 +65,12 @@ function leadCompanyLabel(entity) {
   return (entity.companyName || entity.name || 'Lead company').trim() || 'Lead company';
 }
 
+function dealLabel(entity) {
+  if (!entity) return 'Deal';
+  const n = (entity.name || '').trim();
+  return n || 'Deal';
+}
+
 function labelForField(key) {
   if (FIELD_LABELS[key]) return FIELD_LABELS[key];
   return String(key)
@@ -65,7 +81,7 @@ function labelForField(key) {
 
 function leadCompanyFk(subjectType, entity) {
   if (subjectType === 'lead_company') return entity?.id ?? null;
-  if (subjectType === 'contact') {
+  if (subjectType === 'contact' || subjectType === 'deal' || subjectType === 'meeting') {
     const lc = entity?.leadCompany;
     if (lc == null) return null;
     if (typeof lc === 'object') return lc.id ?? null;
@@ -96,6 +112,29 @@ function buildSummary(action, subjectType, entity, changedKeys, fieldChangeCount
       return `Lead company "${name}" was updated (${n} field${n !== 1 ? 's' : ''})`;
     }
     return `Lead company "${name}" was updated`;
+  }
+  if (subjectType === 'deal') {
+    const name = dealLabel(entity);
+    if (action === 'create') return `Deal "${name}" was created`;
+    if (action === 'delete') return `Deal "${name}" was deleted`;
+    if (n > 0) {
+      return `Deal "${name}" was updated (${n} field${n !== 1 ? 's' : ''})`;
+    }
+    return `Deal "${name}" was updated`;
+  }
+  if (subjectType === 'meeting') {
+    const title = (entity?.title || 'Meeting').trim() || 'Meeting';
+    if (action === 'create') return `Meeting "${title}" was created`;
+    if (action === 'delete') return `Meeting "${title}" was deleted`;
+    if (n > 0) return `Meeting "${title}" was updated (${n} field${n !== 1 ? 's' : ''})`;
+    return `Meeting "${title}" was updated`;
+  }
+  if (subjectType === 'client_account') {
+    const name = (entity?.companyName || entity?.name || 'Account').trim() || 'Account';
+    if (action === 'create') return `Account "${name}" was created`;
+    if (action === 'delete') return `Account "${name}" was deleted`;
+    if (n > 0) return `Account "${name}" was updated (${n} field${n !== 1 ? 's' : ''})`;
+    return `Account "${name}" was updated`;
   }
   if (action === 'create') return `Record was created`;
   if (action === 'delete') return `Record was deleted`;
@@ -206,12 +245,13 @@ function relationCompareId(val) {
 
 function formatDetailValue(key, val) {
   if (val == null || val === '') return '(empty)';
-  if (key === 'assignedTo' || key === 'leadCompany') {
+  if (key === 'assignedTo' || key === 'leadCompany' || key === 'clientAccount' || key === 'contact') {
     if (typeof val === 'object' && val !== null) {
       const bit =
         val.email ||
         val.username ||
         val.companyName ||
+        val.name ||
         (val.firstName || val.lastName
           ? `${val.firstName || ''} ${val.lastName || ''}`.trim()
           : null);
@@ -228,7 +268,7 @@ function formatDetailValue(key, val) {
 }
 
 function valuesDiffer(key, beforeVal, afterVal) {
-  if (key === 'assignedTo' || key === 'leadCompany') {
+  if (key === 'assignedTo' || key === 'leadCompany' || key === 'clientAccount' || key === 'contact') {
     return relationCompareId(beforeVal) !== relationCompareId(afterVal);
   }
   if (beforeVal == null && afterVal == null) return false;
@@ -274,4 +314,5 @@ module.exports = {
   buildFieldChanges,
   contactLabel,
   leadCompanyLabel,
+  dealLabel,
 };

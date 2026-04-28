@@ -15,7 +15,7 @@ export default function SalesAccountsPage() {
       />
       <Card className="p-6 border border-gray-200">
         <p className="text-gray-600">
-          Sales accounts are listed under Client Portal → Client Accounts. Use the sidebar to go to{' '}
+          Sales accounts are listed under Clients → Client Accounts. Use the sidebar to go to{' '}
           <Link href="/clients/accounts" className="text-brand-primary hover:underline">
             Client Accounts
           </Link>

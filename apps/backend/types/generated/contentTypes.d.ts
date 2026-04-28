@@ -555,6 +555,59 @@ export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiDealDeal extends Struct.CollectionTypeSchema {
+  collectionName: 'deals'
+  info: {
+    description: 'CRM sales opportunities / pipeline deals'
+    displayName: 'Deal'
+    pluralName: 'deals'
+    singularName: 'deal'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    contact: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    dealGroup: Schema.Attribute.String
+    deliveryProject: Schema.Attribute.Relation<'oneToOne', 'api::project.project'>
+    description: Schema.Attribute.Text
+    expectedCloseDate: Schema.Attribute.Date
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::deal.deal'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    priority: Schema.Attribute.Enumeration<['low', 'medium', 'high']> &
+      Schema.Attribute.DefaultTo<'medium'>
+    probability: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100
+          min: 0
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    source: Schema.Attribute.String & Schema.Attribute.DefaultTo<'OTHER'>
+    stage: Schema.Attribute.Enumeration<
+      ['discovery', 'prospect', 'proposal', 'negotiation', 'won', 'lost']
+    > &
+      Schema.Attribute.DefaultTo<'discovery'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    value: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    visibility: Schema.Attribute.Enumeration<['public', 'private', 'team']> &
+      Schema.Attribute.DefaultTo<'public'>
+  }
+}
+
 export interface ApiDirectMessageDirectMessage extends Struct.CollectionTypeSchema {
   collectionName: 'direct_messages'
   info: {
@@ -615,6 +668,73 @@ export interface ApiInvitationInvitation extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
+  collectionName: 'invoices'
+  info: {
+    description: 'CRM invoices, proforma invoices and receipts'
+    displayName: 'Invoice'
+    pluralName: 'invoices'
+    singularName: 'invoice'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amountPaid: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    balanceDue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    billToAddress: Schema.Attribute.Text
+    billToCompany: Schema.Attribute.String
+    billToEmail: Schema.Attribute.Email
+    billToGstin: Schema.Attribute.String
+    billToName: Schema.Attribute.String
+    billToPhone: Schema.Attribute.String
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
+    discount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    documentType: Schema.Attribute.Enumeration<
+      ['INVOICE', 'PROFORMA_INVOICE', 'CREDIT_NOTE', 'RECEIPT']
+    > &
+      Schema.Attribute.DefaultTo<'INVOICE'>
+    dueDate: Schema.Attribute.Date
+    fromOrgAddress: Schema.Attribute.Text
+    fromOrgEmail: Schema.Attribute.Email
+    fromOrgGstin: Schema.Attribute.String
+    fromOrgLogo: Schema.Attribute.String
+    fromOrgName: Schema.Attribute.String
+    fromOrgPhone: Schema.Attribute.String
+    invoiceDate: Schema.Attribute.Date
+    invoiceNumber: Schema.Attribute.String & Schema.Attribute.Required
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    lineItems: Schema.Attribute.JSON
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::invoice.invoice'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    sameAsShipTo: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    shipToAddress: Schema.Attribute.Text
+    shipToName: Schema.Attribute.String
+    showSignature: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    status: Schema.Attribute.Enumeration<
+      ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED', 'PARTIAL']
+    > &
+      Schema.Attribute.DefaultTo<'DRAFT'>
+    subtotal: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    taxLabel: Schema.Attribute.String & Schema.Attribute.DefaultTo<'GST'>
+    taxRate: Schema.Attribute.Decimal
+    terms: Schema.Attribute.String
+    termsAndConditions: Schema.Attribute.Text
+    total: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
   collectionName: 'lead_companies'
   info: {
@@ -664,6 +784,64 @@ export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     website: Schema.Attribute.String
     zipCode: Schema.Attribute.String
+  }
+}
+
+export interface ApiMeetingMeeting extends Struct.CollectionTypeSchema {
+  collectionName: 'meetings'
+  info: {
+    description: 'CRM meetings \u2014 scheduled calls, demos, check-ins, and client meetings'
+    displayName: 'Meeting'
+    pluralName: 'meetings'
+    singularName: 'meeting'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    agenda: Schema.Attribute.Text
+    aiSummary: Schema.Attribute.Text
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    attendees: Schema.Attribute.Relation<'manyToMany', 'api::contact.contact'>
+    attendeesMeta: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    contact: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
+    endTime: Schema.Attribute.DateTime
+    externalMeetingId: Schema.Attribute.String
+    isVirtual: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::meeting.meeting'> &
+      Schema.Attribute.Private
+    location: Schema.Attribute.String
+    meetingType: Schema.Attribute.Enumeration<
+      ['discovery', 'demo', 'follow_up', 'check_in', 'review', 'internal', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'other'>
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizer: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    outcome: Schema.Attribute.Enumeration<['positive', 'neutral', 'negative', 'pending']> &
+      Schema.Attribute.DefaultTo<'pending'>
+    publishedAt: Schema.Attribute.DateTime
+    recordingUrl: Schema.Attribute.String
+    recurrenceRule: Schema.Attribute.String
+    reminderPreset: Schema.Attribute.Enumeration<
+      ['none', 'tenMin', 'thirtyMin', 'oneHour', 'oneDay']
+    > &
+      Schema.Attribute.DefaultTo<'thirtyMin'>
+    startTime: Schema.Attribute.DateTime & Schema.Attribute.Required
+    status: Schema.Attribute.Enumeration<['scheduled', 'completed', 'cancelled', 'no_show']> &
+      Schema.Attribute.DefaultTo<'scheduled'>
+    title: Schema.Attribute.String & Schema.Attribute.Required
+    transcriptUrl: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    visibility: Schema.Attribute.Enumeration<['public', 'private', 'team']> &
+      Schema.Attribute.DefaultTo<'public'>
   }
 }
 
@@ -863,12 +1041,76 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
     projectManager: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     publishedAt: Schema.Attribute.DateTime
     slug: Schema.Attribute.UID<'name'>
+    sourceDeal: Schema.Attribute.Relation<'oneToOne', 'api::deal.deal'>
     startDate: Schema.Attribute.DateTime
     status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'PLANNING'>
     tasks: Schema.Attribute.Relation<'manyToMany', 'api::task.task'>
     teamMembers: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiProposalProposal extends Struct.CollectionTypeSchema {
+  collectionName: 'proposals'
+  info: {
+    description: 'CRM proposals, SOWs and project quotes'
+    displayName: 'Proposal'
+    pluralName: 'proposals'
+    singularName: 'proposal'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    acceptanceNotes: Schema.Attribute.Text
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    assumptions: Schema.Attribute.JSON
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    clientAddress: Schema.Attribute.Text
+    clientCompanyName: Schema.Attribute.String
+    clientContactName: Schema.Attribute.String
+    clientEmail: Schema.Attribute.Email
+    clientPhone: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    date: Schema.Attribute.Date
+    deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
+    documentType: Schema.Attribute.Enumeration<['SOW', 'PROPOSAL', 'QUOTE']> &
+      Schema.Attribute.DefaultTo<'PROPOSAL'>
+    estimatedTimeline: Schema.Attribute.String
+    handoverDeliverables: Schema.Attribute.JSON
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::proposal.proposal'> &
+      Schema.Attribute.Private
+    milestones: Schema.Attribute.JSON
+    modules: Schema.Attribute.JSON
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    outOfScope: Schema.Attribute.JSON
+    outOfScopeRate: Schema.Attribute.Decimal
+    outOfScopeRateUnit: Schema.Attribute.String
+    paymentTerms: Schema.Attribute.String
+    preparedByCompany: Schema.Attribute.String
+    preparedByEmail: Schema.Attribute.Email
+    preparedByName: Schema.Attribute.String
+    preparedByPhone: Schema.Attribute.String
+    projectName: Schema.Attribute.String
+    projectOverview: Schema.Attribute.Text
+    proposalNumber: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    securityItems: Schema.Attribute.JSON
+    status: Schema.Attribute.Enumeration<['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED']> &
+      Schema.Attribute.DefaultTo<'DRAFT'>
+    taxInfo: Schema.Attribute.String
+    title: Schema.Attribute.String
+    totalValue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    validUntil: Schema.Attribute.Date
+    warrantyDays: Schema.Attribute.Integer
   }
 }
 
@@ -925,9 +1167,11 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
   }
   attributes: {
     assignee: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
     collaborators: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
     description: Schema.Attribute.Text
     leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
     locale: Schema.Attribute.String & Schema.Attribute.Private
@@ -1385,14 +1629,18 @@ declare module '@strapi/strapi' {
       'api::client-account.client-account': ApiClientAccountClientAccount
       'api::contact.contact': ApiContactContact
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity
+      'api::deal.deal': ApiDealDeal
       'api::direct-message.direct-message': ApiDirectMessageDirectMessage
       'api::invitation.invitation': ApiInvitationInvitation
+      'api::invoice.invoice': ApiInvoiceInvoice
       'api::lead-company.lead-company': ApiLeadCompanyLeadCompany
+      'api::meeting.meeting': ApiMeetingMeeting
       'api::module.module': ApiModuleModule
       'api::notification.notification': ApiNotificationNotification
       'api::organization-user.organization-user': ApiOrganizationUserOrganizationUser
       'api::organization.organization': ApiOrganizationOrganization
       'api::project.project': ApiProjectProject
+      'api::proposal.proposal': ApiProposalProposal
       'api::subscription.subscription': ApiSubscriptionSubscription
       'api::task.task': ApiTaskTask
       'plugin::content-releases.release': PluginContentReleasesRelease

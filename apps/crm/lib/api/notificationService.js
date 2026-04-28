@@ -1,5 +1,6 @@
 // Notification service for CRM Portal
 import strapiClient from '../strapiClient';
+import { addPopulate } from './strapiContentApi';
 
 class NotificationService {
   /**
@@ -12,9 +13,9 @@ class NotificationService {
 
       const params = {
         'pagination[pageSize]': options.pageSize || 100,
-        'sort': 'createdAt:desc',
-        populate: 'user',
+        sort: 'createdAt:desc',
       };
+      addPopulate(params, ['user']);
 
       // Try filtering by user id (numeric) - this is what notifications are created with
       if (!isNaN(userIdNum) && userIdNum > 0) {

@@ -1,27 +1,139 @@
 /**
- * Deal API stub - replace with real backend when ready
+ * Deal API — Strapi /deals.
  */
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+import strapiClient from '../strapiClient';
+import {
+  buildListQuery,
+  normalizeStrapiEntry,
+  normalizeStrapiListResponse,
+  normalizeStrapiOneResponse,
+} from './strapiContentApi';
+
+const ENDPOINT = '/deals';
+
+function normalizeEntry(entry) {
+  return normalizeStrapiEntry(entry);
+}
+
+function normalizeListResponse(response) {
+  return normalizeStrapiListResponse(response, normalizeEntry);
+}
+
+function normalizeOneResponse(response) {
+  return normalizeStrapiOneResponse(response, normalizeEntry);
+}
+
+function toStrapiData(payload) {
+  const data = {};
+  const set = (key, value) => {
+    if (value === undefined) return;
+    if (typeof value === 'string' && value.trim() === '' && key !== 'description' && key !== 'notes') return;
+    data[key] = value;
+  };
+
+  set('name', payload.name?.trim());
+  if (Object.prototype.hasOwnProperty.call(payload, 'value')) {
+    const raw = payload.value;
+    if (raw !== '' && raw != null) {
+      const n = Number(raw);
+      if (!Number.isNaN(n)) data.value = n;
+    }
+  }
+  if (payload.stage) set('stage', payload.stage);
+  if (payload.priority) set('priority', payload.priority);
+  if (payload.probability != null && payload.probability !== '') {
+    const p = parseInt(payload.probability, 10);
+    if (!Number.isNaN(p)) data.probability = Math.min(100, Math.max(0, p));
+  }
+  if (payload.visibility) set('visibility', payload.visibility);
+  set('dealGroup', payload.dealGroup?.trim());
+  if (Object.prototype.hasOwnProperty.call(payload, 'expectedCloseDate')) {
+    const raw = payload.expectedCloseDate;
+    if (raw == null || String(raw).trim() === '') data.expectedCloseDate = null;
+    else data.expectedCloseDate = String(raw).trim();
+  }
+  if (payload.source) set('source', payload.source);
+  if (payload.description !== undefined) set('description', payload.description?.trim() ?? '');
+  if (payload.notes !== undefined) set('notes', payload.notes?.trim() ?? '');
+
+  const relKeys = ['assignedTo', 'leadCompany', 'clientAccount', 'contact'];
+  for (const key of relKeys) {
+    if (!Object.prototype.hasOwnProperty.call(payload, key)) continue;
+    const raw = payload[key];
+    if (raw === null || raw === '') {
+      data[key] = null;
+      continue;
+    }
+    const n = parseInt(raw, 10);
+    if (!Number.isNaN(n)) data[key] = n;
+  }
+
+  return data;
+}
+
+function relationConnectFormat(data) {
+  const out = { ...data };
+  const rels = ['assignedTo', 'leadCompany', 'clientAccount', 'contact'];
+  for (const key of rels) {
+    if (out[key] === null) continue;
+    if (out[key] != null && typeof out[key] === 'number') {
+      out[key] = { id: out[key] };
+    }
+  }
+  return out;
+}
 
 export default {
   async getAll(params = {}) {
-    await delay(400);
-    return { data: [], meta: { pagination: { page: 1, pageCount: 1, total: 0 } } };
+    const response = await strapiClient.get(ENDPOINT, buildListQuery(params));
+    return normalizeListResponse(response);
   },
-  async getOne(id) {
-    await delay(200);
-    return { data: null };
+
+  async getOne(id, options = {}) {
+    const populate =
+      options.populate ?? [
+        'assignedTo',
+        'organization',
+        'leadCompany',
+        'clientAccount',
+        'contact',
+        'deliveryProject',
+      ];
+    const response = await strapiClient.get(`${ENDPOINT}/${id}`, { populate });
+    return normalizeOneResponse(response);
   },
+
   async create(payload) {
-    await delay(300);
-    return { data: { id: 1, ...payload } };
+    const data = relationConnectFormat(toStrapiData(payload));
+    const response = await strapiClient.post(ENDPOINT, { data });
+    const result = response?.data ?? response;
+    const normalized = normalizeEntry(result);
+    return { data: normalized, id: normalized?.id ?? result?.id };
   },
+
   async update(id, payload) {
-    await delay(300);
-    return { data: { id, ...payload } };
+    const data = relationConnectFormat(toStrapiData(payload));
+    const response = await strapiClient.put(`${ENDPOINT}/${id}`, { data });
+    return normalizeOneResponse(response);
   },
+
+  async delete(id) {
+    await strapiClient.delete(`${ENDPOINT}/${id}`);
+    return {};
+  },
+
+  /** Create org project linked to a won deal (`POST /deals/:id/delivery-project`). */
+  async createDeliveryProject(dealId) {
+    const response = await strapiClient.post(`${ENDPOINT}/${dealId}/delivery-project`, {});
+    return normalizeOneResponse(response);
+  },
+
+  /** All deals for pipeline board (client-side grouping). */
   async getPipeline() {
-    await delay(300);
-    return { data: [] };
+    return this.getAll({
+      sort: 'updatedAt:desc',
+      'pagination[pageSize]': 100,
+      populate: ['leadCompany', 'clientAccount', 'assignedTo', 'deliveryProject'],
+    });
   },
 };

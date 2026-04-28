@@ -8,9 +8,27 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const { logCrmActivity } = require('../../../utils/crm-activity-log');
+const {
+  orgIdFromRelation,
+  readListQuery,
+  createPopulateSanitizer,
+  safeCount,
+} = require('../../../utils/content-api-helpers');
+
 const UID = 'api::client-account.client-account';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const CLIENT_ACCOUNT_POPULATE_FALLBACK = [
+  'assignedTo',
+  'organization',
+  'convertedFromLead',
+  'contacts',
+];
+const sanitizePopulate = createPopulateSanitizer(
+  new Set(['assignedTo', 'organization', 'convertedFromLead', 'contacts']),
+  CLIENT_ACCOUNT_POPULATE_FALLBACK
+);
 
 function parseOptionalDate(value) {
   if (value == null || value === '') return undefined;
@@ -19,25 +37,12 @@ function parseOptionalDate(value) {
   return d;
 }
 
-function orgIdFromRelation(rel) {
-  if (rel == null) return null;
-  if (typeof rel === 'object') return rel.id ?? null;
-  return rel;
-}
-
 module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
 
-    const query = ctx.query || {};
-    const page = parseInt(query['pagination[page]'] || query.page || '1', 10);
-    const pageSize = Math.min(
-      parseInt(query['pagination[pageSize]'] || query.pageSize || '25', 10),
-      100
-    );
-    const sort = query.sort || 'createdAt:desc';
-    const [sortField, sortOrder] = sort.split(':');
+    const { query, page, pageSize, sort } = readListQuery(ctx);
 
     const filters = { organization: ctx.state.orgId };
 
@@ -45,18 +50,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       filters,
       start: (page - 1) * pageSize,
       limit: pageSize,
-      sort: sortField
-        ? { [sortField]: (sortOrder || 'desc').toUpperCase() }
-        : { createdAt: 'DESC' },
-      populate: ['assignedTo', 'organization', 'convertedFromLead'],
+      sort,
+      populate: sanitizePopulate(query.populate),
     });
 
-    let total = 0;
-    try {
-      total = await strapi.db.query(UID).count({ where: filters });
-    } catch (_) {
-      total = results.length;
-    }
+    const total = await safeCount(strapi, UID, filters, results.length);
     const pageCount = Math.ceil(Math.max(total, 1) / pageSize);
     return { data: results, meta: { pagination: { page, pageSize, pageCount, total } } };
   },
@@ -67,7 +65,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const { id } = ctx.params;
     const entry = await strapi.entityService.findOne(UID, id, {
-      populate: ['assignedTo', 'organization', 'convertedFromLead', 'contacts'],
+      populate: sanitizePopulate(ctx.query?.populate),
     });
     if (!entry) return ctx.notFound();
     if (orgIdFromRelation(entry.organization) !== ctx.state.orgId) {

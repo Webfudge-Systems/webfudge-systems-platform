@@ -436,9 +436,6 @@ export default function ComponentsTestPage() {
           { label: 'Components Test' },
         ]}
         showSearch={true}
-        showActions={true}
-        onAddClick={() => alert('Add clicked')}
-        onFilterClick={() => alert('Filter clicked')}
       />
 
       <Container size="default">

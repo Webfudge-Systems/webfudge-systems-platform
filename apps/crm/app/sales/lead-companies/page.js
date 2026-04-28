@@ -39,6 +39,10 @@ import {
   TableCellDateOnly,
   TableCellOwner,
   TableCellLeadStatus,
+  TableCellText,
+  TableCellOrangePill,
+  TableCellSource,
+  TableCellMultiline,
   TableRowActionMenuPortal,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
@@ -133,22 +137,6 @@ function persistColumnOrder(order) {
   } catch {
     /* ignore */
   }
-}
-
-function truncateText(text, max = 80) {
-  if (text == null || text === '') return '—';
-  const s = String(text).replace(/\s+/g, ' ').trim();
-  if (s.length <= max) return s;
-  return `${s.slice(0, max)}…`;
-}
-
-function tableTextCell(value) {
-  const display = value != null && value !== '' ? String(value) : null;
-  return (
-    <span className="text-sm text-gray-600 whitespace-nowrap max-w-[200px] inline-block truncate" title={display || ''}>
-      {display || '—'}
-    </span>
-  );
 }
 
 function orgDisplayName(org) {
@@ -812,19 +800,13 @@ export default function LeadCompaniesPage() {
         key: 'source',
         visibilityKey: 'source',
         label: 'SOURCE',
-        render: (_, company) => (
-          <span className="text-sm text-gray-600 capitalize whitespace-nowrap">
-            {company.source?.replace(/_/g, ' ') || 'N/A'}
-          </span>
-        ),
+        render: (_, company) => <TableCellSource value={company.source} />,
       },
       {
         key: 'segment',
         visibilityKey: 'segment',
         label: 'SEGMENT',
-        render: (_, company) => (
-          <span className="text-sm text-gray-600 whitespace-nowrap">{company.segment || '—'}</span>
-        ),
+        render: (_, company) => <TableCellText value={company.segment} nowrap />,
       },
       {
         key: 'dealValue',
@@ -834,7 +816,7 @@ export default function LeadCompaniesPage() {
           const totalDealValue = company.deals?.length
             ? company.deals.reduce((total, deal) => total + (parseFloat(deal.value) || 0), 0)
             : company.dealValue || 0;
-          return <span className="font-semibold text-gray-900 whitespace-nowrap">{formatCurrency(totalDealValue)}</span>;
+          return <TableCellText value={formatCurrency(totalDealValue)} emphasized />;
         },
       },
       {
@@ -870,28 +852,19 @@ export default function LeadCompaniesPage() {
         key: 'industry',
         visibilityKey: 'industry',
         label: 'INDUSTRY',
-        render: (_, company) => {
-          const industry = company.industry ? String(company.industry).replace(/_/g, ' ') : '';
-          return industry ? (
-            <span className="inline-flex rounded-lg border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-orange-800">
-              {industry}
-            </span>
-          ) : (
-            <span className="text-sm text-gray-400">—</span>
-          );
-        },
+        render: (_, company) => <TableCellOrangePill value={company.industry} />,
       },
       {
         key: 'type',
         visibilityKey: 'type',
         label: 'TYPE',
-        render: (_, company) => tableTextCell(company.type),
+        render: (_, company) => <TableCellText value={company.type} />,
       },
       {
         key: 'subType',
         visibilityKey: 'subType',
         label: 'SUB-TYPE',
-        render: (_, company) => tableTextCell(company.subType),
+        render: (_, company) => <TableCellText value={company.subType} />,
       },
       {
         key: 'website',
@@ -910,7 +883,7 @@ export default function LeadCompaniesPage() {
               <span className="truncate">{company.website}</span>
             </a>
           ) : (
-            tableTextCell(null)
+            <TableCellText value="" />
           ),
       },
       {
@@ -948,20 +921,48 @@ export default function LeadCompaniesPage() {
           </div>
         ),
       },
-      { key: 'city', visibilityKey: 'city', label: 'CITY', render: (_, company) => tableTextCell(company.city) },
-      { key: 'state', visibilityKey: 'state', label: 'STATE', render: (_, company) => tableTextCell(company.state) },
-      { key: 'country', visibilityKey: 'country', label: 'COUNTRY', render: (_, company) => tableTextCell(company.country) },
-      { key: 'zipCode', visibilityKey: 'zipCode', label: 'ZIP', render: (_, company) => tableTextCell(company.zipCode) },
-      { key: 'employees', visibilityKey: 'employees', label: 'EMPLOYEES', render: (_, company) => tableTextCell(company.employees) },
-      { key: 'founded', visibilityKey: 'founded', label: 'FOUNDED', render: (_, company) => tableTextCell(company.founded) },
+      {
+        key: 'city',
+        visibilityKey: 'city',
+        label: 'CITY',
+        render: (_, company) => <TableCellText value={company.city} />,
+      },
+      {
+        key: 'state',
+        visibilityKey: 'state',
+        label: 'STATE',
+        render: (_, company) => <TableCellText value={company.state} />,
+      },
+      {
+        key: 'country',
+        visibilityKey: 'country',
+        label: 'COUNTRY',
+        render: (_, company) => <TableCellText value={company.country} />,
+      },
+      {
+        key: 'zipCode',
+        visibilityKey: 'zipCode',
+        label: 'ZIP',
+        render: (_, company) => <TableCellText value={company.zipCode} />,
+      },
+      {
+        key: 'employees',
+        visibilityKey: 'employees',
+        label: 'EMPLOYEES',
+        render: (_, company) => <TableCellText value={company.employees} />,
+      },
+      {
+        key: 'founded',
+        visibilityKey: 'founded',
+        label: 'FOUNDED',
+        render: (_, company) => <TableCellText value={company.founded} />,
+      },
       {
         key: 'description',
         visibilityKey: 'description',
         label: 'DESCRIPTION',
         render: (_, company) => (
-          <span className="text-sm text-gray-600 max-w-[240px] inline-block line-clamp-2" title={company.description || ''}>
-            {truncateText(company.description, 120)}
-          </span>
+          <TableCellMultiline text={company.description} maxChars={120} maxWidthClass="max-w-[240px]" />
         ),
       },
       {
@@ -980,14 +981,14 @@ export default function LeadCompaniesPage() {
               Link
             </a>
           ) : (
-            tableTextCell(null)
+            <TableCellText value="" />
           ),
       },
       {
         key: 'twitter',
         visibilityKey: 'twitter',
         label: 'TWITTER / X',
-        render: (_, company) => tableTextCell(company.twitter),
+        render: (_, company) => <TableCellText value={company.twitter} />,
       },
       {
         key: 'score',
@@ -1010,16 +1011,14 @@ export default function LeadCompaniesPage() {
         visibilityKey: 'notes',
         label: 'NOTES',
         render: (_, company) => (
-          <span className="text-sm text-gray-600 max-w-[200px] inline-block line-clamp-2" title={company.notes || ''}>
-            {truncateText(company.notes, 100)}
-          </span>
+          <TableCellMultiline text={company.notes} maxChars={100} maxWidthClass="max-w-[200px]" />
         ),
       },
       {
         key: 'organization',
         visibilityKey: 'organization',
         label: 'ORGANIZATION',
-        render: (_, company) => tableTextCell(orgDisplayName(company.organization)),
+        render: (_, company) => <TableCellText value={orgDisplayName(company.organization)} />,
       },
       {
         key: 'actions',

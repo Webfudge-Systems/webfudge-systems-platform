@@ -1,61 +1,26 @@
 /**
- * Contact API — Strapi at NEXT_PUBLIC_API_URL (same pattern as leadCompanyService).
+ * Contact API — Strapi /contacts.
  */
 import strapiClient from '../strapiClient';
+import {
+  buildListQuery,
+  normalizeStrapiEntry,
+  normalizeStrapiListResponse,
+  normalizeStrapiOneResponse,
+} from './strapiContentApi';
 
 const ENDPOINT = '/contacts';
 
 function normalizeEntry(entry) {
-  if (!entry) return null;
-  if (entry.attributes) {
-    const { id, attributes } = entry;
-    const relations = {};
-    for (const [key, value] of Object.entries(attributes)) {
-      if (value && typeof value === 'object' && (value.data !== undefined || Array.isArray(value))) {
-        relations[key] = value;
-      }
-    }
-    const flat = {
-      id,
-      documentId: id,
-      ...Object.fromEntries(
-        Object.entries(attributes).filter(
-          ([_, v]) =>
-            v === null ||
-            v === undefined ||
-            typeof v !== 'object' ||
-            (v && !('data' in v) && !Array.isArray(v))
-        )
-      ),
-    };
-    for (const [key, value] of Object.entries(relations)) {
-      if (value && typeof value === 'object' && value.data !== undefined) {
-        flat[key] = Array.isArray(value.data)
-          ? value.data.map(normalizeEntry).filter(Boolean)
-          : normalizeEntry(value.data);
-      } else if (Array.isArray(value)) {
-        flat[key] = value.map(normalizeEntry).filter(Boolean);
-      } else {
-        flat[key] = value;
-      }
-    }
-    return flat;
-  }
-  return entry;
+  return normalizeStrapiEntry(entry);
 }
 
 function normalizeListResponse(response) {
-  const data = response?.data ?? response;
-  const list = Array.isArray(data) ? data : [];
-  return {
-    data: list.map(normalizeEntry).filter(Boolean),
-    meta: response?.meta ?? { pagination: { page: 1, pageCount: 1, total: list.length } },
-  };
+  return normalizeStrapiListResponse(response, normalizeEntry);
 }
 
 function normalizeOneResponse(response) {
-  const data = response?.data ?? response;
-  return { data: normalizeEntry(data) };
+  return normalizeStrapiOneResponse(response, normalizeEntry);
 }
 
 /** Build Strapi `data` object; drop empties; map CRM field names to schema. */
@@ -106,6 +71,11 @@ function toStrapiData(payload) {
     if (!Number.isNaN(n)) data.leadCompany = n;
   }
 
+  if (payload.clientAccount != null && payload.clientAccount !== '') {
+    const n = parseInt(payload.clientAccount, 10);
+    if (!Number.isNaN(n)) data.clientAccount = n;
+  }
+
   return data;
 }
 
@@ -117,25 +87,15 @@ function relationConnectFormat(data) {
   if (out.leadCompany != null && typeof out.leadCompany === 'number') {
     out.leadCompany = { id: out.leadCompany };
   }
+  if (out.clientAccount != null && typeof out.clientAccount === 'number') {
+    out.clientAccount = { id: out.clientAccount };
+  }
   return out;
 }
 
 export default {
   async getAll(params = {}) {
-    const query = {};
-    if (params.sort) query.sort = params.sort;
-    if (params['pagination[page]'] != null) query['pagination[page]'] = params['pagination[page]'];
-    if (params['pagination[pageSize]'] != null) query['pagination[pageSize]'] = params['pagination[pageSize]'];
-    if (params.pagination) {
-      query['pagination[page]'] = params.pagination.page ?? 1;
-      query['pagination[pageSize]'] = params.pagination.pageSize ?? 25;
-    }
-    if (params.populate) {
-      query.populate = Array.isArray(params.populate) ? params.populate.join(',') : params.populate;
-    }
-    if (params.filters) query.filters = params.filters;
-
-    const response = await strapiClient.get(ENDPOINT, query);
+    const response = await strapiClient.get(ENDPOINT, buildListQuery(params));
     return normalizeListResponse(response);
   },
 

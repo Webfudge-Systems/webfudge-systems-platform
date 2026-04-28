@@ -5,6 +5,83 @@ const jwt = require('jsonwebtoken');
 // JWT secret - use environment variable or fallback to default
 const JWT_SECRET = process.env.JWT_SECRET || 'myJwtSecret123456789012345678901234567890';
 
+const ORG_MEMBERSHIP_UID = 'api::organization-user.organization-user';
+
+function getFallbackOrgName(user) {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+  if (fullName) return `${fullName}'s Organization`;
+  const emailPrefix = (user.email || '').split('@')[0].trim();
+  if (emailPrefix) return `${emailPrefix}'s Organization`;
+  return `Organization ${user.id}`;
+}
+
+function toSlug(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function listActiveMemberships(userId, withModules = false) {
+  return strapi.entityService.findMany(ORG_MEMBERSHIP_UID, {
+    filters: { user: userId, isActive: true },
+    sort: { joinedAt: 'ASC' },
+    populate: {
+      organization: {
+        populate: {
+          subscriptions: {
+            populate: withModules ? { app: true, selectedModules: true } : { app: true },
+          },
+        },
+      },
+    },
+  });
+}
+
+async function ensureActiveOrganizationMembership(user) {
+  let memberships = await listActiveMemberships(user.id, true);
+  if (memberships.length > 0) return memberships;
+
+  const orgName = getFallbackOrgName(user);
+  const baseSlug = toSlug(orgName) || `organization-${user.id}`;
+  let slug = `${baseSlug}-${user.id}`;
+  let suffix = 1;
+
+  while (true) {
+    const existing = await strapi.entityService.findMany('api::organization.organization', {
+      filters: { slug },
+      limit: 1,
+    });
+    if (existing.length === 0) break;
+    suffix += 1;
+    slug = `${baseSlug}-${user.id}-${suffix}`;
+  }
+
+  const organization = await strapi.entityService.create('api::organization.organization', {
+    data: {
+      name: orgName,
+      slug,
+      owner: user.id,
+      status: 'trial',
+      onboardingCompleted: false,
+      trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  await strapi.entityService.create(ORG_MEMBERSHIP_UID, {
+    data: {
+      user: user.id,
+      organization: organization.id,
+      role: 'Owner',
+      isActive: true,
+      joinedAt: new Date(),
+    },
+  });
+
+  memberships = await listActiveMemberships(user.id, true);
+  return memberships;
+}
+
 module.exports = {
   async signup(ctx) {
     const { email, password, firstName, lastName } = ctx.request.body;
@@ -42,13 +119,7 @@ module.exports = {
         { expiresIn: '7d' }
       );
 
-      // Get user organizations
-      const organizations = await strapi.entityService.findMany('api::organization-user.organization-user', {
-        filters: { user: user.id, isActive: true },
-        populate: {
-          organization: true
-        }
-      });
+      const organizations = await ensureActiveOrganizationMembership(user);
 
       ctx.send({
         jwt: token,
@@ -110,21 +181,7 @@ module.exports = {
         { expiresIn: '7d' }
       );
 
-      // Get user organizations
-      const organizations = await strapi.entityService.findMany('api::organization-user.organization-user', {
-        filters: { user: user.id, isActive: true },
-        populate: {
-          organization: {
-            populate: {
-              subscriptions: {
-                populate: {
-                  app: true
-                }
-              }
-            }
-          }
-        }
-      });
+      const organizations = await ensureActiveOrganizationMembership(user);
 
       ctx.send({
         jwt: token,
@@ -176,22 +233,7 @@ module.exports = {
         return ctx.unauthorized('User not found or blocked');
       }
 
-      // Get user organizations
-      const organizations = await strapi.entityService.findMany('api::organization-user.organization-user', {
-        filters: { user: user.id, isActive: true },
-        populate: {
-          organization: {
-            populate: {
-              subscriptions: {
-                populate: {
-                  app: true,
-                  selectedModules: true
-                }
-              }
-            }
-          }
-        }
-      });
+      const organizations = await ensureActiveOrganizationMembership(user);
 
       ctx.send({
         user: {

@@ -1,56 +1,34 @@
 'use strict';
 
 /**
- * contact controller — same tenancy rules as lead-company (org + JWT middleware).
+ * contact controller
+ * - Requires ctx.state.user + ctx.state.orgId (global jwt-auth).
+ * - CRUD is scoped to organization (tenant isolation).
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const { logCrmActivity, collectChangedKeys } = require('../../../utils/crm-activity-log');
+const {
+  orgIdFromRelation,
+  readListQuery,
+  createPopulateSanitizer,
+  safeCount,
+} = require('../../../utils/content-api-helpers');
+
 const UID = 'api::contact.contact';
 
-function orgIdFromRelation(rel) {
-  if (rel == null) return null;
-  if (typeof rel === 'object') return rel.id ?? null;
-  return rel;
-}
-
-const ALLOWED_POPULATE = new Set(['assignedTo', 'organization', 'leadCompany', 'clientAccount']);
-
-function sanitizePopulate(populate) {
-  const fallback = ['assignedTo', 'organization', 'leadCompany', 'clientAccount'];
-  if (populate == null || populate === '' || populate === '*') {
-    return fallback;
-  }
-  let keys = [];
-  if (Array.isArray(populate)) {
-    keys = populate.map((p) => (typeof p === 'string' ? p : '')).filter(Boolean);
-  } else if (typeof populate === 'object') {
-    keys = Object.values(populate)
-      .map((v) => (typeof v === 'string' ? v : ''))
-      .filter(Boolean);
-  } else if (typeof populate === 'string') {
-    keys = populate
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-  }
-  const filtered = [...new Set(keys.filter((k) => ALLOWED_POPULATE.has(k)))];
-  return filtered.length ? filtered : fallback;
-}
+const POPULATE_FALLBACK = ['assignedTo', 'organization', 'leadCompany', 'clientAccount'];
+const sanitizePopulate = createPopulateSanitizer(
+  new Set(['assignedTo', 'organization', 'leadCompany', 'clientAccount']),
+  POPULATE_FALLBACK
+);
 
 module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
 
-    const query = ctx.query || {};
-    const page = parseInt(query['pagination[page]'] || query.page || '1', 10);
-    const pageSize = Math.min(
-      parseInt(query['pagination[pageSize]'] || query.pageSize || '25', 10),
-      100
-    );
-    const sort = query.sort || 'createdAt:desc';
-    const [sortField, sortOrder] = sort.split(':');
+    const { query, page, pageSize, sort } = readListQuery(ctx);
 
     const filters = { organization: ctx.state.orgId };
     const extra = query.filters;
@@ -67,18 +45,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       filters,
       start: (page - 1) * pageSize,
       limit: pageSize,
-      sort: sortField
-        ? { [sortField]: (sortOrder || 'desc').toUpperCase() }
-        : { createdAt: 'DESC' },
+      sort,
       populate: sanitizePopulate(query.populate),
     });
 
-    let total = 0;
-    try {
-      total = await strapi.db.query(UID).count({ where: filters });
-    } catch (_) {
-      total = results.length;
-    }
+    const total = await safeCount(strapi, UID, filters, results.length);
     const pageCount = Math.ceil(Math.max(total, 1) / pageSize);
     return { data: results, meta: { pagination: { page, pageSize, pageCount, total } } };
   },

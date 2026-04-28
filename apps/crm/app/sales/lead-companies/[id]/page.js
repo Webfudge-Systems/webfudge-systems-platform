@@ -52,9 +52,14 @@ import {
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import contactService from '../../../../lib/api/contactService';
-import { fetchActivityTimeline } from '../../../../lib/api/crmActivityService';
+import dealService from '../../../../lib/api/dealService';
+import proposalService from '../../../../lib/api/proposalService';
+import { fetchActivityTimeline, fetchLeadCompanyComments, addLeadCompanyComment } from '../../../../lib/api/crmActivityService';
 import strapiClient from '../../../../lib/strapiClient';
 import ActivitiesTimeline from '../../../../components/ActivitiesTimeline';
+import EntityActivityPanel from '../../../../components/EntityActivityPanel';
+import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
+import meetingService from '../../../../lib/api/meetingService';
 import {
   industryOptions,
   companyTypeSelectOptions,
@@ -139,6 +144,14 @@ function humanizeSource(source) {
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+const PROPOSAL_STATUS_BADGE = {
+  DRAFT: { variant: 'default', label: 'Draft' },
+  SENT: { variant: 'info', label: 'Sent' },
+  ACCEPTED: { variant: 'success', label: 'Accepted' },
+  REJECTED: { variant: 'danger', label: 'Rejected' },
+  EXPIRED: { variant: 'warning', label: 'Expired' },
+};
 
 function isPresent(value) {
   if (value == null) return false;
@@ -296,6 +309,12 @@ export default function LeadCompanyDetailPage() {
   const [crmTimelineLoading, setCrmTimelineLoading] = useState(false);
   const [crmTimelineError, setCrmTimelineError] = useState(null);
 
+  const [linkedDeals, setLinkedDeals] = useState([]);
+  const [dealsLoading, setDealsLoading] = useState(true);
+  const [linkedProposals, setLinkedProposals] = useState([]);
+  const [proposalsLoading, setProposalsLoading] = useState(true);
+  const [meetingsCount, setMeetingsCount] = useState(0);
+
   const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [converting, setConverting] = useState(false);
   const [convertError, setConvertError] = useState('');
@@ -371,36 +390,126 @@ export default function LeadCompanyDetailPage() {
     [id]
   );
 
+  const loadLinkedDeals = useCallback(
+    async (showLoadingSpinner = false) => {
+      if (!id) return;
+      if (showLoadingSpinner) setDealsLoading(true);
+      try {
+        const idEq = Number.isNaN(Number(id)) ? id : Number(id);
+        const dealsRes = await dealService.getAll({
+          'pagination[pageSize]': 100,
+          sort: 'createdAt:desc',
+          populate: ['assignedTo', 'leadCompany'],
+          filters: {
+            leadCompany: {
+              id: { $eq: idEq },
+            },
+          },
+        });
+        setLinkedDeals(Array.isArray(dealsRes.data) ? dealsRes.data : []);
+      } catch (e) {
+        console.error(e);
+        setLinkedDeals([]);
+      } finally {
+        if (showLoadingSpinner) setDealsLoading(false);
+      }
+    },
+    [id]
+  );
+
+  const loadLinkedProposals = useCallback(
+    async (showLoadingSpinner = false) => {
+      if (!id) return;
+      if (showLoadingSpinner) setProposalsLoading(true);
+      try {
+        const idEq = Number.isNaN(Number(id)) ? id : Number(id);
+        const targetId = String(id);
+        const isRelatedToLead = (p) => {
+          const lc = p?.leadCompany;
+          if (lc == null) return false;
+          if (typeof lc !== 'object') return String(lc) === targetId;
+          const lid = lc.id ?? lc.documentId ?? null;
+          return lid != null && String(lid) === targetId;
+        };
+        try {
+          const res = await proposalService.getAll({
+            'pagination[pageSize]': 100,
+            sort: 'createdAt:desc',
+            populate: ['assignedTo', 'leadCompany', 'deal'],
+            filters: {
+              leadCompany: {
+                id: { $eq: idEq },
+              },
+            },
+          });
+          const raw = Array.isArray(res.data) ? res.data : [];
+          setLinkedProposals(raw.filter(isRelatedToLead));
+        } catch {
+          const res = await proposalService.getAll({
+            'pagination[pageSize]': 100,
+            sort: 'createdAt:desc',
+            populate: ['assignedTo', 'leadCompany', 'deal'],
+          });
+          const all = Array.isArray(res.data) ? res.data : [];
+          setLinkedProposals(all.filter(isRelatedToLead));
+        }
+      } catch (e) {
+        console.error(e);
+        setLinkedProposals([]);
+      } finally {
+        if (showLoadingSpinner) setProposalsLoading(false);
+      }
+    },
+    [id]
+  );
+
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       setContactsLoading(true);
+      setDealsLoading(true);
+      setProposalsLoading(true);
       setLinkedContacts([]);
+      setLinkedProposals([]);
+      setMeetingsCount(0);
       try {
         const leadRes = await leadCompanyService.getOne(id);
         if (!cancelled && leadRes?.data) setLead(leadRes.data);
         else if (!cancelled) setLead(null);
 
         await loadLinkedContacts(false);
+        await loadLinkedDeals(false);
+        await loadLinkedProposals(false);
+        try {
+          const n = await meetingService.countByLeadCompany(id);
+          if (!cancelled) setMeetingsCount(typeof n === 'number' && !Number.isNaN(n) ? n : 0);
+        } catch {
+          if (!cancelled) setMeetingsCount(0);
+        }
       } catch (e) {
         console.error(e);
         if (!cancelled) {
           setLead(null);
           setLinkedContacts([]);
+          setLinkedDeals([]);
+          setLinkedProposals([]);
+          setMeetingsCount(0);
         }
       } finally {
         if (!cancelled) {
           setLoading(false);
           setContactsLoading(false);
+          setDealsLoading(false);
+          setProposalsLoading(false);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [id, loadLinkedContacts]);
+  }, [id, loadLinkedContacts, loadLinkedDeals, loadLinkedProposals]);
 
   const reloadCrmTimeline = useCallback(
     async (opts = {}) => {
@@ -1038,13 +1147,267 @@ export default function LeadCompanyDetailPage() {
     [router]
   );
 
+  const leadDealsColumns = useMemo(
+    () => [
+      {
+        key: 'deal',
+        label: 'DEAL',
+        render: (_, deal) => (
+          <div className="flex items-center gap-3 min-w-[200px]">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+              <Briefcase className="w-4 h-4 text-orange-600" />
+            </div>
+            <div className="min-w-0">
+              <div className="font-semibold text-gray-900 truncate">{deal.name || 'Unnamed deal'}</div>
+              <div className="text-sm text-gray-500 truncate">{deal.dealGroup || '—'}</div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'value',
+        label: 'VALUE',
+        render: (_, deal) => (
+          <span className="font-semibold text-gray-900 tabular-nums whitespace-nowrap">
+            {formatCurrency(deal.value)}
+          </span>
+        ),
+      },
+      {
+        key: 'stage',
+        label: 'STAGE',
+        render: (_, deal) => {
+          const s = (deal.stage || 'discovery').toLowerCase();
+          const stageMap = {
+            discovery: 'border-sky-200 bg-sky-50 text-sky-900',
+            prospect: 'border-slate-200 bg-slate-50 text-slate-800',
+            proposal: 'border-violet-200 bg-violet-50 text-violet-900',
+            negotiation: 'border-amber-200 bg-amber-50 text-amber-900',
+            won: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+            lost: 'border-red-200 bg-red-50 text-red-900',
+          };
+          const cls = stageMap[s] || stageMap.discovery;
+          const label = s.charAt(0).toUpperCase() + s.slice(1);
+          return (
+            <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${cls}`}>
+              {label}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'priority',
+        label: 'PRIORITY',
+        render: (_, deal) => {
+          const p = (deal.priority || 'medium').toLowerCase();
+          const priorityMap = {
+            low: 'border-gray-200 bg-gray-50 text-gray-700',
+            medium: 'border-amber-200 bg-amber-50 text-amber-800',
+            high: 'border-red-200 bg-red-50 text-red-800',
+          };
+          const cls = priorityMap[p] || priorityMap.medium;
+          const label = p.charAt(0).toUpperCase() + p.slice(1);
+          return (
+            <span className={`inline-flex rounded-lg border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${cls}`}>
+              {label}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'owner',
+        label: 'OWNER',
+        render: (_, deal) => {
+          const u = deal.assignedTo;
+          const ownerLabel = assigneeName(u);
+          return (
+            <div className="flex items-center gap-2 min-w-[160px]">
+              <Avatar
+                fallback={assigneeInitials(u)}
+                alt={ownerLabel}
+                size="sm"
+                className="flex-shrink-0 bg-gray-600"
+              />
+              <span className="font-semibold text-gray-900 truncate">{ownerLabel}</span>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'expectedCloseDate',
+        label: 'CLOSE DATE',
+        render: (_, deal) => (
+          <div className="min-w-[110px]">
+            <div className="text-sm font-medium text-gray-900 whitespace-nowrap">
+              {formatDate(deal.expectedCloseDate)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'actions',
+        label: 'ACTIONS',
+        render: (_, deal) => (
+          <div className="flex items-center gap-0.5 min-w-[80px]" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-slate-700 hover:bg-slate-100"
+              title="View"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/sales/deals/${deal.id}`);
+              }}
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-emerald-600 hover:bg-emerald-50"
+              title="Edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/sales/deals/${deal.id}/edit`);
+              }}
+            >
+              <Pencil className="w-4 h-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [router]
+  );
+
+  const leadProposalsColumns = useMemo(
+    () => [
+      {
+        key: 'proposal',
+        label: 'PROPOSAL',
+        render: (_, p) => {
+          const title = p.title || p.projectName || 'Untitled';
+          return (
+            <div className="flex min-w-[220px] items-center gap-3">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-violet-50">
+                <FileText className="h-4 w-4 text-violet-600" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <div className="truncate font-semibold text-gray-900">{title}</div>
+                <div className="truncate text-sm text-gray-500">
+                  {`${p.proposalNumber || '—'} · ${humanizeSource(p.documentType || 'PROPOSAL')}`}
+                </div>
+              </div>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'value',
+        label: 'VALUE',
+        render: (_, p) => (
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
+            {formatCurrency(p.totalValue)}
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        label: 'STATUS',
+        render: (_, p) => {
+          const st = (p.status || 'DRAFT').toUpperCase();
+          const cfg = PROPOSAL_STATUS_BADGE[st] || PROPOSAL_STATUS_BADGE.DRAFT;
+          return (
+            <Badge variant={cfg.variant} className="whitespace-nowrap font-semibold uppercase">
+              {cfg.label}
+            </Badge>
+          );
+        },
+      },
+      {
+        key: 'date',
+        label: 'DATE',
+        render: (_, p) => (
+          <div className="min-w-[100px] whitespace-nowrap text-sm font-medium text-gray-900">
+            {formatDate(p.date || p.createdAt)}
+          </div>
+        ),
+      },
+      {
+        key: 'validUntil',
+        label: 'VALID UNTIL',
+        render: (_, p) => (
+          <div className="min-w-[100px] whitespace-nowrap text-sm text-gray-700">
+            {formatDate(p.validUntil)}
+          </div>
+        ),
+      },
+      {
+        key: 'deal',
+        label: 'DEAL',
+        render: (_, p) => {
+          const d = p.deal;
+          if (d && typeof d === 'object') {
+            const dn = d.name || 'Deal';
+            return (
+              <button
+                type="button"
+                className="max-w-[180px] truncate text-left text-sm font-medium text-orange-700 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (d.id != null) router.push(`/sales/deals/${d.id}`);
+                }}
+              >
+                {dn}
+              </button>
+            );
+          }
+          return <span className="text-sm text-gray-400">—</span>;
+        },
+      },
+      {
+        key: 'actions',
+        label: 'ACTIONS',
+        render: (_, p) => (
+          <div className="flex min-w-[80px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-slate-700 hover:bg-slate-100"
+              title="View"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/clients/proposals/${p.id}`);
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-emerald-600 hover:bg-emerald-50"
+              title="Edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/clients/proposals/${p.id}/edit`);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [router]
+  );
+
   const detailTabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'contacts', label: 'Contacts', badge: contactsCount || undefined },
     { key: 'activities', label: 'Activities' },
-    { key: 'deals', label: 'Deals' },
-    { key: 'proposals', label: 'Proposals' },
-    { key: 'meetings', label: 'Meetings' },
+    { key: 'deals', label: 'Deals', badge: linkedDeals.length || undefined },
+    { key: 'proposals', label: 'Proposals', badge: linkedProposals.length || undefined },
+    { key: 'meetings', label: 'Meetings', badge: meetingsCount || undefined },
   ];
 
   return (
@@ -1128,7 +1491,7 @@ export default function LeadCompanyDetailPage() {
             <KPICard
               compact
               title="Active Deals"
-              value={0}
+              value={linkedDeals.filter((d) => d.stage !== 'won' && d.stage !== 'lost').length}
               icon={Briefcase}
               colorScheme="orange"
             />
@@ -1751,47 +2114,200 @@ export default function LeadCompanyDetailPage() {
           )}
 
           {detailTab === 'activities' && (
-            <Card variant="elevated" className="rounded-xl p-6 sm:p-8">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Activity timeline</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Changes to this lead and its contacts ({activityCount} total).
-                </p>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Left: Quick summary */}
+              <div className="lg:col-span-2 space-y-4">
+                <Card variant="elevated" className="rounded-xl p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-4 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-orange-500" />
+                    Activity Summary
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between rounded-xl bg-orange-50/70 border border-orange-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-orange-700">Total events</span>
+                      <span className="text-lg font-bold text-orange-900 tabular-nums">{activityCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Last activity</span>
+                      <span className="text-xs font-semibold text-gray-800">{lastActivityDisplay}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Contacts</span>
+                      <span className="text-xs font-semibold text-gray-800">{contactsCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Active deals</span>
+                      <span className="text-xs font-semibold text-gray-800">
+                        {linkedDeals.filter((d) => d.stage !== 'won' && d.stage !== 'lost').length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Created</span>
+                      <span className="text-xs font-semibold text-gray-800">{formatDate(lead?.createdAt)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 text-center">
+                      Activity and chat messages are linked to the{' '}
+                      <button
+                        type="button"
+                        className="text-orange-500 font-medium hover:underline"
+                        onClick={() => setDetailTab('contacts')}
+                      >
+                        quick-chat
+                      </button>{' '}
+                      on the lead companies table.
+                    </p>
+                  </div>
+                </Card>
               </div>
-              <ActivitiesTimeline
-                items={crmTimeline}
-                loading={crmTimelineLoading}
-                error={crmTimelineError}
-              />
-            </Card>
+
+              {/* Right: Activity + Chat panel */}
+              <div className="lg:col-span-3">
+                <EntityActivityPanel
+                  entityType="lead_company"
+                  entityId={id}
+                  entityName={name}
+                  crmTimeline={crmTimeline}
+                  crmTimelineLoading={crmTimelineLoading}
+                  crmTimelineError={crmTimelineError}
+                  activityCount={activityCount}
+                  fetchCommentsFn={({ entityId }) =>
+                    fetchLeadCompanyComments({ leadCompanyId: entityId, limit: 80 })
+                  }
+                  addCommentFn={({ entityId, comment }) =>
+                    addLeadCompanyComment({ leadCompanyId: entityId, comment })
+                  }
+                />
+              </div>
+            </div>
           )}
 
           {detailTab === 'deals' && (
-            <Card variant="elevated" className="rounded-xl">
-              <EmptyState
-                icon={Briefcase}
-                title="No deals"
-                description="Deals linked to this lead will show here once the deals API is connected."
-              />
-            </Card>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-gray-600 min-h-[1.25rem]">
+                  {dealsLoading ? (
+                    <span className="text-gray-400">Loading deals…</span>
+                  ) : (
+                    <>
+                      Showing{' '}
+                      <span className="font-semibold text-gray-900">{linkedDeals.length}</span> result
+                      {linkedDeals.length !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/sales/deals/new?leadCompany=${id}`)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-pink-500 shadow-md hover:opacity-95 transition-opacity shrink-0 w-full sm:w-auto"
+                >
+                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                  Add Deal
+                </button>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                {dealsLoading ? (
+                  <div className="p-12 flex flex-col items-center justify-center">
+                    <LoadingSpinner size="lg" message="Loading deals..." />
+                  </div>
+                ) : linkedDeals.length === 0 ? (
+                  <div className="p-6">
+                    <EmptyState
+                      icon={Briefcase}
+                      title="No deals yet"
+                      description="Create a deal for this lead company to start tracking your pipeline."
+                      action={
+                        <Button
+                          type="button"
+                          onClick={() => router.push(`/sales/deals/new?leadCompany=${id}`)}
+                          className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-pink-500 border-0 text-white shadow-md hover:opacity-95"
+                        >
+                          <Plus className="h-4 w-4 shrink-0 inline mr-2 align-text-bottom" aria-hidden />
+                          Add deal
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Table
+                    columns={leadDealsColumns}
+                    data={linkedDeals}
+                    keyField="id"
+                    variant="modern"
+                    onRowClick={(row) => router.push(`/sales/deals/${row.id}`)}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {detailTab === 'proposals' && (
-            <Card variant="elevated" className="rounded-xl">
-              <EmptyState
-                icon={FileText}
-                title="No proposals"
-                description="Send and track proposals from this lead when proposals are enabled."
-              />
-            </Card>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-h-[1.25rem] text-sm text-gray-600">
+                  {proposalsLoading ? (
+                    <span className="text-gray-400">Loading proposals…</span>
+                  ) : (
+                    <>
+                      Showing{' '}
+                      <span className="font-semibold text-gray-900">{linkedProposals.length}</span> result
+                      {linkedProposals.length !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/clients/proposals/new?leadCompany=${id}`)}
+                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-95 sm:w-auto"
+                >
+                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                  New proposal
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                {proposalsLoading ? (
+                  <div className="flex flex-col items-center justify-center p-12">
+                    <LoadingSpinner size="lg" message="Loading proposals..." />
+                  </div>
+                ) : linkedProposals.length === 0 ? (
+                  <div className="p-6">
+                    <EmptyState
+                      icon={FileText}
+                      title="No proposals"
+                      description="Proposals linked to this lead company will appear here. Create one to send a quote or SOW."
+                      action={
+                        <Button
+                          type="button"
+                          onClick={() => router.push(`/clients/proposals/new?leadCompany=${id}`)}
+                          className="w-full border-0 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md hover:opacity-95 sm:w-auto"
+                        >
+                          <Plus className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom" aria-hidden />
+                          New proposal
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Table
+                    columns={leadProposalsColumns}
+                    data={linkedProposals}
+                    keyField="id"
+                    variant="modern"
+                    onRowClick={(row) => router.push(`/clients/proposals/${row.id}`)}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {detailTab === 'meetings' && (
-            <Card variant="elevated" className="rounded-xl">
-              <EmptyState
-                icon={Video}
-                title="No meetings"
-                description="Scheduled meetings for this lead will appear here."
+            <Card variant="elevated" className="rounded-xl p-5">
+              <MeetingsEmbedList
+                fetchFn={() => meetingService.getByLeadCompany(id)}
+                scheduleHref={`/meetings/new?leadCompany=${id}`}
+                emptyTitle="No meetings for this lead"
+                entityLabel="this lead"
               />
             </Card>
           )}

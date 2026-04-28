@@ -13,12 +13,16 @@ export function FormSectionCard({
   headerClassName,
 }) {
   return (
-    <Card className={clsx('rounded-2xl p-6', cardClassName, className)}>
+    <Card
+      variant="elevated"
+      padding={false}
+      className={clsx('rounded-2xl p-6', cardClassName, className)}
+    >
       <div className={clsx('mb-6 flex items-center gap-3', headerClassName)}>
         {Icon ? (
           <div
             className={clsx(
-              'flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-pink-500',
+              'flex h-10 w-10 items-center justify-center rounded-xl bg-brand-primary shadow-sm',
               iconContainerClassName
             )}
           >

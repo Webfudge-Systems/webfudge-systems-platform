@@ -13,6 +13,12 @@ module.exports = {
       config: authFalse,
     },
     {
+      method: 'GET',
+      path: '/crm-activities/feed',
+      handler: `${UID}.feed`,
+      config: authFalse,
+    },
+    {
       method: 'POST',
       path: '/crm-activities/comments',
       handler: `${UID}.addComment`,

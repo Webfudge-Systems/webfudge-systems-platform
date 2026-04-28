@@ -1,6 +1,7 @@
 'use client';
 
-import { Activity } from 'lucide-react';
+import Link from 'next/link';
+import { Activity, ExternalLink } from 'lucide-react';
 import { EmptyState, LoadingSpinner } from '@webfudge/ui';
 
 function formatWhen(iso) {
@@ -54,9 +55,16 @@ function parseMeta(meta) {
  *   loading?: boolean,
  *   error?: string | null,
  *   className?: string,
+ *   entityHrefForRow?: (row: object) => string | null,
  * }} props
  */
-export default function ActivitiesTimeline({ items, loading, error, className = '' }) {
+export default function ActivitiesTimeline({
+  items,
+  loading,
+  error,
+  className = '',
+  entityHrefForRow,
+}) {
   if (loading) {
     return (
       <div className={`flex flex-col items-center justify-center py-14 ${className}`.trim()}>
@@ -117,6 +125,21 @@ export default function ActivitiesTimeline({ items, loading, error, className = 
                 ) : null}
               </div>
               <p className="mt-2 text-sm font-medium leading-snug text-gray-900">{summary}</p>
+              {typeof entityHrefForRow === 'function' ? (() => {
+                const href = entityHrefForRow(row);
+                if (!href) return null;
+                return (
+                  <p className="mt-1.5">
+                    <Link
+                      href={href}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"
+                    >
+                      Open record
+                      <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
+                    </Link>
+                  </p>
+                );
+              })() : null}
               {changes.length > 0 ? (
                 <ul
                   className="mt-3 space-y-2.5 rounded-xl border border-gray-100 bg-gray-50/95 px-3 py-3 ring-1 ring-gray-100/80"

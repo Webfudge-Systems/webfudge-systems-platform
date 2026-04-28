@@ -469,7 +469,6 @@ export default function AddLeadCompanyPage() {
             title="Company Information"
             description="Basic information about the lead company"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-            iconContainerClassName="bg-gradient-to-br from-orange-500 to-pink-500"
           >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -691,7 +690,6 @@ export default function AddLeadCompanyPage() {
             title="Contact Information"
             description="Add contacts for this lead company"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-            iconContainerClassName="bg-gradient-to-br from-blue-500 to-purple-500"
           >
             <div className="flex items-center justify-between mb-6">
               <div />
@@ -835,7 +833,6 @@ export default function AddLeadCompanyPage() {
             title="Lead Status"
             description="Set the initial status for this lead"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-            iconContainerClassName="bg-gradient-to-br from-green-500 to-teal-500"
           >
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

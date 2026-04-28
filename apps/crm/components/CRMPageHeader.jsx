@@ -15,12 +15,12 @@ export default function CRMPageHeader({
   onSearchChange,
   onAddClick,
   onFilterClick,
+  hasActiveFilters = false,
   onImportClick,
   onExportClick,
   onShareImageClick,
   actions,
   children,
-  hasActiveFilters = false,
 }) {
   return (
     <WorkspaceHeader
@@ -34,11 +34,11 @@ export default function CRMPageHeader({
       onSearchChange={onSearchChange}
       onAddClick={onAddClick}
       onFilterClick={onFilterClick}
+      hasActiveFilters={hasActiveFilters}
       onImportClick={onImportClick}
       onExportClick={onExportClick}
       onShareImageClick={onShareImageClick}
       actions={actions}
-      hasActiveFilters={hasActiveFilters}
       notificationService={notificationService}
       renderGlobalSearchModal={({ isOpen, onClose, initialQuery }) => (
         <GlobalSearchModal isOpen={isOpen} onClose={onClose} initialQuery={initialQuery} />

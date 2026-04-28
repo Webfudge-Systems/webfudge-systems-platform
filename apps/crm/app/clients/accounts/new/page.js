@@ -364,7 +364,6 @@ export default function NewClientAccountPage() {
             title="Company Information"
             description="Basic information about the client company"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-            iconContainerClassName="bg-gradient-to-br from-sky-500 to-blue-600"
           >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -461,7 +460,6 @@ export default function NewClientAccountPage() {
             title="Address Information"
             description="Location and contact address details"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-            iconContainerClassName="bg-gradient-to-br from-violet-500 to-purple-600"
           >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -515,7 +513,6 @@ export default function NewClientAccountPage() {
             title="Account Details"
             description="Account type, status, and business metrics"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-            iconContainerClassName="bg-gradient-to-br from-emerald-500 to-teal-600"
           >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -605,7 +602,6 @@ export default function NewClientAccountPage() {
             title="Contract &amp; Billing"
             description="Contract dates and billing preferences"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-            iconContainerClassName="bg-gradient-to-br from-orange-500 to-amber-500"
           >
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -661,7 +657,6 @@ export default function NewClientAccountPage() {
             title="Social &amp; Additional Information"
             description="Social media profiles and additional notes"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-            iconContainerClassName="bg-gradient-to-br from-blue-500 to-indigo-600"
           >
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

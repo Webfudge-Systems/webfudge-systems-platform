@@ -5,6 +5,9 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const UID = 'api::crm-activity.crm-activity';
 const CONTACT_UID = 'api::contact.contact';
 const LEAD_UID = 'api::lead-company.lead-company';
+const DEAL_UID = 'api::deal.deal';
+const CLIENT_ACCOUNT_UID = 'api::client-account.client-account';
+const MEETING_UID = 'api::meeting.meeting';
 
 function orgIdFromRelation(rel) {
   if (rel == null) return null;
@@ -14,8 +17,8 @@ function orgIdFromRelation(rel) {
 
 module.exports = createCoreController(UID, ({ strapi }) => ({
   /**
-   * GET /crm-activities/timeline?contactId= | ?leadCompanyId=
-   * Exactly one scope param. Includes contact changes rolled up to a lead via leadCompany.
+   * GET /crm-activities/timeline?contactId= | ?leadCompanyId= | ?dealId= | ?clientAccountId=
+   * Exactly one scope param.
    */
   async timeline(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
@@ -24,13 +27,28 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const q = ctx.query || {};
     const contactIdRaw = q.contactId ?? q['contactId'];
     const leadIdRaw = q.leadCompanyId ?? q['leadCompanyId'];
+    const dealIdRaw = q.dealId ?? q['dealId'];
+    const clientAccountIdRaw = q.clientAccountId ?? q['clientAccountId'];
+    const meetingIdRaw = q.meetingId ?? q['meetingId'];
+
     const hasContact =
       contactIdRaw != null && String(contactIdRaw).trim() !== '' && contactIdRaw !== 'undefined';
     const hasLead =
       leadIdRaw != null && String(leadIdRaw).trim() !== '' && leadIdRaw !== 'undefined';
+    const hasDeal =
+      dealIdRaw != null && String(dealIdRaw).trim() !== '' && dealIdRaw !== 'undefined';
+    const hasClientAccount =
+      clientAccountIdRaw != null &&
+      String(clientAccountIdRaw).trim() !== '' &&
+      clientAccountIdRaw !== 'undefined';
+    const hasMeeting =
+      meetingIdRaw != null && String(meetingIdRaw).trim() !== '' && meetingIdRaw !== 'undefined';
 
-    if (hasContact === hasLead) {
-      return ctx.badRequest('Provide exactly one of contactId or leadCompanyId');
+    const scopeCount = [hasContact, hasLead, hasDeal, hasClientAccount, hasMeeting].filter(Boolean).length;
+    if (scopeCount !== 1) {
+      return ctx.badRequest(
+        'Provide exactly one of contactId, leadCompanyId, dealId, clientAccountId, or meetingId'
+      );
     }
 
     const limit = Math.min(parseInt(q.limit || q['limit'] || '50', 10), 100);
@@ -55,7 +73,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'contact',
         subjectId: cid,
       };
-    } else {
+    } else if (hasLead) {
       const lid = parseInt(String(leadIdRaw), 10);
       if (Number.isNaN(lid)) return ctx.badRequest('Invalid leadCompanyId');
 
@@ -71,12 +89,65 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         organization: ctx.state.orgId,
         leadCompany: lid,
       };
+    } else if (hasDeal) {
+      const did = parseInt(String(dealIdRaw), 10);
+      if (Number.isNaN(did)) return ctx.badRequest('Invalid dealId');
+
+      const deal = await strapi.entityService.findOne(DEAL_UID, did, {
+        populate: ['organization'],
+      });
+      if (!deal) return ctx.notFound();
+      if (orgIdFromRelation(deal.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      filters = {
+        organization: ctx.state.orgId,
+        subjectType: 'deal',
+        subjectId: did,
+      };
+    } else if (hasMeeting) {
+      const mid = parseInt(String(meetingIdRaw), 10);
+      if (Number.isNaN(mid)) return ctx.badRequest('Invalid meetingId');
+
+      const meeting = await strapi.entityService.findOne(MEETING_UID, mid, {
+        populate: ['organization'],
+      });
+      if (!meeting) return ctx.notFound();
+      if (orgIdFromRelation(meeting.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      filters = {
+        organization: ctx.state.orgId,
+        subjectType: 'meeting',
+        subjectId: mid,
+      };
+    } else {
+      // hasClientAccount
+      const caid = parseInt(String(clientAccountIdRaw), 10);
+      if (Number.isNaN(caid)) return ctx.badRequest('Invalid clientAccountId');
+
+      const clientAccount = await strapi.entityService.findOne(CLIENT_ACCOUNT_UID, caid, {
+        populate: ['organization'],
+      });
+      if (!clientAccount) return ctx.notFound();
+      if (orgIdFromRelation(clientAccount.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      filters = {
+        organization: ctx.state.orgId,
+        subjectType: 'client_account',
+        subjectId: caid,
+      };
     }
 
-    let total = 0;
     if (type === 'comment') {
       filters = { ...filters, action: 'comment' };
     }
+
+    let total = 0;
     try {
       total = await strapi.db.query(UID).count({ where: filters });
     } catch (_) {
@@ -94,8 +165,46 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   },
 
   /**
+   * GET /crm-activities/feed?limit=&start=&type=
+   * Organization-wide activity (no entity scope). For global CRM sidebar feed.
+   * Optional ?type=comment to return only comment activities.
+   */
+  async feed(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+
+    const q = ctx.query || {};
+    const limit = Math.min(parseInt(q.limit || q['limit'] || '25', 10), 100);
+    const startRaw = q.start ?? q['start'] ?? q.offset ?? q['offset'] ?? '0';
+    const start = Math.max(0, parseInt(String(startRaw), 10) || 0);
+    const type = String(q.type || q['type'] || '').trim().toLowerCase();
+
+    const filters = { organization: ctx.state.orgId };
+    if (type) {
+      filters.action = type;
+    }
+
+    let total = 0;
+    try {
+      total = await strapi.db.query(UID).count({ where: filters });
+    } catch (_) {
+      total = 0;
+    }
+
+    const results = await strapi.entityService.findMany(UID, {
+      filters,
+      sort: { createdAt: 'DESC' },
+      start,
+      limit,
+      populate: ['actor'],
+    });
+
+    return { data: results, meta: { total, start, limit } };
+  },
+
+  /**
    * POST /crm-activities/comments
-   * body: { leadCompanyId: number|string, comment: string }
+   * body: { leadCompanyId, comment } OR { dealId, comment } OR { contactId, comment } OR { clientAccountId, comment }
    */
   async addComment(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
@@ -103,17 +212,152 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
+
     const leadCompanyIdRaw = payload?.leadCompanyId;
+    const dealIdRaw = payload?.dealId;
+    const contactIdRaw = payload?.contactId;
+    const clientAccountIdRaw = payload?.clientAccountId;
     const commentRaw = payload?.comment;
 
-    const leadCompanyId = parseInt(String(leadCompanyIdRaw || ''), 10);
-    if (!leadCompanyId || Number.isNaN(leadCompanyId)) {
-      return ctx.badRequest('Invalid leadCompanyId');
+    const hasLead =
+      leadCompanyIdRaw != null &&
+      String(leadCompanyIdRaw).trim() !== '' &&
+      leadCompanyIdRaw !== 'undefined';
+    const hasDeal =
+      dealIdRaw != null && String(dealIdRaw).trim() !== '' && dealIdRaw !== 'undefined';
+    const hasContact =
+      contactIdRaw != null && String(contactIdRaw).trim() !== '' && contactIdRaw !== 'undefined';
+    const hasClientAccount =
+      clientAccountIdRaw != null &&
+      String(clientAccountIdRaw).trim() !== '' &&
+      clientAccountIdRaw !== 'undefined';
+
+    const scopeCount = [hasLead, hasDeal, hasContact, hasClientAccount].filter(Boolean).length;
+    if (scopeCount !== 1) {
+      return ctx.badRequest(
+        'Provide exactly one of leadCompanyId, dealId, contactId, or clientAccountId'
+      );
     }
 
     const comment = String(commentRaw || '').trim();
     if (!comment) return ctx.badRequest('Comment is required');
     if (comment.length > 5000) return ctx.badRequest('Comment is too long');
+
+    const actorName =
+      ctx.state.user?.username ||
+      ctx.state.user?.email ||
+      (ctx.state.user?.id != null ? `User ${ctx.state.user.id}` : 'User');
+
+    // ── Deal ────────────────────────────────────────────────────────────────
+    if (hasDeal) {
+      const dealId = parseInt(String(dealIdRaw), 10);
+      if (Number.isNaN(dealId)) return ctx.badRequest('Invalid dealId');
+
+      const deal = await strapi.entityService.findOne(DEAL_UID, dealId, {
+        populate: ['organization', 'leadCompany'],
+      });
+      if (!deal) return ctx.notFound('Deal not found');
+      if (orgIdFromRelation(deal.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      const dealName = (deal.name || 'Deal').trim() || 'Deal';
+      const lc = deal.leadCompany;
+      const lcId =
+        lc == null
+          ? null
+          : typeof lc === 'object'
+          ? lc.id ?? null
+          : parseInt(String(lc), 10) || null;
+
+      const entry = await strapi.entityService.create(UID, {
+        data: {
+          organization: ctx.state.orgId,
+          actor: ctx.state.user?.id ?? null,
+          action: 'comment',
+          subjectType: 'deal',
+          subjectId: dealId,
+          leadCompany: lcId,
+          summary: `${actorName} commented on deal "${dealName}"`,
+          meta: { comment },
+        },
+        populate: ['actor'],
+      });
+
+      return { data: entry };
+    }
+
+    // ── Contact ─────────────────────────────────────────────────────────────
+    if (hasContact) {
+      const contactId = parseInt(String(contactIdRaw), 10);
+      if (Number.isNaN(contactId)) return ctx.badRequest('Invalid contactId');
+
+      const contact = await strapi.entityService.findOne(CONTACT_UID, contactId, {
+        populate: ['organization'],
+      });
+      if (!contact) return ctx.notFound('Contact not found');
+      if (orgIdFromRelation(contact.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim() ||
+        contact.email ||
+        'Contact';
+
+      const entry = await strapi.entityService.create(UID, {
+        data: {
+          organization: ctx.state.orgId,
+          actor: ctx.state.user?.id ?? null,
+          action: 'comment',
+          subjectType: 'contact',
+          subjectId: contactId,
+          summary: `${actorName} commented on contact "${contactName}"`,
+          meta: { comment },
+        },
+        populate: ['actor'],
+      });
+
+      return { data: entry };
+    }
+
+    // ── Client Account ───────────────────────────────────────────────────────
+    if (hasClientAccount) {
+      const clientAccountId = parseInt(String(clientAccountIdRaw), 10);
+      if (Number.isNaN(clientAccountId)) return ctx.badRequest('Invalid clientAccountId');
+
+      const clientAccount = await strapi.entityService.findOne(CLIENT_ACCOUNT_UID, clientAccountId, {
+        populate: ['organization'],
+      });
+      if (!clientAccount) return ctx.notFound('Client account not found');
+      if (orgIdFromRelation(clientAccount.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      const accountName =
+        (clientAccount.companyName || clientAccount.name || 'Client Account').trim() ||
+        'Client Account';
+
+      const entry = await strapi.entityService.create(UID, {
+        data: {
+          organization: ctx.state.orgId,
+          actor: ctx.state.user?.id ?? null,
+          action: 'comment',
+          subjectType: 'client_account',
+          subjectId: clientAccountId,
+          summary: `${actorName} commented on "${accountName}"`,
+          meta: { comment },
+        },
+        populate: ['actor'],
+      });
+
+      return { data: entry };
+    }
+
+    // ── Lead Company ─────────────────────────────────────────────────────────
+    const leadCompanyId = parseInt(String(leadCompanyIdRaw || ''), 10);
+    if (!leadCompanyId || Number.isNaN(leadCompanyId)) {
+      return ctx.badRequest('Invalid leadCompanyId');
+    }
 
     const lead = await strapi.entityService.findOne(LEAD_UID, leadCompanyId, {
       populate: ['organization'],
@@ -123,11 +367,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       return ctx.forbidden('Access denied');
     }
 
-    const actorName =
-      ctx.state.user?.username ||
-      ctx.state.user?.email ||
-      (ctx.state.user?.id != null ? `User ${ctx.state.user.id}` : 'User');
-    const leadName = (lead.companyName || lead.name || 'Lead company').trim() || 'Lead company';
+    const leadName =
+      (lead.companyName || lead.name || 'Lead company').trim() || 'Lead company';
 
     const entry = await strapi.entityService.create(UID, {
       data: {
@@ -138,9 +379,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectId: leadCompanyId,
         leadCompany: leadCompanyId,
         summary: `${actorName} commented on "${leadName}"`,
-        meta: {
-          comment,
-        },
+        meta: { comment },
       },
       populate: ['actor'],
     });
@@ -150,29 +389,133 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
   /**
    * GET /crm-activities/comment-counts?leadCompanyIds=1,2,3
-   * Returns: { data: { [leadCompanyId]: number } }
+   * GET /crm-activities/comment-counts?dealIds=1,2,3
+   * GET /crm-activities/comment-counts?contactIds=1,2,3
+   * GET /crm-activities/comment-counts?clientAccountIds=1,2,3
+   * Returns: { data: { [id]: number } }
    */
   async commentCounts(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
 
     const q = ctx.query || {};
+
+    // ── Deal counts ──────────────────────────────────────────────────────────
+    const dealRaw = q.dealIds ?? q['dealIds'];
+    if (dealRaw != null && String(dealRaw).trim() !== '') {
+      const list = Array.isArray(dealRaw) ? dealRaw : String(dealRaw).split(',');
+      const ids = [
+        ...new Set(
+          list.map((v) => parseInt(String(v).trim(), 10)).filter((n) => n && !Number.isNaN(n))
+        ),
+      ].slice(0, 200);
+      if (!ids.length) return { data: {} };
+      const pairs = await Promise.all(
+        ids.map(async (dealId) => {
+          let count = 0;
+          try {
+            count = await strapi.db.query(UID).count({
+              where: {
+                organization: ctx.state.orgId,
+                action: 'comment',
+                subjectType: 'deal',
+                subjectId: dealId,
+              },
+            });
+          } catch (_) {
+            count = 0;
+          }
+          return [String(dealId), count];
+        })
+      );
+      return { data: Object.fromEntries(pairs) };
+    }
+
+    // ── Contact counts ────────────────────────────────────────────────────────
+    const contactRaw = q.contactIds ?? q['contactIds'];
+    if (contactRaw != null && String(contactRaw).trim() !== '') {
+      const list = Array.isArray(contactRaw) ? contactRaw : String(contactRaw).split(',');
+      const ids = [
+        ...new Set(
+          list.map((v) => parseInt(String(v).trim(), 10)).filter((n) => n && !Number.isNaN(n))
+        ),
+      ].slice(0, 200);
+      if (!ids.length) return { data: {} };
+      const pairs = await Promise.all(
+        ids.map(async (contactId) => {
+          let count = 0;
+          try {
+            count = await strapi.db.query(UID).count({
+              where: {
+                organization: ctx.state.orgId,
+                action: 'comment',
+                subjectType: 'contact',
+                subjectId: contactId,
+              },
+            });
+          } catch (_) {
+            count = 0;
+          }
+          return [String(contactId), count];
+        })
+      );
+      return { data: Object.fromEntries(pairs) };
+    }
+
+    // ── Client Account counts ─────────────────────────────────────────────────
+    const clientAccountRaw = q.clientAccountIds ?? q['clientAccountIds'];
+    if (clientAccountRaw != null && String(clientAccountRaw).trim() !== '') {
+      const list = Array.isArray(clientAccountRaw)
+        ? clientAccountRaw
+        : String(clientAccountRaw).split(',');
+      const ids = [
+        ...new Set(
+          list.map((v) => parseInt(String(v).trim(), 10)).filter((n) => n && !Number.isNaN(n))
+        ),
+      ].slice(0, 200);
+      if (!ids.length) return { data: {} };
+      const pairs = await Promise.all(
+        ids.map(async (clientAccountId) => {
+          let count = 0;
+          try {
+            count = await strapi.db.query(UID).count({
+              where: {
+                organization: ctx.state.orgId,
+                action: 'comment',
+                subjectType: 'client_account',
+                subjectId: clientAccountId,
+              },
+            });
+          } catch (_) {
+            count = 0;
+          }
+          return [String(clientAccountId), count];
+        })
+      );
+      return { data: Object.fromEntries(pairs) };
+    }
+
+    // ── Lead Company counts (default) ─────────────────────────────────────────
     const raw = q.leadCompanyIds ?? q['leadCompanyIds'] ?? q.ids ?? q['ids'];
     const list = Array.isArray(raw) ? raw : String(raw || '').split(',');
-    const ids = [...new Set(list.map((v) => parseInt(String(v).trim(), 10)).filter((n) => n && !Number.isNaN(n)))].slice(
-      0,
-      200
-    );
+    const ids = [
+      ...new Set(
+        list.map((v) => parseInt(String(v).trim(), 10)).filter((n) => n && !Number.isNaN(n))
+      ),
+    ].slice(0, 200);
 
     if (!ids.length) return { data: {} };
 
-    // For small lists (current page), parallel counts are fine and portable across DBs.
     const pairs = await Promise.all(
       ids.map(async (leadCompanyId) => {
         let count = 0;
         try {
           count = await strapi.db.query(UID).count({
-            where: { organization: ctx.state.orgId, leadCompany: leadCompanyId, action: 'comment' },
+            where: {
+              organization: ctx.state.orgId,
+              leadCompany: leadCompanyId,
+              action: 'comment',
+            },
           });
         } catch (_) {
           count = 0;

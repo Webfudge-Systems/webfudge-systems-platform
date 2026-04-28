@@ -37,8 +37,9 @@ import {
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import contactService from '../../../../lib/api/contactService';
-import { fetchActivityTimeline } from '../../../../lib/api/crmActivityService';
+import { fetchActivityTimeline, fetchContactComments, addContactComment } from '../../../../lib/api/crmActivityService';
 import ActivitiesTimeline from '../../../../components/ActivitiesTimeline';
+import EntityActivityPanel from '../../../../components/EntityActivityPanel';
 
 function formatDate(dateString) {
   if (!dateString) return '—';
@@ -1230,19 +1231,62 @@ export default function ContactDetailPage() {
           )}
 
           {detailTab === 'activities' && (
-            <Card variant="elevated" className="rounded-xl p-6 sm:p-8">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Activity timeline</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Changes to this contact ({activitiesCount} total).
-                </p>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Left: Quick summary */}
+              <div className="lg:col-span-2 space-y-4">
+                <Card variant="elevated" className="rounded-xl p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-4 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-orange-500" />
+                    Activity Summary
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between rounded-xl bg-orange-50/70 border border-orange-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-orange-700">Total events</span>
+                      <span className="text-lg font-bold text-orange-900 tabular-nums">{activitiesCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Last activity</span>
+                      <span className="text-xs font-semibold text-gray-800">{lastActivityDisplay}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Status</span>
+                      <span className="text-xs font-semibold text-gray-800">
+                        {(contact.status || 'ACTIVE').replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    {contact.email && (
+                      <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                        <span className="text-xs font-medium text-gray-600">Email</span>
+                        <span className="text-xs font-semibold text-gray-800 truncate max-w-[180px]">{contact.email}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Created</span>
+                      <span className="text-xs font-semibold text-gray-800">{formatDate(contact.createdAt)}</span>
+                    </div>
+                  </div>
+                </Card>
               </div>
-              <ActivitiesTimeline
-                items={crmTimeline}
-                loading={crmTimelineLoading}
-                error={crmTimelineError}
-              />
-            </Card>
+
+              {/* Right: Activity + Chat panel */}
+              <div className="lg:col-span-3">
+                <EntityActivityPanel
+                  entityType="contact"
+                  entityId={id}
+                  entityName={name}
+                  crmTimeline={crmTimeline}
+                  crmTimelineLoading={crmTimelineLoading}
+                  crmTimelineError={crmTimelineError}
+                  activityCount={activitiesCount}
+                  fetchCommentsFn={({ entityId }) =>
+                    fetchContactComments({ contactId: entityId, limit: 80 })
+                  }
+                  addCommentFn={({ entityId, comment }) =>
+                    addContactComment({ contactId: entityId, comment })
+                  }
+                />
+              </div>
+            </div>
           )}
 
           {detailTab === 'details' && (

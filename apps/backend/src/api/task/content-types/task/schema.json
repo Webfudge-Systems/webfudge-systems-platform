@@ -73,6 +73,16 @@
       "relation": "manyToOne",
       "target": "api::lead-company.lead-company"
     },
+    "clientAccount": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client-account.client-account"
+    },
+    "deal": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::deal.deal"
+    },
     "organization": {
       "type": "relation",
       "relation": "manyToOne",

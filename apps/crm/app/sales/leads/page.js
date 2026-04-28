@@ -14,8 +14,6 @@ export default function LeadsPage() {
         title="Leads"
         subtitle="Manage and qualify leads"
         breadcrumb={[{ label: 'Sales', href: '/sales' }, { label: 'Leads', href: '/sales/leads' }]}
-        showActions
-        onAddClick={() => {}}
       />
       <Container>
         <Card variant="default" padding={false}>

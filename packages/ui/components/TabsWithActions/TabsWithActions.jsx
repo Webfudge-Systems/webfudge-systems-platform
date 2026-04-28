@@ -1,7 +1,7 @@
 'use client'
 
 import { clsx } from 'clsx'
-import { Search, Plus, List, LayoutGrid, Download, Eye, Filter, ListChecks } from 'lucide-react'
+import { Search, Plus, List, LayoutGrid, CalendarDays, Eye, Filter, ListChecks } from 'lucide-react'
 
 /**
  * Advanced Tabs component with integrated actions, search, and view toggles
@@ -27,10 +27,6 @@ export function TabsWithActions({
   onAddClick,
   addTitle = 'Add New',
 
-  showExport = false,
-  onExportClick,
-  exportTitle = 'Export',
-
   showFilter = false,
   onFilterClick,
   filterTitle = 'Filter',
@@ -49,6 +45,9 @@ export function TabsWithActions({
   activeView = 'list',
   onViewChange,
   viewOptions = ['list', 'board'],
+  listViewTitle = 'List view',
+  boardViewTitle = 'Board view',
+  calendarViewTitle = 'Calendar view',
 
   // Styling
   className,
@@ -64,7 +63,6 @@ export function TabsWithActions({
   const hasRightPanel =
     showSearch ||
     (showAdd && onAddClick) ||
-    (showExport && onExportClick) ||
     (showFilter && onFilterClick) ||
     (showBulkEdit && onBulkEditClick) ||
     (showColumnVisibility && onColumnVisibilityClick) ||
@@ -144,13 +142,13 @@ export function TabsWithActions({
       {showSearch && (
         <div className="hidden lg:flex items-center">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-gray-500" />
             <input
               type="text"
               placeholder={searchPlaceholder}
               value={searchQuery}
               onChange={(e) => onSearchChange?.(e.target.value)}
-              className="w-64 rounded-xl border border-white/40 bg-white/80 py-2.5 pl-10 pr-4 text-sm text-gray-700 shadow-md backdrop-blur-sm transition-all duration-300 placeholder:text-gray-400 focus:border-orange-500/50 focus:bg-white/90 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+              className="w-64 rounded-xl border border-gray-300 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-800 shadow-md transition-colors duration-200 placeholder:text-gray-400 focus:border-orange-500/60 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
         </div>
@@ -159,7 +157,7 @@ export function TabsWithActions({
       {showAdd && onAddClick && (
         <button
           onClick={onAddClick}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-white/80 text-orange-500 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-orange-50 hover:text-orange-600 hover:shadow-lg"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-orange-600 shadow-md transition-colors duration-200 hover:border-gray-400 hover:bg-orange-50"
           title={addTitle}
         >
           <Plus className="h-5 w-5" />
@@ -172,12 +170,12 @@ export function TabsWithActions({
             <button
               onClick={() => onViewChange?.('list')}
               className={clsx(
-                'flex h-10 w-10 items-center justify-center rounded-full border shadow-md backdrop-blur-sm transition-all duration-300 hover:shadow-lg',
+                'flex h-10 w-10 items-center justify-center rounded-full border shadow-md transition-colors duration-200',
                 activeView === 'list'
-                  ? 'border-orange-500/50 bg-orange-500 text-white'
-                  : 'border-white/40 bg-white/80 text-gray-700 hover:bg-white/90'
+                  ? 'border-orange-300 bg-orange-500 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
               )}
-              title="List View"
+              title={listViewTitle}
             >
               <List className="h-5 w-5" />
             </button>
@@ -186,14 +184,28 @@ export function TabsWithActions({
             <button
               onClick={() => onViewChange?.('board')}
               className={clsx(
-                'flex h-10 w-10 items-center justify-center rounded-full border shadow-md backdrop-blur-sm transition-all duration-300 hover:shadow-lg',
+                'flex h-10 w-10 items-center justify-center rounded-full border shadow-md transition-colors duration-200',
                 activeView === 'board'
-                  ? 'border-orange-500/50 bg-orange-500 text-white'
-                  : 'border-white/40 bg-white/80 text-gray-700 hover:bg-white/90'
+                  ? 'border-orange-300 bg-orange-500 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
               )}
-              title="Board View"
+              title={boardViewTitle}
             >
               <LayoutGrid className="h-5 w-5" />
+            </button>
+          )}
+          {viewOptions.includes('calendar') && (
+            <button
+              onClick={() => onViewChange?.('calendar')}
+              className={clsx(
+                'flex h-10 w-10 items-center justify-center rounded-full border shadow-md transition-colors duration-200',
+                activeView === 'calendar'
+                  ? 'border-orange-300 bg-orange-500 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+              )}
+              title={calendarViewTitle}
+            >
+              <CalendarDays className="h-5 w-5" />
             </button>
           )}
         </>
@@ -202,7 +214,7 @@ export function TabsWithActions({
       {showFilter && onFilterClick && (
         <button
           onClick={onFilterClick}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-white/80 text-gray-700 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-white/90 hover:shadow-lg"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-md transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50"
           title={filterTitle}
         >
           <Filter className="h-5 w-5" />
@@ -214,10 +226,10 @@ export function TabsWithActions({
           type="button"
           onClick={onBulkEditClick}
           className={clsx(
-            'flex items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold shadow-md transition-all duration-300',
+            'flex items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-sm font-semibold shadow-md transition-colors duration-200',
             bulkEditActive
-              ? 'border-orange-500/50 bg-orange-500 text-white shadow-lg'
-              : 'border-white/40 bg-white/80 text-gray-700 backdrop-blur-sm hover:bg-white/90'
+              ? 'border-orange-300 bg-orange-500 text-white'
+              : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
           )}
           title={bulkEditTitle}
         >
@@ -229,21 +241,10 @@ export function TabsWithActions({
       {showColumnVisibility && onColumnVisibilityClick && (
         <button
           onClick={onColumnVisibilityClick}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/40 bg-white/80 text-gray-700 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-white/90 hover:shadow-lg"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-700 shadow-md transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 "
           title={columnVisibilityTitle}
         >
           <Eye className="h-5 w-5" />
-        </button>
-      )}
-
-      {showExport && onExportClick && (
-        <button
-          onClick={onExportClick}
-          className="flex items-center gap-2 whitespace-nowrap rounded-xl border border-white/40 bg-white/80 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-md backdrop-blur-sm transition-all duration-300 hover:bg-white/90"
-          title={exportTitle}
-        >
-          <Download className="h-4 w-4" />
-          <span className="hidden lg:inline">{exportTitle}</span>
         </button>
       )}
     </div>

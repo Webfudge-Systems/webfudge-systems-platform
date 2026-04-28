@@ -18,7 +18,7 @@ import { Card } from '../Card'
  * @param {string} iconBgColorScheme - Optional override for icon background color
  * @param {function} onClick - Optional click handler for the card
  * @param {string} className - Optional additional CSS classes
- * @param {boolean} compact - Tighter padding, no subtitle/change footer (e.g. entity detail header KPIs)
+ * @param {boolean} compact - Same layout as default with less top/bottom padding and no subtitle/trend footer
  */
 const KPICard = ({
   title,
@@ -79,15 +79,14 @@ const KPICard = ({
 
   const colors = colorClasses[colorScheme] || colorClasses.blue
 
-  const paddingClass = compact ? 'pl-3 pt-2 pb-0 pr-0' : 'p-6 pb-0 pr-0'
+  const paddingClass = compact
+    ? 'pl-5 pt-3 pb-0 pr-0 sm:pl-6 sm:pt-4'
+    : 'p-6 pb-0 pr-0'
   const showFooter = !compact && (change || (!change && subtitle))
 
-  const iconBoxClass = compact
-    ? 'h-24 w-24 rounded-xl rounded-bl-[0] rounded-tr-[0]'
-    : 'h-32 w-32 rounded-2xl rounded-bl-[0] rounded-tr-[0]'
-  const iconImgClass = compact
-    ? 'absolute -bottom-5 -right-5 h-full w-full'
-    : 'absolute -bottom-7 -right-7 h-full w-full'
+  const iconBoxClass =
+    'relative h-32 w-32 shrink-0 self-start overflow-hidden rounded-2xl rounded-bl-[0] rounded-tr-[0]'
+  const iconImgClass = 'absolute -bottom-7 -right-7 h-32 w-32'
 
   return (
     <Card
@@ -95,11 +94,9 @@ const KPICard = ({
       className={`${paddingClass} ${onClick ? 'cursor-pointer hover:shadow-[0_6px_26px_rgba(15,23,42,0.13),0_3px_8px_rgba(15,23,42,0.07)] transition-shadow' : ''} ${className}`}
       onClick={onClick}
     >
-      <div className={`flex justify-between ${compact ? 'items-center' : 'items-start'}`}>
+      <div className="flex justify-between items-start">
         <div className="min-w-0 flex-1 pr-2">
-          <p className={`text-sm font-medium text-gray-600 ${compact ? 'mb-0.5' : 'mb-2'}`}>
-            {title}
-          </p>
+          <p className="mb-2 text-sm font-medium text-gray-600">{title}</p>
           <p className={`text-4xl font-bold text-gray-900 ${showFooter ? 'mb-2' : ''}`}>{value}</p>
           {showFooter && change && (
             <div className="flex items-center gap-1.5 text-sm text-gray-500">
@@ -124,9 +121,7 @@ const KPICard = ({
           )}
         </div>
         {Icon && (
-          <div
-            className={`relative flex flex-shrink-0 items-center justify-center overflow-hidden ${iconBoxClass} ${colors.iconBg}`}
-          >
+          <div className={`${iconBoxClass} ${colors.iconBg}`}>
             <Icon className={`${iconImgClass} ${colors.iconColor}`} />
           </div>
         )}

@@ -56,6 +56,7 @@ export function WorkspaceHeader({
   const [unreadCount, setUnreadCount] = useState(0)
   const [loadingNotifications, setLoadingNotifications] = useState(false)
   const notificationDropdownRef = useRef(null)
+  const profileCloseTimerRef = useRef(null)
 
   const getCurrentUserId = () => {
     if (!user) return null
@@ -97,6 +98,28 @@ export function WorkspaceHeader({
     }
     return undefined
   }, [showNotificationDropdown])
+
+  const openProfileDropdown = () => {
+    if (profileCloseTimerRef.current) {
+      clearTimeout(profileCloseTimerRef.current)
+      profileCloseTimerRef.current = null
+    }
+    setShowProfileDropdown(true)
+  }
+
+  const scheduleCloseProfileDropdown = () => {
+    if (profileCloseTimerRef.current) clearTimeout(profileCloseTimerRef.current)
+    profileCloseTimerRef.current = setTimeout(() => {
+      setShowProfileDropdown(false)
+      profileCloseTimerRef.current = null
+    }, 150)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (profileCloseTimerRef.current) clearTimeout(profileCloseTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -165,6 +188,14 @@ export function WorkspaceHeader({
     searchInputClassName ||
     'w-64 pl-10 pr-4 py-2.5 bg-white border border-orange-500/40 rounded-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all duration-300 placeholder:text-gray-400 text-gray-800'
 
+  const hasDefaultActionButtons = !!(
+    onAddClick ||
+    onFilterClick ||
+    onImportClick ||
+    onExportClick ||
+    onShareImageClick
+  )
+
   return (
     <Card glass className="relative z-[40]">
       <div className="flex items-center justify-between">
@@ -189,7 +220,7 @@ export function WorkspaceHeader({
           {subtitle ? <p className="text-brand-text-light">{subtitle}</p> : null}
         </div>
 
-        {(children || showSearch || showActions || actions) && (
+        {(children || showSearch || (showActions && hasDefaultActionButtons) || actions) && (
           <div className="flex items-center gap-4 ml-4">
             {showSearch && (
               <div className="relative hidden md:block">
@@ -214,12 +245,28 @@ export function WorkspaceHeader({
               </div>
             )}
 
-            {children || (showActions && (
+            {children || (showActions && hasDefaultActionButtons && (
               <div className="flex items-center gap-2">
                 {onAddClick && <button onClick={onAddClick} className={`${resolvedActionClass} text-brand-primary`}><Plus className="w-5 h-5" /></button>}
                 {onFilterClick && <button onClick={onFilterClick} className={`relative ${resolvedActionClass}`}><Filter className="w-5 h-5 text-brand-text-light" />{hasActiveFilters ? <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white/95 shadow-sm" /> : null}</button>}
-                {onImportClick && <button onClick={onImportClick} className={resolvedActionClass}><Upload className="w-5 h-5 text-brand-text-light" /></button>}
-                {onExportClick && <button onClick={onExportClick} className={resolvedActionClass}><Download className="w-5 h-5 text-brand-text-light" /></button>}
+                {onImportClick && (
+                  <button
+                    onClick={onImportClick}
+                    className={`${resolvedActionClass} flex items-center gap-2 whitespace-nowrap`}
+                  >
+                    <Upload className="w-5 h-5 text-brand-text-light" />
+                    <span className="text-sm font-semibold text-brand-text-light">Import</span>
+                  </button>
+                )}
+                {onExportClick && (
+                  <button
+                    onClick={onExportClick}
+                    className={`${resolvedActionClass} flex items-center gap-2 whitespace-nowrap`}
+                  >
+                    <Download className="w-5 h-5 text-brand-text-light" />
+                    <span className="text-sm font-semibold text-brand-text-light">Export</span>
+                  </button>
+                )}
                 {onShareImageClick && <button onClick={onShareImageClick} className={resolvedActionClass} title="Share Image"><Image className="w-5 h-5 text-brand-text-light" /></button>}
               </div>
             ))}
@@ -274,7 +321,12 @@ export function WorkspaceHeader({
             </div>
 
             <div className="relative">
-              <button className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300" onMouseEnter={() => setShowProfileDropdown(true)} onMouseLeave={() => setShowProfileDropdown(false)}>
+              <div
+                className="relative"
+                onMouseEnter={openProfileDropdown}
+                onMouseLeave={scheduleCloseProfileDropdown}
+              >
+                <button className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300">
                 <div className="flex items-center gap-3">
                   <Avatar fallback={resolveUserInitials(user)} alt={resolveUserDisplayName(user)} size="md" className="bg-white/10 backdrop-blur-md border border-white/20 shadow-lg text-brand-primary" />
                   <div className="text-left hidden lg:block">
@@ -283,11 +335,11 @@ export function WorkspaceHeader({
                   </div>
                 </div>
                 <ChevronDown className={`w-4 h-4 text-brand-text-light transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
-              </button>
+                </button>
               {showProfileDropdown && (
                 <>
                   <div className="fixed inset-0 z-[99998]" onClick={() => setShowProfileDropdown(false)} />
-                  <div className={`fixed right-6 top-20 w-72 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 z-[99999] ${profileDropdownClassName || ''}`} onMouseEnter={() => setShowProfileDropdown(true)} onMouseLeave={() => setShowProfileDropdown(false)}>
+                  <div className={`fixed right-6 top-20 w-72 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 z-[99999] ${profileDropdownClassName || ''}`}>
                     <div className="p-4 border-b border-white/20">
                       <div className="flex items-center gap-3">
                         <Avatar fallback={resolveUserInitials(user)} alt={resolveUserDisplayName(user)} size="xl" className="bg-white/20 backdrop-blur-md border border-white/30 shadow-lg text-brand-primary" />
@@ -306,6 +358,7 @@ export function WorkspaceHeader({
                   </div>
                 </>
               )}
+              </div>
             </div>
           </div>
         )}

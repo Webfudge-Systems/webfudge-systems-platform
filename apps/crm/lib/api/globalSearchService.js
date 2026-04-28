@@ -58,7 +58,7 @@ class GlobalSearchService {
                 'filters[$or][2][email][$containsi]': query,
                 'filters[$or][3][phone][$containsi]': query,
                 'filters[$or][4][industry][$containsi]': query,
-                populate: 'assignedTo,deals',
+                populate: ['assignedTo', 'deals'],
                 'pagination[pageSize]': maxResults,
                 'pagination[page]': 1
             });
@@ -184,7 +184,7 @@ class GlobalSearchService {
                 'filters[$or][1][companyName][$containsi]': query,
                 'filters[$or][2][email][$containsi]': query,
                 'filters[$or][3][phone][$containsi]': query,
-                populate: 'assignedTo,deals',
+                populate: ['assignedTo', 'deals'],
                 'pagination[pageSize]': maxResults,
                 'pagination[page]': 1
             });

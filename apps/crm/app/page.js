@@ -9,7 +9,7 @@ import CRMPageHeader from '../components/CRMPageHeader';
 import dashboardService from '../lib/api/dashboardService';
 import {
   SalesAnalyticsWidget,
-  QuickActionsWidget,
+  MyWorkWidget,
   ActivityFeedWidget,
   DealsPipelineWidget,
 } from '../components/dashboard';
@@ -132,8 +132,8 @@ export default function DashboardPage() {
 
             {/* Right Column - Actions & Activity */}
             <div className="space-y-6">
-              {/* Quick Actions */}
-              <QuickActionsWidget />
+              {/* My work — tasks due today, overdue, upcoming */}
+              <MyWorkWidget />
 
               {/* Activity Feed */}
               <ActivityFeedWidget />

@@ -29,6 +29,13 @@ export {
   TableCellStatusPill,
   TableCellRole,
   TableCellLeadStatus,
+  TableCellText,
+  TableCellOrangePill,
+  TableCellSource,
+  TableCellMultiline,
+  TableCellPrimaryContact,
+  TableCellTitleSubtitle,
+  TableCellProbability,
   formatRelativeTime,
   formatTableDate,
   ownerDisplayFromUser,
@@ -39,3 +46,7 @@ export { TableRowActionMenuPortal } from './TableRowActionMenuPortal';
 export { Tabs } from './Tabs';
 export { TabsWithActions } from './TabsWithActions';
 export { Modal } from './Modal';
+
+// AUTOMATION / WORKFLOW COMPONENTS
+export { NodeHandle } from './NodeHandle';
+export { WorkflowStatusBadge } from './WorkflowStatusBadge';

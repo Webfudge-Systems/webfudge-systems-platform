@@ -4,6 +4,8 @@
 
 The backend now stores **CRM activity** rows whenever contacts or lead companies are created, updated, or deleted through the custom Strapi controllers. The CRM app loads these rows into an **activity timeline** on lead company and contact detail pages (Activities tab), and uses the same feed for **total activity count** and **last activity** on the overview sidebar where applicable.
 
+**Organization-wide feed:** `GET /api/crm-activities/feed?limit=&start=` returns activities for the active org (`limit` up to 100, `start` offset for pagination). Used by the CRM sidebar and the full **Activity log** page at `/activities` (`apps/crm/app/activities/page.js`). See [CRM_SIDEBAR_NAV_REFACTOR.md](./CRM_SIDEBAR_NAV_REFACTOR.md).
+
 ## Scope
 
 - **Backend (`apps/backend`)**

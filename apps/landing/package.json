@@ -10,6 +10,7 @@
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
+    "@iconify/react": "^5.0.0",
     "@webfudge/auth": "*",
     "@webfudge/ui": "*",
     "framer-motion": "^11.0.0",

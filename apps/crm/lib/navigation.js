@@ -1,23 +1,29 @@
 /**
- * CRM navigation structure (matches ref CRM)
+ * CRM navigation structure (sidebar + sub-sidebar).
+ * Primary areas: Dashboard, Sales, Workspace, Clients, Analytics.
  */
 import {
   LayoutDashboard,
+  LayoutGrid,
+  FolderKanban,
   Users,
   Briefcase,
   Building2,
   UserCheck,
   FileText,
   Receipt,
-  FolderOpen,
   BarChart3,
   CheckSquare,
-  Target,
+  FolderOpen,
   DollarSign,
-  Mail,
+  MessageSquare,
+  GitBranch,
+  Layers,
+  Plug,
   Phone,
   Calendar,
-  HeadphonesIcon,
+  Activity,
+  FileStack,
 } from 'lucide-react';
 
 const comingSoonUrl = (feature) => `/coming-soon?feature=${encodeURIComponent(feature)}`;
@@ -32,117 +38,89 @@ export const navigationData = [
         label: 'Lead Companies',
         icon: Users,
         href: '/sales/lead-companies',
-        children: [
-          { id: 'lead-companies-list', label: 'All Leads', href: '/sales/lead-companies' },
-          { id: 'lead-companies-board', label: 'Pipeline Board (Kanban)', href: '/sales/lead-companies' },
-          { id: 'lead-companies-new', label: 'New Lead', href: '/sales/lead-companies/new' },
-        ],
       },
       {
         id: 'contacts',
         label: 'Contacts',
         icon: UserCheck,
         href: '/sales/contacts',
-        children: [
-          { id: 'contacts-list', label: 'Contacts List', href: '/sales/contacts' },
-          { id: 'contacts-new', label: 'New Contact', href: '/sales/contacts/new' },
-        ],
       },
       {
         id: 'deals',
-        label: 'Opportunities / Deals',
+        label: 'Deals',
         icon: Briefcase,
         href: '/sales/deals',
-        children: [
-          { id: 'pipeline-board', label: 'Pipeline Board', href: '/sales/deals/pipeline' },
-          { id: 'deals-list', label: 'Deals List', href: '/sales/deals' },
-          { id: 'deals-new', label: 'New Deal', href: '/sales/deals/new' },
-        ],
-      },
-      { id: 'campaigns', label: 'Campaigns', icon: Mail, href: comingSoonUrl('Campaigns'), children: [] },
-      { id: 'meetings', label: 'Meetings & Calls', icon: Phone, href: comingSoonUrl('Meetings & Calls'), children: [] },
-    ],
-  },
-  {
-    id: 'delivery',
-    label: 'Delivery',
-    children: [
-      {
-        id: 'tasks',
-        label: 'Tasks',
-        icon: CheckSquare,
-        href: '/delivery/tasks',
-        children: [
-          { id: 'tasks-list', label: 'My Tasks', href: '/delivery/tasks' },
-        ],
       },
       {
-        id: 'projects',
-        label: 'Projects',
-        icon: FolderOpen,
-        href: '/delivery/projects',
-        children: [
-          { id: 'projects-list', label: 'All Projects', href: '/delivery/projects' },
-          { id: 'projects-board', label: 'Board', href: '/delivery/projects/board' },
-        ],
+        id: 'pipeline-board',
+        label: 'Pipeline Board',
+        icon: BarChart3,
+        href: '/sales/deals/pipeline',
       },
-      { id: 'documents', label: 'Documents', icon: FileText, href: comingSoonUrl('Documents'), children: [] },
-      { id: 'support', label: 'Support Tickets', icon: HeadphonesIcon, href: comingSoonUrl('Support'), children: [] },
     ],
   },
   {
-    id: 'analytics',
-    label: 'Analytics',
+    id: 'workspace',
+    label: 'Workspace',
     children: [
-      { id: 'reports', label: 'Reports & Forecasts', icon: BarChart3, href: comingSoonUrl('Analytics'), children: [] },
+      { id: 'workspace-home', label: 'Overview', icon: LayoutGrid, href: '/workspace' },
+      { id: 'threads', label: 'Threads', icon: MessageSquare, href: '/threads' },
+      { id: 'activity-log', label: 'Activity log', icon: Activity, href: '/activities' },
+      { id: 'proposals', label: 'Proposals', icon: FileText, href: '/clients/proposals' },
+      { id: 'tasks', label: 'Tasks', icon: CheckSquare, href: '/clients/tasks' },
+      { id: 'meetings', label: 'Meetings', icon: Calendar, href: '/meetings' },
+      { id: 'documents', label: 'Documents', icon: FileStack, href: comingSoonUrl('Documents') },
     ],
   },
   {
-    id: 'client-portal',
-    label: 'Client Portal',
+    id: 'clients',
+    label: 'Clients',
     children: [
       {
         id: 'accounts',
         label: 'Client Accounts',
         icon: Building2,
         href: '/clients/accounts',
-        children: [
-          { id: 'accounts-list', label: 'All Clients', href: '/clients/accounts' },
-          { id: 'accounts-new', label: 'New Client', href: '/clients/accounts/new' },
-        ],
       },
+      { id: 'invoices', label: 'Invoices', icon: Receipt, href: '/clients/invoices' },
+      { id: 'projects', label: 'Projects', icon: FolderOpen, href: '/clients/projects' },
+    ],
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    children: [
+      { id: 'analytics-home', label: 'Overview', icon: BarChart3, href: '/analytics' },
       {
-        id: 'proposals',
-        label: 'Proposals',
-        icon: FileText,
-        href: '/clients/proposals',
-        children: [{ id: 'proposals-list', label: 'View Proposals', href: '/clients/proposals' }],
+        id: 'reports',
+        label: 'Reports & Forecasts',
+        icon: BarChart3,
+        href: comingSoonUrl('Analytics'),
       },
-      {
-        id: 'invoices',
-        label: 'Invoices',
-        icon: Receipt,
-        href: '/clients/invoices',
-        children: [{ id: 'invoices-list', label: 'View Invoices', href: '/clients/invoices' }],
-      },
-      { id: 'client-documents', label: 'Documents', icon: FolderOpen, href: comingSoonUrl('Client Documents'), children: [] },
-      { id: 'client-tickets', label: 'Support Tickets', icon: HeadphonesIcon, href: comingSoonUrl('Client Support'), children: [] },
-      { id: 'client-meetings', label: 'Meetings', icon: Calendar, href: comingSoonUrl('Client Meetings'), children: [] },
     ],
   },
 ];
 
+/** Primary grid in sidebar (Analytics lives in the bottom System section). */
 export const mainNavItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/', hasSubNav: false, priority: 'high' },
-  { id: 'sales', label: 'Sales', icon: DollarSign, hasSubNav: true, priority: 'high' },
-  { id: 'delivery', label: 'Delivery', icon: FolderOpen, hasSubNav: true, priority: 'high' },
-  { id: 'client-portal', label: 'Client Portal', icon: UserCheck, hasSubNav: true, priority: 'high' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, hasSubNav: true, priority: 'low' },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/', hasSubNav: false },
+  { id: 'sales', label: 'Sales', icon: DollarSign, hasSubNav: true },
+  { id: 'workspace', label: 'Workspace', icon: FolderKanban, hasSubNav: true },
+  { id: 'clients', label: 'Clients', icon: Building2, hasSubNav: true },
+];
+
+export const automationNavItems = [
+  { label: 'Workflows', icon: GitBranch, href: '/automations' },
+  { label: 'Task Templates', icon: Layers, href: comingSoonUrl('Task Templates') },
+  { label: 'Documents', icon: FileText, href: comingSoonUrl('Document templates') },
+  { label: 'Integrations', icon: Plug, href: comingSoonUrl('Integrations') },
 ];
 
 export const quickActionItems = [
-  { label: 'Add Lead Company', icon: Users, href: '/sales/lead-companies/new' },
-  { label: 'Add Deal', icon: Briefcase, href: '/sales/deals/new' },
-  { label: 'Add Contact', icon: UserCheck, href: '/sales/contacts/new' },
-  { label: 'Add Task', icon: CheckSquare, href: '/delivery/tasks' },
+  { label: 'Add Lead', icon: Users, href: '/sales/lead-companies/new' },
+  { label: 'Log Call', icon: Phone, href: comingSoonUrl('Log Call') },
+  { label: 'Send WhatsApp', icon: MessageSquare, href: comingSoonUrl('Send WhatsApp') },
+  { label: 'Create Proposal', icon: FileText, href: '/clients/proposals' },
+  { label: 'Schedule Meeting', icon: Calendar, href: '/meetings/new' },
+  { label: 'Add Task', icon: CheckSquare, href: '/clients/tasks' },
 ];

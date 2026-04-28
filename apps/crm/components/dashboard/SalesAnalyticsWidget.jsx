@@ -2,16 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Card } from '@webfudge/ui'
-import { formatCurrency, formatCurrencyCompact } from '@webfudge/utils'
+import { formatCurrency } from '@webfudge/utils'
 import dealService from '../../lib/api/dealService'
-import {
-  TrendingUp,
-  DollarSign,
-  Target,
-  BarChart3,
-  ArrowUpRight,
-  ArrowDownRight,
-} from 'lucide-react'
+import { TrendingUp, DollarSign, Target, BarChart3 } from 'lucide-react'
 
 export default function SalesAnalyticsWidget() {
   const [loading, setLoading] = useState(true)
@@ -83,63 +76,57 @@ export default function SalesAnalyticsWidget() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-5 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
+        <div className="rounded-lg bg-gradient-to-l from-brand-primary via-brand-primary/90 to-brand-primary/80 border border-orange-400/20 shadow-md p-5">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-gray-600 mb-1 font-medium">Revenue</p>
-              <p className="text-3xl font-black text-gray-800">
+              <p className="text-sm text-orange-50/90 mb-1 font-medium">Revenue</p>
+              <p className="text-3xl font-black text-white">
                 {formatCurrency(analyticsData.trends.revenue.value, { notation: 'compact' })}
               </p>
-              <div className="mt-2 flex items-center text-xs text-gray-500">
-                <span className="w-2 h-2 rounded-full mr-2 bg-green-500"></span>
+              <div className="mt-2 flex items-center text-xs text-orange-50/90">
+                <span className="w-2 h-2 rounded-full mr-2 bg-emerald-300"></span>
                 0% this month
               </div>
             </div>
-            <div className="w-16 h-16 bg-orange-50 backdrop-blur-md rounded-xl flex items-center justify-center shadow-lg border border-orange-200">
-              <DollarSign className="w-8 h-8 text-orange-600" />
-            </div>
+            <DollarSign className="w-9 h-9 text-white/90 shrink-0" />
           </div>
         </div>
 
-        <div className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-5 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
+        <div className="rounded-lg bg-gradient-to-l from-brand-primary via-brand-primary/90 to-brand-primary/80 border border-orange-400/20 shadow-md p-5">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-gray-600 mb-1 font-medium">Conversion</p>
-              <p className="text-3xl font-black text-gray-800">
+              <p className="text-sm text-orange-50/90 mb-1 font-medium">Conversion</p>
+              <p className="text-3xl font-black text-white">
                 {analyticsData.conversionRate.toFixed(1)}%
               </p>
-              <div className="mt-2 flex items-center text-xs text-gray-500">
-                <span className="w-2 h-2 rounded-full mr-2 bg-green-500"></span>
+              <div className="mt-2 flex items-center text-xs text-orange-50/90">
+                <span className="w-2 h-2 rounded-full mr-2 bg-emerald-300"></span>
                 0% win rate
               </div>
             </div>
-            <div className="w-16 h-16 bg-orange-50 backdrop-blur-md rounded-xl flex items-center justify-center shadow-lg border border-orange-200">
-              <Target className="w-8 h-8 text-orange-600" />
-            </div>
+            <Target className="w-9 h-9 text-white/90 shrink-0" />
           </div>
         </div>
 
-        <div className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-5 hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
+        <div className="rounded-lg bg-gradient-to-l from-brand-primary via-brand-primary/90 to-brand-primary/80 border border-orange-400/20 shadow-md p-5">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <p className="text-sm text-gray-600 mb-1 font-medium">Velocity</p>
-              <p className="text-3xl font-black text-gray-800">
+              <p className="text-sm text-orange-50/90 mb-1 font-medium">Velocity</p>
+              <p className="text-3xl font-black text-white">
                 {formatCurrency(analyticsData.salesVelocity, { notation: 'compact' })}
               </p>
-              <div className="mt-2 flex items-center text-xs text-gray-500">
-                <span className="w-2 h-2 rounded-full mr-2 bg-orange-500"></span>
+              <div className="mt-2 flex items-center text-xs text-orange-50/90">
+                <span className="w-2 h-2 rounded-full mr-2 bg-orange-100"></span>
                 Per day average
               </div>
             </div>
-            <div className="w-16 h-16 bg-orange-50 backdrop-blur-md rounded-xl flex items-center justify-center shadow-lg border border-orange-200">
-              <TrendingUp className="w-8 h-8 text-orange-600" />
-            </div>
+            <TrendingUp className="w-9 h-9 text-white/90 shrink-0" />
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <div className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
+        <div className="rounded-lg bg-white border border-gray-200 shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
           <div className="bg-white/50 backdrop-blur-sm p-4 rounded-lg h-48 flex items-center justify-center">
             <p className="text-sm text-gray-500">
@@ -148,9 +135,9 @@ export default function SalesAnalyticsWidget() {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6">
+        <div className="rounded-lg bg-white border border-gray-200 shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Deals by Stage</h3>
-          <div className="bg-white/50 backdrop-blur-sm p-4 rounded-lg h-48 flex items-center justify-center">
+          <div className="bg-gray-50 border border-gray-100 p-4 rounded-md h-48 flex items-center justify-center">
             <p className="text-sm text-gray-500">
               Chart will appear here when connected to backend
             </p>

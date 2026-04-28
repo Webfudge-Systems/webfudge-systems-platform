@@ -1,13 +1,20 @@
 'use strict';
 
-const { createCoreRouter } = require('@strapi/strapi').factories;
+/**
+ * REST routes for Task (Strapi 5 content API).
+ * Same pattern as contact / deal / client-account — explicit routes, auth via JWT middleware.
+ */
+const UID = 'api::task.task';
 
-module.exports = createCoreRouter('api::task.task', {
-  config: {
-    find:    { auth: false },
-    findOne: { auth: false },
-    create:  { auth: false },
-    update:  { auth: false },
-    delete:  { auth: false },
-  },
-});
+const authFalse = { auth: false };
+
+module.exports = {
+  type: 'content-api',
+  routes: [
+    { method: 'GET', path: '/tasks', handler: `${UID}.find`, config: authFalse },
+    { method: 'GET', path: '/tasks/:id', handler: `${UID}.findOne`, config: authFalse },
+    { method: 'POST', path: '/tasks', handler: `${UID}.create`, config: authFalse },
+    { method: 'PUT', path: '/tasks/:id', handler: `${UID}.update`, config: authFalse },
+    { method: 'DELETE', path: '/tasks/:id', handler: `${UID}.delete`, config: authFalse },
+  ],
+};

@@ -10,7 +10,6 @@ import {
   Building2,
   Users,
   Briefcase,
-  IndianRupee,
   Target,
   DollarSign,
   MapPin,
@@ -31,6 +30,9 @@ import {
   MoreHorizontal,
   ClipboardList,
   Link2,
+  Plus,
+  Activity,
+  Receipt,
 } from 'lucide-react';
 import {
   Button,
@@ -51,9 +53,14 @@ import {
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import contactService from '../../../../lib/api/contactService';
-import { fetchActivityTimeline } from '../../../../lib/api/crmActivityService';
+import dealService from '../../../../lib/api/dealService';
+import invoiceService from '../../../../lib/api/invoiceService';
+import { fetchActivityTimeline, fetchClientAccountComments, addClientAccountComment } from '../../../../lib/api/crmActivityService';
 import strapiClient from '../../../../lib/strapiClient';
 import ActivitiesTimeline from '../../../../components/ActivitiesTimeline';
+import EntityActivityPanel from '../../../../components/EntityActivityPanel';
+import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
+import meetingService from '../../../../lib/api/meetingService';
 import {
   industryOptions,
   companyTypeSelectOptions,
@@ -122,6 +129,15 @@ function humanizeSource(source) {
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+const INVOICE_STATUS_BADGE = {
+  DRAFT: { variant: 'default', label: 'Draft' },
+  SENT: { variant: 'info', label: 'Sent' },
+  PAID: { variant: 'success', label: 'Paid' },
+  OVERDUE: { variant: 'danger', label: 'Overdue' },
+  CANCELLED: { variant: 'default', label: 'Cancelled' },
+  PARTIAL: { variant: 'warning', label: 'Partial' },
+};
 
 function isPresent(value) {
   if (value == null) return false;
@@ -249,6 +265,11 @@ export default function ClientAccountDetailPage() {
   const [loading, setLoading] = useState(true);
   const [linkedContacts, setLinkedContacts] = useState([]);
   const [contactsLoading, setContactsLoading] = useState(true);
+  const [linkedDeals, setLinkedDeals] = useState([]);
+  const [dealsLoading, setDealsLoading] = useState(true);
+  const [linkedInvoices, setLinkedInvoices] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [meetingsCount, setMeetingsCount] = useState(0);
   const [detailTab, setDetailTab] = useState('overview');
 
   const [assigneeModalOpen, setAssigneeModalOpen] = useState(false);
@@ -339,36 +360,149 @@ export default function ClientAccountDetailPage() {
     [id]
   );
 
+  const loadLinkedDeals = useCallback(
+    async (showLoadingSpinner = false) => {
+      if (!id) return;
+      if (showLoadingSpinner) setDealsLoading(true);
+      try {
+        const idEq = Number.isNaN(Number(id)) ? id : Number(id);
+        const targetId = String(id);
+        const isRelatedToClientAccount = (deal) => {
+          const ca = deal?.clientAccount;
+          if (ca == null) return false;
+          if (typeof ca !== 'object') return String(ca) === targetId;
+          const cid = ca.id ?? ca.documentId ?? null;
+          return cid != null && String(cid) === targetId;
+        };
+        try {
+          const dealsRes = await dealService.getAll({
+            'pagination[pageSize]': 100,
+            sort: 'createdAt:desc',
+            populate: ['assignedTo', 'clientAccount'],
+            filters: {
+              clientAccount: {
+                id: { $eq: idEq },
+              },
+            },
+          });
+          const raw = Array.isArray(dealsRes.data) ? dealsRes.data : [];
+          setLinkedDeals(raw.filter(isRelatedToClientAccount));
+        } catch {
+          const dealsRes = await dealService.getAll({
+            'pagination[pageSize]': 100,
+            sort: 'createdAt:desc',
+            populate: ['assignedTo', 'clientAccount'],
+          });
+          const all = Array.isArray(dealsRes.data) ? dealsRes.data : [];
+          setLinkedDeals(all.filter(isRelatedToClientAccount));
+        }
+      } catch (e) {
+        console.error(e);
+        setLinkedDeals([]);
+      } finally {
+        if (showLoadingSpinner) setDealsLoading(false);
+      }
+    },
+    [id]
+  );
+
+  const loadLinkedInvoices = useCallback(
+    async (showLoadingSpinner = false) => {
+      if (!id) return;
+      if (showLoadingSpinner) setInvoicesLoading(true);
+      try {
+        const idEq = Number.isNaN(Number(id)) ? id : Number(id);
+        const targetId = String(id);
+        const isRelatedToClientAccount = (inv) => {
+          const ca = inv?.clientAccount;
+          if (ca == null) return false;
+          if (typeof ca !== 'object') return String(ca) === targetId;
+          const cid = ca.id ?? ca.documentId ?? null;
+          return cid != null && String(cid) === targetId;
+        };
+        try {
+          const invRes = await invoiceService.getAll({
+            'pagination[pageSize]': 100,
+            sort: 'createdAt:desc',
+            populate: ['assignedTo', 'clientAccount', 'deal'],
+            filters: {
+              clientAccount: {
+                id: { $eq: idEq },
+              },
+            },
+          });
+          const raw = Array.isArray(invRes.data) ? invRes.data : [];
+          setLinkedInvoices(raw.filter(isRelatedToClientAccount));
+        } catch {
+          const invRes = await invoiceService.getAll({
+            'pagination[pageSize]': 100,
+            sort: 'createdAt:desc',
+            populate: ['assignedTo', 'clientAccount', 'deal'],
+          });
+          const all = Array.isArray(invRes.data) ? invRes.data : [];
+          setLinkedInvoices(all.filter(isRelatedToClientAccount));
+        }
+      } catch (e) {
+        console.error(e);
+        setLinkedInvoices([]);
+      } finally {
+        if (showLoadingSpinner) setInvoicesLoading(false);
+      }
+    },
+    [id]
+  );
+
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
+      setDealsLoading(true);
+      setInvoicesLoading(true);
+      setLinkedDeals([]);
+      setLinkedInvoices([]);
+      setMeetingsCount(0);
       try {
         const res = await clientAccountService.getOne(id);
         if (!cancelled && res?.data) {
           setAccount(res.data);
           await loadLinkedContacts(res.data);
+          await loadLinkedDeals(false);
+          await loadLinkedInvoices(false);
+          try {
+            const n = await meetingService.countByClientAccount(id);
+            if (!cancelled) setMeetingsCount(typeof n === 'number' && !Number.isNaN(n) ? n : 0);
+          } catch {
+            if (!cancelled) setMeetingsCount(0);
+          }
         } else if (!cancelled) {
           setAccount(null);
           setLinkedContacts([]);
+          setLinkedDeals([]);
+          setLinkedInvoices([]);
+          setMeetingsCount(0);
         }
       } catch (e) {
         console.error(e);
         if (!cancelled) {
           setAccount(null);
           setLinkedContacts([]);
+          setLinkedDeals([]);
+          setLinkedInvoices([]);
+          setMeetingsCount(0);
         }
       } finally {
         if (!cancelled) {
           setLoading(false);
+          setDealsLoading(false);
+          setInvoicesLoading(false);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [id, loadLinkedContacts]);
+  }, [id, loadLinkedContacts, loadLinkedDeals, loadLinkedInvoices]);
 
   const reloadCrmTimeline = useCallback(
     async (opts = {}) => {
@@ -828,14 +962,283 @@ export default function ClientAccountDetailPage() {
     [router]
   );
 
+  const clientAccountDealsColumns = useMemo(
+    () => [
+      {
+        key: 'deal',
+        label: 'DEAL',
+        render: (_, deal) => (
+          <div className="flex min-w-[200px] items-center gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100">
+              <Briefcase className="h-4 w-4 text-orange-600" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-gray-900">{deal.name || 'Unnamed deal'}</div>
+              <div className="truncate text-sm text-gray-500">{deal.dealGroup || '—'}</div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'value',
+        label: 'VALUE',
+        render: (_, deal) => (
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
+            {formatCurrency(deal.value)}
+          </span>
+        ),
+      },
+      {
+        key: 'stage',
+        label: 'STAGE',
+        render: (_, deal) => {
+          const s = (deal.stage || 'discovery').toLowerCase();
+          const stageMap = {
+            discovery: 'border-sky-200 bg-sky-50 text-sky-900',
+            prospect: 'border-slate-200 bg-slate-50 text-slate-800',
+            proposal: 'border-violet-200 bg-violet-50 text-violet-900',
+            negotiation: 'border-amber-200 bg-amber-50 text-amber-900',
+            won: 'border-emerald-200 bg-emerald-50 text-emerald-900',
+            lost: 'border-red-200 bg-red-50 text-red-900',
+          };
+          const cls = stageMap[s] || stageMap.discovery;
+          const label = s.charAt(0).toUpperCase() + s.slice(1);
+          return (
+            <span
+              className={`inline-flex whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${cls}`}
+            >
+              {label}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'priority',
+        label: 'PRIORITY',
+        render: (_, deal) => {
+          const p = (deal.priority || 'medium').toLowerCase();
+          const priorityMap = {
+            low: 'border-gray-200 bg-gray-50 text-gray-700',
+            medium: 'border-amber-200 bg-amber-50 text-amber-800',
+            high: 'border-red-200 bg-red-50 text-red-800',
+          };
+          const cls = priorityMap[p] || priorityMap.medium;
+          const label = p.charAt(0).toUpperCase() + p.slice(1);
+          return (
+            <span
+              className={`inline-flex whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${cls}`}
+            >
+              {label}
+            </span>
+          );
+        },
+      },
+      {
+        key: 'owner',
+        label: 'OWNER',
+        render: (_, deal) => {
+          const u = deal.assignedTo;
+          const ownerLabel = assigneeName(u);
+          return (
+            <div className="flex min-w-[160px] items-center gap-2">
+              <Avatar
+                fallback={assigneeInitials(u)}
+                alt={ownerLabel}
+                size="sm"
+                className="flex-shrink-0 bg-gray-600"
+              />
+              <span className="truncate font-semibold text-gray-900">{ownerLabel}</span>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'expectedCloseDate',
+        label: 'CLOSE DATE',
+        render: (_, deal) => (
+          <div className="min-w-[110px]">
+            <div className="whitespace-nowrap text-sm font-medium text-gray-900">
+              {formatDate(deal.expectedCloseDate)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'actions',
+        label: 'ACTIONS',
+        render: (_, deal) => (
+          <div className="flex min-w-[80px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-slate-700 hover:bg-slate-100"
+              title="View"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/sales/deals/${deal.id}`);
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-emerald-600 hover:bg-emerald-50"
+              title="Edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/sales/deals/${deal.id}/edit`);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [router]
+  );
+
+  const clientAccountInvoicesColumns = useMemo(
+    () => [
+      {
+        key: 'invoice',
+        label: 'INVOICE',
+        render: (_, inv) => (
+          <div className="flex min-w-[200px] items-center gap-3">
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-sky-50">
+              <Receipt className="h-4 w-4 text-sky-600" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-gray-900">{inv.invoiceNumber || '—'}</div>
+              <div className="truncate text-sm text-gray-500">
+                {humanizeSource(inv.documentType || 'INVOICE')}
+              </div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'amount',
+        label: 'AMOUNT',
+        render: (_, inv) => (
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
+            {formatCurrency(inv.total)}
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        label: 'STATUS',
+        render: (_, inv) => {
+          const st = (inv.status || 'DRAFT').toUpperCase();
+          const cfg = INVOICE_STATUS_BADGE[st] || INVOICE_STATUS_BADGE.DRAFT;
+          return (
+            <Badge variant={cfg.variant} className="whitespace-nowrap font-semibold uppercase">
+              {cfg.label}
+            </Badge>
+          );
+        },
+      },
+      {
+        key: 'invoiceDate',
+        label: 'DATE',
+        render: (_, inv) => (
+          <div className="min-w-[100px] whitespace-nowrap text-sm font-medium text-gray-900">
+            {formatDate(inv.invoiceDate || inv.createdAt)}
+          </div>
+        ),
+      },
+      {
+        key: 'dueDate',
+        label: 'DUE',
+        render: (_, inv) => (
+          <div className="min-w-[100px] whitespace-nowrap text-sm text-gray-700">
+            {formatDate(inv.dueDate)}
+          </div>
+        ),
+      },
+      {
+        key: 'deal',
+        label: 'DEAL',
+        render: (_, inv) => {
+          const d = inv.deal;
+          if (d && typeof d === 'object') {
+            const dn = d.name || 'Deal';
+            return (
+              <button
+                type="button"
+                className="max-w-[180px] truncate text-left text-sm font-medium text-orange-700 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (d.id != null) router.push(`/sales/deals/${d.id}`);
+                }}
+              >
+                {dn}
+              </button>
+            );
+          }
+          return <span className="text-sm text-gray-400">—</span>;
+        },
+      },
+      {
+        key: 'actions',
+        label: 'ACTIONS',
+        render: (_, inv) => (
+          <div className="flex min-w-[80px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-slate-700 hover:bg-slate-100"
+              title="View"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/clients/invoices/${inv.id}`);
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-emerald-600 hover:bg-emerald-50"
+              title="Edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/clients/invoices/${inv.id}/edit`);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [router]
+  );
+
+  const activeDealsCount = useMemo(
+    () =>
+      linkedDeals.filter((d) => {
+        const s = (d.stage || '').toLowerCase();
+        return s !== 'won' && s !== 'lost';
+      }).length,
+    [linkedDeals]
+  );
+
+  const wonDealsCount = useMemo(
+    () => linkedDeals.filter((d) => (d.stage || '').toLowerCase() === 'won').length,
+    [linkedDeals]
+  );
+
   const detailTabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'contacts', label: 'Contacts', badge: contactsCount || undefined },
     { key: 'activities', label: 'Activities' },
-    { key: 'deals', label: 'Deals' },
+    { key: 'deals', label: 'Deals', badge: linkedDeals.length || undefined },
     { key: 'projects', label: 'Projects' },
-    { key: 'invoices', label: 'Invoices' },
-    { key: 'meetings', label: 'Meetings' },
+    { key: 'invoices', label: 'Invoices', badge: linkedInvoices.length || undefined },
+    { key: 'meetings', label: 'Meetings', badge: meetingsCount || undefined },
   ];
 
   const convertedLead = account?.convertedFromLead;
@@ -948,8 +1351,8 @@ export default function ClientAccountDetailPage() {
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
             <KPICard compact title="Total Contacts" value={contactsCount} icon={Users} colorScheme="orange" />
-            <KPICard compact title="Active Deals" value={0} icon={DollarSign} colorScheme="orange" />
-            <KPICard compact title="Won Deals" value={0} icon={Target} colorScheme="orange" />
+            <KPICard compact title="Active Deals" value={activeDealsCount} icon={DollarSign} colorScheme="orange" />
+            <KPICard compact title="Won Deals" value={wonDealsCount} icon={Target} colorScheme="orange" />
             <KPICard compact title="Active Projects" value={0} icon={Briefcase} colorScheme="orange" />
           </div>
 
@@ -1398,11 +1801,10 @@ export default function ClientAccountDetailPage() {
                         href={linkedinHref || undefined}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition-colors ${
-                          linkedinHref
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition-colors ${linkedinHref
                             ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                             : 'pointer-events-none border-slate-200 bg-slate-50 text-slate-300'
-                        }`}
+                          }`}
                         aria-disabled={!linkedinHref}
                         title={linkedinHref ? 'Open LinkedIn profile' : 'LinkedIn not available'}
                       >
@@ -1412,11 +1814,10 @@ export default function ClientAccountDetailPage() {
                         href={twitterHref || undefined}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-lg font-semibold transition-colors ${
-                          twitterHref
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl border text-lg font-semibold transition-colors ${twitterHref
                             ? 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                             : 'pointer-events-none border-slate-200 bg-slate-50 text-slate-300'
-                        }`}
+                          }`}
                         aria-disabled={!twitterHref}
                         title={twitterHref ? 'Open X / Twitter profile' : 'X / Twitter not available'}
                       >
@@ -1484,31 +1885,127 @@ export default function ClientAccountDetailPage() {
           )}
 
           {detailTab === 'activities' && (
-            <Card variant="elevated" className="rounded-xl p-6 sm:p-8">
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Activity timeline</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  {leadCompanyIdForTimeline
-                    ? `Events from the original lead company and related records (${activityCount} total).`
-                    : 'No lead link — add activities from the CRM when client-account timeline support is enabled.'}
-                </p>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Left: Quick summary */}
+              <div className="lg:col-span-2 space-y-4">
+                <Card variant="elevated" className="rounded-xl p-5">
+                  <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-4 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-orange-500" />
+                    Activity Summary
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between rounded-xl bg-orange-50/70 border border-orange-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-orange-700">Total events</span>
+                      <span className="text-lg font-bold text-orange-900 tabular-nums">
+                        {leadCompanyIdForTimeline ? activityCount : '—'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Last activity</span>
+                      <span className="text-xs font-semibold text-gray-800">{lastActivityDisplay}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Contacts</span>
+                      <span className="text-xs font-semibold text-gray-800">{contactsCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Status</span>
+                      <span className="text-xs font-semibold text-gray-800">{statusUpper}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5">
+                      <span className="text-xs font-medium text-gray-600">Created</span>
+                      <span className="text-xs font-semibold text-gray-800">{formatDate(account.createdAt)}</span>
+                    </div>
+                  </div>
+                  {!leadCompanyIdForTimeline && (
+                    <p className="mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                      Activity timeline is linked from the original lead company. No lead link found.
+                    </p>
+                  )}
+                </Card>
               </div>
-              <ActivitiesTimeline
-                items={crmTimeline}
-                loading={crmTimelineLoading}
-                error={crmTimelineError}
-              />
-            </Card>
+
+              {/* Right: Activity + Chat panel */}
+              <div className="lg:col-span-3">
+                <EntityActivityPanel
+                  entityType="client_account"
+                  entityId={id}
+                  entityName={name}
+                  crmTimeline={crmTimeline}
+                  crmTimelineLoading={crmTimelineLoading}
+                  crmTimelineError={crmTimelineError}
+                  activityCount={leadCompanyIdForTimeline ? activityCount : 0}
+                  fetchCommentsFn={({ entityId }) =>
+                    fetchClientAccountComments({ clientAccountId: entityId, limit: 80 })
+                  }
+                  addCommentFn={({ entityId, comment }) =>
+                    addClientAccountComment({ clientAccountId: entityId, comment })
+                  }
+                />
+              </div>
+            </div>
           )}
 
           {detailTab === 'deals' && (
-            <Card variant="elevated" className="rounded-xl">
-              <EmptyState
-                icon={IndianRupee}
-                title="No deals"
-                description="Deals for this client will show here once the deals API is connected."
-              />
-            </Card>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-h-[1.25rem] text-sm text-gray-600">
+                  {dealsLoading ? (
+                    <span className="text-gray-400">Loading deals…</span>
+                  ) : (
+                    <>
+                      Showing{' '}
+                      <span className="font-semibold text-gray-900">{linkedDeals.length}</span> result
+                      {linkedDeals.length !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/sales/deals/new?clientAccount=${id}`)}
+                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-95 sm:w-auto"
+                >
+                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                  Add Deal
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                {dealsLoading ? (
+                  <div className="flex flex-col items-center justify-center p-12">
+                    <LoadingSpinner size="lg" message="Loading deals..." />
+                  </div>
+                ) : linkedDeals.length === 0 ? (
+                  <div className="p-6">
+                    <EmptyState
+                      icon={Briefcase}
+                      title="No deals yet"
+                      description="Create a deal for this client account to track your pipeline."
+                      action={
+                        <Button
+                          type="button"
+                          onClick={() => router.push(`/sales/deals/new?clientAccount=${id}`)}
+                          className="w-full border-0 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md hover:opacity-95 sm:w-auto"
+                        >
+                          <Plus
+                            className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom"
+                            aria-hidden
+                          />
+                          Add deal
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Table
+                    columns={clientAccountDealsColumns}
+                    data={linkedDeals}
+                    keyField="id"
+                    variant="modern"
+                    onRowClick={(row) => router.push(`/sales/deals/${row.id}`)}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {detailTab === 'projects' && (
@@ -1522,21 +2019,74 @@ export default function ClientAccountDetailPage() {
           )}
 
           {detailTab === 'invoices' && (
-            <Card variant="elevated" className="rounded-xl">
-              <EmptyState
-                icon={FileText}
-                title="No invoices"
-                description="Invoices issued to this client will be listed here."
-              />
-            </Card>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-h-[1.25rem] text-sm text-gray-600">
+                  {invoicesLoading ? (
+                    <span className="text-gray-400">Loading invoices…</span>
+                  ) : (
+                    <>
+                      Showing{' '}
+                      <span className="font-semibold text-gray-900">{linkedInvoices.length}</span> result
+                      {linkedInvoices.length !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/clients/invoices/new?clientAccount=${id}`)}
+                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-95 sm:w-auto"
+                >
+                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                  New invoice
+                </button>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                {invoicesLoading ? (
+                  <div className="flex flex-col items-center justify-center p-12">
+                    <LoadingSpinner size="lg" message="Loading invoices..." />
+                  </div>
+                ) : linkedInvoices.length === 0 ? (
+                  <div className="p-6">
+                    <EmptyState
+                      icon={FileText}
+                      title="No invoices"
+                      description="Invoices linked to this client account will appear here. Create one to bill this client."
+                      action={
+                        <Button
+                          type="button"
+                          onClick={() => router.push(`/clients/invoices/new?clientAccount=${id}`)}
+                          className="w-full border-0 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md hover:opacity-95 sm:w-auto"
+                        >
+                          <Plus
+                            className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom"
+                            aria-hidden
+                          />
+                          New invoice
+                        </Button>
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Table
+                    columns={clientAccountInvoicesColumns}
+                    data={linkedInvoices}
+                    keyField="id"
+                    variant="modern"
+                    onRowClick={(row) => router.push(`/clients/invoices/${row.id}`)}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {detailTab === 'meetings' && (
-            <Card variant="elevated" className="rounded-xl">
-              <EmptyState
-                icon={Video}
-                title="No meetings"
-                description="Scheduled meetings for this account will appear here."
+            <Card variant="elevated" className="rounded-xl p-5">
+              <MeetingsEmbedList
+                fetchFn={() => meetingService.getByClientAccount(id)}
+                scheduleHref={`/meetings/new?clientAccount=${id}`}
+                emptyTitle="No meetings for this account"
+                entityLabel="this account"
               />
             </Card>
           )}
