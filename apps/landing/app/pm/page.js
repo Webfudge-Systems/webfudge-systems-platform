@@ -1,9 +1,25 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Project Management — Webfudge Platform',
-  description: 'Project Management product page',
-}
+  title: 'Project Management Software',
+  description: 'Explore Webfudge Project Management for planning, delivery, and team collaboration.',
+  alternates: {
+    canonical: '/pm',
+  },
+  openGraph: {
+    title: 'Webfudge Project Management Software',
+    description: 'Explore Webfudge Project Management for planning, delivery, and team collaboration.',
+    url: '/pm',
+    type: 'website',
+    images: ['/favicon/web-app-manifest-512x512.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Webfudge Project Management Software',
+    description: 'Explore Webfudge Project Management for planning, delivery, and team collaboration.',
+    images: ['/favicon/web-app-manifest-512x512.png'],
+  },
+};
 
 export default function ProjectManagementPage() {
   return (

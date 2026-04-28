@@ -1,9 +1,25 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'CRM — Webfudge Platform',
-  description: 'CRM product page',
-}
+  title: 'CRM Software',
+  description: 'Explore Webfudge CRM for lead management, pipeline tracking, and customer operations.',
+  alternates: {
+    canonical: '/crm',
+  },
+  openGraph: {
+    title: 'Webfudge CRM Software',
+    description: 'Explore Webfudge CRM for lead management, pipeline tracking, and customer operations.',
+    url: '/crm',
+    type: 'website',
+    images: ['/favicon/web-app-manifest-512x512.png'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Webfudge CRM Software',
+    description: 'Explore Webfudge CRM for lead management, pipeline tracking, and customer operations.',
+    images: ['/favicon/web-app-manifest-512x512.png'],
+  },
+};
 
 export default function CRMPage() {
   return (

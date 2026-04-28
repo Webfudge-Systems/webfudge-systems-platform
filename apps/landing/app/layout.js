@@ -2,15 +2,105 @@ import './globals.css'
 import { ConditionalNavbar } from '../components/layout'
 import { AuthProvider } from '@webfudge/auth'
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://webfudge.in'
+const organizationName = 'Webfudge Platform'
+const defaultDescription =
+  'Webfudge software platform for CRM, operations, and business workflow management.'
+
 export const metadata = {
-  title: 'Webfudge Platform',
-  description: 'Welcome to Webfudge Platform',
+  title: {
+    default: organizationName,
+    template: `%s | ${organizationName}`,
+  },
+  metadataBase: new URL(siteUrl),
+  description: defaultDescription,
+  applicationName: organizationName,
+  creator: organizationName,
+  publisher: organizationName,
+  category: 'technology',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  keywords: ['CRM software', 'business operations', 'workflow management', 'Webfudge'],
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: organizationName,
+    description: defaultDescription,
+    url: '/',
+    siteName: organizationName,
+    type: 'website',
+    locale: 'en_US',
+    images: [
+      {
+        url: '/favicon/web-app-manifest-512x512.png',
+        width: 512,
+        height: 512,
+        alt: organizationName,
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: organizationName,
+    description: defaultDescription,
+    images: ['/favicon/web-app-manifest-512x512.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
+  icons: {
+    icon: [
+      { url: '/favicon/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    apple: [{ url: '/favicon/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: ['/favicon/favicon.svg'],
+  },
+  manifest: '/favicon/site.webmanifest',
 }
 
 export default function RootLayout({ children }) {
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        name: organizationName,
+        url: siteUrl,
+        logo: `${siteUrl}/favicon/web-app-manifest-512x512.png`,
+      },
+      {
+        '@type': 'WebSite',
+        name: organizationName,
+        url: siteUrl,
+        description: defaultDescription,
+        publisher: {
+          '@type': 'Organization',
+          name: organizationName,
+        },
+      },
+    ],
+  }
+
   return (
     <html lang="en">
       <body className="bg-brand-light">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
         <AuthProvider>
           <ConditionalNavbar />
           {children}
