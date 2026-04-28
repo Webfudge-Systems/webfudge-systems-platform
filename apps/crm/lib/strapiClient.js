@@ -1,5 +1,9 @@
-// Use environment variable for API URL, fallback to localhost for development
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337';
+// Use env override first; otherwise use production or local default by environment.
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://api.webfudge.in'
+    : 'http://localhost:1337');
 
 class StrapiClient {
   constructor() {
@@ -224,4 +228,6 @@ class StrapiClient {
   }
 }
 
-export default new StrapiClient();
+const strapiClient = new StrapiClient();
+
+export default strapiClient;
