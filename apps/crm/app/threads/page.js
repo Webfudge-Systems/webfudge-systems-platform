@@ -351,8 +351,8 @@ function ThreadListItem({ thread, active, onClick }) {
       type="button"
       onClick={onClick}
       className={`w-full text-left rounded-xl border border-l-4 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 focus-visible:ring-offset-2 ${accentBorder} ${active
-          ? 'bg-orange-50 border-orange-200 shadow-sm'
-          : 'bg-white border-gray-100 hover:bg-gray-50 hover:border-gray-200 hover:shadow-sm'
+        ? 'bg-orange-50 border-orange-200 shadow-sm'
+        : 'bg-white border-gray-100 hover:bg-gray-50 hover:border-gray-200 hover:shadow-sm'
         }`}
     >
       <div className="px-3.5 py-3 flex flex-col gap-2">
