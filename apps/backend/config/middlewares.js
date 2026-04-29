@@ -1,3 +1,27 @@
+const allowedOrigins = [
+  'http://localhost:3000', // Landing
+  'http://localhost:3001', // CRM
+  'http://localhost:3002', // PM
+  'http://localhost:3003', // Accounts
+  'http://localhost:3004', // Vendor
+  'https://webfudge.in',
+  'https://www.webfudge.in',
+  'https://crm.webfudge.in',
+  'https://pm.webfudge.in',
+  'https://accounts.webfudge.in',
+  'https://vendor.webfudge.in',
+  'https://books.webfudge.in',
+  'https://api.webfudge.in',
+  'https://webfudgesystems.com',
+  'https://www.webfudgesystems.com',
+];
+
+const allowedOriginPatterns = [
+  /^https:\/\/[a-z0-9-]+\.vercel\.app$/,
+  /^https:\/\/[a-z0-9-]+\.webfudge\.in$/,
+  /^https:\/\/[a-z0-9-]+\.webfudgesystems\.com$/,
+];
+
 module.exports = [
   'strapi::logger',
   'strapi::errors',
@@ -5,15 +29,23 @@ module.exports = [
   {
     name: 'strapi::cors',
     config: {
-      origin: [
-        'http://localhost:3000', // Landing
-        'http://localhost:3001', // CRM
-        'http://localhost:3002', // PM
-        'http://localhost:3003', // Accounts
-        'http://localhost:3004', // Vendor
-        'https://webfudgesystems.com',
-        'https://*.webfudgesystems.com',
-      ],
+      origin: (ctx) => {
+        const requestOrigin = ctx.request.header.origin;
+
+        if (!requestOrigin) {
+          return '*';
+        }
+
+        if (allowedOrigins.includes(requestOrigin)) {
+          return requestOrigin;
+        }
+
+        if (allowedOriginPatterns.some((pattern) => pattern.test(requestOrigin))) {
+          return requestOrigin;
+        }
+
+        return '';
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       headers: [
