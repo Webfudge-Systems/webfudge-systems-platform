@@ -3,7 +3,11 @@
  * Handles non-auth API calls (apps, organizations, profile)
  * For authentication, use AuthService from @webfudge/auth
  */
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://api.webfudge.in'
+    : 'http://localhost:1337');
 
 class ApiService {
   constructor() {
@@ -97,4 +101,6 @@ class ApiService {
   }
 }
 
-export default new ApiService();
+const apiService = new ApiService();
+
+export default apiService;

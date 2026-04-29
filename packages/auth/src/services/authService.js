@@ -1,8 +1,11 @@
-// Use environment variable or fallback to production URL
-// Use environment variable for API URL, fallback to localhost for development
+// Use env override first; otherwise use production or local default by environment.
 import { flattenUser } from '../utils/userProfile';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://api.webfudge.in'
+    : 'http://localhost:1337');
 
 class AuthService {
   constructor() {
@@ -538,4 +541,6 @@ class AuthService {
   }
 }
 
-export default new AuthService();
+const authService = new AuthService();
+
+export default authService;
