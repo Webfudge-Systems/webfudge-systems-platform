@@ -1,4 +1,4 @@
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://webfudge.in';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://webfudgesystems.in';
 
 export default function sitemap() {
   const now = new Date();

@@ -2,7 +2,7 @@ import './globals.css'
 import { ConditionalNavbar } from '../components/layout'
 import { AuthProvider } from '@webfudge/auth'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://webfudge.in'
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://webfudgesystems.in'
 const organizationName = 'Webfudge Platform'
 const defaultDescription =
   'Webfudge software platform for CRM, operations, and business workflow management.'

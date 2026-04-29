@@ -12,14 +12,14 @@ const allowedOrigins = [
   'https://vendor.webfudge.in',
   'https://books.webfudge.in',
   'https://api.webfudge.in',
-  'https://webfudgesystems.com',
-  'https://www.webfudgesystems.com',
+  'https://webfudgesystems.in',
+  'https://www.webfudgesystems.in',
 ];
 
 const allowedOriginPatterns = [
   /^https:\/\/[a-z0-9-]+\.vercel\.app$/,
   /^https:\/\/[a-z0-9-]+\.webfudge\.in$/,
-  /^https:\/\/[a-z0-9-]+\.webfudgesystems\.com$/,
+  /^https:\/\/[a-z0-9-]+\.webfudgesystems\.in$/,
 ];
 
 module.exports = [
