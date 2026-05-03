@@ -134,8 +134,8 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
 
   const railBtnClass = (active: boolean) =>
     active
-      ? 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EA580C] text-white shadow-[0_0_0_1px_rgba(234,88,12,0.35)]'
-      : 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--books-text-secondary)] transition-colors hover:bg-[var(--books-bg-elevated)] hover:text-[var(--books-text-primary)]'
+      ? 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#EA580C] text-white shadow-[0_0_0_1px_rgba(234,88,12,0.35)]'
+      : 'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--books-text-secondary)] transition-colors hover:bg-[var(--books-bg-elevated)] hover:text-[var(--books-text-primary)]'
 
   /** Shared rail chrome; overflow per-shell (nav scrolls when viewport is short). */
   const railPillBaseClass = clsx('books-shell-surface books-shell-surface--rail border-0')
@@ -235,25 +235,25 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
         <div
           className={clsx(
             railPillBaseClass,
-            'flex w-full shrink-0 flex-col px-2 py-2.5 sm:py-3'
+            'flex w-full shrink-0 flex-col px-1.5 py-2.5 sm:py-2.5'
           )}
         >
-          <nav className="flex flex-col gap-1" aria-label="Main">
+          <nav className="flex flex-col gap-0.5" aria-label="Main">
             {primaryLinks.map((item, i) => {
               const Icon = item.icon
               const active = item.isActive(pathname)
               const showDivider = i === 2 || i === 4
               return (
                 <div key={item.href}>
-                  {showDivider ? <div className="my-0.5 h-px bg-[color:var(--books-border)]" /> : null}
+                  {showDivider ? <div className="my-1 h-px bg-[color:var(--books-border)]" /> : null}
                   <Link
                     href={item.href}
                     title={item.label}
-                    className={`flex items-center gap-2 rounded-lg px-0.5 ${collapsed ? 'justify-center' : 'justify-start'} py-0.5`}
+                    className={`flex items-center gap-2 rounded-lg px-0 ${collapsed ? 'justify-center' : 'justify-start'} py-1`}
                     aria-current={active ? 'page' : undefined}
                   >
                     <span className={railBtnClass(active)}>
-                      <Icon className={clsx('h-4 w-4', active && 'stroke-[1.75]')} aria-hidden />
+                      <Icon className={clsx('h-3.5 w-3.5', active && 'stroke-[1.75]')} aria-hidden />
                     </span>
                     {!collapsed ? (
                       <span
@@ -289,8 +289,8 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
                 shape="circle"
                 fallback={resolveUserInitials(user)}
                 alt={resolveUserDisplayName(user)}
-                size="md"
-                className="border-0 bg-[#EA580C] font-semibold text-white"
+                size="sm"
+                className="h-8 w-8 border-0 bg-[#EA580C] font-semibold text-white"
               />
               {!collapsed ? (
                 <span className="text-sm font-medium text-[var(--books-text-primary)]">{resolveUserInitials(user)}</span>

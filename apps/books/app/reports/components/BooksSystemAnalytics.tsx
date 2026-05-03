@@ -119,6 +119,7 @@ export default function BooksSystemAnalytics() {
             value={timeRange}
             options={timeRangeOptions}
             onChange={(v: string) => setTimeRange(v as typeof timeRange)}
+            className="!border-[color:var(--books-border,rgba(0,0,0,0.12))] !bg-[var(--books-bg-card,#111827)] !text-[var(--books-text-primary,#f8fafc)]"
           />
         </div>
       </div>
