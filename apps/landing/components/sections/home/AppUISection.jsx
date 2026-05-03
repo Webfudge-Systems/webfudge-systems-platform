@@ -5,7 +5,7 @@ import { Container, Section } from '@webfudge/ui'
 
 export default function AppUISection() {
   return (
-    <Section id="app-ui" ariaLabel="App interface preview">
+    <Section id="products" ariaLabel="App interface preview">
       <Container>
         {/* Image container with bottom gradient fade */}
         <div className="relative max-w-full mx-auto">

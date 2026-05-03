@@ -1,5 +1,10 @@
-/* Webfudge Systems landing: Jura for typography (brand guidelines) */
-@import url("https://fonts.googleapis.com/css2?family=Jura:wght@300;400;500;600;700&display=swap");
+/* Landing typography: Inter (body) + Host Grotesk (headings), aligned with CRM/PM apps.
+   Host Grotesk is loaded here (same family name as CRM); Inter via next/font variable. */
+@import url("https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&display=swap");
+
+:root {
+    --font-host-grotesk: 'Host Grotesk', system-ui, sans-serif;
+}
 
 @tailwind base;
 @tailwind components;
@@ -14,7 +19,8 @@
     }
 
     body {
-        @apply font-jura text-brand-dark antialiased;
+        font-family: var(--font-inter), system-ui, sans-serif;
+        @apply text-brand-dark antialiased;
     }
 
     h1,
@@ -23,7 +29,8 @@
     h4,
     h5,
     h6 {
-        @apply font-jura font-semibold;
+        font-family: var(--font-host-grotesk);
+        @apply font-semibold;
     }
 }
 

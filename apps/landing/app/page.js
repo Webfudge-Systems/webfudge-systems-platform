@@ -1,26 +1,27 @@
 'use client'
 
-import { useAuth } from '@webfudge/auth'
 import {
   HeroSection,
-  AppUISection,
-  QuoteSection,
-  TrustedBySection,
+  BasedOnDataSection,
+  IndustriesWeServeSection,
+  HookLineSection,
+  WhyUsSection,
+  AppFeaturesSection,
   FAQSection,
-  ContactSection,
+  FooterSection,
 } from '../components/sections'
 
 export default function Home() {
-  const { isAuthenticated } = useAuth()
-
   return (
     <main className="min-h-screen bg-brand-light">
-      <HeroSection isAuthenticated={isAuthenticated} />
-      <AppUISection />
-      <QuoteSection />
-      <TrustedBySection />
+      <HeroSection />
+      <BasedOnDataSection />
+      <IndustriesWeServeSection />
+      <HookLineSection />
+      <WhyUsSection />
+      <AppFeaturesSection />
       <FAQSection />
-      <ContactSection />
+      <FooterSection />
     </main>
   )
 }

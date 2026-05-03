@@ -1,7 +1,12 @@
 // Home Page Sections
 export { default as HeroSection } from './HeroSection'
 export { default as AppUISection } from './AppUISection'
-export { default as QuoteSection } from './QuoteSection'
+export { default as BasedOnDataSection } from './BasedOnDataSection'
+export { default as IndustriesWeServeSection } from './IndustriesWeServeSection'
+export { default as HookLineSection } from './HookLineSection'
+export { default as WhyUsSection } from './WhyUsSection'
+export { default as AppFeaturesSection } from './AppFeaturesSection'
 export { default as FAQSection } from './FAQSection'
 export { default as TrustedBySection } from './TrustedBySection'
 export { default as ContactSection } from './ContactSection'
+export { default as FooterSection } from './FooterSection'
