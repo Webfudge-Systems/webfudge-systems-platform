@@ -34,12 +34,12 @@ import {
   LoadingSpinner,
   Input,
   Textarea,
+  ActivitiesTimeline,
+  EntityActivityPanel,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import contactService from '../../../../lib/api/contactService';
 import { fetchActivityTimeline, fetchContactComments, addContactComment } from '../../../../lib/api/crmActivityService';
-import ActivitiesTimeline from '../../../../components/ActivitiesTimeline';
-import EntityActivityPanel from '../../../../components/EntityActivityPanel';
 
 function formatDate(dateString) {
   if (!dateString) return '—';
@@ -1231,7 +1231,7 @@ export default function ContactDetailPage() {
           )}
 
           {detailTab === 'activities' && (
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:items-start">
               {/* Left: Quick summary */}
               <div className="lg:col-span-2 space-y-4">
                 <Card variant="elevated" className="rounded-xl p-5">

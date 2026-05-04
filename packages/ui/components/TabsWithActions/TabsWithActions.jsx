@@ -49,6 +49,9 @@ export function TabsWithActions({
   boardViewTitle = 'Board view',
   calendarViewTitle = 'Calendar view',
 
+  /** Rendered immediately after the tab buttons (e.g. list/table/kanban icons), still left of search/actions */
+  afterTabs = null,
+
   // Styling
   className,
   variant = 'glass',
@@ -67,6 +70,8 @@ export function TabsWithActions({
     (showBulkEdit && onBulkEditClick) ||
     (showColumnVisibility && onColumnVisibilityClick) ||
     showViewToggle
+
+  const hasAfterTabs = Boolean(afterTabs)
 
   const isPill = variant === 'pill'
 
@@ -110,31 +115,44 @@ export function TabsWithActions({
     )
   }
 
-  const tabRow = (
+  const tabButtons = tabs.map((tab) => {
+    const tabId = tab.id || tab.key
+    return (
+      <button
+        key={tabId}
+        type="button"
+        onClick={() => handleTabClick(tabId)}
+        className={tabButtonClass(tabId)}
+      >
+        <span>{tab.label}</span>
+        {tab.badge !== undefined && tab.badge !== null && tab.badge !== '' && (
+          <span className={badgeClass(tabId)}>{tab.badge}</span>
+        )}
+      </button>
+    )
+  })
+
+  const tabScrollArea = (
     <div
       className={clsx(
         isPill
           ? 'flex min-h-[48px] w-full min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,23,42,0.09),0_1px_3px_rgba(15,23,42,0.05)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-          : 'flex flex-1 items-center gap-2 overflow-x-auto'
+          : 'flex min-w-0 flex-1 items-center gap-2 overflow-x-auto'
       )}
     >
-      {tabs.map((tab) => {
-        const tabId = tab.id || tab.key
-        return (
-          <button
-            key={tabId}
-            type="button"
-            onClick={() => handleTabClick(tabId)}
-            className={tabButtonClass(tabId)}
-          >
-            <span>{tab.label}</span>
-            {tab.badge !== undefined && tab.badge !== null && tab.badge !== '' && (
-              <span className={badgeClass(tabId)}>{tab.badge}</span>
-            )}
-          </button>
-        )
-      })}
+      {tabButtons}
     </div>
+  )
+
+  const tabRow = hasAfterTabs ? (
+    <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-3">
+      {tabScrollArea}
+      <div className="flex shrink-0 items-center border-l border-gray-200/60 pl-2.5 md:pl-3.5">
+        {afterTabs}
+      </div>
+    </div>
+  ) : (
+    tabScrollArea
   )
 
   const rightPanel = (

@@ -79,9 +79,7 @@ const KPICard = ({
 
   const colors = colorClasses[colorScheme] || colorClasses.blue
 
-  const paddingClass = compact
-    ? 'pl-5 pt-3 pb-0 pr-0 sm:pl-6 sm:pt-4'
-    : 'p-6 pb-0 pr-0'
+  const paddingClass = compact ? 'pl-5 pt-3 pb-0 pr-0 sm:pl-6 sm:pt-4' : 'p-6 pb-0 pr-0'
   const showFooter = !compact && (change || (!change && subtitle))
 
   const iconBoxClass =

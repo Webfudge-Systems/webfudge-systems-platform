@@ -1,7 +1,9 @@
 'use client'
+
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { Suspense, useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import {
   Card,
@@ -10,9 +12,21 @@ import {
   Avatar,
   LoadingSpinner,
   Input,
+  KPICard,
+  Textarea,
 } from '@webfudge/ui'
-import { MessageSquare, Send, Search, User } from 'lucide-react'
+import {
+  MessageSquare,
+  Send,
+  Search,
+  User,
+  Users,
+  RefreshCw,
+  Mail,
+  AlertCircle,
+} from 'lucide-react'
 import PMPageHeader from '../../components/PMPageHeader'
+import PMRowActions from '../../components/PMRowActions'
 import messageService, { memberDisplayName } from '../../lib/api/messageService'
 
 function timeAgo(dateStr) {
@@ -24,9 +38,21 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+function getCurrentUserId(user) {
+  if (!user) return null
+  const u = user.attributes || user
+  return u.id ?? user.id ?? u.documentId ?? user.documentId ?? null
+}
+
 function getListDisplayName(u) {
   if (!u) return 'User'
-  return (u.name || u.username || (u.email ? u.email.split('@')[0] : '') || 'User').trim()
+  return (
+    u.name ||
+    memberDisplayName(u) ||
+    (u.email ? u.email.split('@')[0] : '') ||
+    u.username ||
+    'User'
+  ).trim()
 }
 
 function getListUserInitials(u) {
@@ -39,8 +65,9 @@ function getListUserInitials(u) {
   return (name.charAt(0) || '?').toUpperCase()
 }
 
-export default function MessagesPage() {
+function MessagesPageContent() {
   const { user } = useAuth()
+  const searchParams = useSearchParams()
   const messagesEndRef = useRef(null)
 
   const [users, setUsers] = useState([])
@@ -52,23 +79,26 @@ export default function MessagesPage() {
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [sending, setSending] = useState(false)
   const [orgError, setOrgError] = useState(null)
+  const [messagesError, setMessagesError] = useState(null)
+  const [sendError, setSendError] = useState(null)
 
-  const currentUserId =
-    user?.id || user?.attributes?.id || user?.documentId || user?.attributes?.documentId
+  const currentUserId = getCurrentUserId(user)
 
   const loadUsers = useCallback(async () => {
     try {
       setLoading(true)
       setOrgError(null)
-      const { members, error } = await messageService.fetchOrganizationMembers()
+      const { contacts, error } = await messageService.fetchMessageContacts({
+        excludeUserId: currentUserId,
+      })
       if (error === 'no_org') {
         setOrgError('no_org')
         setUsers([])
         return
       }
-      setUsers(members.filter((u) => String(u.id) !== String(currentUserId)))
+      setUsers(contacts)
     } catch (e) {
-      console.error('Failed to load org members:', e)
+      console.error('Failed to load contacts:', e)
       setUsers([])
     } finally {
       setLoading(false)
@@ -76,14 +106,16 @@ export default function MessagesPage() {
   }, [currentUserId])
 
   const loadMessages = useCallback(async () => {
-    if (!selectedUser || !currentUserId) return
+    if (!selectedUser || currentUserId == null) return
     try {
       setLoadingMessages(true)
+      setMessagesError(null)
       const list = await messageService.fetchConversation(selectedUser.id)
-      setMessages(list)
+      setMessages(Array.isArray(list) ? list : [])
     } catch (e) {
       console.error('Failed to load messages:', e)
       setMessages([])
+      setMessagesError(e?.message || 'Could not load messages')
     } finally {
       setLoadingMessages(false)
     }
@@ -96,7 +128,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (selectedUser) {
       loadMessages()
-      const interval = setInterval(loadMessages, 5000)
+      const interval = setInterval(loadMessages, 8000)
       return () => clearInterval(interval)
     }
   }, [selectedUser, loadMessages])
@@ -105,19 +137,33 @@ export default function MessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const withParam = searchParams.get('with')
+  useEffect(() => {
+    if (!withParam || users.length === 0) return
+    const match = users.find((u) => String(u.id) === String(withParam))
+    if (match) setSelectedUser(match)
+  }, [withParam, users])
+
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedUser || !currentUserId) return
+    if (!newMessage.trim() || !selectedUser || currentUserId == null) return
     try {
       setSending(true)
+      setSendError(null)
       await messageService.sendDirectMessage(selectedUser.id, newMessage)
       setNewMessage('')
       await loadMessages()
     } catch (e) {
       console.error('Failed to send message:', e)
+      setSendError(e?.message || 'Could not send message')
     } finally {
       setSending(false)
     }
   }
+
+  const refreshAll = useCallback(() => {
+    loadUsers()
+    if (selectedUser) loadMessages()
+  }, [loadUsers, loadMessages, selectedUser])
 
   const filteredUsers = users.filter((u) => {
     if (!searchQuery) return true
@@ -132,57 +178,97 @@ export default function MessagesPage() {
   })
 
   const listAvatarClass =
-    'bg-orange-500 text-white border-0 shadow-sm ring-0 font-semibold'
+    'bg-gradient-to-br from-orange-500 to-pink-500 text-white border-0 shadow-sm ring-0 font-semibold'
 
   return (
-    <div className="min-h-full bg-gray-50 p-4 space-y-4">
+    <div className="min-h-full space-y-6 bg-gray-50/80 p-4 md:p-6">
       <PMPageHeader
         title="Messages"
-        subtitle="Communicate with your team members"
+        subtitle="Direct messages with people in your workspace — updates every few seconds while a chat is open."
         breadcrumb={[
           { label: 'Dashboard', href: '/' },
           { label: 'Messages', href: '/message' },
         ]}
         showProfile
-      />
+      >
+        <PMRowActions
+          items={[
+            { label: 'Refresh', icon: RefreshCw, onClick: refreshAll },
+          ]}
+          label="Messages actions"
+        />
+      </PMPageHeader>
 
-      <div className="flex min-h-[max(500px,calc(100vh-220px))] flex-col gap-4 lg:flex-row lg:items-stretch">
-        {/* Left — contacts (no card chrome) */}
-        <div className="flex w-full flex-col lg:w-[min(100%,320px)] lg:min-w-[280px] lg:max-w-sm">
-          <div className="flex-shrink-0 pb-4">
-            {/* Match sidebar top search styling */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-text-light" />
-              <input
-                type="text"
-                placeholder="Search users..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:bg-white/25 transition-[background-color,border-color,box-shadow] duration-300 text-sm placeholder:text-brand-text-light shadow-lg"
-              />
-            </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <KPICard
+          compact
+          title="People you can message"
+          value={loading ? '…' : users.length}
+          icon={Users}
+          colorScheme="orange"
+        />
+        <KPICard
+          compact
+          title="Messages in this chat"
+          value={selectedUser ? messages.length : '—'}
+          icon={MessageSquare}
+          colorScheme="orange"
+        />
+        <KPICard
+          compact
+          title="You"
+          value={user?.email || user?.attributes?.email || 'Signed in'}
+          icon={Mail}
+          colorScheme="orange"
+        />
+      </div>
+
+      <div className="flex min-h-[min(640px,calc(100vh-320px))] flex-col gap-6 lg:flex-row lg:items-stretch">
+        <Card
+          variant="elevated"
+          padding={false}
+          className="flex w-full flex-col overflow-hidden rounded-xl border border-gray-100 shadow-md lg:w-[min(100%,380px)] lg:min-w-[300px] lg:max-w-md"
+        >
+          <div className="border-b border-gray-100 bg-white px-4 py-3">
+            <h2 className="text-sm font-semibold text-gray-900">Contacts</h2>
+            <p className="text-xs text-gray-500">Organization directory + assignable users</p>
+          </div>
+          <div className="border-b border-gray-100 p-3">
+            <Input
+              icon={Search}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name or email..."
+              className="rounded-lg border-gray-200 text-sm"
+              containerClassName="mb-0"
+            />
           </div>
 
-          <div className="min-h-[280px] flex-1 overflow-y-auto">
+          <div className="min-h-[280px] flex-1 overflow-y-auto bg-gray-50/30">
             {loading ? (
-              <div className="flex h-40 items-center justify-center">
-                <LoadingSpinner size="sm" />
+              <div className="flex h-48 items-center justify-center">
+                <LoadingSpinner size="sm" message="Loading contacts..." />
               </div>
             ) : orgError === 'no_org' ? (
               <div className="p-6">
                 <EmptyState
                   icon={User}
                   title="No organization selected"
-                  description="Choose an organization in your workspace so we can load teammates you can message."
+                  description="Pick an organization in the workspace header so we can load teammates and enable direct messages."
                   className="py-10"
                 />
               </div>
             ) : filteredUsers.length === 0 ? (
               <div className="p-6">
                 <EmptyState
-                  icon={User}
-                  title="No users found"
-                  description="No other team members in this organization yet."
+                  icon={Users}
+                  title={searchQuery ? 'No matching contacts' : 'No one to message yet'}
+                  description={
+                    searchQuery
+                      ? 'Try a different search or clear the filter.'
+                      : 'Invite teammates to your organization, or ensure your account can list users (admin may need to enable GET /users).'
+                  }
                   className="py-10"
                 />
               </div>
@@ -190,13 +276,19 @@ export default function MessagesPage() {
               <ul className="divide-y divide-gray-100">
                 {filteredUsers.map((u) => {
                   const active = selectedUser?.id === u.id
+                  const subtitle = u.email && u.email !== getListDisplayName(u) ? u.email : null
                   return (
                     <li key={u.id}>
                       <button
                         type="button"
-                        onClick={() => setSelectedUser(u)}
-                        className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50 ${
-                          active ? 'bg-orange-50/90 border-l-[3px] border-l-orange-500' : 'border-l-[3px] border-l-transparent'
+                        onClick={() => {
+                          setSelectedUser(u)
+                          setSendError(null)
+                        }}
+                        className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors ${
+                          active
+                            ? 'bg-orange-50 border-l-[3px] border-l-orange-500'
+                            : 'border-l-[3px] border-l-transparent hover:bg-white'
                         }`}
                       >
                         <Avatar
@@ -206,12 +298,8 @@ export default function MessagesPage() {
                           className={listAvatarClass}
                         />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold text-gray-900">
-                            {getListDisplayName(u)}
-                          </p>
-                          <p className="truncate text-xs text-gray-500">
-                            Click to start conversation
-                          </p>
+                          <p className="truncate text-sm font-semibold text-gray-900">{getListDisplayName(u)}</p>
+                          <p className="truncate text-xs text-gray-500">{subtitle || 'Team member'}</p>
                         </div>
                       </button>
                     </li>
@@ -220,51 +308,59 @@ export default function MessagesPage() {
               </ul>
             )}
           </div>
-        </div>
+        </Card>
 
-        {/* Right — conversation */}
-        <div className="flex min-h-[min(400px,60vh)] flex-1 flex-col lg:min-h-0">
+        <Card
+          variant="elevated"
+          padding={false}
+          className="flex min-h-[420px] min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-100 shadow-md"
+        >
           {!selectedUser ? (
-            <Card
-              variant="elevated"
-              padding={false}
-              className="flex min-h-[min(400px,60vh)] flex-1 flex-col items-center justify-center overflow-hidden rounded-lg border border-gray-100 shadow-md"
-            >
+            <div className="flex flex-1 flex-col items-center justify-center px-6 py-16">
               <EmptyState
                 icon={MessageSquare}
                 title="Select a conversation"
-                description="Choose a conversation from the list or start a new one"
-                className="py-16 px-6"
+                description="Choose someone from the list to read and send direct messages. You can also open /message?with=USER_ID to jump to a peer."
+                className="max-w-md py-6"
               />
-            </Card>
+            </div>
           ) : (
-            <div className="flex h-full min-h-0 flex-1 flex-col bg-white">
-              <div className="flex flex-shrink-0 items-center gap-3 border-b border-gray-100 px-5 py-4">
+            <>
+              <div className="flex flex-shrink-0 items-center gap-3 border-b border-gray-100 bg-gradient-to-r from-orange-50/90 to-white px-5 py-4">
                 <Avatar
                   fallback={getListUserInitials(selectedUser)}
                   alt={getListDisplayName(selectedUser)}
                   size="md"
                   className={listAvatarClass}
                 />
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-900">
-                    {getListDisplayName(selectedUser)}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-gray-900">{getListDisplayName(selectedUser)}</p>
+                  <p className="truncate text-xs text-gray-500">
+                    {selectedUser.email || 'Direct message · organization-scoped'}
                   </p>
-                  <p className="text-xs text-gray-500">Team member</p>
                 </div>
+                <span className="hidden shrink-0 rounded-full bg-orange-100 px-2.5 py-1 text-xs font-medium text-orange-800 sm:inline-flex">
+                  Live sync ~8s
+                </span>
               </div>
 
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gray-50/40 p-4">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gradient-to-b from-gray-50/80 to-white p-4 md:p-5">
+                {messagesError ? (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-100 bg-red-50/80 px-3 py-2 text-sm text-red-800">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                    <span>{messagesError}</span>
+                  </div>
+                ) : null}
                 {loadingMessages ? (
-                  <div className="flex h-32 items-center justify-center">
+                  <div className="flex h-40 items-center justify-center">
                     <LoadingSpinner size="md" message="Loading messages..." />
                   </div>
                 ) : messages.length === 0 ? (
                   <EmptyState
                     icon={MessageSquare}
-                    title="No messages yet"
-                    description={`Start a conversation with ${getListDisplayName(selectedUser)}.`}
-                    className="py-8"
+                    title="Start the conversation"
+                    description={`Say hello to ${getListDisplayName(selectedUser)} — messages are private between the two of you.`}
+                    className="py-10"
                   />
                 ) : (
                   messages.map((msg, i) => {
@@ -279,29 +375,29 @@ export default function MessagesPage() {
                         : (initialsSource.charAt(0) || '?').toUpperCase()
                     return (
                       <div
-                        key={msg.id || i}
+                        key={msg.id || `m-${i}`}
                         className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : ''}`}
                       >
                         <Avatar
                           fallback={initials}
                           size="sm"
-                          className={isOwn ? 'bg-gray-200 text-gray-700' : listAvatarClass}
+                          className={
+                            isOwn
+                              ? 'bg-gray-200 text-gray-800'
+                              : 'bg-gradient-to-br from-orange-500 to-pink-500 text-white'
+                          }
                         />
-                        <div
-                          className={`flex max-w-xs flex-col ${isOwn ? 'items-end' : 'items-start'}`}
-                        >
+                        <div className={`flex max-w-[min(100%,28rem)] flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                           <div
-                            className={`rounded-lg px-3 py-2 text-sm ${
+                            className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
                               isOwn
-                                ? 'rounded-tr-none bg-orange-500 text-white'
-                                : 'rounded-tl-none bg-gray-100 text-gray-800'
+                                ? 'rounded-tr-sm bg-gradient-to-r from-orange-500 to-pink-500 text-white'
+                                : 'rounded-tl-sm border border-gray-100 bg-white text-gray-800'
                             }`}
                           >
                             {msg.content}
                           </div>
-                          <span className="mt-1 text-xs text-gray-400">
-                            {timeAgo(msg.createdAt)}
-                          </span>
+                          <span className="mt-1.5 text-[11px] text-gray-400">{timeAgo(msg.createdAt)}</span>
                         </div>
                       </div>
                     )
@@ -310,35 +406,57 @@ export default function MessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="flex flex-shrink-0 gap-2 border-t border-gray-100 bg-white p-3">
-                <Input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleSendMessage()
-                    }
-                  }}
-                  placeholder={`Message ${getListDisplayName(selectedUser)}...`}
-                  className="flex-1 rounded-lg border-gray-200 py-2.5 text-sm"
-                  containerClassName="flex-1 mb-0"
-                />
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="h-[42px] shrink-0 self-end px-4"
-                  onClick={handleSendMessage}
-                  disabled={sending || !newMessage.trim()}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+              <div className="flex flex-shrink-0 flex-col gap-2 border-t border-gray-100 bg-white p-4">
+                {sendError ? (
+                  <p className="text-xs text-red-600">{sendError}</p>
+                ) : null}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <Textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        handleSendMessage()
+                      }
+                    }}
+                    placeholder={`Message ${getListDisplayName(selectedUser)}…`}
+                    rows={2}
+                    resize="vertical"
+                    className="min-h-[44px] flex-1 rounded-xl border-gray-200 text-sm"
+                    containerClassName="flex-1 mb-0"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="h-[42px] shrink-0 rounded-xl px-5 sm:self-end"
+                    onClick={handleSendMessage}
+                    disabled={sending || !newMessage.trim()}
+                  >
+                    <Send className="mr-2 h-4 w-4" />
+                    Send
+                  </Button>
+                </div>
+                <p className="text-[11px] text-gray-400">Enter to send · Shift+Enter for a new line</p>
               </div>
-            </div>
+            </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
+  )
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center bg-gray-50 p-8">
+          <LoadingSpinner message="Loading messages…" />
+        </div>
+      }
+    >
+      <MessagesPageContent />
+    </Suspense>
   )
 }

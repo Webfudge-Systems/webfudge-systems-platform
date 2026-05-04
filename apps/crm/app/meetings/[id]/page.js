@@ -47,9 +47,9 @@ import {
   Modal,
   EmptyState,
   LoadingSpinner,
+  EntityActivityPanel,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
-import EntityActivityPanel from '../../../components/EntityActivityPanel';
 import meetingService from '../../../lib/api/meetingService';
 import taskService from '../../../lib/api/taskService';
 import { fetchMeetingTimeline } from '../../../lib/api/crmActivityService';
@@ -1414,7 +1414,7 @@ export default function MeetingDetailPage() {
 
           {/* ── ACTIVITY TAB ─────────────────────────────────────────────────── */}
           {detailTab === 'activity' && (
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:items-start">
               {/* Left: Quick summary */}
               <div className="lg:col-span-2 space-y-4">
                 <Card variant="elevated" className="rounded-xl p-5">

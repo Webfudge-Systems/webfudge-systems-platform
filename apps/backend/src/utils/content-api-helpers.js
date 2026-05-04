@@ -50,10 +50,17 @@ function createPopulateSanitizer(allowedKeys, fallbackPopulate) {
     let keys = [];
     if (Array.isArray(populate)) {
       keys = populate.map((p) => (typeof p === 'string' ? p : '')).filter(Boolean);
-    } else if (typeof populate === 'object') {
-      keys = Object.values(populate)
-        .map((v) => (typeof v === 'string' ? v : ''))
-        .filter(Boolean);
+    } else if (typeof populate === 'object' && populate !== null) {
+      // Nested REST params like populate[projects][fields][0]=id parse as objects; use keys
+      // so `projects: { fields: [...] }` still resolves to "projects".
+      const fromKeys = Object.keys(populate).filter((k) => ALLOWED.has(k));
+      if (fromKeys.length) {
+        keys = fromKeys;
+      } else {
+        keys = Object.values(populate)
+          .map((v) => (typeof v === 'string' ? v : ''))
+          .filter(Boolean);
+      }
     } else if (typeof populate === 'string') {
       keys = populate
         .split(',')

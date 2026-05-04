@@ -1,549 +1,742 @@
-'use client'
-export const dynamic = 'force-dynamic'
+'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { useAuth } from '@webfudge/auth'
+export const dynamic = 'force-dynamic';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@webfudge/auth';
 import {
-  Card,
-  Table,
-  EmptyState,
-  TableResultsCount,
-  TableEmptyBelow,
-  Modal,
-  Button,
-  Badge,
   Avatar,
-  LoadingSpinner,
-  TableSkeleton,
+  Button,
+  Card,
+  EmptyState,
+  EntityActivityPanel,
   Input,
-  Textarea,
+  KPICard,
+  LoadingSpinner,
+  Modal,
   Select,
-} from '@webfudge/ui'
+  TabsWithActions,
+  Textarea,
+} from '@webfudge/ui';
 import {
-  FolderOpen,
-  CheckSquare,
-  Users,
-  MessageSquare,
-  ArrowLeft,
-  Plus,
-  Trash2,
-  Edit3,
-  Send,
-  AlertCircle,
+  Activity,
+  AlignLeft,
   Calendar,
+  CheckCircle2,
+  CheckSquare,
+  Clock,
+  Copy,
+  Edit,
+  FileText,
+  FolderOpen,
+  IndianRupee,
+  Plus,
+  RefreshCw,
+  Share2,
   Target,
-  UserPlus,
-} from 'lucide-react'
-import PMPageHeader from '../../../components/PMPageHeader'
-import projectService from '../../../lib/api/projectService'
-import taskService from '../../../lib/api/taskService'
-import strapiClient from '../../../lib/strapiClient'
+  Trash2,
+  TrendingUp,
+  User,
+  Users,
+} from 'lucide-react';
+import PMPageHeader from '../../../components/PMPageHeader';
+import PMRowActions from '../../../components/PMRowActions';
+import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
+import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
+import { InfoRow, InfoSection, SidebarCardTitle } from '../../../components/pmEntityDetailInfo';
+import { getProjectStatusMeta, PROJECT_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
+import projectService from '../../../lib/api/projectService';
 import {
-  transformProject,
-  transformTask,
-  formatDate,
-} from '../../../lib/api/dataTransformers'
+  addProjectComment,
+  fetchProjectActivityTimeline,
+  fetchProjectComments,
+} from '../../../lib/api/projectActivityService';
+import taskService from '../../../lib/api/taskService';
+import strapiClient from '../../../lib/strapiClient';
+import { formatDate, transformProject, transformTask, transformUser } from '../../../lib/api/dataTransformers';
 
-const PROJECT_STATUS_OPTIONS = [
-  { value: 'SCHEDULED', label: 'Scheduled' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'INTERNAL_REVIEW', label: 'Internal Review' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-]
+const DETAIL_TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'tasks', label: 'Tasks' },
+  { key: 'activity', label: 'Activity' },
+  { key: 'files', label: 'Files' },
+];
 
-const TASK_STATUS_OPTIONS = [
-  { value: 'SCHEDULED', label: 'To Do' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'INTERNAL_REVIEW', label: 'In Review' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-]
+const headerIconBtnClass =
+  'p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg text-brand-text-light';
 
-const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-]
+const headerDangerIconBtnClass =
+  'p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl hover:bg-red-500/20 hover:border-red-400/45 transition-all duration-300 shadow-lg text-brand-text-light hover:text-red-50';
 
-function getStatusBadge(strapiStatus) {
-  const map = {
-    SCHEDULED: { variant: 'primary', label: 'To Do' },
-    IN_PROGRESS: { variant: 'warning', label: 'In Progress' },
-    INTERNAL_REVIEW: { variant: 'purple', label: 'In Review' },
-    COMPLETED: { variant: 'success', label: 'Completed' },
-    CANCELLED: { variant: 'danger', label: 'Cancelled' },
+function projectStatusHeaderVisual(status) {
+  const s = status || 'PLANNING';
+  const meta = getProjectStatusMeta(s);
+  if (s === 'COMPLETED') {
+    return {
+      pillClass:
+        'border border-emerald-300/90 bg-gradient-to-br from-emerald-50 via-emerald-50 to-emerald-100/90 text-emerald-950 ring-emerald-200/70',
+      Icon: CheckCircle2,
+      label: meta.label,
+    };
   }
-  return map[strapiStatus] || { variant: 'default', label: strapiStatus || '—' }
+  if (s === 'CANCELLED') {
+    return {
+      pillClass:
+        'border border-red-300/90 bg-gradient-to-br from-red-50 via-red-50 to-red-100/90 text-red-950 ring-red-200/70',
+      Icon: Target,
+      label: meta.label,
+    };
+  }
+  if (s === 'ON_HOLD') {
+    return {
+      pillClass:
+        'border border-violet-300/90 bg-gradient-to-br from-violet-50 via-violet-50 to-violet-100/90 text-violet-950 ring-violet-200/70',
+      Icon: Target,
+      label: meta.label,
+    };
+  }
+  if (s === 'ACTIVE' || s === 'IN_PROGRESS') {
+    return {
+      pillClass:
+        'border border-orange-300/90 bg-gradient-to-br from-orange-50 via-orange-50 to-orange-100/90 text-orange-950 ring-orange-200/70',
+      Icon: Target,
+      label: meta.label,
+    };
+  }
+  return {
+    pillClass:
+      'border border-amber-300/90 bg-gradient-to-br from-amber-50 via-amber-50 to-amber-100/90 text-amber-950 ring-amber-200/70',
+    Icon: Target,
+    label: meta.label,
+  };
 }
 
-function getPriorityBadge(priority) {
-  const map = {
-    high: { variant: 'danger', label: 'High' },
-    medium: { variant: 'warning', label: 'Medium' },
-    low: { variant: 'success', label: 'Low' },
-  }
-  return map[(priority || '').toLowerCase()] || { variant: 'default', label: priority || '—' }
+function isPresent(value) {
+  if (value == null) return false;
+  const s = String(value).trim();
+  return s.length > 0 && s !== '—';
+}
+
+function userLabel(user) {
+  return user?.name || user?.username || user?.email || `User ${user?.id}`;
+}
+
+function projectToInlineDraft(project) {
+  if (!project) return null;
+  return {
+    name: project.name || '',
+    description: project.description || '',
+    status: project.strapiStatus || 'PLANNING',
+    startDate: project.startDate ? project.startDate.slice(0, 10) : '',
+    endDate: project.endDate ? project.endDate.slice(0, 10) : '',
+    budget: project.budget != null && project.budget !== '' ? String(project.budget) : '',
+    projectManagerId: project.projectManager?.id ? String(project.projectManager.id) : '',
+    clientId: project.clientAccountId ? String(project.clientAccountId) : '',
+  };
 }
 
 export default function ProjectDetailPage() {
-  const { slug } = useParams()
-  const router = useRouter()
-  const { user } = useAuth()
-  const messagesEndRef = useRef(null)
-
-  const [activeTab, setActiveTab] = useState('overview')
-  const [project, setProject] = useState(null)
-  const [tasks, setTasks] = useState([])
-  const [messages, setMessages] = useState([])
-  const [allUsers, setAllUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [loadingTasks, setLoadingTasks] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [newMessage, setNewMessage] = useState('')
-  const [sendingMessage, setSendingMessage] = useState(false)
-
-  // Modals
-  const [taskModal, setTaskModal] = useState({ open: false, task: null })
-  const [memberModal, setMemberModal] = useState(false)
-  const [deleteTaskModal, setDeleteTaskModal] = useState({ open: false, task: null })
-
-  // Forms
-  const [taskForm, setTaskForm] = useState({
-    name: '', description: '', status: 'SCHEDULED', priority: 'medium',
-    dueDate: '', assignee: '',
-  })
-  const [selectedMemberToAdd, setSelectedMemberToAdd] = useState('')
+  const params = useParams();
+  const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
+  const router = useRouter();
+  const { user: authUser } = useAuth();
+  const defaultAssignerId = useMemo(() => {
+    const u = authUser?.attributes || authUser;
+    const id = u?.id ?? authUser?.id ?? null;
+    return id != null ? String(id) : '';
+  }, [authUser]);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [project, setProject] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [taskModal, setTaskModal] = useState({ open: false, task: null, parentContext: null });
+  const [deleteProjectOpen, setDeleteProjectOpen] = useState(false);
+  const [deleteTaskModal, setDeleteTaskModal] = useState({ open: false, task: null });
+  const [editingProjectInfo, setEditingProjectInfo] = useState(false);
+  const [projectInfoDraft, setProjectInfoDraft] = useState(null);
+  const [projectInfoSaveError, setProjectInfoSaveError] = useState('');
+  const [crmTimeline, setCrmTimeline] = useState([]);
+  const [crmTimelineLoading, setCrmTimelineLoading] = useState(false);
+  const [crmTimelineError, setCrmTimelineError] = useState(null);
+  const [crmTimelineTotal, setCrmTimelineTotal] = useState(0);
 
   const loadProject = useCallback(async () => {
+    if (!slug) return;
     try {
-      setLoading(true)
-      let projectData = null
-      const projectsRes = await projectService.getAllProjects({ pageSize: 100 })
-      const allProjects = (projectsRes?.data || []).map(transformProject).filter(Boolean)
-      projectData = allProjects.find((p) => p.slug === slug || String(p.id) === String(slug))
-      if (!projectData && allProjects.length > 0) projectData = allProjects[0]
-      setProject(projectData)
-    } catch (err) {
-      console.error('Load project error:', err)
+      setLoading(true);
+      let res;
+      if (/^\d+$/.test(String(slug))) {
+        res = await projectService.getProjectById(slug);
+      } else {
+        res = await projectService.getProjectBySlug(slug);
+      }
+      const transformed = transformProject(res?.data);
+      setProject(transformed);
+    } catch (error) {
+      console.error('Load project error:', error);
+      setProject(null);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [slug])
+  }, [slug]);
 
   const loadTasks = useCallback(async () => {
-    if (!project) return
+    if (!project?.id) return;
+    const pid = Number(project.id);
+    if (Number.isNaN(pid)) return;
     try {
-      setLoadingTasks(true)
-      const res = await taskService.getAllTasks({ pageSize: 100, project: project.id })
-      setTasks((res?.data || []).map(transformTask).filter(Boolean))
-    } catch {}
-    finally { setLoadingTasks(false) }
-  }, [project])
+      setTasksLoading(true);
+      const res = await taskService.getTasksByProject(pid, { pageSize: 100, sort: 'updatedAt:desc' });
+      setTasks((res?.data || []).map(transformTask).filter(Boolean));
+    } catch (error) {
+      console.error('Load project tasks error:', error);
+      setTasks([]);
+    } finally {
+      setTasksLoading(false);
+    }
+  }, [project?.id]);
 
-  const loadMessages = useCallback(async () => {
-    if (!project) return
+  const refreshTasksAndProject = useCallback(async () => {
+    await loadTasks();
+    await loadProject();
+  }, [loadTasks, loadProject]);
+
+  const loadUsers = useCallback(async () => {
     try {
-      const client = strapiClient
-      const res = await client.request('GET', `/api/messages?filters[project][id][$eq]=${project.id}&populate[sender]=true&sort=createdAt:asc&pagination[pageSize]=100`)
-      setMessages(res?.data || [])
-    } catch {}
-  }, [project])
+      const res = await strapiClient.getXtrawrkxUsers({ pageSize: 200 });
+      const list = Array.isArray(res) ? res : res?.data || [];
+      setUsers(list.map(transformUser).filter(Boolean));
+    } catch (error) {
+      console.error('Load users error:', error);
+    }
+  }, []);
 
-  const loadAllUsers = useCallback(async () => {
+  const loadClients = useCallback(async () => {
     try {
-      const res = await strapiClient.getXtrawrkxUsers({ pageSize: 200 })
-      setAllUsers(Array.isArray(res) ? res : res?.data || [])
-    } catch {}
-  }, [])
-
-  useEffect(() => { loadProject() }, [loadProject])
-  useEffect(() => { if (project) { loadTasks(); loadMessages(); loadAllUsers() } }, [project, loadTasks, loadMessages, loadAllUsers])
+      const body = await strapiClient.request('/lead-companies?pagination[pageSize]=100', { method: 'GET' });
+      setClients(body?.data || []);
+    } catch (error) {
+      console.error('Load clients error:', error);
+    }
+  }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    loadProject();
+  }, [loadProject]);
 
-  const handleStatusChange = async (newStatus) => {
-    if (!project) return
-    try {
-      setSaving(true)
-      await projectService.updateProject(project.id, { status: newStatus })
-      setProject((prev) => ({ ...prev, strapiStatus: newStatus }))
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSaving(false)
-    }
-  }
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
-  const handleAddTask = async () => {
-    if (!taskForm.name.trim() || !project) return
-    try {
-      setSaving(true)
-      const payload = {
-        name: taskForm.name,
-        description: taskForm.description,
-        status: taskForm.status,
-        priority: taskForm.priority,
-        dueDate: taskForm.dueDate || null,
-        project: project.id,
+  useEffect(() => {
+    loadClients();
+  }, [loadClients]);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
+
+  const taskStats = useMemo(() => {
+    if (!project) return { total: 0, completed: 0, progress: 0 };
+    const total = tasks.length > 0 ? tasks.length : project.totalTasks ?? 0;
+    const completed =
+      tasks.length > 0
+        ? tasks.filter((t) => t.strapiStatus === 'COMPLETED').length
+        : project.completedTasks ?? 0;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : project.progress ?? 0;
+    return { total, completed, progress };
+  }, [tasks, project]);
+
+  const reloadProjectTimeline = useCallback(
+    async (opts = {}) => {
+      const silent = opts.silent === true;
+      if (!project?.id) return;
+      if (!silent) {
+        setCrmTimelineLoading(true);
+        setCrmTimelineError(null);
       }
-      if (taskForm.assignee) payload.assignee = taskForm.assignee
-      if (taskModal.task) {
-        await taskService.updateTask(taskModal.task.id, payload)
-      } else {
-        await taskService.createTask(payload)
+      try {
+        const { data, total } = await fetchProjectActivityTimeline({ projectId: project.id, limit: 80 });
+        const rows = Array.isArray(data) ? data : [];
+        setCrmTimeline(rows);
+        setCrmTimelineTotal(typeof total === 'number' ? total : rows.length);
+      } catch (e) {
+        if (!silent) {
+          setCrmTimelineError(e?.message || 'Could not load activities');
+          setCrmTimeline([]);
+          setCrmTimelineTotal(0);
+        }
+      } finally {
+        if (!silent) setCrmTimelineLoading(false);
       }
-      setTaskModal({ open: false, task: null })
-      setTaskForm({ name: '', description: '', status: 'SCHEDULED', priority: 'medium', dueDate: '', assignee: '' })
-      loadTasks()
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSaving(false)
+    },
+    [project?.id]
+  );
+
+  useEffect(() => {
+    reloadProjectTimeline({ silent: false });
+  }, [reloadProjectTimeline]);
+
+  const activityCount = typeof crmTimelineTotal === 'number' ? crmTimelineTotal : crmTimeline.length;
+
+  const lastActivityDisplay = useMemo(() => {
+    const first = crmTimeline?.[0]?.createdAt;
+    if (first) return formatDate(first, 'relative') || '—';
+    return formatDate(project?.updatedAt, 'relative') || '—';
+  }, [crmTimeline, project?.updatedAt]);
+
+  const tabsWithBadges = useMemo(
+    () =>
+      DETAIL_TABS.map((tab) => ({
+        ...tab,
+        badge:
+          tab.key === 'tasks'
+            ? tasks.length
+            : tab.key === 'files'
+              ? 0
+              : tab.key === 'activity'
+                ? activityCount || undefined
+                : undefined,
+      })),
+    [tasks.length, activityCount]
+  );
+
+  const handleAddProjectComment = useCallback(
+    async ({ entityId, comment }) => {
+      const res = await addProjectComment({ projectId: entityId, comment });
+      await reloadProjectTimeline({ silent: true });
+      return res;
+    },
+    [reloadProjectTimeline]
+  );
+
+  const userOptions = useMemo(
+    () =>
+      users.map((u) => ({
+        value: String(u.id),
+        label: u.name || u.username || u.email || `User ${u.id}`,
+      })),
+    [users]
+  );
+
+  const clientOptions = useMemo(
+    () =>
+      clients.map((c) => {
+        const attrs = c.attributes || c;
+        return {
+          value: String(c.id),
+          label: attrs.name || attrs.companyName || `Client ${c.id}`,
+        };
+      }),
+    [clients]
+  );
+
+  const openProjectInfoEdit = useCallback(() => {
+    if (!project) return;
+    setProjectInfoDraft(projectToInlineDraft(project));
+    setProjectInfoSaveError('');
+    setEditingProjectInfo(true);
+  }, [project]);
+
+  const cancelProjectInfoEdit = useCallback(() => {
+    setEditingProjectInfo(false);
+    setProjectInfoDraft(null);
+    setProjectInfoSaveError('');
+  }, []);
+
+  const setProjectInfoField = (field, value) => {
+    setProjectInfoDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
+  };
+
+  const saveProjectInfo = async () => {
+    if (!project || !projectInfoDraft) return;
+    if (!projectInfoDraft.name.trim()) {
+      setProjectInfoSaveError('Project name is required.');
+      return;
     }
-  }
-
-  const handleDeleteTask = async () => {
-    if (!deleteTaskModal.task) return
-    try {
-      setSaving(true)
-      await taskService.deleteTask(deleteTaskModal.task.id)
-      setDeleteTaskModal({ open: false, task: null })
-      loadTasks()
-    } catch {}
-    finally { setSaving(false) }
-  }
-
-  const handleAddMember = async () => {
-    if (!selectedMemberToAdd || !project) return
-    try {
-      setSaving(true)
-      const existingTeam = (project.team || []).map((m) => m.id)
-      if (existingTeam.includes(Number(selectedMemberToAdd))) { setMemberModal(false); return }
-      await projectService.addTeamMember(project.id, Number(selectedMemberToAdd))
-      setMemberModal(false)
-      setSelectedMemberToAdd('')
-      loadProject()
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSaving(false)
+    if (projectInfoDraft.startDate && projectInfoDraft.endDate && projectInfoDraft.endDate < projectInfoDraft.startDate) {
+      setProjectInfoSaveError('Due date must be on or after the start date.');
+      return;
     }
-  }
-
-  const handleRemoveMember = async (memberId) => {
-    if (!project) return
     try {
-      await projectService.removeTeamMember(project.id, memberId)
-      loadProject()
-    } catch {}
-  }
+      setSaving(true);
+      setProjectInfoSaveError('');
+      await projectService.updateProject(project.id, {
+        name: projectInfoDraft.name.trim(),
+        description: projectInfoDraft.description?.trim() || null,
+        status: projectInfoDraft.status,
+        startDate: projectInfoDraft.startDate || null,
+        endDate: projectInfoDraft.endDate || null,
+        budget: projectInfoDraft.budget ? Number(projectInfoDraft.budget) : null,
+        projectManager: projectInfoDraft.projectManagerId ? Number(projectInfoDraft.projectManagerId) : null,
+        clientAccount: projectInfoDraft.clientId ? Number(projectInfoDraft.clientId) : null,
+      });
+      setEditingProjectInfo(false);
+      setProjectInfoDraft(null);
+      await loadProject();
+      await reloadProjectTimeline({ silent: true });
+    } catch (e) {
+      console.error('Save project info error:', e);
+      setProjectInfoSaveError('Could not save changes. Try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !project || !user) return
+  const updateProject = async (patch) => {
+    if (!project) return;
     try {
-      setSendingMessage(true)
-      const userId = user.id || user.attributes?.id
-      await strapiClient.request('POST', '/api/messages', {
-        data: { content: newMessage.trim(), project: project.id, sender: userId },
-      })
-      setNewMessage('')
-      loadMessages()
-    } catch {}
-    finally { setSendingMessage(false) }
-  }
+      setSaving(true);
+      await projectService.updateProject(project.id, patch);
+      await loadProject();
+      await reloadProjectTimeline({ silent: true });
+    } catch (error) {
+      console.error('Update project error:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const openEditTaskModal = (task) => {
-    setTaskForm({
-      name: task.name || '',
-      description: task.description || '',
-      status: task.strapiStatus || 'SCHEDULED',
-      priority: task.priority || 'medium',
-      dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
-      assignee: task.assigneeId ? String(task.assigneeId) : '',
-    })
-    setTaskModal({ open: true, task })
-  }
+  const saveTask = async (payload) => {
+    if (!project) return;
+    try {
+      setSaving(true);
+      const nextPayload = { ...payload, projectId: payload.projectId || project.id };
+      if (taskModal.task) await taskService.updateTask(taskModal.task.id, nextPayload);
+      else await taskService.createTask(nextPayload);
+      setTaskModal({ open: false, task: null, parentContext: null });
+      await loadTasks();
+      await loadProject();
+    } catch (error) {
+      console.error('Save task error:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const taskColumns = [
-    {
-      key: 'name',
-      title: 'Task',
-      render: (value, row) => (
-        <div>
-          <p className="text-sm font-medium text-gray-900">{value}</p>
-          {row.description && (
-            <p className="text-xs text-gray-500 truncate max-w-xs">{row.description}</p>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'status',
-      title: 'Status',
-      render: (_, row) => {
-        const s = getStatusBadge(row.strapiStatus)
-        return <Badge variant={s.variant}>{s.label}</Badge>
-      },
-    },
-    {
-      key: 'priority',
-      title: 'Priority',
-      render: (value) => {
-        const p = getPriorityBadge(value)
-        return <Badge variant={p.variant}>{p.label}</Badge>
-      },
-    },
-    {
-      key: 'dueDate',
-      title: 'Due Date',
-      render: (value) => (
-        <span className="text-sm text-gray-600 flex items-center gap-1">
-          <Calendar className="w-3 h-3" />
-          {formatDate(value, 'short') || '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'assignee',
-      title: 'Assignee',
-      render: (value, row) => {
-        if (!row.assigneeName && !value) return <span className="text-xs text-gray-400">Unassigned</span>
-        const name = row.assigneeName || value || 'Unassigned'
-        return (
-          <div className="flex items-center gap-2">
-            <Avatar fallback={name.charAt(0).toUpperCase()} size="sm" />
-            <span className="text-sm text-gray-700">{name}</span>
-          </div>
-        )
-      },
-    },
-    {
-      key: 'actions',
-      title: '',
-      render: (_, row) => (
-        <div className="flex items-center gap-1 justify-end">
-          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); openEditTaskModal(row) }}>
-            <Edit3 className="w-3.5 h-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => { e.stopPropagation(); setDeleteTaskModal({ open: true, task: row }) }}
-            className="text-red-400 hover:text-red-600"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      ),
-    },
-  ]
+  const deleteProject = async () => {
+    if (!project) return;
+    try {
+      setSaving(true);
+      await projectService.deleteProject(project.id);
+      router.push('/projects');
+    } catch (error) {
+      console.error('Delete project error:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const memberColumnsEmpty = [
-    { key: 'name', title: 'Member' },
-    { key: 'email', title: 'Email' },
-    { key: 'role', title: 'Role' },
-    { key: 'actions', title: 'Actions' },
-  ]
+  const deleteTask = async () => {
+    if (!deleteTaskModal.task) return;
+    try {
+      setSaving(true);
+      await taskService.deleteTask(deleteTaskModal.task.id);
+      setDeleteTaskModal({ open: false, task: null });
+      await loadTasks();
+    } catch (error) {
+      console.error('Delete task error:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'tasks', label: 'Tasks', badge: tasks.length },
-    { id: 'members', label: 'Members', badge: (project?.team || []).length },
-    { id: 'discussion', label: 'Discussion', badge: messages.length },
-  ]
+  const copyProjectLink = async () => {
+    await navigator.clipboard?.writeText(window.location.href);
+  };
 
   if (loading) {
     return (
-      <div className="p-6">
-        <PMPageHeader title="Project Detail" showProfile />
-        <div className="flex items-center justify-center h-64">
-          <LoadingSpinner size="lg" message="Loading project..." />
-        </div>
+      <div className="p-4 md:p-6 space-y-6">
+        <PMPageHeader title="Loading..." breadcrumb={[{ label: 'PM', href: '/' }, { label: 'Projects', href: '/projects' }]} showProfile />
+        <Card variant="elevated" className="flex justify-center p-12">
+          <LoadingSpinner message="Loading project..." />
+        </Card>
       </div>
-    )
+    );
   }
 
   if (!project) {
     return (
-      <div className="p-6">
-        <PMPageHeader title="Project Not Found" showProfile />
-        <EmptyState
-          icon={FolderOpen}
-          title="Project not found"
-          description="The project you're looking for doesn't exist or has been deleted."
-          action={<Button variant="primary" onClick={() => router.push('/projects')}>Back to Projects</Button>}
-        />
+      <div className="p-4 md:p-6 space-y-6">
+        <PMPageHeader title="Project not found" breadcrumb={[{ label: 'PM', href: '/' }, { label: 'Projects', href: '/projects' }]} showProfile />
+        <Card variant="elevated" className="p-12 text-center">
+          <p className="text-gray-600">This project may have been deleted or moved.</p>
+          <Link href="/projects" className="mt-4 inline-block">
+            <Button variant="primary">Back to projects</Button>
+          </Link>
+        </Card>
       </div>
-    )
+    );
   }
 
-  const statusBadge = getStatusBadge(project.strapiStatus)
-  const nonMembers = allUsers.filter(
-    (u) => !(project.team || []).some((m) => m.id === u.id)
-  )
+  const statusVisual = projectStatusHeaderVisual(project.strapiStatus);
+  const StatusIcon = statusVisual.Icon;
+  const editProjectHref = `/projects/${project.slug || project.id}/edit`;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
       <PMPageHeader
         title={project.name}
-        subtitle={project.clientName ? `Client: ${project.clientName}` : 'Project Details'}
-        showProfile
-        breadcrumbs={[
+        subtitle={project.clientName ? `Client: ${project.clientName}` : 'Project workspace'}
+        breadcrumb={[
+          { label: 'PM', href: '/' },
           { label: 'Projects', href: '/projects' },
-          { label: project.name },
+          { label: project.name, href: `/projects/${project.slug || project.id}` },
         ]}
-        actions={
-          <Button variant="outline" size="sm" onClick={() => router.push('/projects')}>
-            <ArrowLeft className="w-4 h-4 mr-1" /> Back
-          </Button>
-        }
-      />
-
-      {/* Tabs */}
-      <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-              activeTab === tab.id
-                ? 'bg-white text-orange-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {tab.label}
-            {tab.badge !== undefined && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
-                activeTab === tab.id ? 'bg-orange-100 text-orange-600' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {tab.badge}
-              </span>
-            )}
+        showProfile
+      >
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link href={editProjectHref} className={headerIconBtnClass} title="Edit all project details" aria-label="Edit all project details">
+            <Edit className="h-5 w-5" />
+          </Link>
+          <button type="button" className={headerIconBtnClass} title="Copy link" onClick={copyProjectLink}>
+            <Share2 className="h-5 w-5" />
           </button>
-        ))}
+          <button
+            type="button"
+            className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-pink-500 shadow-md hover:opacity-95 transition-opacity shrink-0"
+            onClick={() => setTaskModal({ open: true, task: null, parentContext: null })}
+          >
+            <Plus className="h-4 w-4 shrink-0" aria-hidden />
+            Add Task
+          </button>
+          <button
+            type="button"
+            className={`group ${headerDangerIconBtnClass}`}
+            title="Delete project"
+            onClick={() => setDeleteProjectOpen(true)}
+          >
+            <Trash2 className="h-5 w-5 shrink-0 text-brand-text-light transition-colors group-hover:text-red-50" aria-hidden />
+          </button>
+          <PMRowActions
+            items={[
+              { label: 'Copy link', icon: Copy, onClick: copyProjectLink },
+              { label: 'Refresh', icon: RefreshCw, onClick: () => { loadProject(); loadTasks(); } },
+            ]}
+            label="More project actions"
+          />
+        </div>
+      </PMPageHeader>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <KPICard compact title="Total tasks" value={taskStats.total} icon={CheckSquare} colorScheme="orange" />
+        <KPICard compact title="Completed" value={taskStats.completed} icon={CheckCircle2} colorScheme="orange" />
+        <KPICard compact title="Progress" value={`${taskStats.progress}%`} icon={TrendingUp} colorScheme="orange" />
+        <KPICard compact title="Team" value={(project.team || []).length} icon={Users} colorScheme="orange" />
       </div>
 
-      {/* Overview Tab */}
-      {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <Card title="Project Details" variant="default">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-500 font-medium mb-1">Status</p>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
-                    <select
-                      value={project.strapiStatus || ''}
-                      onChange={(e) => handleStatusChange(e.target.value)}
-                      disabled={saving}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-orange-500"
+      <TabsWithActions variant="pill" tabs={tabsWithBadges} activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {activeTab === 'overview' ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <Card variant="elevated" className="rounded-xl">
+              {!(editingProjectInfo && projectInfoDraft) ? (
+                <>
+                  <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <h2 className="text-xl font-semibold text-gray-900">Project information</h2>
+                      <p className="mt-1.5 text-base text-gray-500">
+                        Scope, timeline, ownership, and how work is tracking.
+                      </p>
+                    </div>
+                    <div
+                      className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-start sm:justify-end sm:gap-2.5"
+                      role="group"
+                      aria-label="Project status"
                     >
-                      {PROJECT_STATUS_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
+                      <span
+                        className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold uppercase tracking-widest shadow-md ring-2 ${statusVisual.pillClass}`}
+                        role="status"
+                      >
+                        <StatusIcon className="h-5 w-5 shrink-0 opacity-90" strokeWidth={2.25} aria-hidden />
+                        {statusVisual.label}
+                      </span>
+                      <Select
+                        value={project.strapiStatus}
+                        options={PROJECT_STATUS_OPTIONS}
+                        onChange={(status) => updateProject({ status })}
+                        disabled={saving}
+                        containerClassName="sm:w-56"
+                        placeholder="Change status"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-gray-500 font-medium mb-1">Client</p>
-                  <p className="text-gray-900">{project.clientName || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 font-medium mb-1 flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" /> Start Date
-                  </p>
-                  <p className="text-gray-900">{formatDate(project.startDate) || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 font-medium mb-1 flex items-center gap-1">
-                    <Target className="w-3.5 h-3.5" /> End Date
-                  </p>
-                  <p className="text-gray-900">{formatDate(project.endDate) || '—'}</p>
+                  <div className="space-y-5">
+                    <InfoSection title="Key info" icon={Target} isFirst>
+                      <div className="mb-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                        <InfoRow label="Owner" value={project.projectManager ? userLabel(project.projectManager) : ''} />
+                        <InfoRow label="Client" value={project.clientName || ''} />
+                        <InfoRow label="Start date" value={formatDate(project.startDate, 'short') || ''} icon={Calendar} />
+                        <InfoRow label="Due date" value={formatDate(project.endDate, 'short') || ''} icon={Clock} />
+                      </div>
+                    </InfoSection>
+
+                    <section className="border-t border-gray-100 pt-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <AlignLeft className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">About</h3>
+                      </div>
+                      {isPresent(project.description) ? (
+                        <p className="mt-2.5 whitespace-pre-wrap text-base font-normal leading-relaxed text-gray-800">{project.description}</p>
+                      ) : (
+                        <p className="mt-2.5 text-base font-normal text-gray-400">—</p>
+                      )}
+                    </section>
+
+                    <p className="border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
+                      <button type="button" onClick={openProjectInfoEdit} className="font-medium text-orange-600 hover:underline">
+                        Edit project details
+                      </button>
+                      <span className="mx-2 text-gray-300" aria-hidden>
+                        ·
+                      </span>
+                      <Link href={editProjectHref} className="font-medium text-gray-500 hover:text-orange-600 hover:underline">
+                        Full edit page
+                      </Link>
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <h2 className="text-xl font-semibold text-gray-900">Project information</h2>
+                      <p className="mt-1.5 text-base text-gray-500">Edit scope, timeline, ownership, and description.</p>
+                    </div>
+                  </div>
+                  <div className="space-y-5">
+                    <Input
+                      label="Project name"
+                      required
+                      value={projectInfoDraft.name}
+                      onChange={(e) => setProjectInfoField('name', e.target.value)}
+                      disabled={saving}
+                    />
+                    <InfoSection title="Key info" icon={Target} isFirst>
+                      <div className="mb-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                        <Select
+                          label="Project manager"
+                          value={projectInfoDraft.projectManagerId}
+                          options={[{ value: '', label: 'Unassigned' }, ...userOptions]}
+                          onChange={(v) => setProjectInfoField('projectManagerId', v)}
+                          disabled={saving}
+                          placeholder="Assign owner"
+                        />
+                        <Select
+                          label="Client"
+                          value={projectInfoDraft.clientId}
+                          options={[{ value: '', label: 'None' }, ...clientOptions]}
+                          onChange={(v) => setProjectInfoField('clientId', v)}
+                          disabled={saving}
+                          placeholder="Link client"
+                        />
+                        <Select
+                          label="Status"
+                          value={projectInfoDraft.status}
+                          options={PROJECT_STATUS_OPTIONS}
+                          onChange={(v) => setProjectInfoField('status', v)}
+                          disabled={saving}
+                        />
+                        <Input
+                          label="Budget"
+                          type="number"
+                          min="0"
+                          value={projectInfoDraft.budget}
+                          onChange={(e) => setProjectInfoField('budget', e.target.value)}
+                          disabled={saving}
+                        />
+                        <Input
+                          label="Start date"
+                          type="date"
+                          value={projectInfoDraft.startDate}
+                          onChange={(e) => setProjectInfoField('startDate', e.target.value)}
+                          disabled={saving}
+                        />
+                        <Input
+                          label="Due date"
+                          type="date"
+                          value={projectInfoDraft.endDate}
+                          onChange={(e) => setProjectInfoField('endDate', e.target.value)}
+                          disabled={saving}
+                        />
+                      </div>
+                    </InfoSection>
+
+                    <section className="border-t border-gray-100 pt-4">
+                      <div className="mb-2 flex items-center gap-2">
+                        <AlignLeft className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
+                        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">About</h3>
+                      </div>
+                      <Textarea
+                        rows={5}
+                        value={projectInfoDraft.description}
+                        onChange={(e) => setProjectInfoField('description', e.target.value)}
+                        disabled={saving}
+                        className="mt-1 text-base"
+                        placeholder="Brief description of the project"
+                        resize="none"
+                      />
+                    </section>
+
+                    {projectInfoSaveError ? (
+                      <p className="text-center text-sm text-red-600">{projectInfoSaveError}</p>
+                    ) : null}
+
+                    <div className="mt-4 flex flex-wrap items-center justify-center gap-3 border-t border-gray-100 pt-4">
+                      <Button type="button" variant="primary" disabled={saving} onClick={saveProjectInfo}>
+                        {saving ? 'Saving…' : 'Save changes'}
+                      </Button>
+                      <Button type="button" variant="outline" disabled={saving} onClick={cancelProjectInfoEdit}>
+                        Cancel
+                      </Button>
+                    </div>
+
+                    <p className="text-center text-sm text-gray-500">
+                      <Link href={editProjectHref} className="font-medium text-gray-500 hover:text-orange-600 hover:underline">
+                        Open full edit page
+                      </Link>
+                      <span className="mx-2 text-gray-300" aria-hidden>
+                        ·
+                      </span>
+                      <span className="text-gray-400">for team members and more options</span>
+                    </p>
+                  </div>
+                </>
+              )}
+            </Card>
+
+            <Card variant="elevated" className="rounded-xl">
+              <div className="mb-6">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">Team members</h2>
+                    <p className="mt-1.5 text-base text-gray-500">
+                      People assigned to deliver work on this project.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-bold text-gray-600">
+                    {(project.team || []).length}
+                  </span>
                 </div>
               </div>
-              {project.description && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <p className="text-gray-500 font-medium mb-2 text-sm">Description</p>
-                  <p className="text-gray-700 text-sm">{project.description}</p>
-                </div>
-              )}
-            </Card>
-
-            <Card
-              title="Quick Task Overview"
-              variant="default"
-              actions={
-                <Button variant="primary" size="sm" onClick={() => {
-                  setActiveTab('tasks')
-                  setTaskModal({ open: true, task: null })
-                  setTaskForm({ name: '', description: '', status: 'SCHEDULED', priority: 'medium', dueDate: '', assignee: '' })
-                }}>
-                  <Plus className="w-3.5 h-3.5 mr-1" /> Add Task
-                </Button>
-              }
-            >
-              {loadingTasks ? (
-                <TableSkeleton rows={3} columns={3} />
-              ) : tasks.length === 0 ? (
-                <EmptyState
-                  icon={CheckSquare}
-                  title="No tasks yet"
-                  description="Tasks will appear here once you add them."
-                />
-              ) : (
-                <div className="space-y-2">
-                  {tasks.slice(0, 5).map((task) => {
-                    const s = getStatusBadge(task.strapiStatus)
-                    return (
-                      <div key={task.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{task.name}</p>
-                        </div>
-                        <Badge variant={s.variant} size="sm">{s.label}</Badge>
-                      </div>
-                    )
-                  })}
-                  {tasks.length > 5 && (
-                    <button onClick={() => setActiveTab('tasks')} className="w-full text-center text-sm text-orange-600 hover:underline py-1">
-                      View all {tasks.length} tasks
-                    </button>
-                  )}
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-4">
-            <Card title="Team Members" variant="default" actions={
-              <Button variant="ghost" size="sm" onClick={() => setMemberModal(true)}>
-                <UserPlus className="w-4 h-4" />
-              </Button>
-            }>
               {(project.team || []).length === 0 ? (
-                <EmptyState
-                  icon={Users}
-                  title="No team members yet"
-                  description="Add members to collaborate on this project."
-                />
+                <EmptyState icon={Users} title="No team members" description="Team members will appear here when assigned to this project." />
               ) : (
-                <div className="space-y-3">
-                  {(project.team || []).map((member) => (
-                    <div key={member.id} className="flex items-center gap-3">
-                      <Avatar
-                        fallback={(member.name || member.username || '?').charAt(0).toUpperCase()}
-                        size="md"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {member.name || member.username}
-                        </p>
-                        <p className="text-xs text-gray-500">{member.email || '—'}</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {project.team.map((member) => (
+                    <div key={member.id} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+                      <Avatar fallback={(member.initials || member.name || 'U').charAt(0).toUpperCase()} size="sm" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-900">{userLabel(member)}</p>
+                        <p className="truncate text-xs text-gray-500">{member.role || member.email || 'Team member'}</p>
                       </div>
                     </div>
                   ))}
@@ -551,314 +744,242 @@ export default function ProjectDetailPage() {
               )}
             </Card>
           </div>
-        </div>
-      )}
 
-      {/* Tasks Tab */}
-      {activeTab === 'tasks' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Tasks ({tasks.length})</h2>
-            <Button variant="primary" size="sm" onClick={() => {
-              setTaskForm({ name: '', description: '', status: 'SCHEDULED', priority: 'medium', dueDate: '', assignee: '' })
-              setTaskModal({ open: true, task: null })
-            }}>
-              <Plus className="w-4 h-4 mr-1" /> Add Task
-            </Button>
-          </div>
-          {loadingTasks ? (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="p-12 flex justify-center">
-                <TableSkeleton rows={5} columns={5} />
-              </div>
-            </div>
-          ) : (
-            <>
-              <TableResultsCount count={tasks.length} />
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <Table columns={taskColumns} data={tasks} keyField="id" variant="modernEmbedded" />
-                {tasks.length === 0 && (
-                  <TableEmptyBelow
-                    icon={CheckSquare}
-                    title="No tasks yet"
-                    description="Tasks will appear here once you add them."
-                    action={
-                      <Button
-                        variant="primary"
-                        onClick={() => {
-                          setTaskForm({
-                            name: '',
-                            description: '',
-                            status: 'SCHEDULED',
-                            priority: 'medium',
-                            dueDate: '',
-                            assignee: '',
-                          })
-                          setTaskModal({ open: true, task: null })
-                        }}
-                      >
-                        <Plus className="w-4 h-4 mr-2" /> Add First Task
-                      </Button>
+          <div className="space-y-4">
+            <Card variant="elevated" className="rounded-xl">
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">Project owner</h2>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <Avatar
+                    fallback={
+                      project.projectManager
+                        ? (project.projectManager.initials || userLabel(project.projectManager)).slice(0, 2).toUpperCase()
+                        : '?'
                     }
+                    alt={project.projectManager ? userLabel(project.projectManager) : 'Unassigned'}
+                    size="lg"
+                    className="!bg-brand-primary font-semibold text-white shadow-sm ring-2 ring-brand-primary/25"
                   />
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Members Tab */}
-      {activeTab === 'members' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Team Members ({(project.team || []).length})
-            </h2>
-            <Button variant="primary" size="sm" onClick={() => setMemberModal(true)}>
-              <UserPlus className="w-4 h-4 mr-1" /> Add Member
-            </Button>
-          </div>
-          {(project.team || []).length === 0 ? (
-            <>
-              <TableResultsCount count={0} />
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <Table
-                  columns={memberColumnsEmpty}
-                  data={[]}
-                  keyField="id"
-                  variant="modernEmbedded"
-                />
-                <TableEmptyBelow
-                  icon={Users}
-                  title="No team members"
-                  description="Add team members to collaborate on this project."
-                  action={
-                    <Button variant="primary" onClick={() => setMemberModal(true)}>
-                      <UserPlus className="w-4 h-4 mr-2" /> Add Member
-                    </Button>
-                  }
-                />
-              </div>
-            </>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(project.team || []).map((member) => (
-                <Card key={member.id} padding variant="default">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      fallback={(member.name || member.username || '?').charAt(0).toUpperCase()}
-                      size="lg"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">
-                        {member.name || member.username}
-                      </p>
-                      <p className="text-sm text-gray-500 truncate">{member.email || '—'}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveMember(member.id)}
-                      className="text-red-400 hover:text-red-600 flex-shrink-0"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold text-gray-900">
+                      {project.projectManager ? userLabel(project.projectManager) : 'Unassigned'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {project.projectManager?.email || project.projectManager?.role || 'Assign an owner in the project editor'}
+                    </p>
                   </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                </div>
+                <Link
+                  href={editProjectHref}
+                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 sm:w-auto"
+                >
+                  <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
+                  Edit project
+                </Link>
+              </div>
+            </Card>
 
-      {/* Discussion Tab */}
-      {activeTab === 'discussion' && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Discussion ({messages.length})
-          </h2>
-          <Card padding={false} variant="default">
-            <div className="h-96 overflow-y-auto p-4 space-y-3">
-              {messages.length === 0 ? (
-                <EmptyState
-                  icon={MessageSquare}
-                  title="No messages yet"
-                  description="Start the conversation with your team below."
-                />
-              ) : (
-                messages.map((msg, i) => {
-                  const attrs = msg.attributes || msg
-                  const senderAttrs = attrs.sender?.data?.attributes || attrs.sender || {}
-                  const senderName = senderAttrs.name || senderAttrs.username || 'Unknown'
-                  const isCurrentUser =
-                    (user?.id || user?.attributes?.id) ===
-                    (attrs.sender?.data?.id || attrs.senderId)
-                  return (
-                    <div
-                      key={msg.id || i}
-                      className={`flex gap-3 ${isCurrentUser ? 'flex-row-reverse' : ''}`}
-                    >
-                      <Avatar fallback={senderName.charAt(0).toUpperCase()} size="sm" />
-                      <div className={`max-w-xs ${isCurrentUser ? 'items-end' : 'items-start'} flex flex-col`}>
-                        <p className="text-xs text-gray-500 mb-1">{senderName}</p>
-                        <div className={`px-3 py-2 rounded-lg text-sm ${
-                          isCurrentUser
-                            ? 'bg-orange-500 text-white rounded-tr-none'
-                            : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                        }`}>
-                          {attrs.content}
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1">
-                          {formatDate(attrs.createdAt, 'datetime') || ''}
-                        </p>
-                      </div>
+            <Card variant="elevated" className="rounded-xl">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                <h2 className="text-xl font-semibold text-gray-900">Delivery progress</h2>
+                <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ring-orange-200/80 bg-orange-50 text-orange-900">
+                  {taskStats.progress}% complete
+                </span>
+              </div>
+
+              <div className="rounded-xl bg-gradient-to-br from-slate-50 to-gray-50/90 p-4 ring-1 ring-gray-100">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+                  <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-stretch sm:gap-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-gray-500 sm:hidden">Progress</p>
+                    <div className="flex min-w-[5.5rem] flex-col items-center justify-center rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-orange-100/90">
+                      <span className="text-3xl font-bold tabular-nums leading-none text-orange-700">{taskStats.progress}</span>
+                      <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Percent</span>
                     </div>
-                  )
-                })
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-            <div className="border-t border-gray-100 p-3 flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                placeholder="Type a message..."
-                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSendMessage}
-                disabled={sendingMessage || !newMessage.trim()}
-              >
-                <Send className="w-4 h-4" />
-              </Button>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="hidden text-xs font-medium uppercase tracking-wide text-gray-500 sm:block">Overall completion</p>
+                    <p className="mt-0 text-sm text-gray-600 sm:mt-1">Based on tasks marked complete for this project.</p>
+                    <div
+                      className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/90 shadow-inner ring-1 ring-gray-100/80"
+                      role="progressbar"
+                      aria-valuenow={taskStats.progress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label="Project completion"
+                    >
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-500 ease-out"
+                        style={{ width: `${taskStats.progress}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-5">
+                <div>
+                  <h3 className="mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <CheckSquare className="h-3.5 w-3.5 text-gray-400" aria-hidden />
+                    Tasks
+                  </h3>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
+                      <p className="text-xs font-medium text-gray-500">Total tasks</p>
+                      <p className="mt-1 text-sm font-semibold tabular-nums text-gray-900">{taskStats.total}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
+                      <p className="text-xs font-medium text-gray-500">Completed</p>
+                      <p className="mt-1 text-sm font-semibold tabular-nums text-gray-900">{taskStats.completed}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-100 pt-5">
+                  <h3 className="mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <FolderOpen className="h-3.5 w-3.5 text-gray-400" aria-hidden />
+                    Record &amp; budget
+                  </h3>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
+                      <p className="text-xs font-medium text-gray-500">Created</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">{formatDate(project.createdAt, 'short') || '—'}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
+                      <p className="text-xs font-medium text-gray-500">Updated</p>
+                      <p className="mt-1 text-sm font-semibold text-gray-900">{formatDate(project.updatedAt, 'short') || '—'}</p>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm sm:col-span-2">
+                      <p className="text-xs font-medium text-gray-500">Budget</p>
+                      <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                        {project.budget != null && String(project.budget).trim() !== '' ? (
+                          <>
+                            <IndianRupee className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+                            {project.budget}
+                          </>
+                        ) : (
+                          <span className="font-semibold text-gray-400">—</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === 'tasks' ? (
+        <ProjectTasksPanel
+          tasks={tasks}
+          tasksLoading={tasksLoading}
+          users={users}
+          onRefresh={refreshTasksAndProject}
+          onAddTask={() => setTaskModal({ open: true, task: null, parentContext: null })}
+          onOpenCreateSubtask={(parentRow) =>
+            setTaskModal({
+              open: true,
+              task: null,
+              parentContext: {
+                id: parentRow.id,
+                name: parentRow.name,
+                projectId: project?.id,
+              },
+            })
+          }
+          onEditTask={(task) => setTaskModal({ open: true, task, parentContext: null })}
+          onDeleteTask={(task) => setDeleteTaskModal({ open: true, task })}
+        />
+      ) : null}
+
+      {activeTab === 'activity' ? (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start">
+          <Card variant="elevated" className="rounded-xl lg:col-span-2">
+            <SidebarCardTitle title="Activity Summary" icon={Activity} />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-2.5">
+                <span className="text-xs font-medium text-orange-700">Total events</span>
+                <span className="text-lg font-bold tabular-nums text-orange-900">{activityCount}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <span className="text-xs font-medium text-gray-600">Last activity</span>
+                <span className="text-xs font-semibold text-gray-800">{lastActivityDisplay}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <span className="text-xs font-medium text-gray-600">Tasks</span>
+                <span className="text-xs font-semibold tabular-nums text-gray-800">{taskStats.total}</span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <span className="text-xs font-medium text-gray-600">Completion</span>
+                <span className="inline-flex rounded-lg bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-900 ring-1 ring-orange-200/80">
+                  {taskStats.progress}%
+                </span>
+              </div>
             </div>
           </Card>
+          <div className="lg:col-span-3 min-w-0">
+            <EntityActivityPanel
+              entityType="project"
+              entityId={project.id}
+              entityName={project.name}
+              crmTimeline={crmTimeline}
+              crmTimelineLoading={crmTimelineLoading}
+              crmTimelineError={crmTimelineError}
+              activityCount={activityCount}
+              fetchCommentsFn={({ entityId }) => fetchProjectComments({ projectId: entityId, limit: 80 })}
+              addCommentFn={handleAddProjectComment}
+              chatFooterBadgeText="Messages are saved on this project for your team."
+            />
+          </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Task Create/Edit Modal */}
-      <Modal
+      {activeTab === 'files' ? (
+        <Card variant="elevated" className="rounded-xl">
+          <EmptyState
+            icon={FileText}
+            title="No files attached"
+            description="The files tab is ready for the CRM-style attachments experience once backend file relations are added."
+          />
+        </Card>
+      ) : null}
+
+      <QuickCreateTaskModal
         isOpen={taskModal.open}
-        onClose={() => setTaskModal({ open: false, task: null })}
-        title={taskModal.task ? 'Edit Task' : 'Add Task'}
-        size="md"
-      >
-        <div className="space-y-4">
-          <Input
-            label="Task Name"
-            required
-            value={taskForm.name}
-            onChange={(e) => setTaskForm((p) => ({ ...p, name: e.target.value }))}
-            placeholder="Enter task name"
-          />
-          <Textarea
-            label="Description"
-            value={taskForm.description}
-            onChange={(e) => setTaskForm((p) => ({ ...p, description: e.target.value }))}
-            rows={3}
-            placeholder="Task description (optional)"
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Status"
-              value={taskForm.status}
-              options={TASK_STATUS_OPTIONS}
-              onChange={(val) => setTaskForm((p) => ({ ...p, status: val }))}
-            />
-            <Select
-              label="Priority"
-              value={taskForm.priority}
-              options={PRIORITY_OPTIONS}
-              onChange={(val) => setTaskForm((p) => ({ ...p, priority: val }))}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Due Date"
-              type="date"
-              value={taskForm.dueDate}
-              onChange={(e) => setTaskForm((p) => ({ ...p, dueDate: e.target.value }))}
-            />
-            <Select
-              label="Assignee"
-              value={taskForm.assignee}
-              options={[
-                { value: '', label: 'Unassigned' },
-                ...(project.team || []).map((m) => ({
-                  value: String(m.id),
-                  label: m.name || m.username || `User ${m.id}`,
-                })),
-              ]}
-              onChange={(val) => setTaskForm((p) => ({ ...p, assignee: val }))}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" onClick={() => setTaskModal({ open: false, task: null })}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleAddTask} disabled={saving || !taskForm.name.trim()}>
-              {saving ? 'Saving...' : taskModal.task ? 'Update Task' : 'Create Task'}
-            </Button>
+        onClose={() => setTaskModal({ open: false, task: null, parentContext: null })}
+        onSubmit={saveTask}
+        task={taskModal.task}
+        parentContext={taskModal.parentContext}
+        projects={[project]}
+        users={users}
+        defaultProjectId={project.id}
+        defaultAssignerId={defaultAssignerId}
+        saving={saving}
+      />
+
+      <Modal isOpen={deleteProjectOpen} onClose={() => setDeleteProjectOpen(false)} title="Delete Project" size="sm">
+        <div className="space-y-5">
+          <p className="text-sm text-gray-700">
+            Delete <span className="font-semibold text-gray-900">{project.name}</span>? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setDeleteProjectOpen(false)} disabled={saving}>Cancel</Button>
+            <Button variant="danger" onClick={deleteProject} disabled={saving}>{saving ? 'Deleting...' : 'Delete'}</Button>
           </div>
         </div>
       </Modal>
 
-      {/* Delete Task Modal */}
-      <Modal
-        isOpen={deleteTaskModal.open}
-        onClose={() => setDeleteTaskModal({ open: false, task: null })}
-        title="Delete Task"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 bg-red-50 rounded-xl">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">
-              Are you sure you want to delete <strong>{deleteTaskModal.task?.name}</strong>? This action cannot be undone.
-            </p>
-          </div>
+      <Modal isOpen={deleteTaskModal.open} onClose={() => setDeleteTaskModal({ open: false, task: null })} title="Delete Task" size="sm">
+        <div className="space-y-5">
+          <p className="text-sm text-gray-700">
+            Delete <span className="font-semibold text-gray-900">{deleteTaskModal.task?.name}</span>? This action cannot be undone.
+          </p>
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setDeleteTaskModal({ open: false, task: null })}>Cancel</Button>
-            <Button variant="danger" onClick={handleDeleteTask} disabled={saving}>
-              {saving ? 'Deleting...' : 'Delete Task'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Add Member Modal */}
-      <Modal
-        isOpen={memberModal}
-        onClose={() => { setMemberModal(false); setSelectedMemberToAdd('') }}
-        title="Add Team Member"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <Select
-            label="Select Member"
-            value={selectedMemberToAdd}
-            options={nonMembers.map((u) => ({
-              value: String(u.id),
-              label: u.name || u.username || u.email || `User ${u.id}`,
-            }))}
-            onChange={setSelectedMemberToAdd}
-            placeholder="Choose a team member"
-          />
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => { setMemberModal(false); setSelectedMemberToAdd('') }}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleAddMember} disabled={saving || !selectedMemberToAdd}>
-              {saving ? 'Adding...' : 'Add Member'}
-            </Button>
+            <Button variant="outline" onClick={() => setDeleteTaskModal({ open: false, task: null })} disabled={saving}>Cancel</Button>
+            <Button variant="danger" onClick={deleteTask} disabled={saving}>{saving ? 'Deleting...' : 'Delete'}</Button>
           </div>
         </div>
       </Modal>
     </div>
-  )
+  );
 }

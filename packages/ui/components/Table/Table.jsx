@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { clsx } from 'clsx'
 
 export function Table({
@@ -9,6 +10,8 @@ export function Table({
   rowClassName,
   getRowClassName,
   onRowClick,
+  /** Optional row rendered immediately after each data row (e.g. expandable detail). */
+  renderAfterRow,
   keyField = 'id',
   variant = 'default',
   ...props
@@ -81,36 +84,41 @@ export function Table({
           </tr>
         </thead>
         <tbody className={clsx(styles.body, bodyClassName)}>
-          {data.map((row, rowIndex) => (
-            <tr
-              key={row[keyField] || row.id || rowIndex}
-              className={clsx(
-                styles.row,
-                onRowClick && 'cursor-pointer',
-                rowClassName,
-                getRowClassName?.(row, rowIndex)
-              )}
-              onClick={() => onRowClick && onRowClick(row, rowIndex)}
-            >
-              {columns.map((column, colIndex) => (
-                <td
-                  key={column.key || colIndex}
-                  className={clsx(styles.cell, column.className)}
-                  style={
-                    column.width
-                      ? {
-                          width: column.width,
-                          minWidth: column.width,
-                          maxWidth: column.width,
-                        }
-                      : {}
-                  }
+          {data.map((row, rowIndex) => {
+            const rk = row[keyField] ?? row.id ?? rowIndex
+            return (
+              <Fragment key={rk}>
+                <tr
+                  className={clsx(
+                    styles.row,
+                    onRowClick && 'cursor-pointer',
+                    rowClassName,
+                    getRowClassName?.(row, rowIndex)
+                  )}
+                  onClick={() => onRowClick && onRowClick(row, rowIndex)}
                 >
-                  {column.render ? column.render(row[column.key], row, rowIndex) : row[column.key]}
-                </td>
-              ))}
-            </tr>
-          ))}
+                  {columns.map((column, colIndex) => (
+                    <td
+                      key={column.key || colIndex}
+                      className={clsx(styles.cell, column.className)}
+                      style={
+                        column.width
+                          ? {
+                              width: column.width,
+                              minWidth: column.width,
+                              maxWidth: column.width,
+                            }
+                          : {}
+                      }
+                    >
+                      {column.render ? column.render(row[column.key], row, rowIndex) : row[column.key]}
+                    </td>
+                  ))}
+                </tr>
+                {renderAfterRow ? renderAfterRow(row, rowIndex) : null}
+              </Fragment>
+            )
+          })}
         </tbody>
       </table>
     </div>

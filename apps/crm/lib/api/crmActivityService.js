@@ -31,7 +31,7 @@ export async function fetchGlobalCommentsFeed({ limit = 100, start = 0 } = {}) {
 }
 
 /**
- * @param {{ contactId?: string|number, leadCompanyId?: string|number, dealId?: string|number, clientAccountId?: string|number, limit?: number }} opts
+ * @param {{ contactId?: string|number, leadCompanyId?: string|number, dealId?: string|number, clientAccountId?: string|number, projectId?: string|number, limit?: number }} opts
  * @returns {Promise<{ data: object[], total: number }>}
  */
 export async function fetchActivityTimeline({
@@ -39,6 +39,7 @@ export async function fetchActivityTimeline({
   leadCompanyId,
   dealId,
   clientAccountId,
+  projectId,
   limit = 80,
 } = {}) {
   const params = { limit };
@@ -53,6 +54,9 @@ export async function fetchActivityTimeline({
   }
   if (clientAccountId != null && String(clientAccountId).trim() !== '') {
     params.clientAccountId = clientAccountId;
+  }
+  if (projectId != null && String(projectId).trim() !== '') {
+    params.projectId = projectId;
   }
   const res = await strapiClient.get('/crm-activities/timeline', params);
   const data = Array.isArray(res?.data) ? res.data : [];
@@ -257,6 +261,47 @@ export async function fetchClientAccountCommentCounts({ clientAccountIds } = {})
   return res?.data && typeof res.data === 'object' ? res.data : {};
 }
 
+// ── Task (PM) ─────────────────────────────────────────────────────────────────
+
+/**
+ * @param {{ taskId: string|number, limit?: number }} opts
+ * @returns {Promise<{ data: object[], total: number }>}
+ */
+export async function fetchTaskComments({ taskId, limit = 30 } = {}) {
+  if (taskId == null || String(taskId).trim() === '') {
+    return { data: [], total: 0 };
+  }
+  const res = await strapiClient.get('/crm-activities/timeline', {
+    taskId,
+    limit,
+    type: 'comment',
+  });
+  const data = Array.isArray(res?.data) ? res.data : [];
+  const total = typeof res?.meta?.total === 'number' ? res.meta.total : data.length;
+  return { data, total };
+}
+
+/**
+ * @param {{ taskId: string|number, comment: string }} opts
+ * @returns {Promise<{ data: object }>}
+ */
+export async function addTaskComment({ taskId, comment } = {}) {
+  return strapiClient.post('/crm-activities/comments', { taskId, comment });
+}
+
+/**
+ * @param {{ taskIds: (string|number)[] }} opts
+ * @returns {Promise<Record<string, number>>}
+ */
+export async function fetchTaskCommentCounts({ taskIds } = {}) {
+  const ids = Array.isArray(taskIds) ? taskIds.map((v) => String(v).trim()).filter(Boolean) : [];
+  if (!ids.length) return {};
+  const res = await strapiClient.get('/crm-activities/comment-counts', {
+    taskIds: ids.join(','),
+  });
+  return res?.data && typeof res.data === 'object' ? res.data : {};
+}
+
 export default {
   fetchGlobalActivityFeed,
   fetchGlobalCommentsFeed,
@@ -274,4 +319,7 @@ export default {
   fetchClientAccountComments,
   addClientAccountComment,
   fetchClientAccountCommentCounts,
+  fetchTaskComments,
+  addTaskComment,
+  fetchTaskCommentCounts,
 };

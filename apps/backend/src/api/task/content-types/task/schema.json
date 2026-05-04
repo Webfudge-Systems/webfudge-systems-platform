@@ -32,6 +32,9 @@
     "scheduledDate": {
       "type": "datetime"
     },
+    "startDate": {
+      "type": "datetime"
+    },
     "progress": {
       "type": "integer",
       "default": 0
@@ -41,6 +44,11 @@
       "default": []
     },
     "assignee": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "assigner": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "plugin::users-permissions.user"
@@ -87,6 +95,36 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::organization.organization"
+    },
+    "recurrenceFrequency": {
+      "type": "enumeration",
+      "enum": ["none", "daily", "weekly", "monthly", "custom"],
+      "default": "none"
+    },
+    "recurrenceInterval": {
+      "type": "integer",
+      "default": 1,
+      "min": 1
+    },
+    "recurrenceWeekdays": {
+      "type": "json",
+      "default": []
+    },
+    "recurrenceMonthDay": {
+      "type": "integer",
+      "min": 1,
+      "max": 31
+    },
+    "recurrenceCustomUnit": {
+      "type": "enumeration",
+      "enum": ["day", "week", "month"],
+      "default": "day"
+    },
+    "recurrenceEndsAt": {
+      "type": "datetime"
+    },
+    "recurrenceGroupId": {
+      "type": "string"
     }
   }
 }

@@ -13,7 +13,7 @@ Added a rich, dual-tab **Activity + Chat panel** to the Activities tab of all fo
 - `apps/crm/lib/api/crmActivityService.js` — Added `fetchContactComments`, `addContactComment`, `fetchContactCommentCounts`, `fetchClientAccountComments`, `addClientAccountComment`, `fetchClientAccountCommentCounts`.
 
 ### New Component
-- `apps/crm/components/EntityActivityPanel.jsx` — Reusable right-side panel with 2 sub-tabs.
+- `@webfudge/ui` `EntityActivityPanel` — Reusable right-side panel with 2 sub-tabs.
 
 ### Updated Detail Pages
 - `apps/crm/app/sales/lead-companies/[id]/page.js`

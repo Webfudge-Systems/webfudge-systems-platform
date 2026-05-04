@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@webfudge/auth'
 import {
   Card,
   Button,
@@ -22,6 +21,8 @@ import {
 import PMPageHeader from '../../../components/PMPageHeader'
 import projectService from '../../../lib/api/projectService'
 import strapiClient from '../../../lib/strapiClient'
+import { fetchPmAssignableUsers } from '../../../lib/api/messageService'
+import { transformUser } from '../../../lib/api/dataTransformers'
 
 const STATUS_OPTIONS = [
   { value: 'PLANNING', label: 'Planning' },
@@ -34,8 +35,6 @@ const STATUS_OPTIONS = [
 
 export default function AddProjectPage() {
   const router = useRouter()
-  const { user } = useAuth()
-
   const [loading, setLoading] = useState(false)
   const [allUsers, setAllUsers] = useState([])
   const [clients, setClients] = useState([])
@@ -56,15 +55,16 @@ export default function AddProjectPage() {
   const loadData = useCallback(async () => {
     try {
       const [usersRes, clientsRes] = await Promise.allSettled([
-        strapiClient.getXtrawrkxUsers({ pageSize: 200 }),
-        strapiClient.request('GET', '/api/lead-companies?pagination[pageSize]=100'),
+        fetchPmAssignableUsers(),
+        strapiClient.request('/lead-companies?pagination[pageSize]=100', { method: 'GET' }),
       ])
       if (usersRes.status === 'fulfilled') {
-        const u = usersRes.value
-        setAllUsers(Array.isArray(u) ? u : u?.data || [])
+        const raw = usersRes.value || []
+        setAllUsers(raw.map(transformUser).filter(Boolean))
       }
       if (clientsRes.status === 'fulfilled') {
-        setClients(clientsRes.value?.data || [])
+        const body = clientsRes.value
+        setClients(body?.data || [])
       }
     } catch {}
   }, [])

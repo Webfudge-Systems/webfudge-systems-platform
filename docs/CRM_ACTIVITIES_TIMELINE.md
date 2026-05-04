@@ -17,7 +17,7 @@ The backend now stores **CRM activity** rows whenever contacts or lead companies
     - `?leadCompanyId=<id>` — events for that lead (its own changes) **and** linked contacts (via `leadCompany` on the activity row).
 - **CRM (`apps/crm`)**
   - `lib/api/crmActivityService.js` — fetches the timeline.
-  - `components/ActivitiesTimeline.jsx` — vertical timeline UI.
+  - `@webfudge/ui` `ActivitiesTimeline` — vertical timeline UI.
   - `app/sales/lead-companies/[id]/page.js` and `app/sales/contacts/[id]/page.js` — data loading, KPIs, Activities tab, silent refresh after inline saves.
 
 ## Data model (high level)

@@ -1167,6 +1167,7 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
   }
   attributes: {
     assignee: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    assigner: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
     collaborators: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
     createdAt: Schema.Attribute.DateTime
@@ -1185,7 +1186,33 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     progress: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     projects: Schema.Attribute.Relation<'manyToMany', 'api::project.project'>
     publishedAt: Schema.Attribute.DateTime
+    recurrenceCustomUnit: Schema.Attribute.Enumeration<['day', 'week', 'month']> &
+      Schema.Attribute.DefaultTo<'day'>
+    recurrenceEndsAt: Schema.Attribute.DateTime
+    recurrenceFrequency: Schema.Attribute.Enumeration<
+      ['none', 'daily', 'weekly', 'monthly', 'custom']
+    > &
+      Schema.Attribute.DefaultTo<'none'>
+    recurrenceGroupId: Schema.Attribute.String
+    recurrenceInterval: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>
+    recurrenceMonthDay: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 31
+          min: 1
+        },
+        number
+      >
+    recurrenceWeekdays: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
     scheduledDate: Schema.Attribute.DateTime
+    startDate: Schema.Attribute.DateTime
     status: Schema.Attribute.Enumeration<
       ['SCHEDULED', 'IN_PROGRESS', 'INTERNAL_REVIEW', 'COMPLETED', 'CANCELLED', 'OVERDUE']
     > &

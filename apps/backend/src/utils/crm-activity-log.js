@@ -49,6 +49,23 @@ const FIELD_LABELS = {
   expectedCloseDate: 'Expected close date',
   clientAccount: 'Client account',
   contact: 'Primary contact',
+  projectManager: 'Project manager',
+  teamMembers: 'Team members',
+  startDate: 'Start date',
+  endDate: 'Due date',
+  slug: 'Slug',
+  assignee: 'Assignee',
+  assigner: 'Assigner',
+  collaborators: 'Assignees',
+  scheduledDate: 'Due date',
+  recurrenceFrequency: 'Repeat',
+  recurrenceInterval: 'Repeat every',
+  recurrenceWeekdays: 'Repeat on days',
+  recurrenceMonthDay: 'Day of month',
+  recurrenceCustomUnit: 'Custom interval',
+  recurrenceEndsAt: 'Repeat until',
+  recurrenceGroupId: 'Recurrence series',
+  projects: 'Projects',
 };
 
 function contactLabel(entity) {
@@ -69,6 +86,18 @@ function dealLabel(entity) {
   if (!entity) return 'Deal';
   const n = (entity.name || '').trim();
   return n || 'Deal';
+}
+
+function projectLabel(entity) {
+  if (!entity) return 'Project';
+  const n = (entity.name || entity.title || '').trim();
+  return n || 'Project';
+}
+
+function taskLabel(entity) {
+  if (!entity) return 'Task';
+  const n = (entity.name || entity.title || '').trim();
+  return n || 'Task';
 }
 
 function labelForField(key) {
@@ -136,6 +165,20 @@ function buildSummary(action, subjectType, entity, changedKeys, fieldChangeCount
     if (n > 0) return `Account "${name}" was updated (${n} field${n !== 1 ? 's' : ''})`;
     return `Account "${name}" was updated`;
   }
+  if (subjectType === 'project') {
+    const name = projectLabel(entity);
+    if (action === 'create') return `Project "${name}" was created`;
+    if (action === 'delete') return `Project "${name}" was deleted`;
+    if (n > 0) return `Project "${name}" was updated (${n} field${n !== 1 ? 's' : ''})`;
+    return `Project "${name}" was updated`;
+  }
+  if (subjectType === 'task') {
+    const name = taskLabel(entity);
+    if (action === 'create') return `Task "${name}" was created`;
+    if (action === 'delete') return `Task "${name}" was deleted`;
+    if (n > 0) return `Task "${name}" was updated (${n} field${n !== 1 ? 's' : ''})`;
+    return `Task "${name}" was updated`;
+  }
   if (action === 'create') return `Record was created`;
   if (action === 'delete') return `Record was deleted`;
   return `Record was updated`;
@@ -155,6 +198,20 @@ const IGNORE_UPDATE_KEYS = new Set([
 ]);
 
 /**
+ * Strapi 5 responses sometimes omit top-level numeric `id`; prefer entities from findOne(uid, pk).
+ */
+function resolveNumericEntityId(entity) {
+  if (!entity || typeof entity !== 'object') return null;
+  const raw = entity.id;
+  if (raw != null && typeof raw === 'number' && !Number.isNaN(raw)) return raw;
+  if (raw != null && raw !== '') {
+    const n = parseInt(String(raw), 10);
+    if (!Number.isNaN(n)) return n;
+  }
+  return null;
+}
+
+/**
  * Persist a CRM timeline row. Failures are swallowed so mutations still succeed.
  */
 async function logCrmActivity(strapi, params) {
@@ -167,11 +224,13 @@ async function logCrmActivity(strapi, params) {
     changedKeys: changedKeysParam,
     previousEntity,
     patch,
+    subjectId: subjectIdOverride,
   } = params;
-  if (!organizationId || !subjectType || !entity?.id) return;
+  if (!organizationId || !subjectType || !entity) return;
 
-  const subjectId = Number(entity.id);
-  if (Number.isNaN(subjectId)) return;
+  let subjectId =
+    subjectIdOverride != null ? Number(subjectIdOverride) : resolveNumericEntityId(entity);
+  if (subjectId == null || Number.isNaN(subjectId)) return;
 
   let fieldChanges = [];
   if (action === 'update' && previousEntity && patch && typeof patch === 'object') {
@@ -245,7 +304,15 @@ function relationCompareId(val) {
 
 function formatDetailValue(key, val) {
   if (val == null || val === '') return '(empty)';
-  if (key === 'assignedTo' || key === 'leadCompany' || key === 'clientAccount' || key === 'contact') {
+  if (
+    key === 'assignedTo' ||
+    key === 'assignee' ||
+    key === 'assigner' ||
+    key === 'leadCompany' ||
+    key === 'clientAccount' ||
+    key === 'contact' ||
+    key === 'projectManager'
+  ) {
     if (typeof val === 'object' && val !== null) {
       const bit =
         val.email ||
@@ -261,6 +328,20 @@ function formatDetailValue(key, val) {
     }
     return val === '' ? '(empty)' : `ID ${val}`;
   }
+  if ((key === 'teamMembers' || key === 'collaborators') && Array.isArray(val)) {
+    const bits = val
+      .map((u) => {
+        if (!u || typeof u !== 'object') return u != null ? String(u) : '';
+        return (
+          u.email ||
+          u.username ||
+          [u.firstName, u.lastName].filter(Boolean).join(' ').trim() ||
+          (u.id != null ? `User ${u.id}` : '')
+        );
+      })
+      .filter(Boolean);
+    return bits.length ? truncateDetail(bits.join(', ')) : '(empty)';
+  }
   if (typeof val === 'boolean') return val ? 'Yes' : 'No';
   if (typeof val === 'object') return truncateDetail(JSON.stringify(val));
   const s = String(val).trim();
@@ -268,8 +349,32 @@ function formatDetailValue(key, val) {
 }
 
 function valuesDiffer(key, beforeVal, afterVal) {
-  if (key === 'assignedTo' || key === 'leadCompany' || key === 'clientAccount' || key === 'contact') {
+  if (
+    key === 'assignedTo' ||
+    key === 'assignee' ||
+    key === 'assigner' ||
+    key === 'leadCompany' ||
+    key === 'clientAccount' ||
+    key === 'contact' ||
+    key === 'projectManager'
+  ) {
     return relationCompareId(beforeVal) !== relationCompareId(afterVal);
+  }
+  if (key === 'teamMembers' || key === 'collaborators') {
+    const norm = (v) => {
+      if (v == null) return '';
+      if (Array.isArray(v))
+        return [
+          ...new Set(
+            v.map((x) => (typeof x === 'object' && x !== null ? x.id ?? '' : x)).filter(Boolean)
+          ),
+        ]
+          .map(String)
+          .sort()
+          .join(',');
+      return String(v);
+    };
+    return norm(beforeVal) !== norm(afterVal);
   }
   if (beforeVal == null && afterVal == null) return false;
   if (typeof beforeVal === 'number' && typeof afterVal === 'number') {

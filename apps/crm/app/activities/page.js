@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Activity } from 'lucide-react';
-import { Card, Pagination, Button } from '@webfudge/ui';
+import { Card, Pagination, Button, ActivitiesTimeline } from '@webfudge/ui';
 import CRMPageHeader from '../../components/CRMPageHeader';
-import ActivitiesTimeline from '../../components/ActivitiesTimeline';
 import { fetchGlobalActivityFeed } from '../../lib/api/crmActivityService';
 
 const PAGE_SIZE = 25;

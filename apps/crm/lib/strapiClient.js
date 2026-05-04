@@ -60,19 +60,27 @@ class StrapiClient {
     const url = `${this.baseURL}/api${endpoint}`;
     const token = this.getToken();
     const orgId = this.getCurrentOrgId();
+    const { headers: optionHeaders, body, ...rest } = options;
 
     const config = {
+      method: 'GET',
+      ...rest,
       headers: {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
         ...(orgId && { 'X-Organization-Id': orgId }),
-        ...options.headers,
+        ...(optionHeaders && typeof optionHeaders === 'object' ? optionHeaders : {}),
       },
-      ...options,
     };
 
-    if (config.body && typeof config.body === 'object') {
-      config.body = JSON.stringify(config.body);
+    if (body !== undefined && body !== null) {
+      const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+      const isUrlParams = typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams;
+      if (typeof body === 'string' || isFormData || isUrlParams) {
+        config.body = body;
+      } else {
+        config.body = JSON.stringify(body);
+      }
     }
 
     try {

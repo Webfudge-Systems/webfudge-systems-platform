@@ -21,6 +21,7 @@ export { EmptyState } from './EmptyState';
 export { TableResultsCount, TableEmptyBelow } from './TableEmptyBelow';
 export { KPICard } from './KPICard';
 export { FormSectionCard } from './FormSectionCard';
+export { SidebarTrialUpsell } from './SidebarTrialUpsell';
 export { WorkspaceHeader } from './WorkspaceHeader';
 export {
   TableCellCreated,
@@ -45,8 +46,16 @@ export { TableRowActionMenuPortal } from './TableRowActionMenuPortal';
 // NAVIGATION COMPONENTS
 export { Tabs } from './Tabs';
 export { TabsWithActions } from './TabsWithActions';
+export { ViewToggleGroup, ViewToggleButton } from './ViewToggleGroup';
 export { Modal } from './Modal';
 
 // AUTOMATION / WORKFLOW COMPONENTS
 export { NodeHandle } from './NodeHandle';
 export { WorkflowStatusBadge } from './WorkflowStatusBadge';
+
+// CRM / entity activity (timeline + chats panel)
+export { ActivitiesTimeline } from './ActivitiesTimeline';
+export { EntityActivityPanel } from './EntityActivityPanel';
+
+// Workspace calendar (CRM + PM — meetings, tasks, project timelines)
+export { UnifiedWorkspaceCalendar } from './UnifiedWorkspaceCalendar';

@@ -200,56 +200,48 @@ export default function AnalyticsPage() {
       value: String(taskStats.total),
       subtitle: `${completionRate}% completion rate`,
       icon: CheckSquare,
-      colorScheme: 'blue',
     },
     {
       title: 'In Progress',
       value: String(taskStats.inProgress),
       subtitle: 'Active tasks',
       icon: Clock,
-      colorScheme: 'yellow',
     },
     {
       title: 'Completed',
       value: String(taskStats.completed),
       subtitle: `${completionRate}% of all tasks`,
       icon: CheckCircle2,
-      colorScheme: 'green',
     },
     {
       title: 'Overdue',
       value: String(taskStats.overdue),
       subtitle: taskStats.overdue === 0 ? 'On track!' : 'Needs attention',
       icon: AlertTriangle,
-      colorScheme: taskStats.overdue > 0 ? 'red' : 'green',
     },
     {
       title: 'Total Projects',
       value: String(projectStats.total),
       subtitle: `${projectCompletionRate}% completed`,
       icon: FolderOpen,
-      colorScheme: 'purple',
     },
     {
       title: 'Active Projects',
       value: String(projectStats.inProgress),
       subtitle: 'Currently in progress',
       icon: Activity,
-      colorScheme: 'orange',
     },
     {
       title: 'Team Members',
       value: String(peopleCount),
       subtitle: 'Across all projects',
       icon: Users,
-      colorScheme: 'indigo',
     },
     {
       title: 'Completion Rate',
       value: `${completionRate}%`,
       subtitle: 'Task completion',
       icon: Target,
-      colorScheme: completionRate >= 70 ? 'green' : completionRate >= 40 ? 'yellow' : 'red',
     },
   ]
 
@@ -297,8 +289,7 @@ export default function AnalyticsPage() {
             value={card.value}
             subtitle={card.subtitle}
             icon={card.icon}
-            colorScheme={card.colorScheme}
-            iconBgColorScheme="orange"
+            colorScheme="orange"
           />
         ))}
       </div>

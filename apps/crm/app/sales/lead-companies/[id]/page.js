@@ -48,6 +48,8 @@ import {
   Modal,
   Select,
   TableRowActionMenuPortal,
+  ActivitiesTimeline,
+  EntityActivityPanel,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
@@ -56,8 +58,6 @@ import dealService from '../../../../lib/api/dealService';
 import proposalService from '../../../../lib/api/proposalService';
 import { fetchActivityTimeline, fetchLeadCompanyComments, addLeadCompanyComment } from '../../../../lib/api/crmActivityService';
 import strapiClient from '../../../../lib/strapiClient';
-import ActivitiesTimeline from '../../../../components/ActivitiesTimeline';
-import EntityActivityPanel from '../../../../components/EntityActivityPanel';
 import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
 import meetingService from '../../../../lib/api/meetingService';
 import {
@@ -2114,7 +2114,7 @@ export default function LeadCompanyDetailPage() {
           )}
 
           {detailTab === 'activities' && (
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:items-start">
               {/* Left: Quick summary */}
               <div className="lg:col-span-2 space-y-4">
                 <Card variant="elevated" className="rounded-xl p-5">

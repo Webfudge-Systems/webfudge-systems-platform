@@ -10,15 +10,13 @@ import {
   X,
   Reply,
   Pin,
-  MoreHorizontal,
   ChevronDown,
   Sparkles,
-  Clock,
-  Users,
   Hash,
 } from 'lucide-react';
-import { LoadingSpinner, EmptyState, Avatar } from '@webfudge/ui';
-import ActivitiesTimeline from './ActivitiesTimeline';
+import { LoadingSpinner } from '../../feedback';
+import { EmptyState } from '../EmptyState';
+import { ActivitiesTimeline } from '../ActivitiesTimeline';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -294,7 +292,7 @@ function PinnedMessageBanner({ message, onDismiss }) {
  * EntityActivityPanel — right-side panel with "Activity" and "Chats" sub-tabs.
  *
  * Props:
- *  - entityType: 'lead_company' | 'deal' | 'contact' | 'client_account'
+ *  - entityType: 'lead_company' | 'deal' | 'contact' | 'client_account' | 'project' | 'task'
  *  - entityId: string | number
  *  - entityName: string
  *  - crmTimeline: object[]
@@ -304,9 +302,13 @@ function PinnedMessageBanner({ message, onDismiss }) {
  *  - activityCount?: number
  *  - fetchCommentsFn: async ({ entityId }) => { data: [] }   — fetches existing chat msgs
  *  - addCommentFn: async ({ entityId, comment }) => { data: msg }
+ *  - chatFooterBadgeText?: string — optional hint under empty chat (e.g. PM projects)
+ *  - defaultSubTab?: 'activity' | 'chat' — which sub-tab opens first (e.g. task Comments tab → chat)
+ *  - className?: string — merged onto root card
+ *  - minHeightPx / maxHeightPx?: number — panel height bounds (default 520 / 720)
  */
-export default function EntityActivityPanel({
-  entityType,
+export function EntityActivityPanel({
+  entityType: _entityType,
   entityId,
   entityName,
   crmTimeline,
@@ -316,8 +318,17 @@ export default function EntityActivityPanel({
   activityCount,
   fetchCommentsFn,
   addCommentFn,
+  chatFooterBadgeText,
+  defaultSubTab = 'activity',
+  className = '',
+  minHeightPx = 520,
+  maxHeightPx = 720,
 }) {
-  const [panelTab, setPanelTab] = useState('activity');
+  const [panelTab, setPanelTab] = useState(defaultSubTab);
+
+  useEffect(() => {
+    setPanelTab(defaultSubTab);
+  }, [defaultSubTab]);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState([]);
@@ -336,6 +347,8 @@ export default function EntityActivityPanel({
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
+
+  const timelineCount = activityCount ?? crmTimeline?.length ?? 0;
 
   // ── Load chat messages ───────────────────────────────────────────────────
 
@@ -434,14 +447,12 @@ export default function EntityActivityPanel({
     [filteredMessages]
   );
 
-  const nonActivityCount =
-    crmTimeline?.filter((r) => r.action !== 'comment').length ?? 0;
-
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden"
-      style={{ minHeight: '520px', maxHeight: '720px' }}
+    <div
+      className={`flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden ${className}`.trim()}
+      style={{ minHeight: `${minHeightPx}px`, maxHeight: `${maxHeightPx}px` }}
     >
       {/* ── Header / Sub-tabs ─────────────────────────────────────────── */}
       <div className="shrink-0 flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-100 bg-gradient-to-r from-gray-50/80 to-white">
@@ -451,7 +462,7 @@ export default function EntityActivityPanel({
             onClick={() => setPanelTab('activity')}
             icon={Activity}
             label="Activity"
-            badge={activityCount ?? crmTimeline?.length}
+            badge={timelineCount || undefined}
           />
           <PanelTabBtn
             active={panelTab === 'chat'}
@@ -495,9 +506,9 @@ export default function EntityActivityPanel({
             <div className="flex-1 flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-orange-500" />
               <span className="text-sm font-semibold text-gray-700">Timeline</span>
-              {activityCount != null && (
-                <span className="text-xs text-gray-400">({activityCount} events)</span>
-              )}
+              <span className="text-xs text-gray-400">
+                ({timelineCount} event{timelineCount !== 1 ? 's' : ''})
+              </span>
             </div>
             <button
               type="button"
@@ -518,7 +529,7 @@ export default function EntityActivityPanel({
 
       {/* ── CHAT TAB ──────────────────────────────────────────────────────── */}
       {panelTab === 'chat' && (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Search bar */}
           {showSearch && (
             <div className="shrink-0 px-3 py-2 border-b border-gray-100 bg-gray-50/50">
@@ -610,7 +621,7 @@ export default function EntityActivityPanel({
                   <div className="flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1">
                     <Sparkles className="w-3 h-3 text-orange-500" />
                     <span className="text-[10px] font-medium text-orange-700">
-                      Linked to the quick-chat on tables
+                      {chatFooterBadgeText ?? 'Linked to the quick-chat on tables'}
                     </span>
                   </div>
                 )}

@@ -3,13 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import {
-  useAuth,
-  resolveUserDisplayName,
-  resolveUserInitials,
-  resolveUserRole,
-} from '@webfudge/auth'
-import { Card, Avatar, LoadingSpinner } from '@webfudge/ui'
+import { SidebarTrialUpsell, LoadingSpinner } from '@webfudge/ui'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -36,6 +30,7 @@ import {
   Trash2,
   Activity,
   MessageCircle,
+  CalendarDays,
 } from 'lucide-react'
 import SubSidebar from './SubSidebar'
 import { fetchGlobalActivityFeed } from '../lib/api/crmActivityService'
@@ -87,8 +82,12 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
   const [loadingFeed, setLoadingFeed] = useState(true)
   const pathname = usePathname()
   const router = useRouter()
-  const { user } = useAuth()
   const quickActionsRef = useRef(null)
+
+  const trialDaysRemaining = (() => {
+    const n = Number(process.env.NEXT_PUBLIC_TRIAL_DAYS_REMAINING)
+    return Number.isFinite(n) ? n : 12
+  })()
 
   const isActive = (href) => {
     if (!href || href === '/') return pathname === '/'
@@ -101,6 +100,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
     pathname.startsWith('/clients/proposals') || pathname.startsWith('/clients/tasks')
   const isWorkspaceActive = () =>
     pathname.startsWith('/workspace') ||
+    pathname.startsWith('/calendar') ||
     pathname.startsWith('/meetings') ||
     pathname.startsWith('/threads') ||
     pathname.startsWith('/activities') ||
@@ -308,6 +308,12 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
           label: 'Meetings',
           icon: Calendar,
           href: '/meetings',
+        },
+        {
+          id: 'calendar',
+          label: 'Calendar',
+          icon: CalendarDays,
+          href: '/calendar',
         },
         {
           id: 'documents',
@@ -650,36 +656,11 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
             </div>
           )}
 
-          <div className="p-4 pt-1 pb-6">
-            <Card
-              variant="glass"
-              padding={true}
-              className={`flex items-center gap-3 p-3 hover:bg-white/25 transition-colors cursor-pointer ${
-                collapsed ? 'justify-center' : ''
-              }`}
-            >
-              <Avatar
-                shape="rounded"
-                fallback={resolveUserInitials(user)}
-                alt={resolveUserDisplayName(user)}
-                size="lg"
-                className="bg-white shadow-md border border-gray-200/80 text-brand-primary font-semibold ring-1 ring-black/5"
-              />
-              {!collapsed && (
-                <>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-brand-foreground truncate">
-                      {resolveUserDisplayName(user)}
-                    </p>
-                    <p className="text-xs text-brand-text-light truncate">
-                      {resolveUserRole(user)}
-                    </p>
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                </>
-              )}
-            </Card>
-          </div>
+          <SidebarTrialUpsell
+            collapsed={collapsed}
+            daysRemaining={trialDaysRemaining}
+            upgradeHref="/coming-soon?feature=upgrade"
+          />
         </div>
       </div>
 

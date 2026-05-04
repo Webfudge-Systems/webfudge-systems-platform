@@ -14,6 +14,7 @@ class ProjectService {
         'populate[tasks][fields][2]': 'progress',
         'populate[clientAccount][fields][0]': 'id',
         'populate[clientAccount][fields][1]': 'name',
+        'populate[clientAccount][fields][2]': 'companyName',
       };
 
       if (options.status) {
@@ -22,6 +23,13 @@ class ProjectService {
       if (options.userId) {
         params['filters[$or][0][projectManager][id][$eq]'] = options.userId;
         params['filters[$or][1][teamMembers][id][$eq]'] = options.userId;
+      }
+      if (options.ownerId) {
+        params['filters[projectManager][id][$eq]'] = options.ownerId;
+      }
+      if (options.search) {
+        params['filters[$or][0][name][$containsi]'] = options.search;
+        params['filters[$or][1][description][$containsi]'] = options.search;
       }
 
       return await strapiClient.get('/projects', params);
@@ -37,6 +45,7 @@ class ProjectService {
         'populate[projectManager]': '*',
         'populate[teamMembers]': '*',
         'populate[tasks][populate][assignee]': '*',
+        'populate[tasks][populate][assigner]': '*',
         'populate[tasks][populate][collaborators]': '*',
         'populate[tasks][populate][subtasks]': '*',
         'populate[clientAccount]': '*',
@@ -58,6 +67,7 @@ class ProjectService {
         params['populate[projectManager]'] = '*';
         params['populate[teamMembers]'] = '*';
         params['populate[tasks][populate][assignee]'] = '*';
+        params['populate[tasks][populate][assigner]'] = '*';
         params['populate[tasks][populate][collaborators]'] = '*';
         params['populate[tasks][populate][subtasks]'] = '*';
         params['populate[clientAccount]'] = '*';

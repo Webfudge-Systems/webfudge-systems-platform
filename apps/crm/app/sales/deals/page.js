@@ -20,6 +20,8 @@ import {
   Building2,
   Mail,
   ChevronDown,
+  Kanban,
+  Table2,
 } from 'lucide-react';
 import {
   Button,
@@ -42,8 +44,11 @@ import {
   TableCellPrimaryContact,
   TableCellTitleSubtitle,
   TableCellProbability,
+  ViewToggleGroup,
+  ViewToggleButton,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
+import { DealsKanbanBoard, DEAL_PIPELINE_STAGES } from '../../../components/DealsKanbanBoard';
 import WonDealProjectModal from '../../../components/WonDealProjectModal';
 import dealService from '../../../lib/api/dealService';
 import { shouldPromptDeliveryProjectOnWon } from '../../../lib/wonDealProjectPrompt';
@@ -52,6 +57,18 @@ import { DEAL_STAGE_OPTIONS, contactDisplayName } from '../../../lib/dealFormOpt
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.deals.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.deals.tableColumnOrder';
+const DEAL_VIEW_STORAGE_KEY = 'crm.deals.viewMode';
+
+function readStoredDealView() {
+  if (typeof window === 'undefined') return 'table';
+  try {
+    const v = window.localStorage.getItem(DEAL_VIEW_STORAGE_KEY);
+    if (v === 'table' || v === 'kanban') return v;
+  } catch {
+    /* ignore */
+  }
+  return 'table';
+}
 
 const TOGGLEABLE_COLUMNS = [
   { key: 'company', label: 'Company' },
@@ -239,6 +256,24 @@ export default function DealsPage() {
   const [commentLoadingDealId, setCommentLoadingDealId] = useState(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
+
+  const [dealViewMode, setDealViewMode] = useState(() =>
+    typeof window === 'undefined' ? 'table' : readStoredDealView()
+  );
+
+  const persistDealView = useCallback((mode) => {
+    try {
+      window.localStorage.setItem(DEAL_VIEW_STORAGE_KEY, mode);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const handleDealViewChange = useCallback((mode) => {
+    setDealViewMode(mode);
+    persistDealView(mode);
+    if (mode === 'kanban') setColumnPickerOpen(false);
+  }, [persistDealView]);
 
   useEffect(() => {
     setColumnVisibility(loadColumnVisibility());
@@ -434,6 +469,50 @@ export default function DealsPage() {
       }
     },
     [deals]
+  );
+
+  const kanbanStageColumns = useMemo(() => {
+    const by = {};
+    DEAL_PIPELINE_STAGES.forEach(({ key }) => {
+      by[key] = [];
+    });
+    filteredDeals.forEach((d) => {
+      const k = (d.stage || 'discovery').toLowerCase();
+      if (!by[k]) by[k] = [];
+      by[k].push(d);
+    });
+    const cols = DEAL_PIPELINE_STAGES.map(({ key, label }) => ({ key, label, deals: by[key] || [] }));
+    if (activeTab === 'all') return cols;
+    return cols.filter((c) => c.key === activeTab);
+  }, [filteredDeals, activeTab]);
+
+  const handleKanbanDealMove = useCallback(
+    async (dealIdStr, newStage) => {
+      const row = deals.find((d) => String(d.id) === String(dealIdStr));
+      if (!row) return;
+      await handleStageChange(row.id, newStage);
+    },
+    [deals, handleStageChange]
+  );
+
+  const goToPipelineRoute = useCallback(() => {
+    try {
+      window.localStorage.setItem(DEAL_VIEW_STORAGE_KEY, 'kanban');
+    } catch {
+      /* ignore */
+    }
+    router.push('/sales/deals/pipeline');
+  }, [router]);
+
+  const dealsViewSwitcher = (
+    <ViewToggleGroup aria-label="Deals layout">
+      <ViewToggleButton active={dealViewMode === 'table'} title="Table view" onClick={() => handleDealViewChange('table')}>
+        <Table2 className="h-[18px] w-[18px]" strokeWidth={2} />
+      </ViewToggleButton>
+      <ViewToggleButton active={dealViewMode === 'kanban'} title="Kanban view" onClick={() => handleDealViewChange('kanban')}>
+        <Kanban className="h-[18px] w-[18px]" strokeWidth={2} />
+      </ViewToggleButton>
+    </ViewToggleGroup>
   );
 
   const closeWonDealPrompt = useCallback(() => {
@@ -886,30 +965,21 @@ export default function DealsPage() {
           }))}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          afterTabs={dealsViewSwitcher}
           showSearch
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          searchPlaceholder="Search..."
+          searchPlaceholder="Search deals or companies…"
           showAdd
           onAddClick={() => router.push('/sales/deals/new')}
           addTitle="Add Deal"
-          showViewToggle
-          activeView="list"
-          onViewChange={(view) => {
-            if (view === 'board') router.push('/sales/deals/pipeline');
-          }}
-          listViewTitle="Table view"
-          boardViewTitle="Pipeline view"
           showFilter
           onFilterClick={() => {}}
-          showColumnVisibility
+          showColumnVisibility={dealViewMode === 'table'}
           onColumnVisibilityClick={() => setColumnPickerOpen((o) => !o)}
           columnVisibilityTitle="Show or hide columns"
-          showExport
-          onExportClick={() => {}}
-          exportTitle="Export"
         />
-        {columnPickerOpen && (
+        {dealViewMode === 'table' && columnPickerOpen && (
           <div
             className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl"
             role="dialog"
@@ -1012,7 +1082,7 @@ export default function DealsPage() {
           <div className="flex flex-col items-center justify-center p-12">
             <LoadingSpinner size="lg" message="Loading deals..." />
           </div>
-        ) : (
+        ) : dealViewMode === 'table' ? (
           <>
             <Table
               columns={visibleTableColumns}
@@ -1030,13 +1100,16 @@ export default function DealsPage() {
                   {searchQuery || activeTab !== 'all' ? 'Try adjusting your filters' : 'Create your first deal to get started'}
                 </p>
                 {!searchQuery && activeTab === 'all' && (
-                  <div className="flex justify-center gap-3">
+                  <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add Deal
                     </Button>
-                    <Button variant="outline" onClick={() => router.push('/sales/deals/pipeline')}>
-                      View Pipeline
+                    <Button variant="outline" onClick={() => handleDealViewChange('kanban')}>
+                      Board view
+                    </Button>
+                    <Button variant="outline" onClick={goToPipelineRoute}>
+                      Full pipeline
                     </Button>
                   </div>
                 )}
@@ -1054,6 +1127,32 @@ export default function DealsPage() {
               </div>
             )}
           </>
+        ) : filteredDeals.length === 0 ? (
+          <div className="p-12 text-center">
+            <Briefcase className="mx-auto mb-3 h-12 w-12 text-gray-400 opacity-50" />
+            <h3 className="mb-2 text-lg font-semibold text-gray-700">No deals found</h3>
+            <p className="mb-4 text-sm text-gray-500">
+              {searchQuery || activeTab !== 'all' ? 'Try adjusting your filters' : 'Create your first deal to get started'}
+            </p>
+            {!searchQuery && activeTab === 'all' && (
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Deal
+                </Button>
+                <Button variant="outline" onClick={() => handleDealViewChange('table')}>
+                  Table view
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <DealsKanbanBoard
+            stageColumns={kanbanStageColumns}
+            dealsLookup={deals}
+            onMoveDeal={handleKanbanDealMove}
+            getDealHref={(id) => `/sales/deals/${id}`}
+          />
         )}
       </div>
 

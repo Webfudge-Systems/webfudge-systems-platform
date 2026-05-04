@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { Activity, ExternalLink } from 'lucide-react';
-import { EmptyState, LoadingSpinner } from '@webfudge/ui';
+import { EmptyState } from '../EmptyState';
+import { LoadingSpinner } from '../../feedback';
 
 function formatWhen(iso) {
   if (!iso) return '';
@@ -29,11 +30,13 @@ function actorLabel(actor) {
   return actor.id != null ? `User ${actor.id}` : null;
 }
 
+/** Badge styles aligned with CRM reference: CREATE green, COMMENT blue, UPDATE neutral/sky, DELETE red */
 function actionStyles(action) {
-  if (action === 'create')
-    return 'bg-emerald-50 text-emerald-800 ring-emerald-200/80';
-  if (action === 'delete') return 'bg-red-50 text-red-800 ring-red-200/80';
-  return 'bg-sky-50 text-sky-900 ring-sky-200/80';
+  const a = (action || 'update').toString().toLowerCase();
+  if (a === 'create') return 'bg-emerald-50 text-emerald-800 ring-emerald-200/80';
+  if (a === 'delete') return 'bg-red-50 text-red-800 ring-red-200/80';
+  if (a === 'comment') return 'bg-blue-50 text-blue-800 ring-blue-200/80';
+  return 'bg-slate-100 text-slate-800 ring-slate-200/90';
 }
 
 /** Normalize Strapi meta (object or occasional JSON string). */
@@ -49,7 +52,14 @@ function parseMeta(meta) {
   return typeof meta === 'object' ? meta : null;
 }
 
+function actionLabel(action) {
+  const a = (action || 'update').toString().toLowerCase();
+  return a.toUpperCase();
+}
+
 /**
+ * Vertical CRM-style activity timeline (orange spine + typed badges + optional field diff blocks).
+ *
  * @param {{
  *   items: object[],
  *   loading?: boolean,
@@ -58,7 +68,7 @@ function parseMeta(meta) {
  *   entityHrefForRow?: (row: object) => string | null,
  * }} props
  */
-export default function ActivitiesTimeline({
+export function ActivitiesTimeline({
   items,
   loading,
   error,
@@ -97,7 +107,7 @@ export default function ActivitiesTimeline({
   return (
     <ul className={`relative pl-2 ${className}`.trim()} aria-label="Activity timeline">
       <div
-        className="absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-orange-200 via-orange-100 to-transparent"
+        className="absolute left-[15px] top-2 bottom-2 w-px bg-orange-400"
         aria-hidden
       />
       {items.map((row, i) => {
@@ -110,36 +120,38 @@ export default function ActivitiesTimeline({
         return (
           <li key={row.id ?? `a-${i}`} className="relative flex gap-4 pb-8 last:pb-0">
             <div
-              className="relative z-[1] mt-1.5 h-3 w-3 shrink-0 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 shadow-sm ring-4 ring-white"
+              className="relative z-[1] mt-1.5 h-3 w-3 shrink-0 rounded-full bg-orange-500 shadow-sm ring-4 ring-white"
               aria-hidden
             />
             <div className="min-w-0 flex-1 pt-0.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold uppercase tracking-wide ring-1 ${actionStyles(act)}`}
+                  className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ring-1 ${actionStyles(act)}`}
                 >
-                  {act}
+                  {actionLabel(act)}
                 </span>
                 {when ? (
                   <span className="text-xs font-medium text-gray-400 tabular-nums">{when}</span>
                 ) : null}
               </div>
-              <p className="mt-2 text-sm font-medium leading-snug text-gray-900">{summary}</p>
-              {typeof entityHrefForRow === 'function' ? (() => {
-                const href = entityHrefForRow(row);
-                if (!href) return null;
-                return (
-                  <p className="mt-1.5">
-                    <Link
-                      href={href}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"
-                    >
-                      Open record
-                      <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
-                    </Link>
-                  </p>
-                );
-              })() : null}
+              <p className="mt-2 text-sm font-semibold leading-snug text-gray-900">{summary}</p>
+              {typeof entityHrefForRow === 'function'
+                ? (() => {
+                    const href = entityHrefForRow(row);
+                    if (!href) return null;
+                    return (
+                      <p className="mt-1.5">
+                        <Link
+                          href={href}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"
+                        >
+                          Open record
+                          <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
+                        </Link>
+                      </p>
+                    );
+                  })()
+                : null}
               {changes.length > 0 ? (
                 <ul
                   className="mt-3 space-y-2.5 rounded-xl border border-gray-100 bg-gray-50/95 px-3 py-3 ring-1 ring-gray-100/80"
@@ -147,15 +159,15 @@ export default function ActivitiesTimeline({
                 >
                   {changes.map((c) => (
                     <li key={c.key} className="text-xs">
-                      <div className="font-semibold text-gray-800">{c.label}</div>
+                      <div className="font-medium text-gray-500">{c.label}</div>
                       <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                        <span className="max-w-full break-words rounded-md bg-white px-2 py-1 text-gray-600 shadow-sm ring-1 ring-gray-200/70">
+                        <span className="max-w-full break-words rounded-lg bg-white px-2 py-1 text-gray-600 shadow-sm ring-1 ring-gray-200/70">
                           {c.before}
                         </span>
                         <span className="shrink-0 font-medium text-gray-400" aria-hidden>
                           →
                         </span>
-                        <span className="max-w-full break-words rounded-md bg-white px-2 py-1 font-medium text-gray-900 shadow-sm ring-1 ring-emerald-200/70">
+                        <span className="max-w-full break-words rounded-lg bg-emerald-50 px-2 py-1 font-medium text-emerald-900 shadow-sm ring-1 ring-emerald-200/70">
                           {c.after}
                         </span>
                       </div>

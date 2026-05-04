@@ -11,6 +11,9 @@ import {
   Avatar,
   Input,
   EmptyState,
+  Table,
+  TableCellTitleSubtitle,
+  TableCellCreated,
 } from '@webfudge/ui'
 import {
   CheckSquare,
@@ -18,10 +21,12 @@ import {
   CheckCircle2,
   AlertCircle,
   FolderOpen,
+  FolderKanban,
   Users,
   Calendar,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
   ArrowRight,
   Plus,
   FileText,
@@ -30,6 +35,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import PMPageHeader from '../components/PMPageHeader'
+import { getTaskStatusMeta } from '../components/PMStatusBadge'
 import projectService from '../lib/api/projectService'
 import taskService from '../lib/api/taskService'
 import strapiClient from '../lib/strapiClient'
@@ -37,11 +43,24 @@ import {
   transformTask,
   transformUser,
   transformProject,
-  getStatusColor,
-  formatDate,
 } from '../lib/api/dataTransformers'
 
-const colorSchemes = ['blue', 'yellow', 'green', 'red']
+/** Matches `apps/pm/app/my-tasks/page.js` status Select chrome (read-only on dashboard). */
+const TASK_STATUS_READONLY_CLASS = {
+  primary: 'border-blue-200 bg-blue-50 text-blue-800',
+  warning: 'border-amber-200 bg-amber-50 text-amber-800',
+  purple: 'border-purple-200 bg-purple-50 text-purple-800',
+  success: 'border-green-200 bg-green-50 text-green-800',
+  danger: 'border-red-200 bg-red-50 text-red-800',
+  default: 'border-gray-200 bg-gray-50 text-gray-800',
+}
+
+function isTaskOverdue(task) {
+  if (!task?.dueDate) return false
+  const due = new Date(task.dueDate)
+  if (Number.isNaN(due.getTime())) return false
+  return due < new Date() && task.strapiStatus !== 'COMPLETED' && task.strapiStatus !== 'CANCELLED'
+}
 
 function getGreeting() {
   const hour = new Date().getHours()
@@ -145,7 +164,7 @@ export default function DashboardPage() {
           try {
             const collabRes = await taskService.getCollaboratorTasks(userId, { pageSize: 20 })
             setCollaboratorTasks((collabRes?.data || []).map(transformTask).filter(Boolean))
-          } catch {}
+          } catch { }
         }
       } catch (error) {
         console.error('Dashboard load error:', error)
@@ -205,6 +224,94 @@ export default function DashboardPage() {
     },
   ]
 
+  const dashboardTasksColumns = useMemo(
+    () => [
+      {
+        key: 'name',
+        label: 'TASK NAME',
+        headerClassName: 'max-w-[min(18rem,40vw)]',
+        className: 'max-w-[min(18rem,40vw)] align-top',
+        render: (_, row) => {
+          const initial = (row.name || 'T').trim().charAt(0).toUpperCase() || 'T'
+          const subtitle = `${row.description || 'No description'}${row.recurrenceSummary ? ` · ${row.recurrenceSummary}` : ''}`
+          return (
+            <div className="flex min-w-0 max-w-full items-start gap-3">
+              <Avatar fallback={initial} alt={row.name} size="sm" className="flex-shrink-0 bg-gray-600 text-white" />
+              <div className="min-w-0 flex-1">
+                <TableCellTitleSubtitle title={row.name} subtitle={subtitle} />
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        key: 'project',
+        label: 'PROJECT',
+        className: 'align-middle',
+        headerClassName: 'align-middle',
+        render: (_, row) =>
+          row.project ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation()
+                const slugOrId = row.projectSlug || row.projectId
+                if (slugOrId != null && slugOrId !== '') {
+                  router.push(`/projects/${slugOrId}`)
+                }
+              }}
+              title={`Open project: ${row.project}`}
+              className="inline-flex w-full min-w-[140px] max-w-[240px] items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 py-1.5 pl-2.5 pr-2 text-left text-xs font-semibold text-orange-900 shadow-sm transition hover:border-orange-300 hover:bg-orange-100/90"
+            >
+              <FolderKanban className="h-3.5 w-3.5 shrink-0 text-orange-600" aria-hidden />
+              <span className="min-w-0 flex-1 truncate">{row.project}</span>
+              {row.projectSlug || row.projectId ? (
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-orange-400" aria-hidden />
+              ) : null}
+            </button>
+          ) : (
+            <span
+              className="inline-flex w-full min-w-[140px] max-w-[240px] items-center gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 py-1.5 px-2.5 text-xs font-medium text-gray-500"
+              title="No project linked"
+            >
+              <FolderKanban className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden />
+              No project
+            </span>
+          ),
+      },
+      {
+        key: 'dueDate',
+        label: 'DUE DATE',
+        render: (_, row) => (
+          <div
+            className={
+              isTaskOverdue(row) ? '[&_.font-semibold]:text-red-700 [&_.text-gray-500]:text-red-600/90' : ''
+            }
+          >
+            <TableCellCreated dateString={row.dueDate} />
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        label: 'STATUS',
+        render: (_, row) => {
+          const meta = getTaskStatusMeta(row.strapiStatus)
+          const chrome =
+            TASK_STATUS_READONLY_CLASS[meta.variant] || TASK_STATUS_READONLY_CLASS.default
+          return (
+            <span
+              className={`inline-flex min-w-[130px] items-center justify-center rounded-md border px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide ${chrome}`}
+            >
+              {meta.label}
+            </span>
+          )
+        },
+      },
+    ],
+    [router]
+  )
+
   if (loading) {
     return (
       <div className="p-4 space-y-4 bg-white min-h-full">
@@ -237,16 +344,14 @@ export default function DashboardPage() {
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {kpiCards.map((card, index) => (
+          {kpiCards.map((card) => (
             <KPICard
               key={card.title}
               title={card.title}
               value={card.value}
               subtitle={card.subtitle}
               icon={card.icon}
-              colorScheme={colorSchemes[index] || colorSchemes[0]}
-              iconColorScheme="orange"
-              iconBgColorScheme="orange"
+              colorScheme="orange"
             />
           ))}
         </div>
@@ -271,36 +376,14 @@ export default function DashboardPage() {
                   className="flex flex-1 flex-col justify-center py-10 px-2"
                 />
               ) : (
-                <div className="space-y-1 pt-2">
-                  {collaboratorTasks.slice(0, 8).map((task) => {
-                    const sc = getStatusColor(task.status)
-                    return (
-                      <button
-                        key={task.id}
-                        onClick={() => router.push(`/my-tasks?task=${task.id}`)}
-                        className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-brand-hover cursor-pointer transition-colors group text-left"
-                      >
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${sc.dot}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-brand-foreground truncate">{task.name}</p>
-                          {task.project && (
-                            <p className="text-xs text-brand-text-light truncate">{task.project}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg} ${sc.text}`}>
-                            {task.status}
-                          </span>
-                          {task.dueDate && (
-                            <span className="text-xs text-brand-text-muted flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {formatDate(task.dueDate, 'short')}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
+                <div className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                  <Table
+                    columns={dashboardTasksColumns}
+                    data={collaboratorTasks.slice(0, 8)}
+                    keyField="id"
+                    variant="modern"
+                    onRowClick={(row) => router.push(`/tasks/${row.id}`)}
+                  />
                 </div>
               )}
             </div>
@@ -349,53 +432,53 @@ export default function DashboardPage() {
                     Create New Project
                   </Button>
                   <div className="pt-1 flex-1 min-h-0">
-                  <div className="grid grid-cols-[1fr_auto] gap-4 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Project
-                      </span>
-                      <div className="flex flex-col -space-y-1 text-gray-300">
-                        <ChevronUp className="w-3 h-3" />
-                        <ChevronDown className="w-3 h-3" />
+                    <div className="grid grid-cols-[1fr_auto] gap-4 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Project
+                        </span>
+                        <div className="flex flex-col -space-y-1 text-gray-300">
+                          <ChevronUp className="w-3 h-3" />
+                          <ChevronDown className="w-3 h-3" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Due Date
+                        </span>
+                        <div className="flex flex-col -space-y-1 text-gray-300">
+                          <ChevronUp className="w-3 h-3" />
+                          <ChevronDown className="w-3 h-3" />
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        Due Date
-                      </span>
-                      <div className="flex flex-col -space-y-1 text-gray-300">
-                        <ChevronUp className="w-3 h-3" />
-                        <ChevronDown className="w-3 h-3" />
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="border-t border-gray-100">
-                    {projects.slice(0, 4).map((project) => (
-                      <button
-                        key={project.id}
-                        onClick={() => router.push(`/projects/${project.slug || project.id}`)}
-                        className="w-full grid grid-cols-[1fr_auto] items-center gap-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <Avatar
-                            size="md"
-                            fallback={project.name?.charAt(0) || 'P'}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {project.name}
-                            </p>
+                    <div className="border-t border-gray-100">
+                      {projects.slice(0, 4).map((project) => (
+                        <button
+                          key={project.id}
+                          onClick={() => router.push(`/projects/${project.slug || project.id}`)}
+                          className="w-full grid grid-cols-[1fr_auto] items-center gap-4 py-3 hover:bg-gray-50 transition-colors text-left border-b border-gray-100"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Avatar
+                              size="md"
+                              fallback={project.name?.charAt(0) || 'P'}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {project.name}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2 justify-end text-sm text-gray-600">
-                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                          <span>{formatMonthDay(project.endDate)}</span>
-                        </div>
-                      </button>
-                    ))}
+                          <div className="flex items-center gap-2 justify-end text-sm text-gray-600">
+                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                            <span>{formatMonthDay(project.endDate)}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
                 </div>
               )}
             </div>

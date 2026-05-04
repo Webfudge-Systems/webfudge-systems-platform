@@ -51,6 +51,85 @@ export async function fetchOrganizationMembers() {
 }
 
 /**
+ * Users for PM assignee dropdowns: organization members when `current-org-id` is set
+ * (same source as inbox / messaging). Falls back to GET /users when org list is empty
+ * or the org request fails — plain `/users` is often forbidden for non-admin roles.
+ */
+/** Normalize Strapi user entry for messaging / assignee lists. */
+export function normalizeContactUser(entry) {
+  if (!entry) return null
+  const flat =
+    entry.attributes && typeof entry.attributes === 'object'
+      ? { id: entry.id, documentId: entry.documentId, ...entry.attributes }
+      : entry
+  if (flat.id == null) return null
+  return {
+    id: flat.id,
+    documentId: flat.documentId,
+    email: flat.email,
+    username: flat.username,
+    firstName: flat.firstName,
+    lastName: flat.lastName,
+    name: memberDisplayName(flat),
+  }
+}
+
+export async function fetchPmAssignableUsers() {
+  try {
+    const { members } = await fetchOrganizationMembers()
+    if (members?.length) return members
+  } catch (e) {
+    console.warn('fetchPmAssignableUsers: organization members unavailable', e)
+  }
+  try {
+    const res = await strapiClient.get('/users', {
+      'pagination[page]': 1,
+      'pagination[pageSize]': 200,
+    })
+    const raw = Array.isArray(res) ? res : res?.data ?? []
+    const list = Array.isArray(raw) ? raw : []
+    return list.map(normalizeContactUser).filter(Boolean)
+  } catch (e) {
+    console.error('fetchPmAssignableUsers: GET /users failed', e)
+    return []
+  }
+}
+
+/**
+ * Contacts for direct messaging: org directory first, then assignable users fallback
+ * (same as task assignee list) so the Messages UI is not empty when org roster returns [].
+ */
+export async function fetchMessageContacts({ excludeUserId } = {}) {
+  const ex = excludeUserId != null ? String(excludeUserId) : null
+  const { members, error } = await fetchOrganizationMembers()
+  if (error === 'no_org') {
+    return { contacts: [], error: 'no_org' }
+  }
+  const out = []
+  const seen = new Set()
+  const add = (arr) => {
+    for (const row of arr || []) {
+      const c =
+        row?.id != null && (row.email != null || row.name != null || row.username != null)
+          ? { ...row, name: row.name || memberDisplayName(row) }
+          : normalizeContactUser(row)
+      if (!c?.id) continue
+      if (ex && String(c.id) === ex) continue
+      const key = String(c.id)
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(c)
+    }
+  }
+  add(members)
+  if (out.length === 0) {
+    const fallback = await fetchPmAssignableUsers()
+    add(fallback)
+  }
+  return { contacts: out, error: null }
+}
+
+/**
  * GET /direct-messages?withUser=<id>
  */
 export async function fetchConversation(withUserId) {
@@ -93,7 +172,10 @@ export async function sendDirectMessage(recipientId, content) {
 
 export default {
   fetchOrganizationMembers,
+  fetchPmAssignableUsers,
+  fetchMessageContacts,
   fetchConversation,
   sendDirectMessage,
   memberDisplayName,
+  normalizeContactUser,
 }

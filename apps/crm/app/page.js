@@ -10,8 +10,8 @@ import dashboardService from '../lib/api/dashboardService';
 import {
   SalesAnalyticsWidget,
   MyWorkWidget,
-  ActivityFeedWidget,
-  DealsPipelineWidget,
+  LeadSourcesWidget,
+  LeadsMeetingsWidget,
 } from '../components/dashboard';
 
 const colorSchemes = ['orange', 'orange', 'orange', 'orange'];
@@ -86,8 +86,8 @@ export default function DashboardPage() {
   return (
     <div className="p-4 space-y-4 bg-white min-h-full">
       <CRMPageHeader
-        title="Dashboard"
-        subtitle={`${getGreeting()}, ${userName} • ${getDate()}`}
+        title={`${getGreeting()}, ${userName}`}
+        subtitle={getDate()}
         breadcrumb={[{ label: 'Dashboard', href: '/' }]}
         showSearch
         searchPlaceholder="Search anything..."
@@ -126,8 +126,7 @@ export default function DashboardPage() {
               {/* Sales Analytics */}
               <SalesAnalyticsWidget />
 
-              {/* Deals Pipeline */}
-              <DealsPipelineWidget />
+              <LeadsMeetingsWidget />
             </div>
 
             {/* Right Column - Actions & Activity */}
@@ -136,7 +135,7 @@ export default function DashboardPage() {
               <MyWorkWidget />
 
               {/* Activity Feed */}
-              <ActivityFeedWidget />
+              <LeadSourcesWidget />
             </div>
           </div>
         </>

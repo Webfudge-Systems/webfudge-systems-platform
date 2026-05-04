@@ -157,4 +157,24 @@ export default {
       return { byStatus: {} };
     }
   },
+
+  /** Paginate through all lead companies (dashboard analytics). */
+  async fetchAll() {
+    const pageSize = 100;
+    let page = 1;
+    const out = [];
+    let pageCount = 1;
+    do {
+      const res = await this.getAll({
+        'pagination[page]': page,
+        'pagination[pageSize]': pageSize,
+        sort: 'createdAt:desc',
+      });
+      const batch = Array.isArray(res.data) ? res.data : [];
+      out.push(...batch);
+      pageCount = res?.meta?.pagination?.pageCount ?? 1;
+      page += 1;
+    } while (page <= pageCount);
+    return out;
+  },
 };

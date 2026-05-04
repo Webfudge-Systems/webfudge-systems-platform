@@ -23,6 +23,7 @@ export {
   TableEmptyBelow,
   KPICard,
   FormSectionCard,
+  SidebarTrialUpsell,
   WorkspaceHeader,
   TableCellCreated,
   TableCellDateOnly,
@@ -44,10 +45,15 @@ export {
   // Navigation Components
   Tabs,
   TabsWithActions,
+  ViewToggleGroup,
+  ViewToggleButton,
   Modal,
   // Automation / Workflow Components
   NodeHandle,
   WorkflowStatusBadge,
+  ActivitiesTimeline,
+  EntityActivityPanel,
+  UnifiedWorkspaceCalendar,
 } from '../components';
 
 // LAYOUTS - Page structure and containers

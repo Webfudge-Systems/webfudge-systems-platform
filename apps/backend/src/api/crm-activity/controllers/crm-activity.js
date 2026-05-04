@@ -8,6 +8,8 @@ const LEAD_UID = 'api::lead-company.lead-company';
 const DEAL_UID = 'api::deal.deal';
 const CLIENT_ACCOUNT_UID = 'api::client-account.client-account';
 const MEETING_UID = 'api::meeting.meeting';
+const TASK_UID = 'api::task.task';
+const PROJECT_UID = 'api::project.project';
 
 function orgIdFromRelation(rel) {
   if (rel == null) return null;
@@ -17,7 +19,7 @@ function orgIdFromRelation(rel) {
 
 module.exports = createCoreController(UID, ({ strapi }) => ({
   /**
-   * GET /crm-activities/timeline?contactId= | ?leadCompanyId= | ?dealId= | ?clientAccountId=
+   * GET /crm-activities/timeline?contactId= | ?leadCompanyId= | ?dealId= | ?clientAccountId= | ?projectId=
    * Exactly one scope param.
    */
   async timeline(ctx) {
@@ -30,6 +32,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const dealIdRaw = q.dealId ?? q['dealId'];
     const clientAccountIdRaw = q.clientAccountId ?? q['clientAccountId'];
     const meetingIdRaw = q.meetingId ?? q['meetingId'];
+    const taskIdRaw = q.taskId ?? q['taskId'];
+    const projectIdRaw = q.projectId ?? q['projectId'];
 
     const hasContact =
       contactIdRaw != null && String(contactIdRaw).trim() !== '' && contactIdRaw !== 'undefined';
@@ -43,11 +47,23 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       clientAccountIdRaw !== 'undefined';
     const hasMeeting =
       meetingIdRaw != null && String(meetingIdRaw).trim() !== '' && meetingIdRaw !== 'undefined';
+    const hasTask =
+      taskIdRaw != null && String(taskIdRaw).trim() !== '' && taskIdRaw !== 'undefined';
+    const hasProject =
+      projectIdRaw != null && String(projectIdRaw).trim() !== '' && projectIdRaw !== 'undefined';
 
-    const scopeCount = [hasContact, hasLead, hasDeal, hasClientAccount, hasMeeting].filter(Boolean).length;
+    const scopeCount = [
+      hasContact,
+      hasLead,
+      hasDeal,
+      hasClientAccount,
+      hasMeeting,
+      hasTask,
+      hasProject,
+    ].filter(Boolean).length;
     if (scopeCount !== 1) {
       return ctx.badRequest(
-        'Provide exactly one of contactId, leadCompanyId, dealId, clientAccountId, or meetingId'
+        'Provide exactly one of contactId, leadCompanyId, dealId, clientAccountId, meetingId, taskId, or projectId'
       );
     }
 
@@ -123,6 +139,40 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'meeting',
         subjectId: mid,
       };
+    } else if (hasTask) {
+      const tid = parseInt(String(taskIdRaw), 10);
+      if (Number.isNaN(tid)) return ctx.badRequest('Invalid taskId');
+
+      const task = await strapi.entityService.findOne(TASK_UID, tid, {
+        populate: ['organization'],
+      });
+      if (!task) return ctx.notFound();
+      if (orgIdFromRelation(task.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      filters = {
+        organization: ctx.state.orgId,
+        subjectType: 'task',
+        subjectId: tid,
+      };
+    } else if (hasProject) {
+      const pid = parseInt(String(projectIdRaw), 10);
+      if (Number.isNaN(pid)) return ctx.badRequest('Invalid projectId');
+
+      const proj = await strapi.entityService.findOne(PROJECT_UID, pid, {
+        populate: ['organization'],
+      });
+      if (!proj) return ctx.notFound();
+      if (orgIdFromRelation(proj.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      filters = {
+        organization: ctx.state.orgId,
+        subjectType: 'project',
+        subjectId: pid,
+      };
     } else {
       // hasClientAccount
       const caid = parseInt(String(clientAccountIdRaw), 10);
@@ -178,10 +228,22 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const startRaw = q.start ?? q['start'] ?? q.offset ?? q['offset'] ?? '0';
     const start = Math.max(0, parseInt(String(startRaw), 10) || 0);
     const type = String(q.type || q['type'] || '').trim().toLowerCase();
+    const subjectTypesRaw = String(q.subjectTypes || q['subjectTypes'] || '').trim();
 
     const filters = { organization: ctx.state.orgId };
     if (type) {
       filters.action = type;
+    }
+    if (subjectTypesRaw) {
+      const parts = subjectTypesRaw
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+      if (parts.length === 1) {
+        filters.subjectType = parts[0];
+      } else if (parts.length > 1) {
+        filters.subjectType = { $in: parts };
+      }
     }
 
     let total = 0;
@@ -217,6 +279,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const dealIdRaw = payload?.dealId;
     const contactIdRaw = payload?.contactId;
     const clientAccountIdRaw = payload?.clientAccountId;
+    const taskIdRaw = payload?.taskId;
+    const projectIdRaw = payload?.projectId;
     const commentRaw = payload?.comment;
 
     const hasLead =
@@ -231,11 +295,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       clientAccountIdRaw != null &&
       String(clientAccountIdRaw).trim() !== '' &&
       clientAccountIdRaw !== 'undefined';
+    const hasTask =
+      taskIdRaw != null && String(taskIdRaw).trim() !== '' && taskIdRaw !== 'undefined';
+    const hasProject =
+      projectIdRaw != null && String(projectIdRaw).trim() !== '' && projectIdRaw !== 'undefined';
 
-    const scopeCount = [hasLead, hasDeal, hasContact, hasClientAccount].filter(Boolean).length;
+    const scopeCount = [hasLead, hasDeal, hasContact, hasClientAccount, hasTask, hasProject].filter(
+      Boolean
+    ).length;
     if (scopeCount !== 1) {
       return ctx.badRequest(
-        'Provide exactly one of leadCompanyId, dealId, contactId, or clientAccountId'
+        'Provide exactly one of leadCompanyId, dealId, contactId, clientAccountId, taskId, or projectId'
       );
     }
 
@@ -267,8 +337,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         lc == null
           ? null
           : typeof lc === 'object'
-          ? lc.id ?? null
-          : parseInt(String(lc), 10) || null;
+            ? lc.id ?? null
+            : parseInt(String(lc), 10) || null;
 
       const entry = await strapi.entityService.create(UID, {
         data: {
@@ -353,6 +423,68 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       return { data: entry };
     }
 
+    // ── Task (PM) ─────────────────────────────────────────────────────────────
+    if (hasTask) {
+      const taskId = parseInt(String(taskIdRaw), 10);
+      if (Number.isNaN(taskId)) return ctx.badRequest('Invalid taskId');
+
+      const task = await strapi.entityService.findOne(TASK_UID, taskId, {
+        populate: ['organization'],
+      });
+      if (!task) return ctx.notFound('Task not found');
+      if (orgIdFromRelation(task.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      const taskName = (task.name || task.title || 'Task').trim() || 'Task';
+
+      const entry = await strapi.entityService.create(UID, {
+        data: {
+          organization: ctx.state.orgId,
+          actor: ctx.state.user?.id ?? null,
+          action: 'comment',
+          subjectType: 'task',
+          subjectId: taskId,
+          summary: `${actorName} commented on task "${taskName}"`,
+          meta: { comment },
+        },
+        populate: ['actor'],
+      });
+
+      return { data: entry };
+    }
+
+    // ── Project (PM) ────────────────────────────────────────────────────────
+    if (hasProject) {
+      const projectId = parseInt(String(projectIdRaw), 10);
+      if (Number.isNaN(projectId)) return ctx.badRequest('Invalid projectId');
+
+      const proj = await strapi.entityService.findOne(PROJECT_UID, projectId, {
+        populate: ['organization'],
+      });
+      if (!proj) return ctx.notFound('Project not found');
+      if (orgIdFromRelation(proj.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      const projectName = (proj.name || proj.title || 'Project').trim() || 'Project';
+
+      const entry = await strapi.entityService.create(UID, {
+        data: {
+          organization: ctx.state.orgId,
+          actor: ctx.state.user?.id ?? null,
+          action: 'comment',
+          subjectType: 'project',
+          subjectId: projectId,
+          summary: `${actorName} commented on project "${projectName}"`,
+          meta: { comment },
+        },
+        populate: ['actor'],
+      });
+
+      return { data: entry };
+    }
+
     // ── Lead Company ─────────────────────────────────────────────────────────
     const leadCompanyId = parseInt(String(leadCompanyIdRaw || ''), 10);
     if (!leadCompanyId || Number.isNaN(leadCompanyId)) {
@@ -392,6 +524,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
    * GET /crm-activities/comment-counts?dealIds=1,2,3
    * GET /crm-activities/comment-counts?contactIds=1,2,3
    * GET /crm-activities/comment-counts?clientAccountIds=1,2,3
+   * GET /crm-activities/comment-counts?projectIds=1,2,3
    * Returns: { data: { [id]: number } }
    */
   async commentCounts(ctx) {
@@ -399,6 +532,68 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
 
     const q = ctx.query || {};
+
+    // ── Task counts (PM My Tasks) ─────────────────────────────────────────────
+    const taskRaw = q.taskIds ?? q['taskIds'];
+    if (taskRaw != null && String(taskRaw).trim() !== '') {
+      const list = Array.isArray(taskRaw) ? taskRaw : String(taskRaw).split(',');
+      const ids = [
+        ...new Set(
+          list.map((v) => parseInt(String(v).trim(), 10)).filter((n) => n && !Number.isNaN(n))
+        ),
+      ].slice(0, 200);
+      if (!ids.length) return { data: {} };
+      const pairs = await Promise.all(
+        ids.map(async (taskId) => {
+          let count = 0;
+          try {
+            count = await strapi.db.query(UID).count({
+              where: {
+                organization: ctx.state.orgId,
+                action: 'comment',
+                subjectType: 'task',
+                subjectId: taskId,
+              },
+            });
+          } catch (_) {
+            count = 0;
+          }
+          return [String(taskId), count];
+        })
+      );
+      return { data: Object.fromEntries(pairs) };
+    }
+
+    // ── Project counts (PM projects table) ───────────────────────────────────
+    const projectRaw = q.projectIds ?? q['projectIds'];
+    if (projectRaw != null && String(projectRaw).trim() !== '') {
+      const list = Array.isArray(projectRaw) ? projectRaw : String(projectRaw).split(',');
+      const ids = [
+        ...new Set(
+          list.map((v) => parseInt(String(v).trim(), 10)).filter((n) => n && !Number.isNaN(n))
+        ),
+      ].slice(0, 200);
+      if (!ids.length) return { data: {} };
+      const pairs = await Promise.all(
+        ids.map(async (projectId) => {
+          let count = 0;
+          try {
+            count = await strapi.db.query(UID).count({
+              where: {
+                organization: ctx.state.orgId,
+                action: 'comment',
+                subjectType: 'project',
+                subjectId: projectId,
+              },
+            });
+          } catch (_) {
+            count = 0;
+          }
+          return [String(projectId), count];
+        })
+      );
+      return { data: Object.fromEntries(pairs) };
+    }
 
     // ── Deal counts ──────────────────────────────────────────────────────────
     const dealRaw = q.dealIds ?? q['dealIds'];

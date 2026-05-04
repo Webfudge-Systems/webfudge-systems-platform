@@ -118,7 +118,7 @@ export default function GlobalSearchModal({ isOpen, onClose, initialQuery = '' }
               {tasks.map((task) => (
                 <button
                   key={task.id}
-                  onClick={() => { router.push(`/my-tasks?task=${task.id}`); onClose() }}
+                  onClick={() => { router.push(`/tasks/${task.id}`); onClose() }}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-brand-hover transition-colors text-left"
                 >
                   <CheckSquare className="w-4 h-4 text-brand-text-light flex-shrink-0" />

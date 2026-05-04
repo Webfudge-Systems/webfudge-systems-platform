@@ -20,7 +20,8 @@ import {
   User,
 } from 'lucide-react'
 import { useAuth, resolveUserDisplayName, resolveUserInitials, resolveUserRole } from '@webfudge/auth'
-import { Avatar, Card, LoadingSpinner } from '../index'
+import { Avatar, Card } from '../index'
+import { LoadingSpinner } from '../../feedback'
 
 export function WorkspaceHeader({
   title,

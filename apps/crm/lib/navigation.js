@@ -22,6 +22,7 @@ import {
   Plug,
   Phone,
   Calendar,
+  CalendarDays,
   Activity,
   FileStack,
 } from 'lucide-react';
@@ -69,6 +70,7 @@ export const navigationData = [
       { id: 'proposals', label: 'Proposals', icon: FileText, href: '/clients/proposals' },
       { id: 'tasks', label: 'Tasks', icon: CheckSquare, href: '/clients/tasks' },
       { id: 'meetings', label: 'Meetings', icon: Calendar, href: '/meetings' },
+      { id: 'calendar', label: 'Calendar', icon: CalendarDays, href: '/calendar' },
       { id: 'documents', label: 'Documents', icon: FileStack, href: comingSoonUrl('Documents') },
     ],
   },

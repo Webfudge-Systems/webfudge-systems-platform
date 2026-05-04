@@ -133,6 +133,8 @@ export function transformProject(strapiProject) {
   const pm = p.projectManager?.data || p.projectManager;
   const teamMembers = (p.teamMembers?.data || p.teamMembers || []).map(transformUser).filter(Boolean);
   const tasks = p.tasks?.data || p.tasks || [];
+  const clientAccount = p.clientAccount?.data || p.clientAccount;
+  const clientAttrs = clientAccount?.attributes || clientAccount || {};
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((t) => {
     const tData = t.attributes || t;
@@ -155,10 +157,44 @@ export function transformProject(strapiProject) {
     completedTasks,
     projectManager: pm ? transformUser(pm) : null,
     teamMembers,
+    team: teamMembers,
+    clientAccountId: clientAccount?.id || clientAttrs.id || null,
+    clientName: clientAttrs.companyName || clientAttrs.name || clientAttrs.title || '',
     icon: p.icon || (p.name ? p.name.charAt(0).toUpperCase() : 'P'),
     createdAt: p.createdAt || null,
     updatedAt: p.updatedAt || null,
   };
+}
+
+export function formatTaskRecurrenceSummary(t) {
+  if (!t || !t.recurrenceFrequency || t.recurrenceFrequency === 'none') return '';
+  const n = Math.max(1, Number(t.recurrenceInterval) || 1);
+  const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  switch (t.recurrenceFrequency) {
+    case 'daily':
+      return n === 1 ? 'Every day' : `Every ${n} days`;
+    case 'weekly': {
+      const wd = Array.isArray(t.recurrenceWeekdays) ? t.recurrenceWeekdays : [];
+      if (wd.length > 0) {
+        const names = [...wd]
+          .map(Number)
+          .sort((a, b) => a - b)
+          .map((d) => dayLabels[d] ?? d)
+          .join(', ');
+        return n === 1 ? `Weekly (${names})` : `Every ${n} weeks (${names})`;
+      }
+      return n === 1 ? 'Every week' : `Every ${n} weeks`;
+    }
+    case 'monthly':
+      return n === 1 ? 'Every month' : `Every ${n} months`;
+    case 'custom': {
+      const u = t.recurrenceCustomUnit || 'day';
+      const label = u === 'day' ? 'day' : u === 'week' ? 'week' : 'month';
+      return `Every ${n} ${label}${n > 1 ? 's' : ''}`;
+    }
+    default:
+      return '';
+  }
 }
 
 export function transformTask(strapiTask) {
@@ -166,13 +202,80 @@ export function transformTask(strapiTask) {
   const t = strapiTask.attributes || strapiTask;
   const id = strapiTask.id || t.id;
 
-  const assignee = t.assignee?.data || t.assignee;
-  const projects = (t.projects?.data || t.projects || []).map((proj) => {
+  const assigneeRaw = t.assignee?.data !== undefined ? t.assignee.data : t.assignee;
+  const assignee =
+    assigneeRaw == null
+      ? null
+      : typeof assigneeRaw === 'object'
+        ? assigneeRaw
+        : { id: assigneeRaw };
+  const assigneeFlat = assignee && typeof assignee === 'object' ? assignee.attributes || assignee : null;
+
+  const assignerRaw = t.assigner?.data !== undefined ? t.assigner.data : t.assigner;
+  const assigner =
+    assignerRaw == null
+      ? null
+      : typeof assignerRaw === 'object'
+        ? assignerRaw
+        : { id: assignerRaw };
+  const assignerFlat = assigner && typeof assigner === 'object' ? assigner.attributes || assigner : null;
+
+  const rawProjects = t.projects?.data !== undefined ? t.projects.data : t.projects;
+  const projectList = Array.isArray(rawProjects)
+    ? rawProjects
+    : rawProjects && typeof rawProjects === 'object'
+      ? [rawProjects]
+      : [];
+  const projects = projectList.map((proj) => {
     const pData = proj.attributes || proj;
-    return { id: proj.id || pData.id, name: pData.name || pData.title || 'Unknown', slug: pData.slug || String(proj.id || pData.id) };
+    return {
+      id: proj.id || pData.id,
+      name: pData.name || pData.title || 'Unknown',
+      slug: pData.slug || String(proj.id || pData.id),
+    };
   });
   const collaborators = (t.collaborators?.data || t.collaborators || []).map(transformUser).filter(Boolean);
+  const primaryAssigneeUser = assignee && typeof assignee === 'object' ? transformUser(assignee) : null;
+  let assignees = [...collaborators];
+  if (
+    primaryAssigneeUser?.id != null &&
+    !assignees.some((u) => Number(u.id) === Number(primaryAssigneeUser.id))
+  ) {
+    assignees = [primaryAssigneeUser, ...assignees];
+  }
   const subtasks = (t.subtasks?.data || t.subtasks || []).map(transformSubtask).filter(Boolean);
+
+  const parentRaw = t.parent?.data !== undefined ? t.parent.data : t.parent;
+  let parentId = null;
+  let parentTask = null;
+  if (parentRaw != null && parentRaw !== '') {
+    if (typeof parentRaw === 'object') {
+      const pFlat = parentRaw.attributes || parentRaw;
+      parentId = parentRaw.id ?? pFlat.id ?? null;
+      if (parentId != null) {
+        parentTask = {
+          id: parentId,
+          name: pFlat.name || pFlat.title || 'Parent task',
+        };
+      }
+    } else if (typeof parentRaw === 'number') {
+      parentId = parentRaw;
+      parentTask = { id: parentId, name: 'Parent task' };
+    }
+  }
+
+  const persistedAssignerId =
+    assignerFlat?.id ?? assigner?.id ?? (assigner?.attributes || assigner)?.id ?? null;
+  const persistedAssignerUser =
+    assigner && typeof assigner === 'object' ? transformUser(assigner) : null;
+
+  // Legacy rows: creator lived on `assignee` only — show the same person as assigner until the field is persisted.
+  let effectiveAssignerId = persistedAssignerId;
+  let effectiveAssignerUser = persistedAssignerUser;
+  if ((effectiveAssignerId == null || effectiveAssignerId === '') && primaryAssigneeUser?.id != null) {
+    effectiveAssignerId = primaryAssigneeUser.id;
+    effectiveAssignerUser = primaryAssigneeUser;
+  }
 
   const isOverdue = t.scheduledDate && new Date(t.scheduledDate) < new Date() && t.status !== 'COMPLETED';
 
@@ -184,20 +287,52 @@ export function transformTask(strapiTask) {
     strapiStatus: t.status || 'SCHEDULED',
     priority: transformPriority(t.priority),
     strapiPriority: t.priority || 'MEDIUM',
+    startDate: t.startDate || null,
+    formattedStartDate: formatDate(t.startDate, 'short'),
     dueDate: t.scheduledDate || t.dueDate || null,
     formattedDueDate: formatDate(t.scheduledDate || t.dueDate, 'short'),
     progress: typeof t.progress === 'number' ? t.progress : 0,
-    assignee: assignee ? transformUser(assignee) : null,
+    assignee: primaryAssigneeUser,
+    assigneeId:
+      assigneeFlat?.id ??
+      assignee?.id ??
+      (assignee?.attributes || assignee)?.id ??
+      null,
+    assigneeName: primaryAssigneeUser?.name || '',
+    assigner: effectiveAssignerUser,
+    assignerId: effectiveAssignerId,
+    assignerName: effectiveAssignerUser?.name || '',
+    assignees,
+    assigneeUserIds: assignees.map((u) => u.id).filter((id) => id != null),
     collaborators,
     projects,
+    projectId: projects[0]?.id || null,
     project: projects[0]?.name || null,
     projectSlug: projects[0]?.slug || null,
     subtasks,
     subtaskCount: subtasks.length,
+    parentId,
+    parentTask,
     tags: t.tags || [],
     isOverdue,
     createdAt: t.createdAt || null,
     updatedAt: t.updatedAt || null,
+    recurrenceFrequency: t.recurrenceFrequency || 'none',
+    recurrenceInterval: typeof t.recurrenceInterval === 'number' ? t.recurrenceInterval : 1,
+    recurrenceWeekdays: Array.isArray(t.recurrenceWeekdays) ? t.recurrenceWeekdays : [],
+    recurrenceMonthDay:
+      typeof t.recurrenceMonthDay === 'number' && t.recurrenceMonthDay >= 1 && t.recurrenceMonthDay <= 31
+        ? t.recurrenceMonthDay
+        : null,
+    recurrenceCustomUnit: t.recurrenceCustomUnit || 'day',
+    recurrenceEndsAt: t.recurrenceEndsAt || null,
+    recurrenceGroupId: t.recurrenceGroupId || null,
+    recurrenceSummary: formatTaskRecurrenceSummary({
+      recurrenceFrequency: t.recurrenceFrequency,
+      recurrenceInterval: t.recurrenceInterval,
+      recurrenceWeekdays: t.recurrenceWeekdays,
+      recurrenceCustomUnit: t.recurrenceCustomUnit,
+    }),
   };
 }
 
@@ -205,15 +340,60 @@ export function transformSubtask(strapiSubtask) {
   if (!strapiSubtask) return null;
   const s = strapiSubtask.attributes || strapiSubtask;
   const id = strapiSubtask.id || s.id;
+  const assigneeRaw = s.assignee?.data !== undefined ? s.assignee.data : s.assignee;
+  const assignee =
+    assigneeRaw == null ? null : typeof assigneeRaw === 'object' ? assigneeRaw : { id: assigneeRaw };
+  const assigneeFlat = assignee && typeof assignee === 'object' ? assignee.attributes || assignee : null;
+
+  const assignerRaw = s.assigner?.data !== undefined ? s.assigner.data : s.assigner;
+  const assigner =
+    assignerRaw == null ? null : typeof assignerRaw === 'object' ? assignerRaw : { id: assignerRaw };
+  const assignerFlat = assigner && typeof assigner === 'object' ? assigner.attributes || assigner : null;
+
+  const collaborators = (s.collaborators?.data || s.collaborators || []).map(transformUser).filter(Boolean);
+  const primaryAssigneeUser = assignee && typeof assignee === 'object' ? transformUser(assignee) : null;
+  let assignees = [...collaborators];
+  if (
+    primaryAssigneeUser?.id != null &&
+    !assignees.some((u) => Number(u.id) === Number(primaryAssigneeUser.id))
+  ) {
+    assignees = [primaryAssigneeUser, ...assignees];
+  }
+
+  const persistedAssignerId =
+    assignerFlat?.id ?? assigner?.id ?? (assigner?.attributes || assigner)?.id ?? null;
+  const persistedAssignerUser = assigner && typeof assigner === 'object' ? transformUser(assigner) : null;
+
+  let effectiveAssignerId = persistedAssignerId;
+  let effectiveAssignerUser = persistedAssignerUser;
+  if ((effectiveAssignerId == null || effectiveAssignerId === '') && primaryAssigneeUser?.id != null) {
+    effectiveAssignerId = primaryAssigneeUser.id;
+    effectiveAssignerUser = primaryAssigneeUser;
+  }
+
   return {
     id,
     name: s.title || s.name || 'Untitled Subtask',
+    description: s.description || '',
     status: transformStatus(s.status),
     strapiStatus: s.status || 'SCHEDULED',
     priority: transformPriority(s.priority),
+    startDate: s.startDate || null,
     dueDate: s.scheduledDate || s.dueDate || null,
     progress: typeof s.progress === 'number' ? s.progress : 0,
-    assignee: s.assignee ? transformUser(s.assignee.data || s.assignee) : null,
+    assignee: primaryAssigneeUser,
+    assigneeId:
+      assigneeFlat?.id ??
+      assignee?.id ??
+      (assignee?.attributes || assignee)?.id ??
+      null,
+    assigneeName: primaryAssigneeUser?.name || '',
+    assigner: effectiveAssignerUser,
+    assignerId: effectiveAssignerId,
+    assignerName: effectiveAssignerUser?.name || '',
+    assignees,
+    assigneeUserIds: assignees.map((u) => u.id).filter((uid) => uid != null),
+    collaborators,
   };
 }
 
