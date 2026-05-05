@@ -173,6 +173,7 @@ export default function TaskDetailPage() {
     return u?.id ?? authUser?.id ?? null;
   }, [authUser]);
   const [task, setTask] = useState(null);
+  const [ancestorTasks, setAncestorTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -227,6 +228,48 @@ export default function TaskDetailPage() {
   useEffect(() => {
     loadLookups();
   }, [loadLookups]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadAncestorTrail = async () => {
+      if (!task?.parentTask?.id) {
+        if (!cancelled) setAncestorTasks([]);
+        return;
+      }
+
+      const trail = [];
+      const seen = new Set([String(task.id)]);
+      let cursorId = task.parentTask.id;
+
+      while (cursorId != null && cursorId !== '') {
+        const key = String(cursorId);
+        if (seen.has(key)) break;
+        seen.add(key);
+
+        try {
+          const res = await taskService.getTaskById(cursorId);
+          const parentTask = transformTask(res?.data);
+          if (!parentTask?.id) break;
+          trail.push(parentTask);
+          cursorId = parentTask.parentTask?.id ?? null;
+        } catch (error) {
+          console.error('Load parent task breadcrumb trail error:', error);
+          break;
+        }
+      }
+
+      if (!cancelled) {
+        setAncestorTasks(trail.reverse());
+      }
+    };
+
+    loadAncestorTrail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [task?.id, task?.parentTask?.id]);
 
   const reloadTaskTimeline = useCallback(
     async (opts = {}) => {
@@ -482,6 +525,18 @@ export default function TaskDetailPage() {
     [users]
   );
 
+  const breadcrumbItems = useMemo(() => {
+    const base = [
+      { label: 'PM', href: '/' },
+      { label: 'My Tasks', href: '/my-tasks' },
+    ];
+    const parentCrumbs = ancestorTasks
+      .filter((t) => t?.id)
+      .map((t) => ({ label: t.name || `Task ${t.id}`, href: `/tasks/${t.id}` }));
+    if (!task?.id) return base;
+    return [...base, ...parentCrumbs, { label: task.name || `Task ${task.id}`, href: `/tasks/${task.id}` }];
+  }, [ancestorTasks, task?.id, task?.name]);
+
   if (loading) {
     return (
       <div className="space-y-6 p-4 md:p-6">
@@ -691,11 +746,7 @@ export default function TaskDetailPage() {
       <PMPageHeader
         title={task.name}
         subtitle={subtitle}
-        breadcrumb={[
-          { label: 'PM', href: '/' },
-          { label: 'My Tasks', href: '/my-tasks' },
-          { label: task.name, href: `/tasks/${task.id}` },
-        ]}
+        breadcrumb={breadcrumbItems}
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -720,7 +771,7 @@ export default function TaskDetailPage() {
 
       <div
         className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${
-          isRecurring ? 'xl:grid-cols-4' : 'xl:grid-cols-5'
+          isRecurring ? 'xl:grid-cols-3' : 'xl:grid-cols-4'
         }`}
       >
         <KPICard compact title="Status" value={statusMeta.label} icon={Flag} colorScheme="orange" />
@@ -729,7 +780,6 @@ export default function TaskDetailPage() {
         {!isRecurring ? (
           <KPICard compact title="Due date" value={formatDate(task.dueDate, 'short') || '—'} icon={Calendar} colorScheme="orange" />
         ) : null}
-        <KPICard compact title="Progress" value={`${task.progress ?? 0}%`} icon={CheckSquare} colorScheme="orange" />
       </div>
 
       <TabsWithActions variant="pill" tabs={tabsWithBadges} activeTab={activeTab} onTabChange={setActiveTab} />

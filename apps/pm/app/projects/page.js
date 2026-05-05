@@ -19,10 +19,11 @@ import {
   TableRowActionMenuPortal,
   TabsWithActions,
   Textarea,
+  ViewToggleButton,
+  ViewToggleGroup,
   ownerDisplayFromUser,
 } from '@webfudge/ui';
 import {
-  CalendarDays,
   CheckCircle,
   Copy,
   Edit3,
@@ -34,16 +35,16 @@ import {
   Pencil,
   PlayCircle,
   Plus,
+  Table2,
   SendHorizontal,
   Trash2,
-  Users,
   GripVertical,
+  Kanban,
 } from 'lucide-react';
 import PMPageHeader from '../../components/PMPageHeader';
 import PMProgress from '../../components/PMProgress';
 import PMRowActions from '../../components/PMRowActions';
 import {
-  PMStatusBadge,
   PROJECT_STATUS_OPTIONS,
   getProjectStatusMeta,
 } from '../../components/PMStatusBadge';
@@ -66,6 +67,39 @@ const STATUS_TABS = [
 ];
 
 const BOARD_COLUMNS = PROJECT_STATUS_OPTIONS.filter((status) => status.value !== 'CANCELLED');
+
+const BOARD_COLUMN_STYLES = {
+  PLANNING: {
+    header: 'bg-blue-50 border-blue-200',
+    text: 'text-blue-700',
+    badge: 'bg-blue-100 text-blue-700',
+  },
+  ACTIVE: {
+    header: 'bg-cyan-50 border-cyan-200',
+    text: 'text-cyan-700',
+    badge: 'bg-cyan-100 text-cyan-700',
+  },
+  IN_PROGRESS: {
+    header: 'bg-amber-50 border-amber-200',
+    text: 'text-amber-700',
+    badge: 'bg-amber-100 text-amber-700',
+  },
+  ON_HOLD: {
+    header: 'bg-violet-50 border-violet-200',
+    text: 'text-violet-700',
+    badge: 'bg-violet-100 text-violet-700',
+  },
+  COMPLETED: {
+    header: 'bg-emerald-50 border-emerald-200',
+    text: 'text-emerald-700',
+    badge: 'bg-emerald-100 text-emerald-700',
+  },
+  default: {
+    header: 'bg-gray-50 border-gray-200',
+    text: 'text-gray-700',
+    badge: 'bg-gray-100 text-gray-700',
+  },
+};
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'pm.projects.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'pm.projects.tableColumnOrder';
@@ -224,6 +258,13 @@ function formatCommentTime(iso) {
     hour: 'numeric',
     minute: '2-digit',
   });
+}
+
+function formatShortDate(iso) {
+  if (!iso) return 'No due date';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return 'No due date';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function ProjectsPage() {
@@ -955,6 +996,25 @@ export default function ProjectsPage() {
     projects: projects.filter((project) => project.strapiStatus === column.value),
   }));
 
+  const projectViewSwitcher = (
+    <ViewToggleGroup aria-label="Project layout">
+      <ViewToggleButton
+        active={activeView === 'list'}
+        title="Table"
+        onClick={() => setActiveView('list')}
+      >
+        <Table2 className="h-[18px] w-[18px]" strokeWidth={2} />
+      </ViewToggleButton>
+      <ViewToggleButton
+        active={activeView === 'kanban'}
+        title="Kanban"
+        onClick={() => setActiveView('kanban')}
+      >
+        <Kanban className="h-[18px] w-[18px]" strokeWidth={2} />
+      </ViewToggleButton>
+    </ViewToggleGroup>
+  );
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <PMPageHeader
@@ -1039,10 +1099,7 @@ export default function ProjectsPage() {
           showFilter
           onFilterClick={() => setFilterOpen(true)}
           filterTitle={hasActiveFilters ? 'Filters active' : 'Filter projects'}
-          showViewToggle
-          activeView={activeView}
-          onViewChange={setActiveView}
-          viewOptions={['list', 'board']}
+          afterTabs={projectViewSwitcher}
           showColumnVisibility={activeView === 'list'}
           onColumnVisibilityClick={() => setColumnPickerOpen((open) => !open)}
           columnVisibilityTitle="Show or hide columns"
@@ -1147,55 +1204,74 @@ export default function ProjectsPage() {
             <LoadingSpinner size="lg" message="Loading projects..." />
           </div>
         </div>
-      ) : activeView === 'board' ? (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-          {boardGroups.map((group) => (
-            <Card key={group.value} variant="elevated" className="rounded-xl p-4">
-              <div className="mb-4 flex items-center justify-between">
-                <PMStatusBadge type="project" status={group.value} />
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-600">
-                  {group.projects.length}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {group.projects.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
-                    No projects
+      ) : activeView === 'kanban' ? (
+        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-gray-50/60">
+          <div className="flex gap-4 p-4 pb-5 md:p-5">
+            {boardGroups.map((group) => {
+              const style = BOARD_COLUMN_STYLES[group.value] || BOARD_COLUMN_STYLES.default;
+              return (
+                <div
+                  key={group.value}
+                  className="flex min-h-[420px] min-w-[280px] max-w-[320px] flex-shrink-0 flex-col rounded-2xl border border-gray-200 bg-gray-50/60"
+                >
+                  <div
+                    className={`flex items-center justify-between rounded-t-2xl border-b px-4 py-3 ${style.header}`}
+                  >
+                    <h3 className={`text-[11px] font-extrabold uppercase tracking-widest ${style.text}`}>
+                      {group.label}
+                    </h3>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${style.badge}`}>
+                      {group.projects.length}
+                    </span>
                   </div>
-                ) : (
-                  group.projects.map((project) => (
-                    <button
-                      key={project.id}
-                      type="button"
-                      onClick={() => router.push(`/projects/${project.slug || project.id}`)}
-                      className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-orange-200 hover:shadow-md"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-gray-900">{project.name}</p>
-                          <p className="mt-1 line-clamp-2 text-xs text-gray-500">
-                            {project.description || project.clientName || 'No description'}
-                          </p>
-                        </div>
-                        <FolderOpen className="h-4 w-4 shrink-0 text-orange-500" />
+                  <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto p-3">
+                    {group.projects.length === 0 ? (
+                      <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/40 p-4 text-center">
+                        <p className="text-[11px] text-gray-400">No projects</p>
                       </div>
-                      <PMProgress value={project.progress} size="sm" className="mt-4" />
-                      <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" />
-                          {(project.team || []).length}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <CalendarDays className="h-3.5 w-3.5" />
-                          {project.endDate ? new Date(project.endDate).toLocaleDateString() : 'No due date'}
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </Card>
-          ))}
+                    ) : (
+                      group.projects.map((project) => {
+                        const overdue = isProjectOverdue(project);
+                        return (
+                          <button
+                            key={project.id}
+                            type="button"
+                            onClick={() => router.push(`/projects/${project.slug || project.id}`)}
+                            className="group rounded-xl border border-gray-200 bg-white p-3.5 text-left shadow-sm transition-all hover:border-orange-200 hover:shadow-md"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="line-clamp-2 flex-1 text-sm font-semibold leading-snug text-gray-900 group-hover:text-orange-600">
+                                {project.name || 'Untitled project'}
+                              </p>
+                              <FolderOpen className="mt-0.5 h-4 w-4 flex-shrink-0 text-orange-500" />
+                            </div>
+                            <p className="mt-1 line-clamp-2 text-xs text-gray-500">
+                              {project.description || project.clientName || 'No description'}
+                            </p>
+                            <div className="mt-3">
+                              <PMProgress value={project.progress} size="sm" />
+                            </div>
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700">
+                                {(project.team || []).length} team
+                              </span>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                  overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                Due {formatShortDate(project.endDate)}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

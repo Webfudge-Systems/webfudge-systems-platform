@@ -1,7 +1,8 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { Avatar, Button, Select, Table, TableCellCreated, ownerDisplayFromUser } from '@webfudge/ui';
-import { Copy, Edit3, Eye, Link2, ListTree, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Edit3, Eye, Link2, ListTree, Pencil, Plus, Trash2 } from 'lucide-react';
 import PMRowActions from './PMRowActions';
 import TaskAssigneesPicker from './TaskAssigneesPicker';
 import { getTaskStatusMeta, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge';
@@ -56,9 +57,30 @@ export function TaskSubtasksAfterRow({
   onDeleteTask,
   onCopyTaskLink,
   onOpenTask,
+  childrenByParentId = {},
 }) {
   if (!expanded) return null;
-  const list = Array.isArray(row.subtasks) ? row.subtasks : [];
+  const [expandedNestedIds, setExpandedNestedIds] = useState(() => new Set());
+  const list = useMemo(() => {
+    const fromMap = childrenByParentId?.[row.id];
+    if (Array.isArray(fromMap) && fromMap.length > 0) return fromMap;
+    return Array.isArray(row.subtasks) ? row.subtasks : [];
+  }, [childrenByParentId, row.id, row.subtasks]);
+
+  const nestedChildrenFor = (task) => {
+    const fromMap = childrenByParentId?.[task?.id];
+    if (Array.isArray(fromMap) && fromMap.length > 0) return fromMap;
+    return Array.isArray(task?.subtasks) ? task.subtasks : [];
+  };
+
+  const toggleNestedExpand = (taskId) => {
+    setExpandedNestedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
 
   const statusChrome = {
     primary: 'border-blue-200 bg-blue-50 text-blue-800',
@@ -75,17 +97,45 @@ export function TaskSubtasksAfterRow({
       label: 'SUBTASK',
       className: 'max-w-[16rem] align-top',
       render: (_, st) => (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenTask?.(st);
-          }}
-          className="min-w-0 max-w-full text-left hover:text-orange-600"
-        >
-          <div className="truncate font-medium text-gray-900">{st.name || 'Untitled subtask'}</div>
-          <div className="truncate text-xs text-gray-500">{st.description || 'No description'}</div>
-        </button>
+        <div className="flex min-w-0 items-start gap-2">
+          {(() => {
+            const nestedChildren = nestedChildrenFor(st);
+            const hasNested = nestedChildren.length > 0;
+            if (!hasNested) {
+              return <span className="mt-1 inline-block h-4 w-4 shrink-0" aria-hidden />;
+            }
+            const nestedOpen = expandedNestedIds.has(st.id);
+            return (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleNestedExpand(st.id);
+                }}
+                className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                title={`${nestedOpen ? 'Hide' : 'Show'} nested subtasks`}
+                aria-expanded={nestedOpen}
+              >
+                {nestedOpen ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+              </button>
+            );
+          })()}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenTask?.(st);
+            }}
+            className="min-w-0 max-w-full flex-1 text-left hover:text-orange-600"
+          >
+            <div className="truncate font-medium text-gray-900">{st.name || 'Untitled subtask'}</div>
+            <div className="truncate text-xs text-gray-500">{st.description || 'No description'}</div>
+          </button>
+        </div>
       ),
     },
     {
@@ -241,6 +291,31 @@ export function TaskSubtasksAfterRow({
     },
   ];
 
+  const renderNestedAfterRow = (parent) => {
+    const nestedChildren = nestedChildrenFor(parent);
+    if (!expandedNestedIds.has(parent.id) || nestedChildren.length === 0) return null;
+    return (
+      <tr className="bg-white">
+        <td
+          colSpan={subtaskColumns.length}
+          className="border-t border-gray-100 px-4 py-2"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="ml-5 rounded-lg border border-gray-200 bg-gray-50/70 p-2.5">
+            <Table
+              columns={subtaskColumns}
+              data={nestedChildren}
+              keyField="id"
+              variant="modernEmbedded"
+              onRowClick={(st) => onOpenTask?.(st)}
+              renderAfterRow={renderNestedAfterRow}
+            />
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <tr className="bg-gradient-to-b from-gray-50/95 to-white">
       <td colSpan={colSpan} className="border-t border-gray-100 px-6 py-3" onClick={(e) => e.stopPropagation()}>
@@ -258,6 +333,7 @@ export function TaskSubtasksAfterRow({
                 keyField="id"
                 variant="modernEmbedded"
                 onRowClick={(st) => onOpenTask?.(st)}
+                renderAfterRow={renderNestedAfterRow}
               />
             </div>
           )}

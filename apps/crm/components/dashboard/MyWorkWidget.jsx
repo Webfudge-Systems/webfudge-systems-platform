@@ -46,7 +46,7 @@ function taskHref(t) {
   return '/clients/tasks'
 }
 
-export default function MyWorkWidget() {
+export default function MyWorkWidget({ className = '' }) {
   const [myWork, setMyWork] = useState({
     overdue: { count: 0, items: [] },
     today: { count: 0, items: [] },
@@ -78,8 +78,8 @@ export default function MyWorkWidget() {
   }, [loadMyWork])
 
   return (
-    <Card className="p-6 shadow-lg">
-      <div className="flex items-start justify-between gap-4 mb-6">
+    <Card className={`p-6 shadow-lg flex min-h-0 flex-col ${className}`}>
+      <div className="mb-6 flex shrink-0 items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">My work</h2>
           <p className="text-sm text-gray-600 mt-0.5">
@@ -96,8 +96,8 @@ export default function MyWorkWidget() {
           <LoadingSpinner size="md" />
         </div>
       ) : (
-        <>
-          <div className="space-y-8">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 min-h-0 space-y-8 overflow-y-auto pr-1">
             {BUCKETS.map(
               ({
                 key,
@@ -161,7 +161,7 @@ export default function MyWorkWidget() {
             )}
           </div>
 
-          <div className="mt-6 pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="mt-4 shrink-0 border-t border-gray-100 pt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-gray-500">
               <span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1.5 align-middle" />
               Synced from your task list
@@ -174,7 +174,7 @@ export default function MyWorkWidget() {
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
-        </>
+        </div>
       )}
     </Card>
   )

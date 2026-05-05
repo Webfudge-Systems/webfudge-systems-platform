@@ -134,7 +134,7 @@ function StageTooltip({ active, payload }) {
   )
 }
 
-export default function SalesAnalyticsWidget() {
+export default function SalesAnalyticsWidget({ className = '' }) {
   const [loading, setLoading] = useState(true)
   const [deals, setDeals] = useState([])
 
@@ -223,7 +223,7 @@ export default function SalesAnalyticsWidget() {
 
   if (loading) {
     return (
-      <Card className="p-6 shadow-lg">
+      <Card className={`p-6 shadow-lg ${className}`}>
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-gray-200 rounded w-1/3" />
           <div className="grid grid-cols-3 gap-4">
@@ -247,7 +247,7 @@ export default function SalesAnalyticsWidget() {
   const hasStageData = computed.totalDeals > 0
 
   return (
-    <Card className="p-6 shadow-lg">
+    <Card className={`p-6 shadow-lg ${className}`}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Sales Analytics</h2>

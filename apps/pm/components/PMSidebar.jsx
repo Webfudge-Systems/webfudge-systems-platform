@@ -503,6 +503,8 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           </div>
         )}
 
+      </div>
+      <div className="shrink-0 border-t border-white/20 bg-white/90 backdrop-blur-sm">
         <SidebarTrialUpsell
           collapsed={collapsed}
           daysRemaining={trialDaysRemaining}

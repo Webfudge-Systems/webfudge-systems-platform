@@ -69,12 +69,10 @@ import taskCommentService from '../../lib/api/taskCommentService';
 import { transformProject, transformTask, transformUser } from '../../lib/api/dataTransformers';
 
 const STATUS_TABS = [
+  { id: 'MY_TASKS', label: 'My Tasks' },
+  { id: 'IN_PROGRESS', label: 'In Progress Tasks' },
+  { id: 'OVERDUE', label: 'Overdue Tasks' },
   { id: 'all', label: 'All Tasks' },
-  { id: 'SCHEDULED', label: 'To Do' },
-  { id: 'IN_PROGRESS', label: 'In Progress' },
-  { id: 'INTERNAL_REVIEW', label: 'In Review' },
-  { id: 'COMPLETED', label: 'Completed' },
-  { id: 'OVERDUE', label: 'Overdue' },
 ];
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'pm.myTasks.tableColumnVisibility';
@@ -248,19 +246,16 @@ export default function MyTasksPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingId, setSavingId] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('MY_TASKS');
   const [taskViewMode, setTaskViewMode] = useState(() =>
     typeof window === 'undefined' ? 'table' : readStoredTaskView()
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({ priority: '', projectId: '' });
   const [filterOpen, setFilterOpen] = useState(false);
-  const [bulkEditMode, setBulkEditMode] = useState(false);
-  const [selectedTasks, setSelectedTasks] = useState(new Set());
   const [taskModal, setTaskModal] = useState({ open: false, task: null, parentContext: null });
   const [expandedSubtaskParents, setExpandedSubtaskParents] = useState(() => new Set());
   const [deleteModal, setDeleteModal] = useState({ open: false, task: null });
-  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
   const [columnPickerOpen, setColumnPickerOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
@@ -288,8 +283,7 @@ export default function MyTasksPage() {
       if (filters.priority) params.priority = filters.priority;
       if (filters.projectId) params.projectId = filters.projectId;
 
-      const userId = getUserId();
-      const res = userId ? await taskService.getPMTasksByAssignee(userId, params) : await taskService.getAllTasks(params);
+      const res = await taskService.getAllTasks(params);
       const list = (res?.data || []).map(transformTask).filter(Boolean);
       setAllTasks(list);
     } catch (error) {
@@ -300,11 +294,31 @@ export default function MyTasksPage() {
     }
   }, [filters.priority, filters.projectId, getUserId]);
 
+  const currentUserId = useMemo(() => {
+    const id = getUserId();
+    return id == null ? null : String(id);
+  }, [getUserId]);
+
+  const isMyTask = useCallback(
+    (task) => {
+      if (!currentUserId) return false;
+      const directAssigneeIds = (task.assigneeUserIds || []).map((id) => String(id));
+      if (directAssigneeIds.includes(currentUserId)) return true;
+      const assigneeIdsFromObjects = (task.assignees || [])
+        .map((assignee) => assignee?.id)
+        .filter((id) => id != null)
+        .map((id) => String(id));
+      return assigneeIdsFromObjects.includes(currentUserId);
+    },
+    [currentUserId]
+  );
+
   const filteredTasks = useMemo(() => {
     let list = [...allTasks];
     if (activeTab !== 'all') {
-      if (activeTab === 'OVERDUE') list = list.filter(isTaskOverdue);
-      else list = list.filter((task) => task.strapiStatus === activeTab);
+      if (activeTab === 'MY_TASKS') list = list.filter(isMyTask);
+      else if (activeTab === 'OVERDUE') list = list.filter(isTaskOverdue);
+      else if (activeTab === 'IN_PROGRESS') list = list.filter((task) => task.strapiStatus === 'IN_PROGRESS');
     }
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -316,12 +330,22 @@ export default function MyTasksPage() {
       });
     }
     return list;
-  }, [allTasks, activeTab, searchQuery]);
+  }, [allTasks, activeTab, searchQuery, isMyTask]);
 
   const tableRootTasks = useMemo(() => {
     const idSet = new Set(allTasks.map((t) => t.id).filter((x) => x != null));
     return filteredTasks.filter((t) => !t.parentId || !idSet.has(t.parentId));
   }, [allTasks, filteredTasks]);
+
+  const childrenByParentId = useMemo(() => {
+    const map = {};
+    for (const task of allTasks) {
+      if (!task?.parentId) continue;
+      if (!map[task.parentId]) map[task.parentId] = [];
+      map[task.parentId].push(task);
+    }
+    return map;
+  }, [allTasks]);
 
   const toggleSubtaskExpand = useCallback((taskId) => {
     setExpandedSubtaskParents((prev) => {
@@ -397,8 +421,6 @@ export default function MyTasksPage() {
     setTaskViewMode(mode);
     persistTaskView(mode);
     if (mode !== 'table') {
-      setBulkEditMode(false);
-      setSelectedTasks(new Set());
       setColumnPickerOpen(false);
     }
   }, [persistTaskView]);
@@ -515,13 +537,14 @@ export default function MyTasksPage() {
   }, [router, searchParams]);
 
   const tabsWithBadges = useMemo(() => {
-    const counts = { all: allTasks.length };
+    const counts = { all: allTasks.length, MY_TASKS: 0, IN_PROGRESS: 0, OVERDUE: 0 };
     for (const task of allTasks) {
-      counts[task.strapiStatus] = (counts[task.strapiStatus] || 0) + 1;
+      if (isMyTask(task)) counts.MY_TASKS += 1;
+      if (task.strapiStatus === 'IN_PROGRESS') counts.IN_PROGRESS += 1;
       if (isTaskOverdue(task)) counts.OVERDUE = (counts.OVERDUE || 0) + 1;
     }
     return STATUS_TABS.map((tab) => ({ ...tab, badge: counts[tab.id] || 0 }));
-  }, [allTasks]);
+  }, [allTasks, isMyTask]);
 
   const updateTask = useCallback(
     async (task, patch) => {
@@ -568,29 +591,6 @@ export default function MyTasksPage() {
       setSaving(false);
     }
   };
-
-  const handleBulkDelete = async () => {
-    try {
-      setSaving(true);
-      await Promise.all([...selectedTasks].map((id) => taskService.deleteTask(id)));
-      setSelectedTasks(new Set());
-      setBulkDeleteModal(false);
-      await loadTasks();
-    } catch (error) {
-      console.error('Bulk delete error:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleSelect = useCallback((id) => {
-    setSelectedTasks((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
 
   const copyTaskLink = useCallback(async (task) => {
     await navigator.clipboard?.writeText(`${window.location.origin}/tasks/${task.id}`);
@@ -647,25 +647,6 @@ export default function MyTasksPage() {
       setCommentSubmitting(false);
     }
   }, [commentComposerMenu, commentDraft]);
-
-  const selectColumnConfig = useMemo(
-    () => ({
-      key: 'select',
-      label: '',
-      width: '56px',
-      render: (_, row) => (
-        <input
-          type="checkbox"
-          checked={selectedTasks.has(row.id)}
-          onChange={() => toggleSelect(row.id)}
-          onClick={(event) => event.stopPropagation()}
-          className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-          aria-label={`Select ${row.name}`}
-        />
-      ),
-    }),
-    [selectedTasks, toggleSelect]
-  );
 
   const taskTableDataColumns = useMemo(
     () => [
@@ -1009,7 +990,6 @@ export default function MyTasksPage() {
   const visibleTableColumns = useMemo(() => {
     const byKey = Object.fromEntries(taskTableDataColumns.map((c) => [c.key, c]));
     const out = [];
-    if (bulkEditMode && selectColumnConfig) out.push(selectColumnConfig);
     if (byKey.name) out.push(byKey.name);
     for (const key of columnOrder) {
       const col = byKey[key];
@@ -1019,9 +999,7 @@ export default function MyTasksPage() {
     }
     if (byKey.actions) out.push(byKey.actions);
     return out;
-  }, [bulkEditMode, columnOrder, columnVisibility, selectColumnConfig, taskTableDataColumns]);
-
-  const selectedCount = selectedTasks.size;
+  }, [columnOrder, columnVisibility, taskTableDataColumns]);
 
   const taskViewSwitcher = (
     <ViewToggleGroup aria-label="Task layout">
@@ -1098,7 +1076,6 @@ export default function MyTasksPage() {
           activeTab={activeTab}
           onTabChange={(id) => {
             setActiveTab(id);
-            setSelectedTasks(new Set());
           }}
           afterTabs={taskViewSwitcher}
           showSearch
@@ -1110,13 +1087,6 @@ export default function MyTasksPage() {
           addTitle="Add Task"
           showFilter
           onFilterClick={() => setFilterOpen(true)}
-          showBulkEdit={taskViewMode === 'table'}
-          bulkEditActive={bulkEditMode}
-          bulkEditTitle={bulkEditMode ? 'Done' : 'Bulk edit'}
-          onBulkEditClick={() => {
-            setBulkEditMode((prev) => !prev);
-            setSelectedTasks(new Set());
-          }}
           showColumnVisibility={taskViewMode === 'table'}
           onColumnVisibilityClick={() => setColumnPickerOpen((open) => !open)}
           columnVisibilityTitle="Show or hide columns"
@@ -1209,28 +1179,6 @@ export default function MyTasksPage() {
         ) : null}
       </div>
 
-      {taskViewMode === 'table' && bulkEditMode && tableRootTasks.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
-          <p className="min-w-[200px] flex-1 text-sm text-orange-900">
-            <span className="font-semibold">Bulk edit on.</span> Select rows, then apply an action.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              setSelectedTasks(
-                selectedCount === tableRootTasks.length ? new Set() : new Set(tableRootTasks.map((task) => task.id))
-              )
-            }
-          >
-            {selectedCount === tableRootTasks.length ? 'Deselect all' : 'Select all'}
-          </Button>
-          <Button variant="danger" size="sm" disabled={selectedCount === 0} onClick={() => setBulkDeleteModal(true)}>
-            Delete Selected
-          </Button>
-        </div>
-      ) : null}
-
       <div className="text-sm text-gray-600">
         Showing <span className="font-semibold text-gray-900">{tableRootTasks.length}</span> result
         {tableRootTasks.length !== 1 ? 's' : ''}
@@ -1248,10 +1196,7 @@ export default function MyTasksPage() {
               data={tableRootTasks}
               keyField="id"
               variant="modern"
-              onRowClick={bulkEditMode ? (row) => toggleSelect(row.id) : (row) => router.push(`/tasks/${row.id}`)}
-              getRowClassName={(row) =>
-                selectedTasks.has(row.id) ? 'bg-orange-50/90 ring-1 ring-inset ring-orange-200' : undefined
-              }
+              onRowClick={(row) => router.push(`/tasks/${row.id}`)}
               renderAfterRow={(row) => (
                 <TaskSubtasksAfterRow
                   row={row}
@@ -1259,6 +1204,7 @@ export default function MyTasksPage() {
                   colSpan={visibleTableColumns.length}
                   users={users}
                   savingId={savingId}
+                  childrenByParentId={childrenByParentId}
                   onUpdateTask={updateTask}
                   onOpenTask={(subtask) => router.push(`/tasks/${subtask.id}`)}
                   onEditTask={(subtask) => setTaskModal({ open: true, task: subtask, parentContext: null })}
@@ -1361,7 +1307,7 @@ export default function MyTasksPage() {
         projects={projects}
         users={users}
         defaultAssignerId={getUserId() ? String(getUserId()) : ''}
-        defaultStatus={activeTab !== 'all' && activeTab !== 'OVERDUE' ? activeTab : 'SCHEDULED'}
+        defaultStatus={activeTab === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'SCHEDULED'}
         saving={saving}
       />
 
@@ -1376,22 +1322,6 @@ export default function MyTasksPage() {
             </Button>
             <Button variant="danger" onClick={handleDeleteTask} disabled={saving}>
               {saving ? 'Deleting...' : 'Delete'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      <Modal isOpen={bulkDeleteModal} onClose={() => setBulkDeleteModal(false)} title="Delete Selected Tasks" size="sm">
-        <div className="space-y-5">
-          <p className="text-sm text-gray-700">
-            Delete <span className="font-semibold text-gray-900">{selectedCount}</span> selected task{selectedCount === 1 ? '' : 's'}?
-          </p>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setBulkDeleteModal(false)} disabled={saving}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handleBulkDelete} disabled={saving || selectedCount === 0}>
-              {saving ? 'Deleting...' : 'Delete Selected'}
             </Button>
           </div>
         </div>

@@ -316,8 +316,8 @@ export default function DashboardPage() {
     return (
       <div className="p-4 space-y-4 bg-white min-h-full">
         <PMPageHeader
-          title="Dashboard"
-          subtitle={`${getGreeting()}, ${userName} • ${getCurrentDate()}`}
+          title={`${getGreeting()}, ${userName}`}
+          subtitle={getCurrentDate()}
           breadcrumb={[{ label: 'Dashboard', href: '/' }]}
           showSearch
           searchPlaceholder="Search anything..."
@@ -335,8 +335,8 @@ export default function DashboardPage() {
   return (
     <div className="p-4 space-y-4 bg-white min-h-full">
       <PMPageHeader
-        title="Dashboard"
-        subtitle={`${getGreeting()}, ${userName} • ${getCurrentDate()}`}
+        title={`${getGreeting()}, ${userName}`}
+        subtitle={getCurrentDate()}
         breadcrumb={[{ label: 'Dashboard', href: '/' }]}
         showSearch
         searchPlaceholder="Search anything..."

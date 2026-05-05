@@ -124,7 +124,7 @@ export default function DashboardPage() {
             {/* Left Column - Analytics & Pipeline */}
             <div className="xl:col-span-2 space-y-6">
               {/* Sales Analytics */}
-              <SalesAnalyticsWidget />
+              <SalesAnalyticsWidget className="xl:h-[42rem]" />
 
               <LeadsMeetingsWidget />
             </div>
@@ -132,7 +132,7 @@ export default function DashboardPage() {
             {/* Right Column - Actions & Activity */}
             <div className="space-y-6">
               {/* My work — tasks due today, overdue, upcoming */}
-              <MyWorkWidget />
+              <MyWorkWidget className="xl:h-[42rem]" />
 
               {/* Activity Feed */}
               <LeadSourcesWidget />
