@@ -15,6 +15,7 @@ import {
 import CRMPageHeader from '../../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../../lib/api/clientAccountService';
 import strapiClient from '../../../../../lib/strapiClient';
+import { canWriteCRM } from '../../../../../lib/rbac';
 import {
   industryOptions,
   companyTypes,
@@ -117,6 +118,7 @@ export default function EditClientAccountPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id;
+  const canEditClientAccount = canWriteCRM('client_accounts');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -155,6 +157,10 @@ export default function EditClientAccountPage() {
   }, [form.industry]);
 
   useEffect(() => {
+    if (!canEditClientAccount) {
+      setLoadingUsers(false);
+      return undefined;
+    }
     let cancelled = false;
     (async () => {
       setLoadingUsers(true);
@@ -191,7 +197,7 @@ export default function EditClientAccountPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [canEditClientAccount]);
 
   useEffect(() => {
     if (!id) return;
@@ -308,6 +314,10 @@ export default function EditClientAccountPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError('');
+    if (!canEditClientAccount) {
+      setSubmitError('You do not have permission to edit client accounts.');
+      return;
+    }
     if (!form.companyName.trim()) {
       setSubmitError('Company name is required');
       return;
@@ -352,6 +362,37 @@ export default function EditClientAccountPage() {
           <div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-orange-500" />
           <p className="mt-2 text-sm text-gray-500">Redirecting…</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!canEditClientAccount) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <CRMPageHeader
+          title="View-only access"
+          subtitle={accountLabel || 'Client account editing is restricted for your role.'}
+          breadcrumb={[
+            { label: 'Dashboard', href: '/' },
+            { label: 'Clients', href: '/clients' },
+            { label: 'Accounts', href: '/clients/accounts' },
+            { label: accountLabel || 'Account', href: id ? `/clients/accounts/${id}` : '/clients/accounts' },
+          ]}
+          showSearch={false}
+          showActions={false}
+        />
+        <Card variant="elevated" className="rounded-xl p-8 text-center">
+          <h2 className="text-xl font-semibold text-gray-900">You can view this client account, but cannot edit it.</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
+            Client account updates require CRM client account write access. Members keep read-only access by default.
+          </p>
+          <Link href={id ? `/clients/accounts/${id}` : '/clients/accounts'} className="mt-6 inline-flex">
+            <Button type="button" variant="primary">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to account
+            </Button>
+          </Link>
+        </Card>
       </div>
     );
   }

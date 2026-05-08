@@ -67,6 +67,7 @@ import {
   canonicalIndustryValue,
   canonicalCompanyTypeValue,
 } from '../../../../lib/leadCompanyProfileOptions';
+import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 
 function formatCurrency(value) {
   if (value == null || value === '') return '₹0';
@@ -320,9 +321,15 @@ export default function LeadCompanyDetailPage() {
   const [convertError, setConvertError] = useState('');
 
   const isAlreadyConverted = lead?.status === 'CONVERTED' || lead?.convertedAccount != null;
+  const canEditLeadCompany = canEditCRMRecord('leads', lead);
+  const canManageLeadCompanies = canManageCRM('leads');
 
   const handleConvertToClient = useCallback(async () => {
     if (!id || converting) return;
+    if (!canEditLeadCompany) {
+      setConvertError('You can only convert lead companies assigned to you.');
+      return;
+    }
     setConverting(true);
     setConvertError('');
     try {
@@ -341,7 +348,7 @@ export default function LeadCompanyDetailPage() {
     } finally {
       setConverting(false);
     }
-  }, [id, converting, router]);
+  }, [canEditLeadCompany, id, converting, router]);
 
   const loadLinkedContacts = useCallback(
     async (showLoadingSpinner = false) => {
@@ -652,6 +659,7 @@ export default function LeadCompanyDetailPage() {
   );
 
   const openChangeAssigneeModal = useCallback(async () => {
+    if (!canManageLeadCompanies) return;
     if (!lead || !id) return;
     const currentId =
       lead.assignedTo && typeof lead.assignedTo === 'object'
@@ -689,7 +697,7 @@ export default function LeadCompanyDetailPage() {
     } finally {
       setAssigneeUsersLoading(false);
     }
-  }, [lead, id]);
+  }, [canManageLeadCompanies, lead, id]);
 
   const closeAssigneeModal = useCallback(() => {
     if (savingAssignee) return;
@@ -698,6 +706,7 @@ export default function LeadCompanyDetailPage() {
   }, [savingAssignee]);
 
   const saveAssigneePick = useCallback(async () => {
+    if (!canManageLeadCompanies) return;
     if (!id || !assigneePickUserId) {
       setAssigneeModalError('Select a team member.');
       return;
@@ -722,7 +731,7 @@ export default function LeadCompanyDetailPage() {
     } finally {
       setSavingAssignee(false);
     }
-  }, [id, assigneePickUserId, reloadCrmTimeline]);
+  }, [assigneePickUserId, canManageLeadCompanies, id, reloadCrmTimeline]);
 
   const handleShare = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -748,6 +757,7 @@ export default function LeadCompanyDetailPage() {
   };
 
   const openCompanyInfoEdit = () => {
+    if (!canEditLeadCompany) return;
     if (!lead) return;
     setCompanyInfoDraft({
       industry: canonicalIndustryValue(lead.industry ?? ''),
@@ -804,6 +814,7 @@ export default function LeadCompanyDetailPage() {
 
   const saveCompanyInfo = async () => {
     if (!id || !companyInfoDraft) return;
+    if (!canEditLeadCompany) return;
     setSavingCompanyInfo(true);
     setCompanyInfoSaveError('');
     try {
@@ -833,6 +844,7 @@ export default function LeadCompanyDetailPage() {
   };
 
   const openContactInfoEdit = () => {
+    if (!canEditLeadCompany) return;
     if (!lead) return;
     setContactInfoDraft({
       website: lead.website ?? '',
@@ -860,6 +872,7 @@ export default function LeadCompanyDetailPage() {
 
   const saveContactInfo = async () => {
     if (!id || !contactInfoDraft) return;
+    if (!canEditLeadCompany) return;
     setSavingContactInfo(true);
     setContactInfoSaveError('');
     try {
@@ -895,6 +908,7 @@ export default function LeadCompanyDetailPage() {
   };
 
   const openAddContactModal = () => {
+    if (!canEditLeadCompany) return;
     setAddContactForm({ ...initialAddContactForm });
     setAddContactErrors({});
     setAddContactOpen(true);
@@ -926,6 +940,7 @@ export default function LeadCompanyDetailPage() {
   const submitAddContact = async (e) => {
     e.preventDefault();
     if (!id || !lead) return;
+    if (!canEditLeadCompany) return;
     if (!validateAddContact()) return;
     setAddContactSubmitting(true);
     setAddContactErrors((prev) => ({ ...prev, submit: null }));
@@ -1439,7 +1454,7 @@ export default function LeadCompanyDetailPage() {
                 Converted
               </span>
             )
-          ) : (
+          ) : canEditLeadCompany ? (
             <button
               type="button"
               onClick={() => { setConvertError(''); setConvertModalOpen(true); }}
@@ -1448,10 +1463,12 @@ export default function LeadCompanyDetailPage() {
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               Convert to Client
             </button>
-          )}
-          <Link href={`/sales/lead-companies/${id}/edit`} className={headerIconBtnClass} title="Edit">
-            <Edit className="w-5 h-5" />
-          </Link>
+          ) : null}
+          {canEditLeadCompany ? (
+            <Link href={`/sales/lead-companies/${id}/edit`} className={headerIconBtnClass} title="Edit">
+              <Edit className="w-5 h-5" />
+            </Link>
+          ) : null}
           <button type="button" className={headerIconBtnClass} title="Share" onClick={handleShare}>
             <Share2 className="w-5 h-5" />
           </button>
@@ -1749,24 +1766,26 @@ export default function LeadCompanyDetailPage() {
                               )}
                             </section>
 
-                            <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
-                              <button
-                                type="button"
-                                onClick={openCompanyInfoEdit}
-                                className="font-medium text-orange-600 hover:underline"
-                              >
-                                Edit company details
-                              </button>
-                              <span className="mx-2 text-gray-300" aria-hidden>
-                                ·
-                              </span>
-                              <Link
-                                href={`/sales/lead-companies/${id}/edit`}
-                                className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
-                              >
-                                Full edit page
-                              </Link>
-                            </p>
+                            {canEditLeadCompany ? (
+                              <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
+                                <button
+                                  type="button"
+                                  onClick={openCompanyInfoEdit}
+                                  className="font-medium text-orange-600 hover:underline"
+                                >
+                                  Edit company details
+                                </button>
+                                <span className="mx-2 text-gray-300" aria-hidden>
+                                  ·
+                                </span>
+                                <Link
+                                  href={`/sales/lead-companies/${id}/edit`}
+                                  className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
+                                >
+                                  Full edit page
+                                </Link>
+                              </p>
+                            ) : null}
                           </>
                         );
                       })()}
@@ -1881,24 +1900,26 @@ export default function LeadCompanyDetailPage() {
                           }
                         />
                       </div>
-                      <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
-                        <button
-                          type="button"
-                          onClick={openContactInfoEdit}
-                          className="font-medium text-orange-600 hover:underline"
-                        >
-                          Edit contact details
-                        </button>
-                        <span className="mx-2 text-gray-300" aria-hidden>
-                          ·
-                        </span>
-                        <Link
-                          href={`/sales/lead-companies/${id}/edit`}
-                          className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
-                        >
-                          Full edit page
-                        </Link>
-                      </p>
+                      {canEditLeadCompany ? (
+                        <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
+                          <button
+                            type="button"
+                            onClick={openContactInfoEdit}
+                            className="font-medium text-orange-600 hover:underline"
+                          >
+                            Edit contact details
+                          </button>
+                          <span className="mx-2 text-gray-300" aria-hidden>
+                            ·
+                          </span>
+                          <Link
+                            href={`/sales/lead-companies/${id}/edit`}
+                            className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
+                          >
+                            Full edit page
+                          </Link>
+                        </p>
+                      ) : null}
                     </>
                   )}
                 </Card>
@@ -1926,16 +1947,18 @@ export default function LeadCompanyDetailPage() {
                         </div>
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="w-full shrink-0 gap-2 !border-gray-300 bg-white !text-gray-700 shadow-sm hover:bg-gray-50 hover:!text-gray-900 sm:w-auto"
-                      onClick={openChangeAssigneeModal}
-                    >
-                      <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
-                      Change Assignee
-                    </Button>
+                    {canManageLeadCompanies ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full shrink-0 gap-2 !border-gray-300 bg-white !text-gray-700 shadow-sm hover:bg-gray-50 hover:!text-gray-900 sm:w-auto"
+                        onClick={openChangeAssigneeModal}
+                      >
+                        <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
+                        Change Assignee
+                      </Button>
+                    ) : null}
                   </div>
                 </Card>
 
@@ -2061,14 +2084,16 @@ export default function LeadCompanyDetailPage() {
                     </>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={openAddContactModal}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-pink-500 shadow-md hover:opacity-95 transition-opacity shrink-0 w-full sm:w-auto"
-                >
-                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
-                  Add Contact
-                </button>
+                {canEditLeadCompany ? (
+                  <button
+                    type="button"
+                    onClick={openAddContactModal}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-pink-500 shadow-md hover:opacity-95 transition-opacity shrink-0 w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                    Add Contact
+                  </button>
+                ) : null}
               </div>
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 {contactsLoading ? (
@@ -2082,21 +2107,23 @@ export default function LeadCompanyDetailPage() {
                       title="No contacts yet"
                       description="Add a contact for this lead company, or attach more from the company editor."
                       action={
-                        <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
-                          <Button
-                            type="button"
-                            onClick={openAddContactModal}
-                            className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-pink-500 border-0 text-white shadow-md hover:opacity-95"
-                          >
-                            <Plus className="h-4 w-4 shrink-0 inline mr-2 align-text-bottom" aria-hidden />
-                            Add contact
-                          </Button>
-                          <Link href={`/sales/lead-companies/${id}/edit`} className="w-full sm:w-auto">
-                            <Button type="button" variant="outline" className="w-full sm:w-auto">
-                              Edit company
+                        canEditLeadCompany ? (
+                          <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:justify-center">
+                            <Button
+                              type="button"
+                              onClick={openAddContactModal}
+                              className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-pink-500 border-0 text-white shadow-md hover:opacity-95"
+                            >
+                              <Plus className="h-4 w-4 shrink-0 inline mr-2 align-text-bottom" aria-hidden />
+                              Add contact
                             </Button>
-                          </Link>
-                        </div>
+                            <Link href={`/sales/lead-companies/${id}/edit`} className="w-full sm:w-auto">
+                              <Button type="button" variant="outline" className="w-full sm:w-auto">
+                                Edit company
+                              </Button>
+                            </Link>
+                          </div>
+                        ) : null
                       }
                     />
                   </div>

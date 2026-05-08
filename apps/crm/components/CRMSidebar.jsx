@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import SubSidebar from './SubSidebar'
 import { fetchGlobalActivityFeed } from '../lib/api/crmActivityService'
+import { canReadCRM, canWriteCRM } from '../lib/rbac'
 
 function formatRelativeTime(dateString) {
   if (!dateString) return ''
@@ -127,6 +128,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
   const quickActionItems = [
     {
       label: 'Add Lead',
+      module: 'leads',
       icon: Users,
       href: '/sales/lead-companies/new',
       color: 'text-orange-600',
@@ -135,6 +137,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
     },
     {
       label: 'Log Call',
+      module: 'leads',
       icon: Phone,
       href: comingSoonHref('Log Call'),
       color: 'text-sky-600',
@@ -143,6 +146,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
     },
     {
       label: 'Send WhatsApp',
+      module: 'leads',
       icon: MessageCircle,
       href: comingSoonHref('Send WhatsApp'),
       color: 'text-emerald-600',
@@ -151,6 +155,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
     },
     {
       label: 'Create Proposal',
+      module: 'proposals',
       icon: FileText,
       href: '/clients/proposals',
       color: 'text-indigo-600',
@@ -159,6 +164,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
     },
     {
       label: 'Schedule Meeting',
+      module: 'meetings',
       icon: Calendar,
       href: '/meetings/new',
       color: 'text-violet-600',
@@ -167,6 +173,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
     },
     {
       label: 'Add Task',
+      module: 'client_projects',
       icon: CheckSquare,
       href: '/clients/tasks',
       color: 'text-purple-600',
@@ -219,6 +226,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
   const mainNavigationItems = [
     {
       id: 'dashboard',
+      module: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
       href: '/',
@@ -251,24 +259,28 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
       children: [
         {
           id: 'lead-companies',
+          module: 'leads',
           label: 'Lead Companies',
           icon: Users,
           href: '/sales/lead-companies',
         },
         {
           id: 'contacts',
+          module: 'contacts',
           label: 'Contacts',
           icon: UserCheck,
           href: '/sales/contacts',
         },
         {
           id: 'opportunities',
+          module: 'deals',
           label: 'Deals',
           icon: Briefcase,
           href: '/sales/deals',
         },
         {
           id: 'pipeline',
+          module: 'deals',
           label: 'Pipeline Board',
           icon: BarChart3,
           href: '/sales/deals/pipeline',
@@ -281,36 +293,42 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
       children: [
         {
           id: 'threads',
+          module: 'leads',
           label: 'Threads',
           icon: MessageSquare,
           href: '/threads',
         },
         {
           id: 'activity-log',
+          module: 'dashboard',
           label: 'Activity log',
           icon: Activity,
           href: '/activities',
         },
         {
           id: 'proposals',
+          module: 'proposals',
           label: 'Proposals',
           icon: FileText,
           href: '/clients/proposals',
         },
         {
           id: 'tasks',
+          module: 'client_projects',
           label: 'Tasks',
           icon: CheckSquare,
           href: '/clients/tasks',
         },
         {
           id: 'meetings',
+          module: 'meetings',
           label: 'Meetings',
           icon: Calendar,
           href: '/meetings',
         },
         {
           id: 'calendar',
+          module: 'calendar',
           label: 'Calendar',
           icon: CalendarDays,
           href: '/calendar',
@@ -329,18 +347,21 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
       children: [
         {
           id: 'client-accounts',
+          module: 'client_accounts',
           label: 'Client Accounts',
           icon: Building2,
           href: '/clients/accounts',
         },
         {
           id: 'invoices',
+          module: 'client_invoices',
           label: 'Invoices',
           icon: Receipt,
           href: '/clients/invoices',
         },
         {
           id: 'projects',
+          module: 'client_projects',
           label: 'Projects',
           icon: FolderOpen,
           href: '/clients/projects',
@@ -353,12 +374,14 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
       children: [
         {
           id: 'analytics-home',
+          module: 'analytics',
           label: 'Overview',
           icon: BarChart3,
           href: '/analytics',
         },
         {
           id: 'reports',
+          module: 'analytics',
           label: 'Reports & Forecasts',
           icon: BarChart3,
           href: comingSoonHref('Analytics'),
@@ -377,6 +400,20 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
         <div className="flex-1 h-px bg-white/25" />
       </div>
     )
+
+  const visibleQuickActions = quickActionItems.filter((item) => canWriteCRM(item.module))
+  const visibleNavigationData = navigationData
+    .map((section) => ({
+      ...section,
+      children: (section.children || []).filter((item) => !item.module || canReadCRM(item.module)),
+    }))
+    .filter((section) => section.children.length > 0)
+  const visibleMainNavigationItems = mainNavigationItems.filter((item) => {
+    if (item.module) return canReadCRM(item.module)
+    if (!item.hasSubNav) return true
+    return visibleNavigationData.some((section) => section.id === item.id)
+  })
+  const canReadAnalytics = canReadCRM('analytics')
 
   return (
     <>
@@ -409,6 +446,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
             <button
               type="button"
               onClick={toggleQuickActions}
+              disabled={visibleQuickActions.length === 0}
               className={`w-full bg-gradient-to-r from-orange-500/20 to-orange-600/10 backdrop-blur-md border ${
                 quickActionsOpen
                   ? 'border-orange-300/60'
@@ -442,7 +480,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
                   <p className="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                     Quick actions
                   </p>
-                  {quickActionItems.map((item, index) => {
+                  {visibleQuickActions.map((item, index) => {
                     const QIcon = item.icon
                     return (
                       <button
@@ -473,7 +511,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
           <div className="px-3 pt-3 pb-2">
             {sectionRule('Navigate')}
             <div className={`grid gap-3 ${collapsed ? 'grid-cols-1' : 'grid-cols-2'}`}>
-              {mainNavigationItems.map((item) => {
+              {visibleMainNavigationItems.map((item) => {
                 const Icon = item.icon
                 const sectionActive =
                   (item.id === 'sales' && isSalesActive()) ||
@@ -544,7 +582,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
           )}
 
           {/* Activity feed — match list-table chrome (lead companies / contacts): border + shadow-md */}
-          {!collapsed && (
+          {!collapsed && canReadCRM('dashboard') && (
             <div className="px-3 py-2 relative z-0">
               {sectionRule('Activity')}
               <div className="rounded-xl border border-gray-300 bg-white shadow-md overflow-hidden relative z-0 ring-1 ring-black/[0.04]">
@@ -615,7 +653,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
           )}
 
           {/* System + profile scroll with the rest (not pinned to viewport bottom) */}
-          {!collapsed && (
+          {!collapsed && canReadAnalytics && (
             <div className="px-3 pt-2 pb-2 space-y-2">
               <div className="flex items-center gap-2 px-1">
                 <div className="flex-1 h-px bg-white/25" />
@@ -639,7 +677,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
             </div>
           )}
 
-          {collapsed && (
+          {collapsed && canReadAnalytics && (
             <div className="px-2 py-2 flex justify-center">
               <button
                 type="button"
@@ -670,7 +708,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
         isOpen={subSidebarOpen}
         onClose={closeSubSidebar}
         currentSection={currentSection}
-        navigationData={navigationData}
+        navigationData={visibleNavigationData}
         onNavigate={handleNavigate}
       />
     </>

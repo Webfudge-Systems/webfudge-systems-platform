@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@webfudge/auth';
-import { Users, DollarSign, TrendingUp, Target, Loader2 } from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Target, Loader2, ShieldX } from 'lucide-react';
 import { formatCurrency } from '@webfudge/utils';
 import { KPICard } from '@webfudge/ui';
 import CRMPageHeader from '../components/CRMPageHeader';
@@ -13,6 +13,7 @@ import {
   LeadSourcesWidget,
   LeadsMeetingsWidget,
 } from '../components/dashboard';
+import { canReadCRM } from '../lib/rbac';
 
 const colorSchemes = ['orange', 'orange', 'orange', 'orange'];
 
@@ -20,6 +21,10 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState([]);
+  const canViewDashboard = canReadCRM('dashboard');
+  const canViewAnalytics = canReadCRM('analytics');
+  const canViewLeads = canReadCRM('leads');
+  const canViewMeetings = canReadCRM('meetings');
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -36,6 +41,7 @@ export default function DashboardPage() {
     (async () => {
       try {
         setLoading(true);
+        if (!canViewDashboard) return;
         const [statsRes] = await Promise.all([dashboardService.getStats()]);
         const data = statsRes?.data || {};
         const changes = data.changes || {};
@@ -79,10 +85,24 @@ export default function DashboardPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [canViewDashboard]);
 
   const email = user?.email || user?.attributes?.email || '';
   const userName = email.split('@')[0] || 'User';
+
+  if (!canViewDashboard) {
+    return (
+      <div className="p-8 bg-white min-h-full flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center mb-5">
+            <ShieldX className="w-8 h-8 text-red-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">CRM dashboard unavailable</h1>
+          <p className="text-gray-600">Your current role does not have read access to the CRM dashboard.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 space-y-4 bg-white min-h-full">
@@ -125,9 +145,9 @@ export default function DashboardPage() {
             {/* Left Column - Analytics & Pipeline */}
             <div className="xl:col-span-2 space-y-6">
               {/* Sales Analytics */}
-              <SalesAnalyticsWidget className="xl:h-[42rem]" />
+              {canViewAnalytics ? <SalesAnalyticsWidget className="xl:h-[42rem]" /> : null}
 
-              <LeadsMeetingsWidget />
+              {canViewLeads || canViewMeetings ? <LeadsMeetingsWidget /> : null}
             </div>
 
             {/* Right Column - Actions & Activity */}
@@ -136,7 +156,7 @@ export default function DashboardPage() {
               <MyWorkWidget className="xl:h-[42rem]" />
 
               {/* Activity Feed */}
-              <LeadSourcesWidget />
+              {canViewLeads ? <LeadSourcesWidget /> : null}
             </div>
           </div>
         </>

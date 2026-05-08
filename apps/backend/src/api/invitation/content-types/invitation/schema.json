@@ -28,7 +28,7 @@
     },
     "role": {
       "type": "string",
-      "default": "User"
+      "default": "Member"
     },
     "permissions": {
       "type": "json",

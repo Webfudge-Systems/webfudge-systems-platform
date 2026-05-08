@@ -1,6 +1,9 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
+const { resolveOrganizationRoleId } = require('../../../utils/organization-role');
+const { membershipSummary } = require('../../../utils/rbac');
+const { normalizeUserUsername, uniqueUsernameFromEmail } = require('../../../utils/user-username');
 
 // JWT secret - use environment variable or fallback to default
 const JWT_SECRET = process.env.JWT_SECRET || 'myJwtSecret123456789012345678901234567890';
@@ -27,6 +30,7 @@ async function listActiveMemberships(userId, withModules = false) {
     filters: { user: userId, isActive: true },
     sort: { joinedAt: 'ASC' },
     populate: {
+      role: true,
       organization: {
         populate: {
           subscriptions: {
@@ -68,11 +72,13 @@ async function ensureActiveOrganizationMembership(user) {
     },
   });
 
+  const adminRoleId = await resolveOrganizationRoleId(strapi, 'Admin');
+
   await strapi.entityService.create(ORG_MEMBERSHIP_UID, {
     data: {
       user: user.id,
       organization: organization.id,
-      role: 'Owner',
+      role: adminRoleId,
       isActive: true,
       joinedAt: new Date(),
     },
@@ -80,6 +86,20 @@ async function ensureActiveOrganizationMembership(user) {
 
   memberships = await listActiveMemberships(user.id, true);
   return memberships;
+}
+
+function organizationPayload(membership) {
+  const summary = membershipSummary(membership);
+  return {
+    ...membership.organization,
+    role: summary.role,
+    roleCode: summary.roleCode,
+    roleId: summary.roleId,
+    accessLevel: summary.accessLevel,
+    permissions: summary.permissions,
+    customPermissions: summary.customPermissions,
+    joinedAt: summary.joinedAt,
+  };
 }
 
 module.exports = {
@@ -101,9 +121,10 @@ module.exports = {
       }
 
       // Create user
+      const normalizedEmail = email.toLowerCase();
       const user = await strapi.plugins['users-permissions'].services.user.add({
-        username: email,
-        email: email.toLowerCase(),
+        username: await uniqueUsernameFromEmail(strapi, normalizedEmail),
+        email: normalizedEmail,
         password,
         firstName,
         lastName,
@@ -130,7 +151,7 @@ module.exports = {
           firstName: user.firstName,
           lastName: user.lastName
         },
-        organizations: organizations.map(ou => ou.organization)
+        organizations: organizations.map(organizationPayload)
       });
     } catch (error) {
       console.error('Signup error:', error);
@@ -147,7 +168,7 @@ module.exports = {
 
     try {
       // Validate credentials
-      const user = await strapi.query('plugin::users-permissions.user').findOne({
+      let user = await strapi.query('plugin::users-permissions.user').findOne({
         where: {
           $or: [
             { email: identifier.toLowerCase() },
@@ -173,6 +194,7 @@ module.exports = {
       if (user.blocked) {
         return ctx.badRequest('Your account has been blocked');
       }
+      user = await normalizeUserUsername(strapi, user);
 
       // Generate JWT manually
       const token = jwt.sign(
@@ -192,7 +214,7 @@ module.exports = {
           firstName: user.firstName,
           lastName: user.lastName
         },
-        organizations: organizations.map(ou => ou.organization)
+        organizations: organizations.map(organizationPayload)
       });
     } catch (error) {
       console.error('Login error:', error);
@@ -225,13 +247,14 @@ module.exports = {
       }
 
       // Get user from database
-      const user = await strapi.query('plugin::users-permissions.user').findOne({
+      let user = await strapi.query('plugin::users-permissions.user').findOne({
         where: { id: decoded.id }
       });
 
       if (!user || user.blocked) {
         return ctx.unauthorized('User not found or blocked');
       }
+      user = await normalizeUserUsername(strapi, user);
 
       const organizations = await ensureActiveOrganizationMembership(user);
 
@@ -243,11 +266,7 @@ module.exports = {
           firstName: user.firstName,
           lastName: user.lastName
         },
-        organizations: organizations.map(ou => ({
-          ...ou.organization,
-          role: ou.role,
-          joinedAt: ou.joinedAt
-        }))
+        organizations: organizations.map(organizationPayload)
       });
     } catch (error) {
       console.error('Me error:', error);

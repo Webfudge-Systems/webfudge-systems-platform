@@ -26,6 +26,7 @@ import {
   getSubTypeOptionsForType,
   industryOptions,
 } from '../../../../../lib/leadCompanyProfileOptions';
+import { canEditCRMRecord } from '../../../../../lib/rbac';
 import {
   AlignLeft,
   ArrowLeft,
@@ -96,6 +97,7 @@ export default function EditLeadCompanyPage() {
   const [addContactSubmitting, setAddContactSubmitting] = useState(false);
   const [deleteContactId, setDeleteContactId] = useState(null);
   const [deleteContactSubmitting, setDeleteContactSubmitting] = useState(false);
+  const canEditLeadCompany = lead ? canEditCRMRecord('leads', lead) : false;
 
   const statusOptions = useMemo(
     () => [
@@ -265,6 +267,7 @@ export default function EditLeadCompanyPage() {
     e?.preventDefault?.();
     if (!id) return;
     if (!lead) return;
+    if (!canEditLeadCompany) return;
     if (!validateAddContact()) return;
 
     setAddContactSubmitting(true);
@@ -333,6 +336,10 @@ export default function EditLeadCompanyPage() {
   const handleSubmitUpdate = async (e) => {
     e.preventDefault();
     setSubmitError('');
+    if (!canEditLeadCompany) {
+      setSubmitError('You can only edit lead companies assigned to you.');
+      return;
+    }
 
     if (!draft.companyName.trim()) {
       setSubmitError('Company name is required');
@@ -406,15 +413,17 @@ export default function EditLeadCompanyPage() {
 
   const deleteContact = useCallback(
     (contactId) => {
+      if (!canEditLeadCompany) return;
       if (!contactId) return;
       setDeleteContactId(contactId);
     },
-    []
+    [canEditLeadCompany]
   );
 
   const confirmDeleteContact = useCallback(
     async () => {
       if (!deleteContactId || deleteContactSubmitting) return;
+      if (!canEditLeadCompany) return;
       try {
         setDeleteContactSubmitting(true);
         await contactService.delete(deleteContactId);
@@ -427,7 +436,7 @@ export default function EditLeadCompanyPage() {
         setDeleteContactSubmitting(false);
       }
     },
-    [deleteContactId, deleteContactSubmitting, reloadLinkedContacts]
+    [canEditLeadCompany, deleteContactId, deleteContactSubmitting, reloadLinkedContacts]
   );
 
   const leadContactsColumns = useMemo(
@@ -549,6 +558,38 @@ export default function EditLeadCompanyPage() {
           <div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-orange-500" />
           <p className="mt-2 text-sm text-gray-500">Redirecting…</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!loading && lead && !canEditLeadCompany) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <CRMPageHeader
+          title="View-only access"
+          subtitle={lead.companyName || lead.name || 'Lead company editing is restricted for your role.'}
+          showSearch={false}
+          showActions={false}
+          breadcrumb={[
+            { label: 'Sales', href: '/sales' },
+            { label: 'Lead companies', href: '/sales/lead-companies' },
+            { label: lead.companyName || lead.name || 'Lead', href: `/sales/lead-companies/${id}` },
+          ]}
+        />
+        <Card variant="elevated" className="rounded-xl p-8 text-center">
+          <h2 className="text-xl font-semibold text-gray-900">
+            You can view this lead company, but cannot edit it.
+          </h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
+            Members can edit only lead companies assigned to them. Managers and admins can manage leads across the team.
+          </p>
+          <Link href={`/sales/lead-companies/${id}`} className="mt-6 inline-flex">
+            <Button type="button" variant="primary">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to lead company
+            </Button>
+          </Link>
+        </Card>
       </div>
     );
   }

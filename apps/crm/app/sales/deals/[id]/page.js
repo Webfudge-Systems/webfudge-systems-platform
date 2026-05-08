@@ -64,6 +64,7 @@ import {
   DEAL_STAGE_OPTIONS,
   PRIORITY_OPTIONS,
 } from '../../../../lib/dealFormOptions';
+import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../../lib/rbac';
 
 const headerIconBtnClass =
   'rounded-xl border border-white/20 bg-white/10 p-2.5 text-brand-text-light shadow-lg backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/20';
@@ -444,6 +445,9 @@ export default function DealDetailPage() {
   const [dealTasks, setDealTasks] = useState([]);
   const [dealTasksLoading, setDealTasksLoading] = useState(false);
   const [dealMeetingsCount, setDealMeetingsCount] = useState(0);
+  const canEditDeal = canEditCRMRecord('deals', deal);
+  const canManageDeals = canManageCRM('deals');
+  const canWriteDeals = canWriteCRM('deals');
 
   useEffect(() => {
     if (!id) return;
@@ -730,6 +734,7 @@ export default function DealDetailPage() {
   }, [dealInfoDraft?.priority]);
 
   const openDealInfoEdit = () => {
+    if (!canEditDeal) return;
     if (!deal) return;
     setDealInfoDraft({
       name: deal.name ?? '',
@@ -754,6 +759,7 @@ export default function DealDetailPage() {
 
   const saveDealInfo = async () => {
     if (!id || !dealInfoDraft) return;
+    if (!canEditDeal) return;
     const name = dealInfoDraft.name.trim();
     if (!name) {
       setDealInfoSaveError('Deal name is required.');
@@ -803,7 +809,7 @@ export default function DealDetailPage() {
     return null;
   }, [deal]);
 
-  const canAddDealContacts = Boolean(leadCompanyId || clientAccountId);
+  const canAddDealContacts = canEditDeal && Boolean(leadCompanyId || clientAccountId);
 
   const closeDealAddContactModal = () => {
     if (dealAddContactSubmitting) return;
@@ -813,6 +819,7 @@ export default function DealDetailPage() {
   };
 
   const openDealAddContactModal = () => {
+    if (!canEditDeal) return;
     setDealAddContactForm({ ...initialDealAddContactForm });
     setDealAddContactErrors({});
     setDealAddContactOpen(true);
@@ -844,6 +851,7 @@ export default function DealDetailPage() {
   const submitDealAddContact = async (e) => {
     e.preventDefault();
     if (!deal || !id) return;
+    if (!canEditDeal) return;
     if (!canAddDealContacts) return;
     if (!validateDealAddContact()) return;
     setDealAddContactSubmitting(true);
@@ -1170,9 +1178,11 @@ export default function DealDetailPage() {
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link href={id ? `/sales/deals/${id}/edit` : '#'} className={headerIconBtnClass} title="Edit">
-            <Edit className="h-5 w-5" />
-          </Link>
+          {canEditDeal ? (
+            <Link href={id ? `/sales/deals/${id}/edit` : '#'} className={headerIconBtnClass} title="Edit">
+              <Edit className="h-5 w-5" />
+            </Link>
+          ) : null}
           <button type="button" className={headerIconBtnClass} title="Share" onClick={handleShare}>
             <Share2 className="h-5 w-5" />
           </button>
@@ -1363,24 +1373,26 @@ export default function DealDetailPage() {
                         )}
                       </section>
 
-                      <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-600">
-                        <button
-                          type="button"
-                          onClick={openDealInfoEdit}
-                          className="font-semibold text-orange-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
-                        >
-                          Edit deal details
-                        </button>
-                        <span className="mx-2 text-gray-300" aria-hidden>
-                          ·
-                        </span>
-                        <Link
-                          href={id ? `/sales/deals/${id}/edit` : '#'}
-                          className="font-medium text-gray-600 underline-offset-2 hover:text-orange-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
-                        >
-                          Full edit page
-                        </Link>
-                      </p>
+                      {canEditDeal ? (
+                        <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-600">
+                          <button
+                            type="button"
+                            onClick={openDealInfoEdit}
+                            className="font-semibold text-orange-700 underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                          >
+                            Edit deal details
+                          </button>
+                          <span className="mx-2 text-gray-300" aria-hidden>
+                            ·
+                          </span>
+                          <Link
+                            href={id ? `/sales/deals/${id}/edit` : '#'}
+                            className="font-medium text-gray-600 underline-offset-2 hover:text-orange-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                          >
+                            Full edit page
+                          </Link>
+                        </p>
+                      ) : null}
                     </>
                   )}
                 </Card>
@@ -1689,16 +1701,18 @@ export default function DealDetailPage() {
                         ) : null}
                       </div>
                     </div>
-                    <Button
-                      as={Link}
-                      href={id ? `/sales/deals/${id}/edit` : '#'}
-                      variant="outline"
-                      size="sm"
-                      className="w-full shrink-0 gap-2 !border-gray-300 bg-white !text-gray-700 shadow-sm hover:bg-gray-50 hover:!text-gray-900 sm:w-auto"
-                    >
-                      <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} aria-hidden />
-                      Change assignee
-                    </Button>
+                    {canManageDeals ? (
+                      <Button
+                        as={Link}
+                        href={id ? `/sales/deals/${id}/edit` : '#'}
+                        variant="outline"
+                        size="sm"
+                        className="w-full shrink-0 gap-2 !border-gray-300 bg-white !text-gray-700 shadow-sm hover:bg-gray-50 hover:!text-gray-900 sm:w-auto"
+                      >
+                        <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} aria-hidden />
+                        Change assignee
+                      </Button>
+                    ) : null}
                   </div>
                 </Card>
 
@@ -1931,11 +1945,13 @@ export default function DealDetailPage() {
                               Add contact
                             </Button>
                           ) : null}
-                          <Link href={id ? `/sales/deals/${id}/edit` : '#'} className="w-full sm:w-auto">
-                            <Button type="button" variant="outline" className="w-full sm:w-auto">
-                              Edit deal
-                            </Button>
-                          </Link>
+                          {canEditDeal ? (
+                            <Link href={id ? `/sales/deals/${id}/edit` : '#'} className="w-full sm:w-auto">
+                              <Button type="button" variant="outline" className="w-full sm:w-auto">
+                                Edit deal
+                              </Button>
+                            </Link>
+                          ) : null}
                         </div>
                       }
                     />
@@ -2026,8 +2042,10 @@ export default function DealDetailPage() {
                   fetchCommentsFn={({ entityId }) =>
                     fetchDealComments({ dealId: entityId, limit: 80 })
                   }
-                  addCommentFn={({ entityId, comment }) =>
-                    addDealComment({ dealId: entityId, comment })
+                  addCommentFn={
+                    canWriteDeals
+                      ? ({ entityId, comment }) => addDealComment({ dealId: entityId, comment })
+                      : null
                   }
                 />
               </div>

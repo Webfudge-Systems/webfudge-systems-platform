@@ -689,7 +689,7 @@ export interface ApiInvitationInvitation extends Struct.CollectionTypeSchema {
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     permissions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
     publishedAt: Schema.Attribute.DateTime
-    role: Schema.Attribute.String & Schema.Attribute.DefaultTo<'User'>
+    role: Schema.Attribute.String & Schema.Attribute.DefaultTo<'Member'>
     status: Schema.Attribute.Enumeration<['pending', 'accepted', 'expired']> &
       Schema.Attribute.DefaultTo<'pending'>
     token: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.Unique
@@ -955,6 +955,41 @@ export interface ApiNotificationNotification extends Struct.CollectionTypeSchema
   }
 }
 
+export interface ApiOrganizationRoleOrganizationRole extends Struct.CollectionTypeSchema {
+  collectionName: 'organization_roles'
+  info: {
+    description: 'Organization membership roles (system-wide templates and org-specific custom roles)'
+    displayName: 'Organization Role'
+    pluralName: 'organization-roles'
+    singularName: 'organization-role'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    accessLevel: Schema.Attribute.Enumeration<['high', 'medium', 'basic']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'basic'>
+    code: Schema.Attribute.UID<'name'> & Schema.Attribute.Required
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    isSystem: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::organization-role.organization-role'
+    > &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    permissions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiOrganizationUserOrganizationUser extends Struct.CollectionTypeSchema {
   collectionName: 'organization_users'
   info: {
@@ -981,7 +1016,7 @@ export interface ApiOrganizationUserOrganizationUser extends Struct.CollectionTy
       Schema.Attribute.Private
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     publishedAt: Schema.Attribute.DateTime
-    role: Schema.Attribute.String & Schema.Attribute.DefaultTo<'User'>
+    role: Schema.Attribute.Relation<'manyToOne', 'api::organization-role.organization-role'>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     user: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
@@ -1832,6 +1867,7 @@ declare module '@strapi/strapi' {
       'api::meeting.meeting': ApiMeetingMeeting
       'api::module.module': ApiModuleModule
       'api::notification.notification': ApiNotificationNotification
+      'api::organization-role.organization-role': ApiOrganizationRoleOrganizationRole
       'api::organization-user.organization-user': ApiOrganizationUserOrganizationUser
       'api::organization.organization': ApiOrganizationOrganization
       'api::project.project': ApiProjectProject

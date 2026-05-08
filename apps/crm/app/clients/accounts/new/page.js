@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Button,
+  Card,
   Input,
   Select,
   Textarea,
@@ -13,6 +14,7 @@ import {
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import strapiClient from '../../../../lib/strapiClient';
+import { canWriteCRM } from '../../../../lib/rbac';
 import { useAuth } from '@webfudge/auth';
 import {
   industryOptions,
@@ -82,6 +84,7 @@ export default function NewClientAccountPage() {
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const canCreateClientAccounts = canWriteCRM('client_accounts');
 
   const [form, setForm] = useState({
     companyName: '',
@@ -242,6 +245,10 @@ export default function NewClientAccountPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canCreateClientAccounts) {
+      setErrors({ submit: 'You only have read access to client accounts.' });
+      return;
+    }
     if (!validateForm()) {
       setShowValidationModal(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -275,6 +282,38 @@ export default function NewClientAccountPage() {
           <p className="text-gray-600 mb-4">Client account created successfully</p>
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto" />
           <p className="text-sm text-gray-500 mt-2">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canCreateClientAccounts) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="p-4 space-y-6">
+          <CRMPageHeader
+            title="View-only access"
+            subtitle="Members can read client accounts, but cannot create or update them."
+            breadcrumb={[
+              { label: 'Sales', href: '/sales' },
+              { label: 'Client Accounts', href: '/clients/accounts' },
+              { label: 'New Client Account', href: '/clients/accounts/new' },
+            ]}
+            showSearch={false}
+            showActions={false}
+          />
+          <Card variant="elevated" className="rounded-xl p-8 text-center">
+            <h2 className="text-xl font-semibold text-gray-900">
+              You cannot create client accounts with your current role.
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
+              Client account creation, editing, and deletion require write or manage access.
+            </p>
+            <Button type="button" variant="primary" className="mt-6" onClick={() => router.push('/clients/accounts')}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to client accounts
+            </Button>
+          </Card>
         </div>
       </div>
     );

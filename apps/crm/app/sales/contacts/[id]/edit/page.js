@@ -14,6 +14,7 @@ import {
 import CRMPageHeader from '../../../../../components/CRMPageHeader';
 import contactService from '../../../../../lib/api/contactService';
 import leadCompanyService from '../../../../../lib/api/leadCompanyService';
+import { canEditCRMRecord } from '../../../../../lib/rbac';
 import {
   ArrowLeft,
   Briefcase,
@@ -39,6 +40,7 @@ export default function EditContactPage() {
   const [showSuccess, setShowSuccess] = useState(false);
 
   const [contact, setContact] = useState(null);
+  const canEditContact = contact ? canEditCRMRecord('contacts', contact) : false;
 
   const [leadCompaniesLoading, setLeadCompaniesLoading] = useState(false);
   const [leadCompanies, setLeadCompanies] = useState([]);
@@ -169,6 +171,10 @@ export default function EditContactPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError('');
+    if (!canEditContact) {
+      setSubmitError('You can only edit contacts assigned to you.');
+      return;
+    }
     setSaving(true);
     try {
       if (!form.firstName.trim()) {
@@ -256,6 +262,40 @@ export default function EditContactPage() {
           <div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-orange-500" />
           <p className="mt-2 text-sm text-gray-500">Redirecting…</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!loading && contact && !canEditContact) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <CRMPageHeader
+          title="View-only access"
+          subtitle={
+            contact?.firstName || contact?.lastName
+              ? `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim()
+              : 'Contact editing is restricted for your role.'
+          }
+          breadcrumb={[
+            { label: 'Sales', href: '/sales' },
+            { label: 'Contacts', href: '/sales/contacts' },
+            { label: 'Contact', href: `/sales/contacts/${id}` },
+          ]}
+          showSearch={false}
+          showActions={false}
+        />
+        <Card variant="elevated" className="rounded-xl p-8 text-center">
+          <h2 className="text-xl font-semibold text-gray-900">You can view this contact, but cannot edit it.</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
+            Members can edit only contacts assigned to them. Managers and admins can manage contacts across the team.
+          </p>
+          <Link href={`/sales/contacts/${id}`} className="mt-6 inline-flex">
+            <Button type="button" variant="primary">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to contact
+            </Button>
+          </Link>
+        </Card>
       </div>
     );
   }

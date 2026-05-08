@@ -61,6 +61,7 @@ import { fetchActivityTimeline, fetchClientAccountComments, addClientAccountComm
 import strapiClient from '../../../../lib/strapiClient';
 import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
 import meetingService from '../../../../lib/api/meetingService';
+import { canWriteCRM } from '../../../../lib/rbac';
 import {
   industryOptions,
   companyTypeSelectOptions,
@@ -284,6 +285,9 @@ export default function ClientAccountDetailPage() {
   const [crmTimelineLoading, setCrmTimelineLoading] = useState(false);
   const [crmTimelineError, setCrmTimelineError] = useState(null);
   const [contactActionMenu, setContactActionMenu] = useState(null);
+  const canEditClientAccount = canWriteCRM('client_accounts');
+  const canCreateDeals = canWriteCRM('deals');
+  const canCreateInvoices = canWriteCRM('client_invoices');
 
   const [editingCompanyInfo, setEditingCompanyInfo] = useState(false);
   const [companyInfoDraft, setCompanyInfoDraft] = useState(null);
@@ -632,6 +636,7 @@ export default function ClientAccountDetailPage() {
   );
 
   const openCompanyInfoEdit = () => {
+    if (!canEditClientAccount) return;
     if (!account) return;
     setCompanyInfoDraft({
       industry: canonicalIndustryValue(account.industry ?? ''),
@@ -683,6 +688,7 @@ export default function ClientAccountDetailPage() {
 
   const saveCompanyInfo = async () => {
     if (!id || !companyInfoDraft) return;
+    if (!canEditClientAccount) return;
     setSavingCompanyInfo(true);
     setCompanyInfoSaveError('');
     try {
@@ -710,6 +716,7 @@ export default function ClientAccountDetailPage() {
   };
 
   const openContactInfoEdit = () => {
+    if (!canEditClientAccount) return;
     if (!account) return;
     setContactInfoDraft({
       website: account.website ?? '',
@@ -732,6 +739,7 @@ export default function ClientAccountDetailPage() {
 
   const saveContactInfo = async () => {
     if (!id || !contactInfoDraft) return;
+    if (!canEditClientAccount) return;
     setSavingContactInfo(true);
     setContactInfoSaveError('');
     try {
@@ -753,6 +761,7 @@ export default function ClientAccountDetailPage() {
   };
 
   const openChangeAssigneeModal = useCallback(async () => {
+    if (!canEditClientAccount) return;
     if (!account || !id) return;
     const currentId =
       account.assignedTo && typeof account.assignedTo === 'object'
@@ -790,7 +799,7 @@ export default function ClientAccountDetailPage() {
     } finally {
       setAssigneeUsersLoading(false);
     }
-  }, [account, id]);
+  }, [account, canEditClientAccount, id]);
 
   const closeAssigneeModal = useCallback(() => {
     if (savingAssignee) return;
@@ -799,6 +808,7 @@ export default function ClientAccountDetailPage() {
   }, [savingAssignee]);
 
   const saveAssigneePick = useCallback(async () => {
+    if (!canEditClientAccount) return;
     if (!id || !assigneePickUserId) {
       setAssigneeModalError('Select a team member.');
       return;
@@ -821,7 +831,7 @@ export default function ClientAccountDetailPage() {
     } finally {
       setSavingAssignee(false);
     }
-  }, [id, assigneePickUserId, reloadCrmTimeline]);
+  }, [assigneePickUserId, canEditClientAccount, id, reloadCrmTimeline]);
 
   const handleShare = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
@@ -1265,9 +1275,11 @@ export default function ClientAccountDetailPage() {
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link href={`/clients/accounts/${id}/edit`} className={headerIconBtnClass} title="Edit">
-            <Edit className="h-5 w-5" />
-          </Link>
+          {canEditClientAccount ? (
+            <Link href={`/clients/accounts/${id}/edit`} className={headerIconBtnClass} title="Edit">
+              <Edit className="h-5 w-5" />
+            </Link>
+          ) : null}
           <button type="button" className={headerIconBtnClass} title="Share" onClick={handleShare}>
             <Share2 className="h-5 w-5" />
           </button>
@@ -1528,24 +1540,26 @@ export default function ClientAccountDetailPage() {
                         )}
                       </InfoSection>
 
-                      <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
-                        <button
-                          type="button"
-                          onClick={openCompanyInfoEdit}
-                          className="font-medium text-orange-600 hover:underline"
-                        >
-                          Edit company details
-                        </button>
-                        <span className="mx-2 text-gray-300" aria-hidden>
-                          ·
-                        </span>
-                        <Link
-                          href={`/clients/accounts/${id}/edit`}
-                          className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
-                        >
-                          Full edit page
-                        </Link>
-                      </p>
+                      {canEditClientAccount ? (
+                        <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
+                          <button
+                            type="button"
+                            onClick={openCompanyInfoEdit}
+                            className="font-medium text-orange-600 hover:underline"
+                          >
+                            Edit company details
+                          </button>
+                          <span className="mx-2 text-gray-300" aria-hidden>
+                            ·
+                          </span>
+                          <Link
+                            href={`/clients/accounts/${id}/edit`}
+                            className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
+                          >
+                            Full edit page
+                          </Link>
+                        </p>
+                      ) : null}
                     </>
                   )}
                 </Card>
@@ -1625,24 +1639,26 @@ export default function ClientAccountDetailPage() {
                         <InfoRow label="Email" value={account.email} icon={Mail} />
                         <InfoRow label="Location" value={headquarters} icon={MapPin} />
                       </div>
-                      <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
-                        <button
-                          type="button"
-                          onClick={openContactInfoEdit}
-                          className="font-medium text-orange-600 hover:underline"
-                        >
-                          Edit contact details
-                        </button>
-                        <span className="mx-2 text-gray-300" aria-hidden>
-                          ·
-                        </span>
-                        <Link
-                          href={`/clients/accounts/${id}/edit`}
-                          className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
-                        >
-                          Full edit page
-                        </Link>
-                      </p>
+                      {canEditClientAccount ? (
+                        <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
+                          <button
+                            type="button"
+                            onClick={openContactInfoEdit}
+                            className="font-medium text-orange-600 hover:underline"
+                          >
+                            Edit contact details
+                          </button>
+                          <span className="mx-2 text-gray-300" aria-hidden>
+                            ·
+                          </span>
+                          <Link
+                            href={`/clients/accounts/${id}/edit`}
+                            className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
+                          >
+                            Full edit page
+                          </Link>
+                        </p>
+                      ) : null}
                     </>
                   )}
                 </Card>
@@ -1696,16 +1712,18 @@ export default function ClientAccountDetailPage() {
                         </div>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      className="w-full shrink-0 gap-2 !border-gray-300 bg-white !text-gray-700 shadow-sm hover:bg-gray-50 hover:!text-gray-900 sm:w-auto"
-                      onClick={openChangeAssigneeModal}
-                    >
-                      <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
-                      Change assignee
-                    </Button>
+                    {canEditClientAccount ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        className="w-full shrink-0 gap-2 !border-gray-300 bg-white !text-gray-700 shadow-sm hover:bg-gray-50 hover:!text-gray-900 sm:w-auto"
+                        onClick={openChangeAssigneeModal}
+                      >
+                        <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
+                        Change assignee
+                      </Button>
+                    ) : null}
                   </div>
                 </Card>
 
@@ -1938,8 +1956,10 @@ export default function ClientAccountDetailPage() {
                   fetchCommentsFn={({ entityId }) =>
                     fetchClientAccountComments({ clientAccountId: entityId, limit: 80 })
                   }
-                  addCommentFn={({ entityId, comment }) =>
-                    addClientAccountComment({ clientAccountId: entityId, comment })
+                  addCommentFn={
+                    canEditClientAccount
+                      ? ({ entityId, comment }) => addClientAccountComment({ clientAccountId: entityId, comment })
+                      : null
                   }
                 />
               </div>
@@ -1960,14 +1980,16 @@ export default function ClientAccountDetailPage() {
                     </>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/sales/deals/new?clientAccount=${id}`)}
-                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-95 sm:w-auto"
-                >
-                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
-                  Add Deal
-                </button>
+                {canCreateDeals ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/sales/deals/new?clientAccount=${id}`)}
+                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-95 sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                    Add Deal
+                  </button>
+                ) : null}
               </div>
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                 {dealsLoading ? (
@@ -1979,19 +2001,25 @@ export default function ClientAccountDetailPage() {
                     <EmptyState
                       icon={Briefcase}
                       title="No deals yet"
-                      description="Create a deal for this client account to track your pipeline."
+                      description={
+                        canCreateDeals
+                          ? 'Create a deal for this client account to track your pipeline.'
+                          : 'No deals are linked to this client account yet.'
+                      }
                       action={
-                        <Button
-                          type="button"
-                          onClick={() => router.push(`/sales/deals/new?clientAccount=${id}`)}
-                          className="w-full border-0 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md hover:opacity-95 sm:w-auto"
-                        >
-                          <Plus
-                            className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom"
-                            aria-hidden
-                          />
-                          Add deal
-                        </Button>
+                        canCreateDeals ? (
+                          <Button
+                            type="button"
+                            onClick={() => router.push(`/sales/deals/new?clientAccount=${id}`)}
+                            className="w-full border-0 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md hover:opacity-95 sm:w-auto"
+                          >
+                            <Plus
+                              className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom"
+                              aria-hidden
+                            />
+                            Add deal
+                          </Button>
+                        ) : null
                       }
                     />
                   </div>
@@ -2032,14 +2060,16 @@ export default function ClientAccountDetailPage() {
                     </>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/clients/invoices/new?clientAccount=${id}`)}
-                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-95 sm:w-auto"
-                >
-                  <Plus className="h-4 w-4 shrink-0" aria-hidden />
-                  New invoice
-                </button>
+                {canCreateInvoices ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/clients/invoices/new?clientAccount=${id}`)}
+                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-95 sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                    New invoice
+                  </button>
+                ) : null}
               </div>
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                 {invoicesLoading ? (
@@ -2051,19 +2081,25 @@ export default function ClientAccountDetailPage() {
                     <EmptyState
                       icon={FileText}
                       title="No invoices"
-                      description="Invoices linked to this client account will appear here. Create one to bill this client."
+                      description={
+                        canCreateInvoices
+                          ? 'Invoices linked to this client account will appear here. Create one to bill this client.'
+                          : 'Invoices linked to this client account will appear here.'
+                      }
                       action={
-                        <Button
-                          type="button"
-                          onClick={() => router.push(`/clients/invoices/new?clientAccount=${id}`)}
-                          className="w-full border-0 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md hover:opacity-95 sm:w-auto"
-                        >
-                          <Plus
-                            className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom"
-                            aria-hidden
-                          />
-                          New invoice
-                        </Button>
+                        canCreateInvoices ? (
+                          <Button
+                            type="button"
+                            onClick={() => router.push(`/clients/invoices/new?clientAccount=${id}`)}
+                            className="w-full border-0 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md hover:opacity-95 sm:w-auto"
+                          >
+                            <Plus
+                              className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom"
+                              aria-hidden
+                            />
+                            New invoice
+                          </Button>
+                        ) : null
                       }
                     />
                   </div>

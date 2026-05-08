@@ -14,6 +14,7 @@ const {
   createPopulateSanitizer,
   safeCount,
 } = require('../../../utils/content-api-helpers');
+const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
 
 const UID = 'api::contact.contact';
 
@@ -27,6 +28,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'contacts', 'read');
+    if (denied) return denied;
 
     const { query, page, pageSize, sort } = readListQuery(ctx);
 
@@ -57,6 +60,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async findOne(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'contacts', 'read');
+    if (denied) return denied;
 
     const { id } = ctx.params;
     const entry = await strapi.entityService.findOne(UID, id, {
@@ -72,13 +77,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'contacts', 'write');
+    if (denied) return denied;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
 
     data.organization = ctx.state.orgId;
-    if (data.assignedTo == null && ctx.state.user?.id) {
+    if (!canAccess(ctx, 'crm', 'contacts', 'manage') && ctx.state.user?.id) {
+      data.assignedTo = ctx.state.user.id;
+    } else if (data.assignedTo == null && ctx.state.user?.id) {
       data.assignedTo = ctx.state.user.id;
     }
 
@@ -108,6 +117,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async update(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'contacts', 'write');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
@@ -117,11 +128,22 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    const ownershipDenied = requireOwnerOrModuleManage(
+      ctx,
+      'crm',
+      'contacts',
+      existing,
+      'You can only edit contacts assigned to you'
+    );
+    if (ownershipDenied) return ownershipDenied;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
+    if (!canAccess(ctx, 'crm', 'contacts', 'manage')) {
+      delete data.assignedTo;
+    }
 
     const entry = await strapi.entityService.update(UID, id, { data });
     const changedKeys = collectChangedKeys(data);
@@ -149,6 +171,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async delete(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'contacts', 'manage');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {

@@ -54,6 +54,7 @@ import dealService from '../../../lib/api/dealService';
 import { shouldPromptDeliveryProjectOnWon } from '../../../lib/wonDealProjectPrompt';
 import crmActivityService from '../../../lib/api/crmActivityService';
 import { DEAL_STAGE_OPTIONS, contactDisplayName } from '../../../lib/dealFormOptions';
+import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../lib/rbac';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.deals.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.deals.tableColumnOrder';
@@ -260,6 +261,7 @@ export default function DealsPage() {
   const [dealViewMode, setDealViewMode] = useState(() =>
     typeof window === 'undefined' ? 'table' : readStoredDealView()
   );
+  const canCreateDeals = canWriteCRM('deals');
 
   const persistDealView = useCallback((mode) => {
     try {
@@ -454,6 +456,10 @@ export default function DealsPage() {
   const handleStageChange = useCallback(
     async (dealId, newStage) => {
       const row = deals.find((d) => d.id === dealId);
+      if (!canEditCRMRecord('deals', row)) {
+        alert('You can only update deals assigned to you.');
+        return;
+      }
       if (row && shouldPromptDeliveryProjectOnWon(row, newStage)) {
         setWonDealPrompt({ dealId, dealName: row.name });
         return;
@@ -567,6 +573,7 @@ export default function DealsPage() {
   }, [wonDealPrompt]);
 
   const openCommentComposer = useCallback(async (dealId, anchor) => {
+    if (!canCreateDeals) return;
     setCommentComposerMenu(anchor ? { id: dealId, ...anchor } : { id: dealId });
     setCommentDraft('');
     setCommentError('');
@@ -580,7 +587,7 @@ export default function DealsPage() {
     } finally {
       setCommentLoadingDealId(null);
     }
-  }, []);
+  }, [canCreateDeals]);
 
   const closeCommentComposer = useCallback(() => {
     setCommentComposerMenu(null);
@@ -592,6 +599,10 @@ export default function DealsPage() {
     const dealId = commentComposerMenu?.id;
     const text = commentDraft.trim();
     if (!dealId || !text) return;
+    if (!canCreateDeals) {
+      setCommentError('You only have read access to deals.');
+      return;
+    }
     setCommentSubmitting(true);
     setCommentError('');
     try {
@@ -613,10 +624,11 @@ export default function DealsPage() {
     } finally {
       setCommentSubmitting(false);
     }
-  }, [commentComposerMenu, commentDraft]);
+  }, [commentComposerMenu, commentDraft, canCreateDeals]);
 
   const handleDeleteDeal = async () => {
     if (!dealToDelete?.id) return;
+    if (!canManageCRM('deals')) return;
     setDeleting(true);
     try {
       await dealService.delete(dealToDelete.id);
@@ -655,35 +667,37 @@ export default function DealsPage() {
                   subtitle={deal.description ? truncateText(deal.description, 120) : '—'}
                   subtitleTitle={deal.description || ''}
                 />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const r = e.currentTarget.getBoundingClientRect();
-                    openCommentComposer(deal.id, {
-                      top: r.bottom + 8,
-                      left: r.left,
-                      triggerEl: e.currentTarget,
-                    });
-                  }}
-                  className={`relative mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
-                    Number(commentCountsByDealId[String(deal.id)] || 0) > 0
-                      ? 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white hover:border-gray-300'
-                  } ${commentComposerMenu?.id === deal.id ? 'bg-white border-gray-300 text-gray-700' : ''} ${
-                    Number(commentCountsByDealId[String(deal.id)] || 0) > 0 ? '' : 'opacity-0 group-hover:opacity-100'
-                  }`}
-                  aria-label={`Add comment for ${deal.name || 'deal'}`}
-                  title="Add comment"
-                >
-                  <MessageSquarePlus className="h-3.5 w-3.5" />
-                  {Number(commentCountsByDealId[String(deal.id)] || 0) > 0 ? (
-                    <span
-                      className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white"
-                      aria-hidden
-                    />
-                  ) : null}
-                </button>
+                {canCreateDeals ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const r = e.currentTarget.getBoundingClientRect();
+                      openCommentComposer(deal.id, {
+                        top: r.bottom + 8,
+                        left: r.left,
+                        triggerEl: e.currentTarget,
+                      });
+                    }}
+                    className={`relative mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
+                      Number(commentCountsByDealId[String(deal.id)] || 0) > 0
+                        ? 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white hover:border-gray-300'
+                    } ${commentComposerMenu?.id === deal.id ? 'bg-white border-gray-300 text-gray-700' : ''} ${
+                      Number(commentCountsByDealId[String(deal.id)] || 0) > 0 ? '' : 'opacity-0 group-hover:opacity-100'
+                    }`}
+                    aria-label={`Add comment for ${deal.name || 'deal'}`}
+                    title="Add comment"
+                  >
+                    <MessageSquarePlus className="h-3.5 w-3.5" />
+                    {Number(commentCountsByDealId[String(deal.id)] || 0) > 0 ? (
+                      <span
+                        className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white"
+                        aria-hidden
+                      />
+                    ) : null}
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -705,30 +719,33 @@ export default function DealsPage() {
         key: 'stage',
         visibilityKey: 'stage',
         label: 'STAGE',
-        render: (_, deal) => (
-          <div
-            className="min-w-[140px]"
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative">
-              <select
-                aria-label="Stage"
-                disabled={stageSavingId === deal.id}
-                value={(deal.stage || 'discovery').toLowerCase()}
-                onChange={(e) => handleStageChange(deal.id, e.target.value)}
-                className={`w-full cursor-pointer appearance-none rounded-full border py-1.5 pl-3 pr-8 text-xs font-semibold uppercase tracking-wide shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:opacity-50 ${stageSelectClasses(deal.stage)}`}
-              >
-                {DEAL_STAGE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+        render: (_, deal) => {
+          const canEditDeal = canEditCRMRecord('deals', deal);
+          return (
+            <div
+              className="min-w-[140px]"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="relative">
+                <select
+                  aria-label="Stage"
+                  disabled={stageSavingId === deal.id || !canEditDeal}
+                  value={(deal.stage || 'discovery').toLowerCase()}
+                  onChange={(e) => handleStageChange(deal.id, e.target.value)}
+                  className={`w-full cursor-pointer appearance-none rounded-full border py-1.5 pl-3 pr-8 text-xs font-semibold uppercase tracking-wide shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:opacity-50 ${stageSelectClasses(deal.stage)}`}
+                >
+                  {DEAL_STAGE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
+              </div>
             </div>
-          </div>
-        ),
+          );
+        },
       },
       {
         key: 'probability',
@@ -818,6 +835,8 @@ export default function DealsPage() {
         label: 'ACTIONS',
         fixed: true,
         render: (_, deal) => {
+          const canEditDeal = canEditCRMRecord('deals', deal);
+          const canDeleteDeal = canManageCRM('deals');
           const contactEmail =
             deal.contact && typeof deal.contact === 'object' ? deal.contact.email : '';
           return (
@@ -841,18 +860,20 @@ export default function DealsPage() {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-2 text-emerald-600 hover:bg-emerald-50"
-                title="Edit deal"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  router.push(`/sales/deals/${deal.id}/edit`);
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              {canEditDeal ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 text-emerald-600 hover:bg-emerald-50"
+                  title="Edit deal"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/sales/deals/${deal.id}/edit`);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              ) : null}
               <Button
                 variant="ghost"
                 size="sm"
@@ -866,19 +887,21 @@ export default function DealsPage() {
               >
                 <Mail className="h-4 w-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-2 text-red-600 hover:bg-red-50"
-                title="Delete deal"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDealToDelete(deal);
-                  setShowDeleteModal(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {canDeleteDeal ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 text-red-600 hover:bg-red-50"
+                  title="Delete deal"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDealToDelete(deal);
+                    setShowDeleteModal(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : null}
             </div>
           );
         },
@@ -888,6 +911,7 @@ export default function DealsPage() {
       router,
       commentComposerMenu,
       commentCountsByDealId,
+      canCreateDeals,
       openCommentComposer,
       handleStageChange,
       stageSavingId,
@@ -917,7 +941,7 @@ export default function DealsPage() {
           { label: 'Deals', href: '/sales/deals' },
         ]}
         showActions
-        onAddClick={() => router.push('/sales/deals/new')}
+        onAddClick={canCreateDeals ? () => router.push('/sales/deals/new') : undefined}
         onFilterClick={() => {}}
         onImportClick={() => {}}
         onExportClick={() => {}}
@@ -970,8 +994,8 @@ export default function DealsPage() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Search deals or companies…"
-          showAdd
-          onAddClick={() => router.push('/sales/deals/new')}
+          showAdd={canCreateDeals}
+          onAddClick={canCreateDeals ? () => router.push('/sales/deals/new') : undefined}
           addTitle="Add Deal"
           showFilter
           onFilterClick={() => {}}
@@ -1097,14 +1121,20 @@ export default function DealsPage() {
                 <Briefcase className="mx-auto mb-3 h-12 w-12 text-gray-400 opacity-50" />
                 <h3 className="mb-2 text-lg font-semibold text-gray-700">No deals found</h3>
                 <p className="mb-4 text-sm text-gray-500">
-                  {searchQuery || activeTab !== 'all' ? 'Try adjusting your filters' : 'Create your first deal to get started'}
+                  {searchQuery || activeTab !== 'all'
+                    ? 'Try adjusting your filters'
+                    : canCreateDeals
+                      ? 'Create your first deal to get started'
+                      : 'No deals are available yet.'}
                 </p>
                 {!searchQuery && activeTab === 'all' && (
                   <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Deal
-                    </Button>
+                    {canCreateDeals ? (
+                      <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Deal
+                      </Button>
+                    ) : null}
                     <Button variant="outline" onClick={() => handleDealViewChange('kanban')}>
                       Board view
                     </Button>
@@ -1132,14 +1162,20 @@ export default function DealsPage() {
             <Briefcase className="mx-auto mb-3 h-12 w-12 text-gray-400 opacity-50" />
             <h3 className="mb-2 text-lg font-semibold text-gray-700">No deals found</h3>
             <p className="mb-4 text-sm text-gray-500">
-              {searchQuery || activeTab !== 'all' ? 'Try adjusting your filters' : 'Create your first deal to get started'}
+              {searchQuery || activeTab !== 'all'
+                ? 'Try adjusting your filters'
+                : canCreateDeals
+                  ? 'Create your first deal to get started'
+                  : 'No deals are available yet.'}
             </p>
             {!searchQuery && activeTab === 'all' && (
               <div className="flex flex-wrap justify-center gap-3">
-                <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Deal
-                </Button>
+                {canCreateDeals ? (
+                  <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Deal
+                  </Button>
+                ) : null}
                 <Button variant="outline" onClick={() => handleDealViewChange('table')}>
                   Table view
                 </Button>
@@ -1152,6 +1188,7 @@ export default function DealsPage() {
             dealsLookup={deals}
             onMoveDeal={handleKanbanDealMove}
             getDealHref={(id) => `/sales/deals/${id}`}
+            canMoveDeal={(deal) => canEditCRMRecord('deals', deal)}
           />
         )}
       </div>

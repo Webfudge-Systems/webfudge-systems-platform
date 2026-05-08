@@ -48,6 +48,7 @@ import {
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import leadCompanyService from '../../../lib/api/leadCompanyService';
 import crmActivityService from '../../../lib/api/crmActivityService';
+import { canEditCRMRecord, canManageCRM } from '../../../lib/rbac';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.leadCompanies.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.leadCompanies.tableColumnOrder';
@@ -591,6 +592,11 @@ export default function LeadCompaniesPage() {
   const handleStatusUpdate = useCallback(
     async (companyId, newStatus) => {
       if (!companyId) return;
+      const targetCompany = leadCompanies.find((company) => company?.id === companyId);
+      if (!canEditCRMRecord('leads', targetCompany)) {
+        alert('You can only update lead companies assigned to you.');
+        return;
+      }
       const loadingKey = `${companyId}-${newStatus.toLowerCase()}`;
       setLoadingActions((prev) => ({ ...prev, [loadingKey]: true }));
 
@@ -611,11 +617,17 @@ export default function LeadCompaniesPage() {
         setLoadingActions((prev) => ({ ...prev, [loadingKey]: false }));
       }
     },
-    [fetchStats]
+    [fetchStats, leadCompanies]
   );
 
   const handleDeleteCompany = async () => {
     if (!companyToDelete) return;
+    if (!canManageCRM('leads')) {
+      alert('You do not have permission to delete lead companies.');
+      setShowDeleteModal(false);
+      setCompanyToDelete(null);
+      return;
+    }
     const loadingKey = `${companyToDelete.id}-delete`;
     setLoadingActions((prev) => ({ ...prev, [loadingKey]: true }));
 
@@ -635,6 +647,10 @@ export default function LeadCompaniesPage() {
 
   const handleConvertToClient = useCallback(async () => {
     if (!companyToConvert?.id || converting) return;
+    if (!canEditCRMRecord('leads', companyToConvert)) {
+      setConvertError('You can only convert lead companies assigned to you.');
+      return;
+    }
     setConverting(true);
     setConvertError('');
     try {
@@ -1025,6 +1041,8 @@ export default function LeadCompaniesPage() {
         label: 'ACTIONS',
         fixed: true,
         render: (_, company) => {
+          const canEditLeadCompany = canEditCRMRecord('leads', company);
+          const canDeleteLeadCompany = canManageCRM('leads');
           const currentStatus = (company.status || 'NEW').toUpperCase();
           const statusOptions = ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST'];
           const isClient =
@@ -1058,7 +1076,7 @@ export default function LeadCompaniesPage() {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </div>
-              {!isClient ? (
+              {!isClient && canEditLeadCompany ? (
                 <div className="relative">
                   <Button
                     variant="ghost"
@@ -1080,7 +1098,7 @@ export default function LeadCompaniesPage() {
                     <ChevronDown className="h-3.5 w-3.5" />
                   </Button>
                 </div>
-              ) : (
+              ) : isClient ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1095,19 +1113,21 @@ export default function LeadCompaniesPage() {
                 >
                   <Building2 className="h-4 w-4" />
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-2 text-emerald-600 hover:bg-emerald-50"
-                title="Edit Company"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  router.push(`/sales/lead-companies/${company.id}/edit`);
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              ) : null}
+              {canEditLeadCompany ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 text-emerald-600 hover:bg-emerald-50"
+                  title="Edit Company"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/sales/lead-companies/${company.id}/edit`);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              ) : null}
               <Button
                 variant="ghost"
                 size="sm"
@@ -1121,30 +1141,27 @@ export default function LeadCompaniesPage() {
               >
                 <Mail className="h-4 w-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
-                title="Delete Company"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCompanyToDelete(company);
-                  setShowDeleteModal(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {canDeleteLeadCompany ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  title="Delete Company"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCompanyToDelete(company);
+                    setShowDeleteModal(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : null}
             </div>
           );
         },
       },
     ],
-    [
-      router,
-      commentComposerMenu,
-      commentCountsByCompanyId,
-      openCommentComposer,
-    ]
+    [router, commentComposerMenu, commentCountsByCompanyId, openCommentComposer]
   );
 
   const visibleTableColumns = useMemo(() => {

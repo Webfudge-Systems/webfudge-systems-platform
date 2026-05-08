@@ -12,3 +12,5 @@ export {
   resolveUserInitials,
   resolveUserRole,
 } from './utils/userProfile';
+
+export const ACCESS_RANK = { none: 0, read: 1, write: 2, manage: 3 };

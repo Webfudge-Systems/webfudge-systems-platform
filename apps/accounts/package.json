@@ -10,6 +10,11 @@
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
+    "@webfudge/auth": "*",
+    "@webfudge/ui": "*",
+    "@webfudge/utils": "*",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.300.0",
     "next": "^14.0.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

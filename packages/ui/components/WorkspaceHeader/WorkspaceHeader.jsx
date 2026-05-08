@@ -12,14 +12,19 @@ import {
   Download,
   Filter,
   Image,
+  LogOut,
   Plus,
   Search,
   Settings,
-  Share,
   Upload,
   User,
 } from 'lucide-react'
-import { useAuth, resolveUserDisplayName, resolveUserInitials, resolveUserRole } from '@webfudge/auth'
+import {
+  useAuth,
+  resolveUserDisplayName,
+  resolveUserInitials,
+  resolveUserRole,
+} from '@webfudge/auth'
 import { Avatar, Card } from '../index'
 import { LoadingSpinner } from '../../feedback'
 
@@ -48,7 +53,7 @@ export function WorkspaceHeader({
   profileDropdownClassName,
 }) {
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, currentOrg } = useAuth()
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
@@ -89,7 +94,10 @@ export function WorkspaceHeader({
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
+      if (
+        notificationDropdownRef.current &&
+        !notificationDropdownRef.current.contains(event.target)
+      ) {
         setShowNotificationDropdown(false)
       }
     }
@@ -138,7 +146,9 @@ export function WorkspaceHeader({
     if (!notificationService) return
     try {
       await notificationService.markAsRead(notificationId)
-      setNotifications((prev) => prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n)))
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
+      )
       setUnreadCount((prev) => Math.max(0, prev - 1))
     } catch (error) {
       console.error('Error marking notification as read:', error)
@@ -196,6 +206,22 @@ export function WorkspaceHeader({
     onExportClick ||
     onShareImageClick
   )
+  const activeRole =
+    currentOrg?.role ||
+    currentOrg?.roleName ||
+    currentOrg?.roleCode ||
+    resolveUserRole(user) ||
+    'User'
+  const activeOrgName = currentOrg?.name || 'Active workspace'
+  const activeRoleLabel = String(activeRole)
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+  const profileEmail = (user?.attributes || user)?.email || user?.email || ''
+  const premiumAvatarClass =
+    'bg-gradient-to-br from-orange-500 to-orange-600 border-2 border-white shadow-lg text-white font-bold'
+  const profileMenuItemClass =
+    'w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-brand-foreground transition-colors hover:bg-brand-hover'
+  const profileMenuIconClass = 'h-[18px] w-[18px] shrink-0 text-brand-text-light stroke-[2.2]'
 
   return (
     <Card glass className="relative z-[40]">
@@ -206,9 +232,14 @@ export function WorkspaceHeader({
               {breadcrumbItems.map((item, index) => (
                 <div key={index} className="flex items-center gap-2">
                   {index === breadcrumbItems.length - 1 ? (
-                    <span className="text-brand-foreground font-medium">{String(item.label || '')}</span>
+                    <span className="text-brand-foreground font-medium">
+                      {String(item.label || '')}
+                    </span>
                   ) : (
-                    <Link href={item.href || '#'} className="text-brand-text-light hover:text-brand-foreground transition-colors duration-200 cursor-pointer">
+                    <Link
+                      href={item.href || '#'}
+                      className="text-brand-text-light hover:text-brand-foreground transition-colors duration-200 cursor-pointer"
+                    >
                       {String(item.label || '')}
                     </Link>
                   )}
@@ -246,70 +277,146 @@ export function WorkspaceHeader({
               </div>
             )}
 
-            {children || (showActions && hasDefaultActionButtons && (
-              <div className="flex items-center gap-2">
-                {onAddClick && <button onClick={onAddClick} className={`${resolvedActionClass} text-brand-primary`}><Plus className="w-5 h-5" /></button>}
-                {onFilterClick && <button onClick={onFilterClick} className={`relative ${resolvedActionClass}`}><Filter className="w-5 h-5 text-brand-text-light" />{hasActiveFilters ? <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white/95 shadow-sm" /> : null}</button>}
-                {onImportClick && (
-                  <button
-                    onClick={onImportClick}
-                    className={`${resolvedActionClass} flex items-center gap-2 whitespace-nowrap`}
-                  >
-                    <Upload className="w-5 h-5 text-brand-text-light" />
-                    <span className="text-sm font-semibold text-brand-text-light">Import</span>
-                  </button>
-                )}
-                {onExportClick && (
-                  <button
-                    onClick={onExportClick}
-                    className={`${resolvedActionClass} flex items-center gap-2 whitespace-nowrap`}
-                  >
-                    <Download className="w-5 h-5 text-brand-text-light" />
-                    <span className="text-sm font-semibold text-brand-text-light">Export</span>
-                  </button>
-                )}
-                {onShareImageClick && <button onClick={onShareImageClick} className={resolvedActionClass} title="Share Image"><Image className="w-5 h-5 text-brand-text-light" /></button>}
-              </div>
-            ))}
+            {children ||
+              (showActions && hasDefaultActionButtons && (
+                <div className="flex items-center gap-2">
+                  {onAddClick && (
+                    <button
+                      onClick={onAddClick}
+                      className={`${resolvedActionClass} text-brand-primary`}
+                    >
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  )}
+                  {onFilterClick && (
+                    <button onClick={onFilterClick} className={`relative ${resolvedActionClass}`}>
+                      <Filter className="w-5 h-5 text-brand-text-light" />
+                      {hasActiveFilters ? (
+                        <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white/95 shadow-sm" />
+                      ) : null}
+                    </button>
+                  )}
+                  {onImportClick && (
+                    <button
+                      onClick={onImportClick}
+                      className={`${resolvedActionClass} flex items-center gap-2 whitespace-nowrap`}
+                    >
+                      <Upload className="w-5 h-5 text-brand-text-light" />
+                      <span className="text-sm font-semibold text-brand-text-light">Import</span>
+                    </button>
+                  )}
+                  {onExportClick && (
+                    <button
+                      onClick={onExportClick}
+                      className={`${resolvedActionClass} flex items-center gap-2 whitespace-nowrap`}
+                    >
+                      <Download className="w-5 h-5 text-brand-text-light" />
+                      <span className="text-sm font-bold text-brand-text-light">Export</span>
+                    </button>
+                  )}
+                  {onShareImageClick && (
+                    <button
+                      onClick={onShareImageClick}
+                      className={resolvedActionClass}
+                      title="Share Image"
+                    >
+                      <Image className="w-5 h-5 text-brand-text-light" />
+                    </button>
+                  )}
+                </div>
+              ))}
 
-            {actions && (Array.isArray(actions)
-              ? actions.map((action, index) => (
-                  <button key={index} onClick={action.onClick} className={`${resolvedActionClass} ${action.className || ''}`}>
+            {actions &&
+              (Array.isArray(actions) ? (
+                actions.map((action, index) => (
+                  <button
+                    key={index}
+                    onClick={action.onClick}
+                    className={`${resolvedActionClass} ${action.className || ''}`}
+                  >
                     {action.icon ? <action.icon className="w-5 h-5 text-brand-text-light" /> : null}
                   </button>
                 ))
-              : <div className="flex items-center gap-2">{actions}</div>)}
+              ) : (
+                <div className="flex items-center gap-2">{actions}</div>
+              ))}
           </div>
         )}
 
         {showProfile && (
           <div className="flex items-center gap-3 ml-4">
             <div className="relative" ref={notificationDropdownRef}>
-              <button onClick={() => setShowNotificationDropdown(!showNotificationDropdown)} className="relative p-2.5 rounded-xl hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300" title="Notifications">
+              <button
+                onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                className="relative p-2.5 rounded-xl hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300"
+                title="Notifications"
+              >
                 <Bell className="w-5 h-5 text-brand-text-light" />
-                {unreadCount > 0 ? <span className="absolute top-1.5 right-1.5 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white/95 shadow-sm">{unreadCount > 9 ? '9+' : unreadCount}</span> : null}
+                {unreadCount > 0 ? (
+                  <span className="absolute top-1.5 right-1.5 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white/95 shadow-sm">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : null}
               </button>
               {showNotificationDropdown && (
                 <>
-                  <div className="fixed inset-0 z-[99998]" onClick={() => setShowNotificationDropdown(false)} />
-                  <div className={`fixed right-6 top-20 w-96 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 z-[99999] max-h-[600px] flex flex-col ${notificationDropdownClassName || ''}`}>
+                  <div
+                    className="fixed inset-0 z-[99998]"
+                    onClick={() => setShowNotificationDropdown(false)}
+                  />
+                  <div
+                    className={`fixed right-6 top-20 w-96 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 z-[99999] max-h-[600px] flex flex-col ${notificationDropdownClassName || ''}`}
+                  >
                     <div className="p-4 border-b border-white/20 flex items-center justify-between">
                       <h3 className="font-semibold text-brand-foreground">Notifications</h3>
-                      {unreadCount > 0 ? <button onClick={handleMarkAllAsRead} className="text-xs text-brand-primary hover:text-brand-primary/80 flex items-center gap-1"><CheckCheck className="w-3 h-3" />Mark all as read</button> : null}
+                      {unreadCount > 0 ? (
+                        <button
+                          onClick={handleMarkAllAsRead}
+                          className="text-xs text-brand-primary hover:text-brand-primary/80 flex items-center gap-1"
+                        >
+                          <CheckCheck className="w-3 h-3" />
+                          Mark all as read
+                        </button>
+                      ) : null}
                     </div>
                     <div className="flex-1 overflow-y-auto">
-                      {loadingNotifications ? <div className="p-8 text-center text-brand-text-light"><LoadingSpinner size="sm" message="Loading notifications..." /></div> : notifications.length === 0 ? <div className="p-8 text-center text-brand-text-light"><Bell className="w-12 h-12 mx-auto mb-2 opacity-50" /><p className="text-sm">No notifications</p></div> : (
+                      {loadingNotifications ? (
+                        <div className="p-8 text-center text-brand-text-light">
+                          <LoadingSpinner size="sm" message="Loading notifications..." />
+                        </div>
+                      ) : notifications.length === 0 ? (
+                        <div className="p-8 text-center text-brand-text-light">
+                          <Bell className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                          <p className="text-sm">No notifications</p>
+                        </div>
+                      ) : (
                         <div className="divide-y divide-gray-100">
                           {notifications.map((notification) => (
-                            <button key={notification.id} onClick={() => handleMarkAsRead(notification.id)} className={`w-full text-left p-4 hover:bg-brand-hover transition-colors ${!notification.isRead ? 'bg-blue-50/50' : ''}`}>
+                            <button
+                              key={notification.id}
+                              onClick={() => handleMarkAsRead(notification.id)}
+                              className={`w-full text-left p-4 hover:bg-brand-hover transition-colors ${!notification.isRead ? 'bg-blue-50/50' : ''}`}
+                            >
                               <div className="flex items-start gap-3">
-                                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notification.isRead ? 'bg-blue-500' : 'bg-transparent'}`} />
+                                <div
+                                  className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notification.isRead ? 'bg-blue-500' : 'bg-transparent'}`}
+                                />
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-sm font-medium ${!notification.isRead ? 'text-brand-foreground' : 'text-brand-text-light'}`}>{notification.title}</p>
-                                  <p className="text-xs text-brand-text-light mt-1 line-clamp-2">{notification.message}</p>
-                                  <p className="text-xs text-brand-text-light mt-2">{notification.timeAgo}</p>
+                                  <p
+                                    className={`text-sm font-medium ${!notification.isRead ? 'text-brand-foreground' : 'text-brand-text-light'}`}
+                                  >
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-xs text-brand-text-light mt-1 line-clamp-2">
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-xs text-brand-text-light mt-2">
+                                    {notification.timeAgo}
+                                  </p>
                                 </div>
-                                {!notification.isRead ? <Check className="w-4 h-4 text-blue-500 flex-shrink-0 mt-1" /> : null}
+                                {!notification.isRead ? (
+                                  <Check className="w-4 h-4 text-blue-500 flex-shrink-0 mt-1" />
+                                ) : null}
                               </div>
                             </button>
                           ))}
@@ -328,48 +435,103 @@ export function WorkspaceHeader({
                 onMouseLeave={scheduleCloseProfileDropdown}
               >
                 <button className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/10 hover:backdrop-blur-md transition-all duration-300">
-                <div className="flex items-center gap-3">
-                  <Avatar fallback={resolveUserInitials(user)} alt={resolveUserDisplayName(user)} size="md" className="bg-white/10 backdrop-blur-md border border-white/20 shadow-lg text-brand-primary" />
-                  <div className="text-left hidden lg:block">
-                    <p className="text-sm font-semibold text-brand-foreground">{resolveUserDisplayName(user)}</p>
-                    <p className="text-xs text-brand-text-light">{resolveUserRole(user)}</p>
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      fallback={resolveUserInitials(user)}
+                      alt={resolveUserDisplayName(user)}
+                      size="md"
+                      className={premiumAvatarClass}
+                    />
+                    <div className="text-left hidden lg:block">
+                      <p className="text-sm font-semibold text-brand-foreground">
+                        {resolveUserDisplayName(user)}
+                      </p>
+                      <p className="max-w-[11rem] truncate text-xs text-brand-text-light">
+                        {profileEmail}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <ChevronDown className={`w-4 h-4 text-brand-text-light transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 text-brand-text-light transition-transform ${showProfileDropdown ? 'rotate-180' : ''}`}
+                  />
                 </button>
-              {showProfileDropdown && (
-                <>
-                  <div className="fixed inset-0 z-[99998]" onClick={() => setShowProfileDropdown(false)} />
-                  <div className={`fixed right-6 top-20 w-72 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 z-[99999] ${profileDropdownClassName || ''}`}>
-                    <div className="p-4 border-b border-white/20">
-                      <div className="flex items-center gap-3">
-                        <Avatar fallback={resolveUserInitials(user)} alt={resolveUserDisplayName(user)} size="xl" className="bg-white/20 backdrop-blur-md border border-white/30 shadow-lg text-brand-primary" />
-                        <div>
-                          <p className="font-semibold text-brand-foreground">{resolveUserDisplayName(user)}</p>
-                          <p className="text-sm text-brand-text-light">{(user?.attributes || user)?.email || user?.email}</p>
+                {showProfileDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-[99998]"
+                      onClick={() => setShowProfileDropdown(false)}
+                    />
+                    <div
+                      className={`fixed right-6 top-20 w-80 bg-white/95 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 z-[99999] ${profileDropdownClassName || ''}`}
+                    >
+                      <div className="p-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            fallback={resolveUserInitials(user)}
+                            alt={resolveUserDisplayName(user)}
+                            size="xl"
+                            className={premiumAvatarClass}
+                          />
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-brand-foreground">
+                              {resolveUserDisplayName(user)}
+                            </p>
+                            <p className="truncate text-xs text-brand-text-light">{profileEmail}</p>
+                            <p
+                              className="mt-2 truncate text-xs font-medium text-orange-700"
+                              title={`${activeRoleLabel} • ${activeOrgName}`}
+                            >
+                              {activeRoleLabel} • {activeOrgName}
+                            </p>
+                            <p className="mt-1 text-[11px] text-brand-text-light">
+                              Account access synced from workspace role
+                            </p>
+                          </div>
                         </div>
                       </div>
+                      <div className="mx-4 border-t border-neutral-200/60" />
+                      <div className="p-2">
+                        <p className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-brand-text-light">
+                          Account Actions
+                        </p>
+                        <button className={profileMenuItemClass}>
+                          <User className={profileMenuIconClass} />
+                          <span>View Profile</span>
+                        </button>
+                        <button className={profileMenuItemClass}>
+                          <Settings className={profileMenuIconClass} />
+                          <span>Settings</span>
+                        </button>
+                      </div>
+                      <div className="mx-4 border-t border-neutral-200/60" />
+                      <div className="p-2">
+                        <p className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-brand-text-light">
+                          Danger Zone
+                        </p>
+                        <button
+                          onClick={logout}
+                          className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
+                        >
+                          <LogOut className="h-[18px] w-[18px] shrink-0 stroke-[2.2]" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="p-2">
-                      <button className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-brand-hover rounded-lg transition-colors"><User className="w-4 h-4 text-brand-text-light" /><span className="text-sm text-brand-foreground">View Profile</span></button>
-                      <button className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-brand-hover rounded-lg transition-colors"><Settings className="w-4 h-4 text-brand-text-light" /><span className="text-sm text-brand-foreground">Settings</span></button>
-                      <div className="h-px bg-brand-border my-2 mx-3" />
-                      <button onClick={logout} className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-red-50 rounded-lg transition-colors text-red-600"><Share className="w-4 h-4" /><span className="text-sm">Sign Out</span></button>
-                    </div>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {showSearch && renderGlobalSearchModal ? renderGlobalSearchModal({
-        isOpen: showGlobalSearch,
-        onClose: () => setShowGlobalSearch(false),
-        initialQuery: searchInputValue,
-      }) : null}
+      {showSearch && renderGlobalSearchModal
+        ? renderGlobalSearchModal({
+            isOpen: showGlobalSearch,
+            onClose: () => setShowGlobalSearch(false),
+            initialQuery: searchInputValue,
+          })
+        : null}
     </Card>
   )
 }

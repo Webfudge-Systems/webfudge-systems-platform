@@ -8,6 +8,7 @@ import CRMPageHeader from '../../../../components/CRMPageHeader';
 import { DealsKanbanBoard, DEAL_PIPELINE_STAGES } from '../../../../components/DealsKanbanBoard';
 import dealService from '../../../../lib/api/dealService';
 import WonDealProjectModal from '../../../../components/WonDealProjectModal';
+import { canEditCRMRecord, canWriteCRM } from '../../../../lib/rbac';
 
 function formatINR(v) {
   if (v == null || Number.isNaN(Number(v))) return null;
@@ -33,6 +34,7 @@ export default function PipelinePage() {
 
   const [wonModal, setWonModal] = useState({ open: false, dealId: null, dealName: '' });
   const [wonBusy, setWonBusy] = useState(false);
+  const canCreateDeals = canWriteCRM('deals');
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +103,7 @@ export default function PipelinePage() {
   const handlePipelineDealMove = useCallback(async (dealId, newStage) => {
     const deal = allDeals.find((d) => String(d.id) === dealId);
     if (!deal) return;
+    if (!canEditCRMRecord('deals', deal)) return;
     const oldStage = (deal.stage || 'discovery').toLowerCase();
     if (oldStage === newStage) return;
 
@@ -176,7 +179,7 @@ export default function PipelinePage() {
           { label: 'Pipeline', href: '/sales/deals/pipeline' },
         ]}
         showActions
-        onAddClick={() => router.push('/sales/deals/new')}
+        onAddClick={canCreateDeals ? () => router.push('/sales/deals/new') : undefined}
         onFilterClick={() => {}}
         onImportClick={() => {}}
         onExportClick={() => {}}
@@ -195,9 +198,9 @@ export default function PipelinePage() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search deals or companies…"
-        showAdd
+        showAdd={canCreateDeals}
         addTitle="Add Deal"
-        onAddClick={() => router.push('/sales/deals/new')}
+        onAddClick={canCreateDeals ? () => router.push('/sales/deals/new') : undefined}
         showFilter
         onFilterClick={() => {}}
       />
@@ -213,15 +216,19 @@ export default function PipelinePage() {
               <Briefcase className="h-7 w-7 text-gray-400" />
             </div>
             <h3 className="text-base font-semibold text-gray-800">No deals yet</h3>
-            <p className="mt-1 text-sm text-gray-500">Create your first deal to start building the pipeline.</p>
-            <button
-              type="button"
-              onClick={() => router.push('/sales/deals/new')}
-              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 active:opacity-80"
-            >
-              <Plus className="h-4 w-4" />
-              Add Deal
-            </button>
+            <p className="mt-1 text-sm text-gray-500">
+              {canCreateDeals ? 'Create your first deal to start building the pipeline.' : 'No deals are available yet.'}
+            </p>
+            {canCreateDeals ? (
+              <button
+                type="button"
+                onClick={() => router.push('/sales/deals/new')}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:opacity-90 active:opacity-80"
+              >
+                <Plus className="h-4 w-4" />
+                Add Deal
+              </button>
+            ) : null}
           </div>
         ) : (
           <DealsKanbanBoard
@@ -229,6 +236,7 @@ export default function PipelinePage() {
             dealsLookup={allDeals}
             onMoveDeal={handlePipelineDealMove}
             getDealHref={(id) => `/sales/deals/${id}`}
+            canMoveDeal={(deal) => canEditCRMRecord('deals', deal)}
           />
         )}
       </div>

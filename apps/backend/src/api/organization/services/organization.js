@@ -5,6 +5,7 @@
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
+const { resolveOrganizationRoleId } = require('../../../utils/organization-role');
 
 module.exports = createCoreService('api::organization.organization', ({ strapi }) => ({
   async createWithOnboarding({ userId, organizationData, appId, moduleIds, userCount, invitedEmails }) {
@@ -31,11 +32,12 @@ module.exports = createCoreService('api::organization.organization', ({ strapi }
       });
 
       // 2. Add owner to organization users
+      const adminRoleId = await resolveOrganizationRoleId(strapi, 'Admin');
       await strapi.entityService.create('api::organization-user.organization-user', {
         data: {
           user: userId,
           organization: organization.id,
-          role: 'Owner',
+          role: adminRoleId,
           isActive: true,
           joinedAt: new Date(),
           publishedAt: new Date()
@@ -75,7 +77,7 @@ module.exports = createCoreService('api::organization.organization', ({ strapi }
           organization.id,
           invitedEmails,
           userId,
-          'User'
+          'Member'
         );
       }
 
@@ -149,7 +151,7 @@ module.exports = createCoreService('api::organization.organization', ({ strapi }
           organizationId,
           invitedEmails,
           userId,
-          'User'
+          'Member'
         );
       }
 

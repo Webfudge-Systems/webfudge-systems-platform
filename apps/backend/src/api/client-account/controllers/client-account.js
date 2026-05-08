@@ -14,6 +14,7 @@ const {
   createPopulateSanitizer,
   safeCount,
 } = require('../../../utils/content-api-helpers');
+const { requireModuleAccess } = require('../../../utils/rbac');
 
 const UID = 'api::client-account.client-account';
 
@@ -41,6 +42,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'client_accounts', 'read');
+    if (denied) return denied;
 
     const { query, page, pageSize, sort } = readListQuery(ctx);
 
@@ -62,6 +65,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async findOne(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'client_accounts', 'read');
+    if (denied) return denied;
 
     const { id } = ctx.params;
     const entry = await strapi.entityService.findOne(UID, id, {
@@ -77,6 +82,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'client_accounts', 'write');
+    if (denied) return denied;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
@@ -154,6 +161,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async update(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'client_accounts', 'write');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
@@ -176,6 +185,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async delete(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'client_accounts', 'manage');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
@@ -186,7 +197,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       return ctx.forbidden('Access denied');
     }
 
-    const entry = await strapi.entityService.delete(UID, id);
-    return { data: entry };
+    await strapi.entityService.delete(UID, id);
+    return { data: { id } };
   },
 }));

@@ -13,6 +13,7 @@ const {
   safeCount,
   resolveEntityPkForRouteParam,
 } = require('../../../utils/content-api-helpers');
+const { requireModuleAccess } = require('../../../utils/rbac');
 
 const UID = 'api::proposal.proposal';
 
@@ -36,6 +37,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'proposals', 'read');
+    if (denied) return denied;
 
     const { query, page, pageSize, sort } = readListQuery(ctx, {
       defaultSort: 'createdAt:desc',
@@ -69,6 +72,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async findOne(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'proposals', 'read');
+    if (denied) return denied;
 
     const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
     if (pk == null) return ctx.notFound();
@@ -85,6 +90,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'proposals', 'write');
+    if (denied) return denied;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
@@ -105,6 +112,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async update(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'proposals', 'write');
+    if (denied) return denied;
 
     const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
     if (pk == null) return ctx.notFound();
@@ -129,6 +138,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async delete(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'proposals', 'manage');
+    if (denied) return denied;
 
     const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
     if (pk == null) return ctx.notFound();

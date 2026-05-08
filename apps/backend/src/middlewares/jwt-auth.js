@@ -1,6 +1,7 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
+const { membershipSummary } = require('../utils/rbac');
 
 // JWT secret - use environment variable or fallback
 const JWT_SECRET = process.env.JWT_SECRET || 'myJwtSecret123456789012345678901234567890';
@@ -47,12 +48,18 @@ module.exports = (config, { strapi }) => {
               {
                 filters: { user: user.id, organization: orgId, isActive: true },
                 limit: 1,
+                populate: { role: true },
               }
             );
             if (membership.length > 0) {
+              const summary = membershipSummary(membership[0]);
               ctx.state.orgId = orgId;
-              ctx.state.orgRole = membership[0].role || 'Member';
-              ctx.state.orgPermissions = membership[0].customPermissions || {};
+              ctx.state.orgRole = summary.role;
+              ctx.state.orgRoleCode = summary.roleCode;
+              ctx.state.orgRoleDetails = membership[0]?.role || null;
+              ctx.state.orgMembership = membership[0];
+              ctx.state.orgPermissions = summary.permissions;
+              ctx.state.effectivePermissions = summary.permissions;
             }
           }
         }
@@ -65,13 +72,18 @@ module.exports = (config, { strapi }) => {
               filters: { user: user.id, isActive: true },
               sort: { joinedAt: 'ASC' },
               limit: 1,
-              populate: { organization: true },
+              populate: { organization: true, role: true },
             }
           );
           if (firstMembership.length > 0 && firstMembership[0].organization) {
+            const summary = membershipSummary(firstMembership[0]);
             ctx.state.orgId = firstMembership[0].organization.id;
-            ctx.state.orgRole = firstMembership[0].role || 'Member';
-            ctx.state.orgPermissions = firstMembership[0].customPermissions || {};
+            ctx.state.orgRole = summary.role;
+            ctx.state.orgRoleCode = summary.roleCode;
+            ctx.state.orgRoleDetails = firstMembership[0]?.role || null;
+            ctx.state.orgMembership = firstMembership[0];
+            ctx.state.orgPermissions = summary.permissions;
+            ctx.state.effectivePermissions = summary.permissions;
           }
         }
       }

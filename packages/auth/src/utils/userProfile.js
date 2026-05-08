@@ -23,7 +23,7 @@ export function resolveUserDisplayName(user) {
   const ln = (u.lastName != null ? String(u.lastName) : '').trim()
   if (fn || ln) return [fn, ln].filter(Boolean).join(' ')
   if (u.name && String(u.name).trim()) return String(u.name).trim()
-  if (u.username && String(u.username).trim()) return String(u.username).trim()
+  if (u.username && String(u.username).trim()) return String(u.username).trim().split('@')[0]
   if (u.email) return u.email.split('@')[0]
   return 'User'
 }

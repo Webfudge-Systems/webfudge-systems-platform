@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import projectService from '../lib/api/projectService'
 import { transformProject } from '../lib/api/dataTransformers'
+import { canReadPM, canWritePM } from '../lib/rbac'
 
 export default function PMSidebar({ collapsed = false, onToggle }) {
   const pathname = usePathname()
@@ -51,6 +52,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
   const quickActionItems = [
     {
       label: 'New Task',
+      module: 'my_tasks',
       icon: CheckSquare,
       href: '/my-tasks?createTask=1',
       color: 'text-orange-600',
@@ -59,6 +61,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
     },
     {
       label: 'New Project',
+      module: 'projects',
       icon: FolderOpen,
       href: '/projects/add',
       color: 'text-blue-600',
@@ -106,24 +109,28 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
   const mainNavigationItems = [
     {
       id: 'dashboard',
+      module: 'dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
       href: '/',
     },
     {
       id: 'my-tasks',
+      module: 'my_tasks',
       label: 'My Tasks',
       icon: CheckSquare,
       href: '/my-tasks',
     },
     {
       id: 'inbox',
+      module: 'inbox',
       label: 'Inbox',
       icon: Inbox,
       href: '/inbox',
     },
     {
       id: 'message',
+      module: 'inbox',
       label: 'Message',
       icon: MessageCircle,
       href: '/message',
@@ -137,8 +144,14 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       href: '/coming-soon?feature=documents',
       comingSoonFeature: 'documents',
     },
-    { label: 'Calendar', icon: Calendar, href: '/calendar' },
+    { label: 'Calendar', module: 'calendar', icon: Calendar, href: '/calendar' },
   ]
+
+  const visibleQuickActions = quickActionItems.filter((item) => canWritePM(item.module))
+  const visibleNavigationItems = mainNavigationItems.filter((item) => canReadPM(item.module))
+  const visiblePmTools = pmTools.filter((item) => !item.module || canReadPM(item.module))
+  const canReadProjects = canReadPM('projects')
+  const canCreateProjects = canWritePM('projects')
 
   const isPmToolActive = (item) => {
     if (item.comingSoonFeature) {
@@ -234,6 +247,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           <button
             type="button"
             onClick={toggleQuickActions}
+            disabled={visibleQuickActions.length === 0}
             className={`w-full bg-gradient-to-r from-orange-500/20 to-orange-600/10 backdrop-blur-md border ${
               quickActionsOpen
                 ? 'border-orange-300/60'
@@ -265,7 +279,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                 <p className="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                   Quick actions
                 </p>
-                {quickActionItems.map((item, index) => {
+                {visibleQuickActions.map((item, index) => {
                   const QIcon = item.icon
                   return (
                     <button
@@ -294,7 +308,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
         <div className="px-3 pt-3 pb-2">
           {sectionRule('Navigate')}
           <div className={`grid gap-3 ${collapsed ? 'grid-cols-1' : 'grid-cols-2'}`}>
-            {mainNavigationItems.map((item) => {
+            {visibleNavigationItems.map((item) => {
               const Icon = item.icon
               const active = item.href ? isActive(item.href) : false
               return (
@@ -321,7 +335,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
         </div>
 
         {/* Projects — same list-table chrome as CRM activity feed */}
-        {!collapsed && (
+        {!collapsed && canReadProjects && (
           <div className="px-3 py-2 relative z-0">
             {sectionRule('Projects')}
             <div className="rounded-xl border border-gray-300 bg-white shadow-md overflow-hidden relative z-0 ring-1 ring-black/[0.04]">
@@ -330,14 +344,16 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                   <FolderOpen className="w-3.5 h-3.5 shrink-0 text-gray-600" />
                   <span className="truncate">Projects</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => router.push('/projects/add')}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
-                  title="New project"
-                >
-                  <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-                </button>
+                {canCreateProjects ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/projects/add')}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+                    title="New project"
+                  >
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </button>
+                ) : null}
               </div>
 
               <div className="max-h-80 overflow-y-auto overscroll-contain px-1.5 pb-2">
@@ -477,7 +493,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                 <span>Workspace tools</span>
               </div>
               <div className="p-2 space-y-0.5">
-                {pmTools.map((item, index) => {
+                {visiblePmTools.map((item, index) => {
                   const Icon = item.icon
                   const active = isPmToolActive(item)
                   return (

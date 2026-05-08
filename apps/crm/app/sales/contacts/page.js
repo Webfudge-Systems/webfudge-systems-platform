@@ -34,6 +34,7 @@ import {
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import contactService from '../../../lib/api/contactService';
+import { canEditCRMRecord, canManageCRM } from '../../../lib/rbac';
 
 function contactDisplayName(contact) {
   if (!contact) return 'Unnamed';
@@ -482,6 +483,7 @@ export default function ContactsPage() {
   const handleDeleteContact = useCallback(async (e, contactId) => {
     e.stopPropagation();
     if (!contactId || deletingId) return;
+    if (!canManageCRM('contacts')) return;
     setDeleteContactId(contactId);
   }, [deletingId]);
 
@@ -695,7 +697,10 @@ export default function ContactsPage() {
         key: 'actions',
         label: 'ACTIONS',
         fixed: true,
-        render: (_, contact) => (
+        render: (_, contact) => {
+          const canEditContact = canEditCRMRecord('contacts', contact);
+          const canDeleteContact = canManageCRM('contacts');
+          return (
           <div className="flex min-w-[148px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
             {/* More options dropdown */}
             <div className="relative">
@@ -717,18 +722,20 @@ export default function ContactsPage() {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-emerald-600 hover:bg-emerald-50"
-              title="Edit"
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/sales/contacts/${contact.id}/edit`);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+            {canEditContact ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 text-emerald-600 hover:bg-emerald-50"
+                title="Edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/sales/contacts/${contact.id}/edit`);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
@@ -742,18 +749,21 @@ export default function ContactsPage() {
             >
               <Mail className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
-              title="Delete"
-              disabled={deletingId === contact.id}
-              onClick={(e) => handleDeleteContact(e, contact.id)}
-            >
-              {deletingId === contact.id ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4" />}
-            </Button>
+            {canDeleteContact ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                title="Delete"
+                disabled={deletingId === contact.id}
+                onClick={(e) => handleDeleteContact(e, contact.id)}
+              >
+                {deletingId === contact.id ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4" />}
+              </Button>
+            ) : null}
           </div>
-        ),
+          );
+        },
       },
     ],
     [router, deletingId, handleDeleteContact]

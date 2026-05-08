@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Button,
+  Card,
   Input,
   Select,
   Textarea,
@@ -16,6 +17,7 @@ import dealService from '../../../../lib/api/dealService';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import contactService from '../../../../lib/api/contactService';
+import { canWriteCRM } from '../../../../lib/rbac';
 import {
   DEAL_STAGE_OPTIONS,
   PRIORITY_OPTIONS,
@@ -87,6 +89,7 @@ export default function NewDealPage() {
   const [clientAccounts, setClientAccounts] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [loadingRefs, setLoadingRefs] = useState(true);
+  const canCreateDeals = canWriteCRM('deals');
 
   useEffect(() => {
     let cancelled = false;
@@ -262,6 +265,10 @@ export default function NewDealPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canCreateDeals) {
+      setErrors({ submit: 'You only have read access to deals.' });
+      return;
+    }
     if (!validateForm()) {
       setShowValidationModal(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -309,6 +316,36 @@ export default function NewDealPage() {
           <p className="mb-4 text-gray-600">Deal created successfully</p>
           <div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-orange-500" />
           <p className="mt-2 text-sm text-gray-500">Redirecting to deal details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!canCreateDeals) {
+    return (
+      <div className="min-h-screen bg-white">
+        <div className="space-y-6 p-4">
+          <CRMPageHeader
+            title="View-only access"
+            subtitle="Members can read deals, but cannot create or update them."
+            breadcrumb={[
+              { label: 'Sales', href: '/sales' },
+              { label: 'Deals', href: '/sales/deals' },
+              { label: 'New Deal', href: '/sales/deals/new' },
+            ]}
+            showSearch={false}
+            showActions={false}
+          />
+          <Card variant="elevated" className="rounded-xl p-8 text-center">
+            <h2 className="text-xl font-semibold text-gray-900">You cannot create deals with your current role.</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
+              Deal creation, editing, stage changes, and deletion require write or manage access.
+            </p>
+            <Button type="button" variant="primary" className="mt-6" onClick={() => router.push('/sales/deals')}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to deals
+            </Button>
+          </Card>
         </div>
       </div>
     );

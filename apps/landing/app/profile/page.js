@@ -64,11 +64,15 @@ export default function ProfilePage() {
 
   const handleAppClick = (app) => {
     // Check if user has organization with this app
-    const hasApp = organizations.some(org =>
+    const matchingOrg = organizations.find(org =>
       org.subscriptions?.some(sub => sub.app.slug === app.slug)
     );
+    const hasApp = Boolean(matchingOrg);
 
     if (hasApp) {
+      if (matchingOrg?.id) {
+        localStorage.setItem('current-org-id', String(matchingOrg.id));
+      }
       // Redirect to app
       window.location.href = `http://localhost:${getAppPort(app.slug)}`;
     } else {
@@ -96,6 +100,9 @@ export default function ProfilePage() {
   const handleOrganizationClick = (org) => {
     // Store selected organization in localStorage
     localStorage.setItem('selected-organization', JSON.stringify(org));
+    if (org?.id) {
+      localStorage.setItem('current-org-id', String(org.id));
+    }
     // Redirect to Accounts app
     window.location.href = `http://localhost:3003?org=${org.id}`;
   };

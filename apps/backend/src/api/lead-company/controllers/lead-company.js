@@ -15,6 +15,7 @@ const {
   createPopulateSanitizer,
   safeCount,
 } = require('../../../utils/content-api-helpers');
+const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
 
 const UID = 'api::lead-company.lead-company';
 const CONTACT_UID = 'api::contact.contact';
@@ -73,6 +74,10 @@ function contactsForLeadKeys(contacts, keySet) {
   });
 }
 
+function canManageLeadCompanies(ctx) {
+  return canAccess(ctx, 'crm', 'leads', 'manage');
+}
+
 /**
  * Strapi 5 populate on inverse oneToMany (mappedBy) often omits `contacts` on findMany/findOne.
  * Load org contacts and attach by leadCompany id (no `$in` on relation — unreliable in some setups).
@@ -129,6 +134,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async statuses(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'read');
+    if (denied) return denied;
     return {
       data: LEAD_STATUSES.map((value) => ({
         value,
@@ -140,6 +147,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'read');
+    if (denied) return denied;
 
     const { query, page, pageSize, sort } = readListQuery(ctx);
 
@@ -166,6 +175,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async findOne(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'read');
+    if (denied) return denied;
 
     const { id } = ctx.params;
     const pop = sanitizePopulate(ctx.query?.populate);
@@ -185,6 +196,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'write');
+    if (denied) return denied;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
@@ -192,7 +205,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     // Force org and creator
     data.organization = ctx.state.orgId;
-    if (!data.assignedTo && ctx.state.user?.id) {
+    if (!canManageLeadCompanies(ctx) && ctx.state.user?.id) {
+      data.assignedTo = ctx.state.user.id;
+    } else if (!data.assignedTo && ctx.state.user?.id) {
       data.assignedTo = ctx.state.user.id;
     }
     const statusErr = validateAndApplyLeadStatus(ctx, data);
@@ -217,6 +232,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async update(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'write');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
@@ -226,11 +243,22 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    const ownershipDenied = requireOwnerOrModuleManage(
+      ctx,
+      'crm',
+      'leads',
+      existing,
+      'You can only edit lead companies assigned to you'
+    );
+    if (ownershipDenied) return ownershipDenied;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
+    if (!canManageLeadCompanies(ctx)) {
+      delete data.assignedTo;
+    }
     const statusErr = validateAndApplyLeadStatus(ctx, data);
     if (statusErr) return statusErr;
 
@@ -261,6 +289,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async convertToClient(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'write');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const leadCompany = await strapi.entityService.findOne(UID, id, {
@@ -270,6 +300,14 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(leadCompany.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    const ownershipDenied = requireOwnerOrModuleManage(
+      ctx,
+      'crm',
+      'leads',
+      leadCompany,
+      'You can only convert lead companies assigned to you'
+    );
+    if (ownershipDenied) return ownershipDenied;
     if (leadCompany.status === 'CONVERTED' || leadCompany.convertedAccount != null) {
       return ctx.badRequest('Lead company is already converted to a client account');
     }
@@ -371,6 +409,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async delete(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'manage');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
@@ -381,7 +421,6 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       return ctx.forbidden('Access denied');
     }
 
-    const entry = await strapi.entityService.delete(UID, id);
     try {
       await logCrmActivity(strapi, {
         organizationId: ctx.state.orgId,
@@ -394,6 +433,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     } catch (_) {
       /* best-effort */
     }
-    return { data: entry };
+
+    await strapi.entityService.delete(UID, id);
+    return { data: { id } };
   },
 }));

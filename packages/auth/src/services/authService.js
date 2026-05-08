@@ -7,6 +7,8 @@ const API_BASE_URL =
     ? 'https://api.webfudge.in'
     : 'http://localhost:1337');
 
+const ACCESS_RANK = { none: 0, read: 1, write: 2, manage: 3 };
+
 class AuthService {
   constructor() {
     this.baseURL = API_BASE_URL;
@@ -246,36 +248,6 @@ class AuthService {
             if (organizations.length > 0) {
               localStorage.setItem('auth-organizations', JSON.stringify(organizations));
             }
-            // Optional: enrich with Strapi users/me (role relations) when available
-            try {
-              const extRes = await fetch(
-                `${this.baseURL}/api/users/me?populate=role`,
-                {
-                  method: 'GET',
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                  },
-                }
-              );
-              if (extRes.ok) {
-                const extData = await extRes.json();
-                const ext = flattenUser(extData.user || extData);
-                if (ext && typeof ext === 'object') {
-                  const enriched = {
-                    ...merged,
-                    ...ext,
-                    firstName: merged.firstName ?? ext.firstName,
-                    lastName: merged.lastName ?? ext.lastName,
-                    email: merged.email ?? ext.email,
-                  };
-                  localStorage.setItem('auth-user', JSON.stringify(enriched));
-                  return enriched;
-                }
-              }
-            } catch (_) {
-              /* ignore enrich failures */
-            }
             return merged;
           }
         } else if (authRes.status === 401) {
@@ -283,31 +255,6 @@ class AuthService {
         }
       } catch (e) {
         console.warn('auth/me request failed:', e);
-      }
-
-      // Fallback: Strapi users/me only
-      try {
-        const response = await fetch(
-          `${this.baseURL}/api/users/me?populate=role`,
-          {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          const userData = flattenUser(data.user || data);
-          if (userData) {
-            localStorage.setItem('auth-user', JSON.stringify(userData));
-            return userData;
-          }
-        }
-      } catch (apiError) {
-        console.warn('API call error, using stored user data:', apiError);
       }
 
       const storedUser = this.getStoredUser();
@@ -398,6 +345,48 @@ class AuthService {
     return this.getStoredOrganizations().find((o) => o.id === id) || null;
   }
 
+  getCurrentOrgPermissions() {
+    return this.getCurrentOrg()?.permissions || {};
+  }
+
+  getCurrentOrgRole() {
+    const org = this.getCurrentOrg();
+    return {
+      name: org?.role || 'Member',
+      code: org?.roleCode || 'member',
+      accessLevel: org?.accessLevel || null,
+    };
+  }
+
+  getModuleAccess(appKey, moduleKey) {
+    const app = String(appKey || '').toLowerCase();
+    const module = String(moduleKey || '');
+    return this.getCurrentOrgPermissions()?.[app]?.modules?.[module]?.access || 'none';
+  }
+
+  canAccessAppModule(appKey, moduleKey, minimumAccess = 'read') {
+    const role = this.getCurrentOrgRole();
+    const roleCode = String(role.code || role.name || '').toLowerCase();
+    if (roleCode === 'admin' || roleCode.endsWith('-admin') || String(role.name || '').toLowerCase() === 'admin') {
+      return true;
+    }
+    const have = ACCESS_RANK[this.getModuleAccess(appKey, moduleKey)] ?? 0;
+    const need = ACCESS_RANK[String(minimumAccess || 'read').toLowerCase()] ?? ACCESS_RANK.read;
+    return have >= need;
+  }
+
+  canRead(appKey, moduleKey) {
+    return this.canAccessAppModule(appKey, moduleKey, 'read');
+  }
+
+  canWrite(appKey, moduleKey) {
+    return this.canAccessAppModule(appKey, moduleKey, 'write');
+  }
+
+  canManage(appKey, moduleKey) {
+    return this.canAccessAppModule(appKey, moduleKey, 'manage');
+  }
+
   /**
    * Switch to a different org (must be one the user belongs to).
    * @param {number} orgId
@@ -452,6 +441,11 @@ class AuthService {
    */
   hasPermission(module, action) {
     const user = this.getStoredUser();
+    if (module && String(module).includes('.')) {
+      const [appKey, moduleKey] = String(module).split('.');
+      const actionAccess = action === 'delete' || action === 'manage' ? 'manage' : action === 'create' || action === 'update' || action === 'write' ? 'write' : 'read';
+      return this.canAccessAppModule(appKey, moduleKey, actionAccess);
+    }
     if (!user || !user.permissions) return false;
 
     return user.permissions[module] && user.permissions[module][action] === true;

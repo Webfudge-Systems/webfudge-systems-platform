@@ -24,8 +24,9 @@
       "inversedBy": "organizationUsers"
     },
     "role": {
-      "type": "string",
-      "default": "User"
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization-role.organization-role"
     },
     "customPermissions": {
       "type": "json",

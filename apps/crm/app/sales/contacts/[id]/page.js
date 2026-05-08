@@ -40,6 +40,7 @@ import {
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import contactService from '../../../../lib/api/contactService';
 import { fetchActivityTimeline, fetchContactComments, addContactComment } from '../../../../lib/api/crmActivityService';
+import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 
 function formatDate(dateString) {
   if (!dateString) return '—';
@@ -220,6 +221,8 @@ export default function ContactDetailPage() {
   const [crmTimelineTotal, setCrmTimelineTotal] = useState(0);
   const [crmTimelineLoading, setCrmTimelineLoading] = useState(false);
   const [crmTimelineError, setCrmTimelineError] = useState(null);
+  const canEditContact = canEditCRMRecord('contacts', contact);
+  const canManageContacts = canManageCRM('contacts');
 
   useEffect(() => {
     if (!id) return;
@@ -449,6 +452,7 @@ export default function ContactDetailPage() {
   };
 
   const openContactInfoEdit = () => {
+    if (!canEditContact) return;
     if (!contact) return;
     setContactInfoDraft({
       email: contact.email ?? '',
@@ -479,6 +483,7 @@ export default function ContactDetailPage() {
 
   const saveContactInfo = async () => {
     if (!id || !contactInfoDraft) return;
+    if (!canEditContact) return;
     setContactInfoSaveError('');
     if (!contactInfoDraft.email.trim()) {
       setContactInfoSaveError('Email is required.');
@@ -514,6 +519,7 @@ export default function ContactDetailPage() {
   };
 
   const openAddressEdit = () => {
+    if (!canEditContact) return;
     if (!contact) return;
     setAddressDraft({
       address: contact.address ?? '',
@@ -538,6 +544,7 @@ export default function ContactDetailPage() {
 
   const saveAddressInfo = async () => {
     if (!id || !addressDraft) return;
+    if (!canEditContact) return;
     setAddressSaveError('');
     setSavingAddressInfo(true);
     try {
@@ -595,9 +602,11 @@ export default function ContactDetailPage() {
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <Link href={`/sales/contacts/${id}/edit`} className={headerIconBtnClass} title="Edit">
-            <Edit className="h-5 w-5" />
-          </Link>
+          {canEditContact ? (
+            <Link href={`/sales/contacts/${id}/edit`} className={headerIconBtnClass} title="Edit">
+              <Edit className="h-5 w-5" />
+            </Link>
+          ) : null}
           <button type="button" className={headerIconBtnClass} title="Share" onClick={handleShare}>
             <Share2 className="h-5 w-5" />
           </button>
@@ -810,7 +819,7 @@ export default function ContactDetailPage() {
                     </>
                   )}
 
-                  {!editingContactInfo ? (
+                  {!editingContactInfo && canEditContact ? (
                     <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
                       <button
                         type="button"
@@ -890,7 +899,7 @@ export default function ContactDetailPage() {
                           {isLeadConvertedToClient ? 'View Source Lead Company' : 'View Lead Company'}
                         </Button>
                       </Link>
-                    ) : (
+                    ) : canEditContact ? (
                       <Link href={`/sales/contacts/${id}/edit`} className="inline-flex">
                         <Button
                           type="button"
@@ -902,7 +911,7 @@ export default function ContactDetailPage() {
                           Add company / link lead
                         </Button>
                       </Link>
-                    )}
+                    ) : null}
                   </div>
                 </Card>
 
@@ -966,7 +975,7 @@ export default function ContactDetailPage() {
                   ) : (
                     <InfoRow label="Location" icon={MapPin} value={locationLine} />
                   )}
-                  {!editingAddressInfo ? (
+                  {!editingAddressInfo && canEditContact ? (
                     <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
                       <button
                         type="button"
@@ -1011,15 +1020,17 @@ export default function ContactDetailPage() {
                         </div>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full shrink-0 gap-2 !border-gray-300 bg-white !text-gray-700 shadow-sm hover:bg-gray-50 hover:!text-gray-900 sm:w-auto"
-                      onClick={() => router.push(`/sales/contacts/${id}/edit`)}
-                    >
-                      <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
-                      Change assignee
-                    </Button>
+                    {canManageContacts ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full shrink-0 gap-2 !border-gray-300 bg-white !text-gray-700 shadow-sm hover:bg-gray-50 hover:!text-gray-900 sm:w-auto"
+                        onClick={() => router.push(`/sales/contacts/${id}/edit`)}
+                      >
+                        <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
+                        Change assignee
+                      </Button>
+                    ) : null}
                   </div>
                 </Card>
 
@@ -1213,7 +1224,7 @@ export default function ContactDetailPage() {
                     </div>
                   </div>
 
-                  {!contact.email && !linkedinHref && !twitterHref ? (
+                  {!contact.email && !linkedinHref && !twitterHref && canEditContact ? (
                     <p className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50/80 px-3 py-3 text-center text-sm text-gray-500">
                       Add email or social URLs on the{' '}
                       <Link
@@ -1303,11 +1314,13 @@ export default function ContactDetailPage() {
                 <InfoRow label="Job title" value={contact.jobTitle || contact.title || ''} />
                 <InfoRow label="Timezone" value={contact.timezone || ''} />
               </div>
-              <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
-                <Link href={`/sales/contacts/${id}/edit`} className="font-medium text-orange-600 hover:underline">
-                  Edit all fields
-                </Link>
-              </p>
+              {canEditContact ? (
+                <p className="mt-4 border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
+                  <Link href={`/sales/contacts/${id}/edit`} className="font-medium text-orange-600 hover:underline">
+                    Edit all fields
+                  </Link>
+                </p>
+              ) : null}
             </Card>
           )}
         </>

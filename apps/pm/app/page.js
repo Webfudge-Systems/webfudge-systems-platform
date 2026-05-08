@@ -39,6 +39,7 @@ import { getTaskStatusMeta } from '../components/PMStatusBadge'
 import projectService from '../lib/api/projectService'
 import taskService from '../lib/api/taskService'
 import strapiClient from '../lib/strapiClient'
+import { canReadPM, canWritePM } from '../lib/rbac'
 import {
   transformTask,
   transformUser,
@@ -109,6 +110,10 @@ export default function DashboardPage() {
   const userAttrs = user?.attributes || user
   const email = userAttrs?.email || ''
   const userName = email.split('@')[0] || 'User'
+  const canViewDashboard = canReadPM('dashboard')
+  const canViewProjects = canReadPM('projects')
+  const canCreateProjects = canWritePM('projects')
+  const canViewTasks = canReadPM('tasks') || canReadPM('my_tasks')
 
   useEffect(() => {
     const savedNote = localStorage.getItem('pm-private-notepad')
@@ -122,10 +127,14 @@ export default function DashboardPage() {
         const userId = getUserId()
 
         const [projectsRes, allTasksRes, usersRes] = await Promise.allSettled([
-          projectService.getAllProjects({ pageSize: 10, sort: 'updatedAt:desc' }),
-          userId
-            ? taskService.getPMTasksByAssignee(userId, { pageSize: 100 })
-            : taskService.getAllTasks({ pageSize: 100 }),
+          canViewProjects
+            ? projectService.getAllProjects({ pageSize: 10, sort: 'updatedAt:desc' })
+            : Promise.resolve({ data: [] }),
+          canViewTasks
+            ? userId
+              ? taskService.getPMTasksByAssignee(userId, { pageSize: 100 })
+              : taskService.getAllTasks({ pageSize: 100 })
+            : Promise.resolve({ data: [] }),
           strapiClient.getXtrawrkxUsers({ pageSize: 200 }),
         ])
 
@@ -174,8 +183,8 @@ export default function DashboardPage() {
       }
     }
 
-    if (user) loadData()
-  }, [user, getUserId])
+    if (user && canViewDashboard) loadData()
+  }, [user, getUserId, canViewDashboard, canViewProjects, canViewTasks])
 
   const handleSaveNotepad = () => {
     localStorage.setItem('pm-private-notepad', notepad)
@@ -333,6 +342,18 @@ export default function DashboardPage() {
     )
   }
 
+  if (!canViewDashboard) {
+    return (
+      <div className="p-8 bg-white min-h-full">
+        <EmptyState
+          icon={AlertCircle}
+          title="PM dashboard unavailable"
+          description="Your current role does not have read access to the Project Management dashboard."
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 space-y-4 bg-white min-h-full">
       <PMPageHeader
@@ -399,9 +420,11 @@ export default function DashboardPage() {
             title="Projects"
             subtitle="Track your current projects"
             actions={
+              canViewProjects ? (
               <Button variant="ghost" size="sm" onClick={() => router.push('/projects')}>
                 View All <ArrowRight className="w-3.5 h-3.5 ml-1 inline" />
               </Button>
+              ) : null
             }
           >
             <div className="flex flex-1 flex-col min-h-[min(320px,50vh)]">
@@ -412,6 +435,7 @@ export default function DashboardPage() {
                   description="Projects you have access to will appear here."
                   className="flex flex-1 flex-col justify-center py-10 px-2"
                   action={
+                    canCreateProjects ? (
                     <Button
                       variant="primary"
                       className="w-full bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
@@ -420,18 +444,21 @@ export default function DashboardPage() {
                       <Plus className="w-4 h-4 mr-2" />
                       Create New Project
                     </Button>
+                    ) : null
                   }
                 />
               ) : (
                 <div className="flex flex-1 flex-col min-h-0 space-y-3">
-                  <Button
-                    variant="primary"
-                    className="w-full shrink-0 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
-                    onClick={() => router.push('/projects/add')}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create New Project
-                  </Button>
+                  {canCreateProjects ? (
+                    <Button
+                      variant="primary"
+                      className="w-full shrink-0 bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600"
+                      onClick={() => router.push('/projects/add')}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create New Project
+                    </Button>
+                  ) : null}
                   <div className="pt-1 flex-1 min-h-0">
                     <div className="grid grid-cols-[1fr_auto] gap-4 pb-2">
                       <div className="flex items-center gap-2">

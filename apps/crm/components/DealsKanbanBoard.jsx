@@ -151,18 +151,21 @@ function DealCardInner({ deal, getDealHref }) {
   );
 }
 
-function DealCard({ deal, overlay = false, getDealHref }) {
+function DealCard({ deal, overlay = false, getDealHref, canMoveDeal }) {
+  const canMove = canMoveDeal ? canMoveDeal(deal) : true;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: String(deal.id),
+    disabled: !canMove,
   });
 
   return (
     <div
       ref={setNodeRef}
       {...attributes}
-      {...listeners}
+      {...(canMove ? listeners : {})}
       className={[
-        'group relative cursor-grab rounded-xl border bg-white p-3.5 transition-all active:cursor-grabbing',
+        'group relative rounded-xl border bg-white p-3.5 transition-all',
+        canMove ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
         isDragging
           ? 'opacity-25 shadow-none'
           : 'border-gray-200 shadow-sm hover:border-orange-200 hover:shadow-md',
@@ -176,7 +179,7 @@ function DealCard({ deal, overlay = false, getDealHref }) {
   );
 }
 
-function StageColumn({ stageKey, label, deals, isOver, getDealHref }) {
+function StageColumn({ stageKey, label, deals, isOver, getDealHref, canMoveDeal }) {
   const { setNodeRef } = useDroppable({ id: stageKey });
   const style = STAGE_STYLES[stageKey] || STAGE_STYLES.discovery;
   const totalValue = deals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
@@ -206,7 +209,7 @@ function StageColumn({ stageKey, label, deals, isOver, getDealHref }) {
             <p className="text-[11px] text-gray-400">{isOver ? 'Release to move here' : 'No deals'}</p>
           </div>
         ) : (
-          deals.map((d) => <DealCard key={d.id} deal={d} getDealHref={getDealHref} />)
+          deals.map((d) => <DealCard key={d.id} deal={d} getDealHref={getDealHref} canMoveDeal={canMoveDeal} />)
         )}
       </div>
 
@@ -226,8 +229,9 @@ function StageColumn({ stageKey, label, deals, isOver, getDealHref }) {
  * @param {object[]} dealsLookup — full list to resolve dragged deal + overlay (e.g. all deals from API)
  * @param {(dealId: string, newStage: string) => void | Promise<void>} onMoveDeal
  * @param {(dealId: string) => string | undefined} [getDealHref] — if set, deal title links (pointer events don’t start drag)
+ * @param {(deal: object) => boolean} [canMoveDeal] — if set, disables drag for records the user cannot edit
  */
-export function DealsKanbanBoard({ stageColumns, dealsLookup, onMoveDeal, getDealHref }) {
+export function DealsKanbanBoard({ stageColumns, dealsLookup, onMoveDeal, getDealHref, canMoveDeal }) {
   const [activeId, setActiveId] = useState(null);
   const [overId, setOverId] = useState(null);
 
@@ -258,11 +262,12 @@ export function DealsKanbanBoard({ stageColumns, dealsLookup, onMoveDeal, getDea
       const newStage = String(over.id);
       const deal = dealsLookup.find((d) => String(d.id) === dealId);
       if (!deal) return;
+      if (canMoveDeal && !canMoveDeal(deal)) return;
       const oldStage = (deal.stage || 'discovery').toLowerCase();
       if (oldStage === newStage) return;
       await onMoveDeal(dealId, newStage, deal);
     },
-    [dealsLookup, onMoveDeal]
+    [canMoveDeal, dealsLookup, onMoveDeal]
   );
 
   return (
@@ -282,6 +287,7 @@ export function DealsKanbanBoard({ stageColumns, dealsLookup, onMoveDeal, getDea
             deals={deals}
             isOver={overId === key}
             getDealHref={getDealHref}
+            canMoveDeal={canMoveDeal}
           />
         ))}
         {stageColumns.length === 0 ? (

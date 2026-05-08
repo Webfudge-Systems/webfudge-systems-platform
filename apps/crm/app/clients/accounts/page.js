@@ -43,6 +43,7 @@ import {
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import clientAccountService from '../../../lib/api/clientAccountService';
 import contactService from '../../../lib/api/contactService';
+import { canManageCRM, canWriteCRM } from '../../../lib/rbac';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.clientAccounts.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.clientAccounts.tableColumnOrder';
@@ -191,6 +192,7 @@ export default function ClientAccountsPage() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [draftFilters, setDraftFilters] = useState(initialFilters);
+  const canCreateClientAccounts = canWriteCRM('client_accounts');
   const columnDragKeyRef = useRef(null);
   const columnDropIndicatorRef = useRef(null);
   const toolbarRef = useRef(null);
@@ -355,6 +357,7 @@ export default function ClientAccountsPage() {
     async (e, accountId) => {
       e.stopPropagation();
       if (!accountId || deletingId) return;
+      if (!canManageCRM('client_accounts')) return;
       setDeleteAccountId(accountId);
     },
     [deletingId]
@@ -362,6 +365,10 @@ export default function ClientAccountsPage() {
 
   const confirmDeleteAccount = useCallback(async () => {
     if (!deleteAccountId || deletingId) return;
+    if (!canManageCRM('client_accounts')) {
+      setDeleteAccountId(null);
+      return;
+    }
     try {
       setDeletingId(deleteAccountId);
       await clientAccountService.delete(deleteAccountId);
@@ -830,7 +837,10 @@ export default function ClientAccountsPage() {
         key: 'actions',
         label: 'ACTIONS',
         fixed: true,
-        render: (_, account) => (
+        render: (_, account) => {
+          const canEditClientAccount = canWriteCRM('client_accounts');
+          const canDeleteClientAccount = canManageCRM('client_accounts');
+          return (
           <div className="flex min-w-[148px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
             <div className="relative">
               <Button
@@ -851,18 +861,20 @@ export default function ClientAccountsPage() {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-emerald-600 hover:bg-emerald-50"
-              title="Edit"
-              onClick={(e) => {
-                e.stopPropagation();
-                router.push(`/clients/accounts/${account.id}/edit`);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+            {canEditClientAccount ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 text-emerald-600 hover:bg-emerald-50"
+                title="Edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/clients/accounts/${account.id}/edit`);
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
@@ -876,18 +888,21 @@ export default function ClientAccountsPage() {
             >
               <Mail className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
-              title="Delete"
-              disabled={deletingId === account.id}
-              onClick={(e) => handleDeleteAccount(e, account.id)}
-            >
-              {deletingId === account.id ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4" />}
-            </Button>
+            {canDeleteClientAccount ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                title="Delete"
+                disabled={deletingId === account.id}
+                onClick={(e) => handleDeleteAccount(e, account.id)}
+              >
+                {deletingId === account.id ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4" />}
+              </Button>
+            ) : null}
           </div>
-        ),
+          );
+        },
       },
     ],
     [router, deletingId, handleDeleteAccount]
@@ -915,7 +930,7 @@ export default function ClientAccountsPage() {
           { label: 'Accounts', href: '/clients/accounts' },
         ]}
         showActions={true}
-        onAddClick={() => router.push('/clients/accounts/new')}
+        onAddClick={canCreateClientAccounts ? () => router.push('/clients/accounts/new') : undefined}
         onFilterClick={openFilterModal}
         onImportClick={() => console.log('Import clicked')}
         onExportClick={() => console.log('Export clicked')}
@@ -960,8 +975,8 @@ export default function ClientAccountsPage() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Search..."
-          showAdd={true}
-          onAddClick={() => router.push('/clients/accounts/new')}
+          showAdd={canCreateClientAccounts}
+          onAddClick={canCreateClientAccounts ? () => router.push('/clients/accounts/new') : undefined}
           addTitle="Add Client Account"
           showFilter={true}
           onFilterClick={openFilterModal}
@@ -1081,9 +1096,11 @@ export default function ClientAccountsPage() {
                 <p className="text-sm text-gray-500 mb-4">
                   {searchQuery || activeTab !== 'all'
                     ? 'Try adjusting your filters'
-                    : 'Add your first client account to get started'}
+                    : canCreateClientAccounts
+                      ? 'Add your first client account to get started'
+                      : 'No client accounts are available yet.'}
                 </p>
-                {!searchQuery && activeTab === 'all' && (
+                {!searchQuery && activeTab === 'all' && canCreateClientAccounts && (
                   <Button variant="primary" onClick={() => router.push('/clients/accounts/new')}>
                     <Plus className="w-4 h-4 mr-2" />
                     Add Client Account

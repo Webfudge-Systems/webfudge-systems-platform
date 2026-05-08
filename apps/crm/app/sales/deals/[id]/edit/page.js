@@ -32,6 +32,7 @@ import {
   contactOptionValue,
   contactRowMatchesId,
 } from '../../../../../lib/dealFormOptions';
+import { canEditCRMRecord, canManageCRM } from '../../../../../lib/rbac';
 import {
   AlignLeft,
   ArrowLeft,
@@ -56,7 +57,10 @@ export default function EditDealPage() {
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [deal, setDeal] = useState(null);
   const [dealName, setDealName] = useState('');
+  const canEditDeal = deal ? canEditCRMRecord('deals', deal) : false;
+  const canManageDeals = canManageCRM('deals');
 
   const [form, setForm] = useState({
     name: '',
@@ -184,6 +188,7 @@ export default function EditDealPage() {
           return;
         }
         const d = res.data;
+        setDeal(d);
         setDealName(d.name || 'Deal');
         const close = d.expectedCloseDate
           ? String(d.expectedCloseDate).slice(0, 10)
@@ -406,11 +411,15 @@ export default function EditDealPage() {
     leadCompany: form.leadCompany ? form.leadCompany : null,
     clientAccount: form.clientAccount ? form.clientAccount : null,
     contact: form.contact ? form.contact : null,
-    assignedTo: form.assignedTo ? form.assignedTo : null,
+    ...(canManageDeals ? { assignedTo: form.assignedTo ? form.assignedTo : null } : {}),
   });
 
   const commitDealUpdate = async (withProject) => {
     if (!id) return;
+    if (!canEditDeal) {
+      setSubmitError('You can only edit deals assigned to you.');
+      return;
+    }
     setSaving(true);
     setSubmitError('');
     try {
@@ -440,6 +449,10 @@ export default function EditDealPage() {
     e.preventDefault();
     if (!id) return;
     setSubmitError('');
+    if (!canEditDeal) {
+      setSubmitError('You can only edit deals assigned to you.');
+      return;
+    }
     if (!validate()) return;
 
     const baselineDeal = dealWonBaseline
@@ -472,6 +485,36 @@ export default function EditDealPage() {
           <div className="mx-auto h-6 w-6 animate-spin rounded-full border-b-2 border-orange-500" />
           <p className="mt-2 text-sm text-gray-500">Redirecting…</p>
         </div>
+      </div>
+    );
+  }
+
+  if (!loading && deal && !canEditDeal) {
+    return (
+      <div className="p-4 md:p-6 space-y-6">
+        <CRMPageHeader
+          title="View-only access"
+          subtitle={dealName || 'Deal editing is restricted for your role.'}
+          showSearch={false}
+          showActions={false}
+          breadcrumb={[
+            { label: 'Sales', href: '/sales' },
+            { label: 'Deals', href: '/sales/deals' },
+            { label: dealName || 'Deal', href: `/sales/deals/${id}` },
+          ]}
+        />
+        <Card variant="elevated" className="rounded-xl p-8 text-center">
+          <h2 className="text-xl font-semibold text-gray-900">You can view this deal, but cannot edit it.</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm text-gray-600">
+            Members can edit only deals assigned to them. Managers and admins can manage deals across the team.
+          </p>
+          <Link href={`/sales/deals/${id}`} className="mt-6 inline-flex">
+            <Button type="button" variant="primary">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to deal
+            </Button>
+          </Link>
+        </Card>
       </div>
     );
   }
@@ -613,13 +656,15 @@ export default function EditDealPage() {
                   options={SOURCE_OPTIONS}
                   placeholder="Source"
                 />
-                <Select
-                  label="Assigned to"
-                  value={form.assignedTo}
-                  onChange={(v) => setField('assignedTo', v)}
-                  options={userOptions}
-                  placeholder="Unassigned"
-                />
+                {canManageDeals ? (
+                  <Select
+                    label="Assigned to"
+                    value={form.assignedTo}
+                    onChange={(v) => setField('assignedTo', v)}
+                    options={userOptions}
+                    placeholder="Unassigned"
+                  />
+                ) : null}
               </div>
               <div className="mt-6">
                 <Textarea

@@ -14,6 +14,7 @@ const {
   createPopulateSanitizer,
   safeCount,
 } = require('../../../utils/content-api-helpers');
+const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
 
 const UID = 'api::deal.deal';
 const PROJECT_UID = 'api::project.project';
@@ -42,6 +43,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'deals', 'read');
+    if (denied) return denied;
 
     const { query, page, pageSize, sort } = readListQuery(ctx);
 
@@ -69,6 +72,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async findOne(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'deals', 'read');
+    if (denied) return denied;
 
     const { id } = ctx.params;
     const entry = await strapi.entityService.findOne(UID, id, {
@@ -84,13 +89,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'deals', 'write');
+    if (denied) return denied;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
 
     data.organization = ctx.state.orgId;
-    if (data.assignedTo == null && ctx.state.user?.id) {
+    if (!canAccess(ctx, 'crm', 'deals', 'manage') && ctx.state.user?.id) {
+      data.assignedTo = ctx.state.user.id;
+    } else if (data.assignedTo == null && ctx.state.user?.id) {
       data.assignedTo = ctx.state.user.id;
     }
 
@@ -128,6 +137,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async update(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'deals', 'write');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
@@ -137,11 +148,22 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    const ownershipDenied = requireOwnerOrModuleManage(
+      ctx,
+      'crm',
+      'deals',
+      existing,
+      'You can only edit deals assigned to you'
+    );
+    if (ownershipDenied) return ownershipDenied;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
+    if (!canAccess(ctx, 'crm', 'deals', 'manage')) {
+      delete data.assignedTo;
+    }
 
     let entry = await strapi.entityService.update(UID, id, { data });
     const changedKeys = collectChangedKeys(data);
@@ -197,6 +219,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async delete(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'deals', 'manage');
+    if (denied) return denied;
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
@@ -241,6 +265,14 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(deal.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    const ownershipDenied = requireOwnerOrModuleManage(
+      ctx,
+      'crm',
+      'deals',
+      deal,
+      'You can only create delivery projects for deals assigned to you'
+    );
+    if (ownershipDenied) return ownershipDenied;
     if (deal.stage !== 'won') {
       return ctx.badRequest('Deal must be won before creating a delivery project');
     }

@@ -349,6 +349,7 @@ export function EntityActivityPanel({
   const textareaRef = useRef(null);
 
   const timelineCount = activityCount ?? crmTimeline?.length ?? 0;
+  const canSendMessages = typeof addCommentFn === 'function';
 
   // ── Load chat messages ───────────────────────────────────────────────────
 
@@ -396,7 +397,7 @@ export function EntityActivityPanel({
 
   const handleSend = useCallback(async () => {
     const text = draft.trim();
-    if (!text || !entityId || !addCommentFn || sending) return;
+    if (!text || !entityId || !canSendMessages || sending) return;
     setSending(true);
     setSendError('');
     try {
@@ -413,7 +414,7 @@ export function EntityActivityPanel({
       setSending(false);
       textareaRef.current?.focus();
     }
-  }, [draft, entityId, addCommentFn, sending]);
+  }, [draft, entityId, addCommentFn, canSendMessages, sending]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -673,54 +674,62 @@ export function EntityActivityPanel({
                 </button>
               </div>
             )}
-            <div className="flex items-end gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-3 py-2.5 transition-all duration-150 focus-within:border-orange-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100/80 focus-within:shadow-sm">
-              {/* Avatar of sender (decorative) */}
-              <div className="shrink-0 mb-0.5">
-                <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-[9px] font-bold shadow-sm">
-                  Y
+            {canSendMessages ? (
+              <>
+                <div className="flex items-end gap-2 rounded-xl border border-gray-200 bg-gray-50/80 px-3 py-2.5 transition-all duration-150 focus-within:border-orange-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-orange-100/80 focus-within:shadow-sm">
+                  {/* Avatar of sender (decorative) */}
+                  <div className="shrink-0 mb-0.5">
+                    <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-[9px] font-bold shadow-sm">
+                      Y
+                    </div>
+                  </div>
+                  <textarea
+                    ref={textareaRef}
+                    value={draft}
+                    onChange={handleDraftChange}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                    placeholder="Write a message… (Ctrl+Enter to send)"
+                    className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed"
+                    style={{ minHeight: '22px', maxHeight: '120px', overflowY: 'auto' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSend}
+                    disabled={!draft.trim() || sending}
+                    className="shrink-0 mb-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm transition-all hover:bg-orange-600 hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Send (Ctrl+Enter)"
+                  >
+                    {sending ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="w-3.5 h-3.5" />
+                    )}
+                  </button>
                 </div>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <p className="text-[10px] text-gray-400">
+                    <kbd className="rounded bg-gray-100 px-1 font-mono text-[9px] text-gray-500">
+                      Ctrl+Enter
+                    </kbd>{' '}
+                    to send
+                  </p>
+                  {draft.length > 0 && (
+                    <p
+                      className={`text-[10px] tabular-nums ${
+                        draft.length > 4500 ? 'text-red-500' : 'text-gray-400'
+                      }`}
+                    >
+                      {draft.length}/5000
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-500">
+                You have read-only access to this record.
               </div>
-              <textarea
-                ref={textareaRef}
-                value={draft}
-                onChange={handleDraftChange}
-                onKeyDown={handleKeyDown}
-                rows={1}
-                placeholder="Write a message… (Ctrl+Enter to send)"
-                className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed"
-                style={{ minHeight: '22px', maxHeight: '120px', overflowY: 'auto' }}
-              />
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!draft.trim() || sending}
-                className="shrink-0 mb-0.5 flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm transition-all hover:bg-orange-600 hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
-                title="Send (Ctrl+Enter)"
-              >
-                {sending ? (
-                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Send className="w-3.5 h-3.5" />
-                )}
-              </button>
-            </div>
-            <div className="mt-1.5 flex items-center justify-between">
-              <p className="text-[10px] text-gray-400">
-                <kbd className="rounded bg-gray-100 px-1 font-mono text-[9px] text-gray-500">
-                  Ctrl+Enter
-                </kbd>{' '}
-                to send
-              </p>
-              {draft.length > 0 && (
-                <p
-                  className={`text-[10px] tabular-nums ${
-                    draft.length > 4500 ? 'text-red-500' : 'text-gray-400'
-                  }`}
-                >
-                  {draft.length}/5000
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </div>
       )}

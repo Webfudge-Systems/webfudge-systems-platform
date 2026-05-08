@@ -139,6 +139,11 @@ export const AuthProvider = ({ children }) => {
     return authService.hasPermission(module, action);
   };
 
+  const canAccessAppModule = (appKey, moduleKey, minimumAccess = 'read') => {
+    if (!user) return false;
+    return authService.canAccessAppModule(appKey, moduleKey, minimumAccess);
+  };
+
   const hasRole = (roleName) => {
     if (!user) return false;
     return authService.hasRole(roleName);
@@ -157,6 +162,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     hasPermission,
+    canAccessAppModule,
     hasRole,
     isAdmin,
     // Org / tenant

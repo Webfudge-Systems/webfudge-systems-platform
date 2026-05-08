@@ -1,0 +1,31 @@
+import strapiClient from '../strapiClient'
+
+class OrganizationService {
+  async getCurrent() {
+    return strapiClient.get('/organizations/current')
+  }
+
+  async updateSettings(payload) {
+    if (typeof window === 'undefined') throw new Error('Organization API is browser-only')
+    const orgId = localStorage.getItem('current-org-id')
+    if (!orgId) throw new Error('No active organization selected')
+    return strapiClient.patch(`/organizations/${orgId}/settings`, payload)
+  }
+
+  async getAppAccess() {
+    if (typeof window === 'undefined') return null
+    const orgId = localStorage.getItem('current-org-id')
+    if (!orgId) return null
+    return strapiClient.get(`/organizations/${orgId}/app-access`)
+  }
+
+  async addApp(payload) {
+    if (typeof window === 'undefined') throw new Error('Organization API is browser-only')
+    const orgId = localStorage.getItem('current-org-id')
+    if (!orgId) throw new Error('No active organization selected')
+    return strapiClient.post(`/organizations/${orgId}/add-app`, payload)
+  }
+}
+
+const organizationService = new OrganizationService()
+export default organizationService
