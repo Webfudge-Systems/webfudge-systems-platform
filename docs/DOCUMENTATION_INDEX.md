@@ -28,6 +28,7 @@ Your complete guide to the Webfudge Platform documentation.
 | -------------------------------------- | --------------------------- | --------- | --------- |
 | **[COMMANDS.md](./COMMANDS.md)**       | Complete command reference  | 15 min    | 🟡 Medium |
 | **[ENVIRONMENT.md](./ENVIRONMENT.md)** | Environment variables guide | 15 min    | 🟡 Medium |
+| **[ACCOUNTS_PRODUCTION_DEPLOY.md](./ACCOUNTS_PRODUCTION_DEPLOY.md)** | Accounts app production deploy (env, build, run) | 5 min | 🟡 Medium |
 
 ### 📋 Project Management
 
