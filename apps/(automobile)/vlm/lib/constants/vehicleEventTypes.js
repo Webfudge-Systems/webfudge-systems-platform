@@ -1,0 +1,26 @@
+export const VEHICLE_EVENT_TYPES = {
+  CREATED: 'CREATED',
+  ALLOCATED: 'ALLOCATED',
+  DISPATCHED: 'DISPATCHED',
+  IN_TRANSIT: 'IN_TRANSIT',
+  DELIVERED: 'DELIVERED',
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  SERVICE_ADDED: 'SERVICE_ADDED',
+  WARRANTY_CLAIM: 'WARRANTY_CLAIM',
+};
+
+export const VEHICLE_EVENT_TYPE_LIST = Object.values(VEHICLE_EVENT_TYPES);
+
+export const VEHICLE_EVENT_LABELS = {
+  CREATED: 'Created',
+  ALLOCATED: 'Allocated',
+  DISPATCHED: 'Dispatched',
+  IN_TRANSIT: 'In Transit',
+  DELIVERED: 'Delivered',
+  ACTIVE: 'Active',
+  INACTIVE: 'Inactive',
+  SERVICE_ADDED: 'Service Added',
+  WARRANTY_CLAIM: 'Warranty Claim',
+};
+

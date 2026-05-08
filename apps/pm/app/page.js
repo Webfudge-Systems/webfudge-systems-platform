@@ -107,7 +107,8 @@ export default function DashboardPage() {
   }, [user])
 
   const userAttrs = user?.attributes || user
-  const userName = userAttrs?.firstName || userAttrs?.name?.split?.(' ')[0] || 'User'
+  const email = userAttrs?.email || ''
+  const userName = email.split('@')[0] || 'User'
 
   useEffect(() => {
     const savedNote = localStorage.getItem('pm-private-notepad')
@@ -367,7 +368,7 @@ export default function DashboardPage() {
             title="My Tasks"
             subtitle="Tasks where you are a collaborator"
           >
-            <div className="flex flex-1 flex-col min-h-[min(320px,50vh)] min-h-0">
+            <div className="flex flex-1 flex-col min-h-[min(320px,50vh)]">
               {collaboratorTasks.length === 0 ? (
                 <EmptyState
                   icon={CheckSquare}
@@ -403,7 +404,7 @@ export default function DashboardPage() {
               </Button>
             }
           >
-            <div className="flex flex-1 flex-col min-h-0 min-h-[min(320px,50vh)]">
+            <div className="flex flex-1 flex-col min-h-[min(320px,50vh)]">
               {projects.length === 0 ? (
                 <EmptyState
                   icon={FolderOpen}

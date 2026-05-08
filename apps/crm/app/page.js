@@ -81,7 +81,8 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const userName = user?.firstName || user?.name?.split?.(' ')[0] || 'User';
+  const email = user?.email || user?.attributes?.email || '';
+  const userName = email.split('@')[0] || 'User';
 
   return (
     <div className="p-4 space-y-4 bg-white min-h-full">

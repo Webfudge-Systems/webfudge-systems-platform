@@ -385,6 +385,36 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiAllocationAllocation extends Struct.CollectionTypeSchema {
+  collectionName: 'allocations'
+  info: {
+    description: 'Vehicle allocation records'
+    displayName: 'Allocation'
+    pluralName: 'allocations'
+    singularName: 'allocation'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    dealerId: Schema.Attribute.String
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::allocation.allocation'> &
+      Schema.Attribute.Private
+    metadata: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'ALLOCATED'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Required
+  }
+}
+
 export interface ApiAppApp extends Struct.CollectionTypeSchema {
   collectionName: 'apps'
   info: {
@@ -1114,6 +1144,37 @@ export interface ApiProposalProposal extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiServiceRecordServiceRecord extends Struct.CollectionTypeSchema {
+  collectionName: 'service_records'
+  info: {
+    description: 'Vehicle service and maintenance records'
+    displayName: 'Service Record'
+    pluralName: 'service-records'
+    singularName: 'service-record'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::service-record.service-record'> &
+      Schema.Attribute.Private
+    metadata: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    serviceDate: Schema.Attribute.Date
+    title: Schema.Attribute.String & Schema.Attribute.Required
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Required
+  }
+}
+
 export interface ApiSubscriptionSubscription extends Struct.CollectionTypeSchema {
   collectionName: 'subscriptions'
   info: {
@@ -1221,6 +1282,112 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     tags: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiVehicleEventVehicleEvent extends Struct.CollectionTypeSchema {
+  collectionName: 'vehicle_events'
+  info: {
+    description: 'Append-only lifecycle events for vehicles'
+    displayName: 'Vehicle Event'
+    pluralName: 'vehicle-events'
+    singularName: 'vehicle-event'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    eventType: Schema.Attribute.Enumeration<
+      [
+        'CREATED',
+        'ALLOCATED',
+        'DISPATCHED',
+        'IN_TRANSIT',
+        'DELIVERED',
+        'ACTIVE',
+        'INACTIVE',
+        'SERVICE_ADDED',
+        'WARRANTY_CLAIM',
+      ]
+    > &
+      Schema.Attribute.Required
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::vehicle-event.vehicle-event'> &
+      Schema.Attribute.Private
+    metadata: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Required
+  }
+}
+
+export interface ApiVehicleVehicle extends Struct.CollectionTypeSchema {
+  collectionName: 'vehicles'
+  info: {
+    description: 'Vehicle master records for VLM'
+    displayName: 'Vehicle'
+    pluralName: 'vehicles'
+    singularName: 'vehicle'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Private
+    make: Schema.Attribute.String
+    metadata: Schema.Attribute.JSON
+    model: Schema.Attribute.String
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    registrationNumber: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vin: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.Unique
+    year: Schema.Attribute.Integer
+  }
+}
+
+export interface ApiWarrantyRecordWarrantyRecord extends Struct.CollectionTypeSchema {
+  collectionName: 'warranty_records'
+  info: {
+    description: 'Vehicle warranty and claim records'
+    displayName: 'Warranty Record'
+    pluralName: 'warranty-records'
+    singularName: 'warranty-record'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    claimNumber: Schema.Attribute.String
+    claimStatus: Schema.Attribute.String & Schema.Attribute.DefaultTo<'OPEN'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    details: Schema.Attribute.Text
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::warranty-record.warranty-record'> &
+      Schema.Attribute.Private
+    metadata: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    provider: Schema.Attribute.String & Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Required
   }
 }
 
@@ -1652,6 +1819,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken
       'admin::transfer-token-permission': AdminTransferTokenPermission
       'admin::user': AdminUser
+      'api::allocation.allocation': ApiAllocationAllocation
       'api::app.app': ApiAppApp
       'api::client-account.client-account': ApiClientAccountClientAccount
       'api::contact.contact': ApiContactContact
@@ -1668,8 +1836,12 @@ declare module '@strapi/strapi' {
       'api::organization.organization': ApiOrganizationOrganization
       'api::project.project': ApiProjectProject
       'api::proposal.proposal': ApiProposalProposal
+      'api::service-record.service-record': ApiServiceRecordServiceRecord
       'api::subscription.subscription': ApiSubscriptionSubscription
       'api::task.task': ApiTaskTask
+      'api::vehicle-event.vehicle-event': ApiVehicleEventVehicleEvent
+      'api::vehicle.vehicle': ApiVehicleVehicle
+      'api::warranty-record.warranty-record': ApiWarrantyRecordWarrantyRecord
       'plugin::content-releases.release': PluginContentReleasesRelease
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction
       'plugin::i18n.locale': PluginI18NLocale

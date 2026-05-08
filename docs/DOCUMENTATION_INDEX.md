@@ -99,6 +99,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[CRM_CONTENT_API_SERVICES.md](./CRM_CONTENT_API_SERVICES.md)**                                         | Shared `strapiContentApi.js`: Strapi 5 `populate`, `buildListQuery`, normalized list/one responses across CRM \*Service modules                                               |
 | **[BACKEND_CONTENT_API_CONTROLLERS.md](./BACKEND_CONTENT_API_CONTROLLERS.md)**                           | Strapi org-scoped CRM controllers/routes: `content-api-helpers.js`, task/project tenancy, deal `deliveryProject` populate                                                     |
 | **[CRM_THREADS_PAGE.md](./CRM_THREADS_PAGE.md)**                                                         | Threads page rebuilt: two-panel conversation hub, global comments feed, entity-grouped threads, real-time reply, `?type=` filter on `/crm-activities/feed`                    |
+| **[VLM_APP_AND_STRAPI.md](./VLM_APP_AND_STRAPI.md)**                                                     | New VLM app (`apps/(automobile)/vlm`) + Strapi collections (`vehicles`, `vehicle-events`, `allocations`, `service-records`, `warranty-records`) with event-driven lifecycle     |
 
 ---
 
