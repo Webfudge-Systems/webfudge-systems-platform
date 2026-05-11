@@ -52,6 +52,7 @@ export function TaskSubtasksAfterRow({
   onAddSubtask,
   users = [],
   savingId = null,
+  memberScopedTasks = false,
   onUpdateTask,
   onEditTask,
   onDeleteTask,
@@ -59,7 +60,6 @@ export function TaskSubtasksAfterRow({
   onOpenTask,
   childrenByParentId = {},
 }) {
-  if (!expanded) return null;
   const [expandedNestedIds, setExpandedNestedIds] = useState(() => new Set());
   const list = useMemo(() => {
     const fromMap = childrenByParentId?.[row.id];
@@ -91,7 +91,8 @@ export function TaskSubtasksAfterRow({
     default: 'border-gray-200 bg-gray-50 text-gray-800',
   };
 
-  const subtaskColumns = [
+  const subtaskColumns = useMemo(
+    () => [
     {
       key: 'name',
       label: 'SUBTASK',
@@ -168,7 +169,7 @@ export function TaskSubtasksAfterRow({
             value={st.priority}
             options={PRIORITY_OPTIONS}
             onChange={(priority) => onUpdateTask?.(st, { priority })}
-            disabled={savingId === st.id}
+            disabled={memberScopedTasks || savingId === st.id}
             className="border-orange-200 bg-orange-50 py-1.5 text-xs font-semibold uppercase tracking-wide text-orange-800"
             containerClassName="min-w-[120px]"
             placeholder="Priority"
@@ -214,7 +215,7 @@ export function TaskSubtasksAfterRow({
             assignees={st.assignees}
             users={users || []}
             onChange={(assigneeUserIds) => onUpdateTask?.(st, { assigneeUserIds })}
-            disabled={savingId === st.id}
+            disabled={memberScopedTasks || savingId === st.id}
             compact
           />
         </div>
@@ -245,11 +246,16 @@ export function TaskSubtasksAfterRow({
             triggerClassName="inline-flex h-9 w-9 items-center justify-center rounded-md p-2 text-teal-600 transition hover:bg-teal-50"
             items={[
               { label: 'View', icon: Eye, onClick: () => onOpenTask?.(st) },
-              { label: 'Edit', icon: Edit3, onClick: () => onEditTask?.(st) },
+              ...(memberScopedTasks
+                ? []
+                : [{ label: 'Edit', icon: Edit3, onClick: () => onEditTask?.(st) }]),
               { label: 'Copy link', icon: Copy, onClick: () => onCopyTaskLink?.(st) },
-              { label: 'Delete', icon: Trash2, danger: true, onClick: () => onDeleteTask?.(st) },
+              ...(memberScopedTasks
+                ? []
+                : [{ label: 'Delete', icon: Trash2, danger: true, onClick: () => onDeleteTask?.(st) }]),
             ]}
           />
+          {!memberScopedTasks ? (
           <Button
             variant="ghost"
             size="sm"
@@ -262,6 +268,7 @@ export function TaskSubtasksAfterRow({
           >
             <Pencil className="h-4 w-4" />
           </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="sm"
@@ -274,6 +281,7 @@ export function TaskSubtasksAfterRow({
           >
             <Link2 className="h-4 w-4" />
           </Button>
+          {!memberScopedTasks ? (
           <Button
             variant="ghost"
             size="sm"
@@ -286,10 +294,29 @@ export function TaskSubtasksAfterRow({
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+          ) : null}
         </div>
       ),
     },
-  ];
+  ],
+    [
+      childrenByParentId,
+      row.id,
+      row.subtasks,
+      expandedNestedIds,
+      memberScopedTasks,
+      onCopyTaskLink,
+      onDeleteTask,
+      onEditTask,
+      onOpenTask,
+      onUpdateTask,
+      savingId,
+      toggleNestedExpand,
+      users,
+    ]
+  );
+
+  if (!expanded) return null;
 
   const renderNestedAfterRow = (parent) => {
     const nestedChildren = nestedChildrenFor(parent);
@@ -337,6 +364,7 @@ export function TaskSubtasksAfterRow({
               />
             </div>
           )}
+          {!memberScopedTasks ? (
           <Button
             type="button"
             variant="outline"
@@ -347,6 +375,7 @@ export function TaskSubtasksAfterRow({
             <Plus className="h-3.5 w-3.5" />
             Add subtask
           </Button>
+          ) : null}
         </div>
       </td>
     </tr>

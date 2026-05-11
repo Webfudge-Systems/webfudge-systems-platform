@@ -2,9 +2,10 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@webfudge/auth';
 import {
   Card,
   Button,
@@ -21,10 +22,12 @@ import {
   DollarSign,
 } from 'lucide-react';
 import PMPageHeader from '../../../../components/PMPageHeader';
+import TaskAssigneesPicker from '../../../../components/TaskAssigneesPicker';
 import projectService from '../../../../lib/api/projectService';
 import strapiClient from '../../../../lib/strapiClient';
-import { fetchPmAssignableUsers } from '../../../../lib/api/messageService';
+import { fetchProjectDirectoryUsers } from '../../../../lib/api/messageService';
 import { transformProject, transformUser } from '../../../../lib/api/dataTransformers';
+import { canEditProjectInPm, getPmOrgRoleKind } from '../../../../lib/pmOrgRoles';
 
 const STATUS_OPTIONS = [
   { value: 'PLANNING', label: 'Planning' },
@@ -39,6 +42,11 @@ export default function EditProjectPage() {
   const params = useParams();
   const router = useRouter();
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
+  const { user: authUser } = useAuth();
+  const currentUserId = useMemo(() => {
+    const u = authUser?.attributes || authUser;
+    return u?.id ?? authUser?.id ?? null;
+  }, [authUser]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,10 +69,20 @@ export default function EditProjectPage() {
     teamMemberIds: [],
   });
 
+  const directoryUsers = useMemo(() => {
+    const base = allUsers;
+    if (currentUserId == null) return base;
+    const sid = String(currentUserId);
+    if (base.some((u) => String(u.id) === sid)) return base;
+    const raw = authUser?.attributes || authUser;
+    const merged = transformUser({ id: Number(currentUserId), ...raw });
+    return merged ? [...base, merged] : base;
+  }, [allUsers, currentUserId, authUser]);
+
   const loadUsersAndClients = useCallback(async () => {
     try {
       const [usersRes, clientsRes] = await Promise.allSettled([
-        fetchPmAssignableUsers(),
+        fetchProjectDirectoryUsers(),
         strapiClient.request('/lead-companies?pagination[pageSize]=100', { method: 'GET' }),
       ]);
       if (usersRes.status === 'fulfilled') {
@@ -83,6 +101,12 @@ export default function EditProjectPage() {
   }, [loadUsersAndClients]);
 
   useEffect(() => {
+    if (getPmOrgRoleKind() === 'member') {
+      router.replace('/projects');
+    }
+  }, [router]);
+
+  useEffect(() => {
     if (!slug) return;
     let cancelled = false;
     (async () => {
@@ -97,6 +121,10 @@ export default function EditProjectPage() {
         const raw = res?.data;
         if (!cancelled && raw) {
           const p = transformProject(raw);
+          if (!canEditProjectInPm(p, currentUserId)) {
+            router.replace(`/projects/${p.slug || p.id}`);
+            return;
+          }
           setProjectId(p.id);
           setProjectSlug(p.slug || String(p.id));
           setForm({
@@ -121,7 +149,7 @@ export default function EditProjectPage() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [slug, router, currentUserId]);
 
   const validate = () => {
     const errs = {};
@@ -131,15 +159,6 @@ export default function EditProjectPage() {
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
-  };
-
-  const handleTeamToggle = (userId) => {
-    setForm((prev) => {
-      const ids = prev.teamMemberIds.includes(userId)
-        ? prev.teamMemberIds.filter((id) => id !== userId)
-        : [...prev.teamMemberIds, userId];
-      return { ...prev, teamMemberIds: ids };
-    });
   };
 
   const handleSubmit = async (e) => {
@@ -172,10 +191,15 @@ export default function EditProjectPage() {
     }
   };
 
-  const userOptions = allUsers.map((u) => ({
+  const userOptions = directoryUsers.map((u) => ({
     value: String(u.id),
     label: u.name || u.username || u.email || `User ${u.id}`,
   }));
+
+  const assigneeUserIds = useMemo(
+    () => form.teamMemberIds.map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0),
+    [form.teamMemberIds],
+  );
 
   const clientOptions = clients.map((c) => {
     const attrs = c.attributes || c;
@@ -303,7 +327,7 @@ export default function EditProjectPage() {
               <span>Budget &amp; assignment</span>
             </span>
           }
-          subtitle="Budget, client, and project manager"
+          subtitle="Budget, client, one project manager, and multiple assignees"
           variant="default"
         >
           <div className="space-y-4">
@@ -329,45 +353,32 @@ export default function EditProjectPage() {
               value={form.projectManagerId}
               options={[{ value: '', label: 'Not assigned' }, ...userOptions]}
               onChange={(val) => setForm((p) => ({ ...p, projectManagerId: val }))}
-              placeholder="Assign a project manager"
+              placeholder="Choose one project manager"
             />
+            <p className="text-xs text-gray-500 -mt-2">Only one project manager. Same member list as assignees.</p>
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-800">Project assignees</p>
+              <p className="mb-2 text-xs text-gray-500">Multiple people from your organization (optional).</p>
+              {directoryUsers.length > 0 ? (
+                <TaskAssigneesPicker
+                  userIds={assigneeUserIds}
+                  users={directoryUsers}
+                  assignees={[]}
+                  onChange={(next) =>
+                    setForm((p) => ({
+                      ...p,
+                      teamMemberIds: next.map(String),
+                    }))
+                  }
+                  compact={false}
+                  popoverTitle="Project assignees"
+                />
+              ) : (
+                <p className="text-sm text-gray-500">Loading organization members…</p>
+              )}
+            </div>
           </div>
         </Card>
-
-        {allUsers.length > 0 ? (
-          <Card title={`Team members (${form.teamMemberIds.length} selected)`} variant="default">
-            <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-              {allUsers.map((u) => {
-                const id = String(u.id);
-                const checked = form.teamMemberIds.includes(id);
-                return (
-                  <label
-                    key={u.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                      checked ? 'border-orange-200 bg-orange-50' : 'border-gray-100 bg-white hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => handleTeamToggle(id)}
-                      className="h-4 w-4 accent-orange-500"
-                    />
-                    <div className="flex min-w-0 items-center gap-2">
-                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700">
-                        {(u.name || u.username || '?').charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-900">{u.name || u.username}</p>
-                        <p className="truncate text-xs text-gray-500">{u.email || ''}</p>
-                      </div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </Card>
-        ) : null}
 
         <div className="flex flex-col items-stretch justify-between gap-4 sm:flex-row sm:items-center">
           <Button

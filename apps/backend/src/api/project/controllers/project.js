@@ -15,7 +15,13 @@ const {
   resolveEntityPkForRouteParam,
 } = require('../../../utils/content-api-helpers');
 const { logCrmActivity, collectChangedKeys } = require('../../../utils/crm-activity-log');
-const { requireModuleAccess } = require('../../../utils/rbac');
+const {
+  requireModuleAccess,
+  isPmOrgAdminRole,
+  isPmOrgManagerRole,
+  isPmOrgMemberRole,
+  userCanAccessProjectRow,
+} = require('../../../utils/rbac');
 
 const UID = 'api::project.project';
 
@@ -49,6 +55,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     });
 
     const filters = { organization: ctx.state.orgId };
+    if (isPmOrgMemberRole(ctx) && ctx.state.user?.id) {
+      const uid = ctx.state.user.id;
+      filters.$or = [{ projectManager: uid }, { teamMembers: uid }];
+    }
     const extra = query.filters;
     if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
       if (extra.clientAccount) filters.clientAccount = extra.clientAccount;
@@ -87,6 +97,14 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(entry.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    if (isPmOrgMemberRole(ctx) && ctx.state.user?.id) {
+      const gate = await strapi.entityService.findOne(UID, pk, {
+        populate: ['teamMembers', 'projectManager'],
+      });
+      if (!userCanAccessProjectRow(gate, ctx.state.user.id)) {
+        return ctx.forbidden('Access denied');
+      }
+    }
     return { data: entry };
   },
 
@@ -95,6 +113,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const denied = requireModuleAccess(ctx, 'pm', 'projects', 'write');
     if (denied) return denied;
+    if (isPmOrgMemberRole(ctx)) {
+      return ctx.forbidden('Members cannot create projects');
+    }
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
@@ -147,6 +168,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    if (isPmOrgMemberRole(ctx)) {
+      return ctx.forbidden('Members cannot edit project settings');
+    }
+    if (
+      isPmOrgManagerRole(ctx) &&
+      !isPmOrgAdminRole(ctx) &&
+      ctx.state.user?.id &&
+      !userCanAccessProjectRow(existing, ctx.state.user.id)
+    ) {
+      return ctx.forbidden('You can only edit projects you are assigned to manage');
+    }
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
@@ -195,6 +227,14 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!existing) return ctx.notFound();
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
+    }
+    if (
+      isPmOrgManagerRole(ctx) &&
+      !isPmOrgAdminRole(ctx) &&
+      ctx.state.user?.id &&
+      !userCanAccessProjectRow(existing, ctx.state.user.id)
+    ) {
+      return ctx.forbidden('You can only delete projects you are assigned to manage');
     }
 
     const entry = await strapi.entityService.delete(UID, pk);

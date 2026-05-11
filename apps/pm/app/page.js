@@ -40,6 +40,7 @@ import projectService from '../lib/api/projectService'
 import taskService from '../lib/api/taskService'
 import strapiClient from '../lib/strapiClient'
 import { canReadPM, canWritePM } from '../lib/rbac'
+import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 import {
   transformTask,
   transformUser,
@@ -112,7 +113,7 @@ export default function DashboardPage() {
   const userName = email.split('@')[0] || 'User'
   const canViewDashboard = canReadPM('dashboard')
   const canViewProjects = canReadPM('projects')
-  const canCreateProjects = canWritePM('projects')
+  const canCreateProjects = canWritePM('projects') && canCreateProjectsInPm()
   const canViewTasks = canReadPM('tasks') || canReadPM('my_tasks')
 
   useEffect(() => {

@@ -56,6 +56,7 @@ import {
 import taskService from '../../../lib/api/taskService';
 import strapiClient from '../../../lib/strapiClient';
 import { formatDate, transformProject, transformTask, transformUser } from '../../../lib/api/dataTransformers';
+import { canEditProjectInPm, getPmOrgRoleKind } from '../../../lib/pmOrgRoles';
 
 const DETAIL_TABS = [
   { key: 'overview', label: 'Overview' },
@@ -142,6 +143,12 @@ export default function ProjectDetailPage() {
   const slug = Array.isArray(params?.slug) ? params.slug[0] : params?.slug;
   const router = useRouter();
   const { user: authUser } = useAuth();
+  const currentUserId = useMemo(() => {
+    const u = authUser?.attributes || authUser;
+    return u?.id ?? authUser?.id ?? null;
+  }, [authUser]);
+  const pmOrgRoleKind = useMemo(() => getPmOrgRoleKind(), []);
+  const memberScopedTasks = pmOrgRoleKind === 'member';
   const defaultAssignerId = useMemo(() => {
     const u = authUser?.attributes || authUser;
     const id = u?.id ?? authUser?.id ?? null;
@@ -149,6 +156,10 @@ export default function ProjectDetailPage() {
   }, [authUser]);
   const [activeTab, setActiveTab] = useState('overview');
   const [project, setProject] = useState(null);
+  const canEditThisProject = useMemo(
+    () => (project ? canEditProjectInPm(project, currentUserId) : false),
+    [project, currentUserId],
+  );
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
@@ -338,11 +349,11 @@ export default function ProjectDetailPage() {
   );
 
   const openProjectInfoEdit = useCallback(() => {
-    if (!project) return;
+    if (!project || !canEditThisProject) return;
     setProjectInfoDraft(projectToInlineDraft(project));
     setProjectInfoSaveError('');
     setEditingProjectInfo(true);
-  }, [project]);
+  }, [project, canEditThisProject]);
 
   const cancelProjectInfoEdit = useCallback(() => {
     setEditingProjectInfo(false);
@@ -355,7 +366,7 @@ export default function ProjectDetailPage() {
   };
 
   const saveProjectInfo = async () => {
-    if (!project || !projectInfoDraft) return;
+    if (!project || !projectInfoDraft || !canEditThisProject) return;
     if (!projectInfoDraft.name.trim()) {
       setProjectInfoSaveError('Project name is required.');
       return;
@@ -390,7 +401,7 @@ export default function ProjectDetailPage() {
   };
 
   const updateProject = async (patch) => {
-    if (!project) return;
+    if (!project || !canEditThisProject) return;
     try {
       setSaving(true);
       await projectService.updateProject(project.id, patch);
@@ -421,7 +432,7 @@ export default function ProjectDetailPage() {
   };
 
   const deleteProject = async () => {
-    if (!project) return;
+    if (!project || !canEditThisProject) return;
     try {
       setSaving(true);
       await projectService.deleteProject(project.id);
@@ -493,12 +504,15 @@ export default function ProjectDetailPage() {
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {canEditThisProject ? (
           <Link href={editProjectHref} className={headerIconBtnClass} title="Edit all project details" aria-label="Edit all project details">
             <Edit className="h-5 w-5" />
           </Link>
+          ) : null}
           <button type="button" className={headerIconBtnClass} title="Copy link" onClick={copyProjectLink}>
             <Share2 className="h-5 w-5" />
           </button>
+          {!memberScopedTasks ? (
           <button
             type="button"
             className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-pink-500 shadow-md hover:opacity-95 transition-opacity shrink-0"
@@ -507,6 +521,8 @@ export default function ProjectDetailPage() {
             <Plus className="h-4 w-4 shrink-0" aria-hidden />
             Add Task
           </button>
+          ) : null}
+          {canEditThisProject ? (
           <button
             type="button"
             className={`group ${headerDangerIconBtnClass}`}
@@ -515,6 +531,7 @@ export default function ProjectDetailPage() {
           >
             <Trash2 className="h-5 w-5 shrink-0 text-brand-text-light transition-colors group-hover:text-red-50" aria-hidden />
           </button>
+          ) : null}
           <PMRowActions
             items={[
               { label: 'Copy link', icon: Copy, onClick: copyProjectLink },
@@ -563,7 +580,7 @@ export default function ProjectDetailPage() {
                         value={project.strapiStatus}
                         options={PROJECT_STATUS_OPTIONS}
                         onChange={(status) => updateProject({ status })}
-                        disabled={saving}
+                        disabled={saving || !canEditThisProject}
                         containerClassName="sm:w-56"
                         placeholder="Change status"
                       />
@@ -592,15 +609,21 @@ export default function ProjectDetailPage() {
                     </section>
 
                     <p className="border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
-                      <button type="button" onClick={openProjectInfoEdit} className="font-medium text-orange-600 hover:underline">
-                        Edit project details
-                      </button>
-                      <span className="mx-2 text-gray-300" aria-hidden>
-                        ·
-                      </span>
-                      <Link href={editProjectHref} className="font-medium text-gray-500 hover:text-orange-600 hover:underline">
-                        Full edit page
-                      </Link>
+                      {canEditThisProject ? (
+                        <>
+                          <button type="button" onClick={openProjectInfoEdit} className="font-medium text-orange-600 hover:underline">
+                            Edit project details
+                          </button>
+                          <span className="mx-2 text-gray-300" aria-hidden>
+                            ·
+                          </span>
+                          <Link href={editProjectHref} className="font-medium text-gray-500 hover:text-orange-600 hover:underline">
+                            Full edit page
+                          </Link>
+                        </>
+                      ) : (
+                        <span className="text-gray-400">You can view this project; only admins or assigned managers can change settings.</span>
+                      )}
                     </p>
                   </div>
                 </>
@@ -769,6 +792,7 @@ export default function ProjectDetailPage() {
                     </p>
                   </div>
                 </div>
+                {canEditThisProject ? (
                 <Link
                   href={editProjectHref}
                   className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 sm:w-auto"
@@ -776,6 +800,7 @@ export default function ProjectDetailPage() {
                   <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
                   Edit project
                 </Link>
+                ) : null}
               </div>
             </Card>
 
@@ -889,6 +914,7 @@ export default function ProjectDetailPage() {
           }
           onEditTask={(task) => setTaskModal({ open: true, task, parentContext: null })}
           onDeleteTask={(task) => setDeleteTaskModal({ open: true, task })}
+          memberScopedTasks={memberScopedTasks}
         />
       ) : null}
 

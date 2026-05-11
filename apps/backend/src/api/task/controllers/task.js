@@ -16,7 +16,12 @@ const {
   resolveEntityPkForRouteParam,
 } = require('../../../utils/content-api-helpers');
 const { logCrmActivity, collectChangedKeys } = require('../../../utils/crm-activity-log');
-const { requireModuleAccess } = require('../../../utils/rbac');
+const {
+  requireModuleAccess,
+  isPmOrgMemberRole,
+  relationId,
+  userCanAccessProjectRow,
+} = require('../../../utils/rbac');
 const {
   computeNextOccurrence,
   ensureRecurrenceGroupId,
@@ -339,6 +344,44 @@ function addDays(d, n) {
   return x;
 }
 
+/** Tasks linked to projects where the user is PM or team member. */
+async function projectIdsForMember(strapi, orgId, userId) {
+  const rows = await strapi.entityService.findMany(PROJECT_UID, {
+    filters: {
+      organization: orgId,
+      $or: [{ projectManager: userId }, { teamMembers: userId }],
+    },
+    fields: ['id'],
+    limit: 500,
+  });
+  return rows.map((r) => r.id).filter((id) => id != null);
+}
+
+async function memberMayViewTask(strapi, orgId, userId, entry) {
+  if (!entry?.id || userId == null) return false;
+  const row = await strapi.entityService.findOne(UID, entry.id, {
+    populate: {
+      assignee: true,
+      collaborators: true,
+      projects: { populate: ['teamMembers', 'projectManager'] },
+      organization: true,
+    },
+  });
+  if (!row || orgIdFromRelation(row.organization) !== orgId) return false;
+  const aid = relationId(row.assignee);
+  if (aid != null && Number(aid) === Number(userId)) return true;
+  const cols = collaboratorIdsFromEntity(row);
+  if (cols.some((id) => Number(id) === Number(userId))) return true;
+  const raw = row.projects;
+  const plist = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  for (const p of plist) {
+    if (userCanAccessProjectRow(p, userId)) return true;
+  }
+  return false;
+}
+
+const MEMBER_TASK_UPDATE_FIELDS = new Set(['progress', 'status']);
+
 module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
@@ -354,15 +397,30 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const filters = { organization: ctx.state.orgId };
     const extra = query.filters;
+    const extraFilters = {};
     if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
-      if (extra.deal) filters.deal = extra.deal;
-      if (extra.status) filters.status = extra.status;
-      if (extra.priority) filters.priority = extra.priority;
-      if (extra.assignee) filters.assignee = extra.assignee;
-      if (extra.clientAccount) filters.clientAccount = extra.clientAccount;
-      if (extra.leadCompany) filters.leadCompany = extra.leadCompany;
-      // Many-to-many: required for project detail "tasks for this project only"
-      if (extra.projects) filters.projects = extra.projects;
+      if (extra.deal) extraFilters.deal = extra.deal;
+      if (extra.status) extraFilters.status = extra.status;
+      if (extra.priority) extraFilters.priority = extra.priority;
+      if (extra.assignee) extraFilters.assignee = extra.assignee;
+      if (extra.clientAccount) extraFilters.clientAccount = extra.clientAccount;
+      if (extra.leadCompany) extraFilters.leadCompany = extra.leadCompany;
+      if (extra.projects) extraFilters.projects = extra.projects;
+    }
+
+    if (isPmOrgMemberRole(ctx) && ctx.state.user?.id) {
+      const uid = ctx.state.user.id;
+      const pids = await projectIdsForMember(strapi, ctx.state.orgId, uid);
+      const visOr = [{ assignee: uid }, { collaborators: { id: uid } }];
+      if (pids.length) visOr.push({ projects: { id: { $in: pids } } });
+      const hasExtra = Object.keys(extraFilters).length > 0;
+      if (hasExtra) {
+        filters.$and = [{ $or: visOr }, extraFilters];
+      } else {
+        filters.$or = visOr;
+      }
+    } else {
+      Object.assign(filters, extraFilters);
     }
 
     const results = await strapi.entityService.findMany(UID, {
@@ -396,6 +454,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(entry.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    if (isPmOrgMemberRole(ctx) && ctx.state.user?.id) {
+      const ok = await memberMayViewTask(strapi, ctx.state.orgId, ctx.state.user.id, entry);
+      if (!ok) return ctx.forbidden('Access denied');
+    }
     return { data: entry };
   },
 
@@ -404,6 +466,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'write');
     if (denied) return denied;
+    if (isPmOrgMemberRole(ctx)) {
+      return ctx.forbidden('Members cannot create tasks');
+    }
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
@@ -489,6 +554,20 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
+
+    if (isPmOrgMemberRole(ctx)) {
+      const ok = await memberMayViewTask(strapi, ctx.state.orgId, ctx.state.user.id, existing);
+      if (!ok) return ctx.forbidden('Access denied');
+      const allowed = {};
+      for (const k of MEMBER_TASK_UPDATE_FIELDS) {
+        if (Object.prototype.hasOwnProperty.call(data, k)) allowed[k] = data[k];
+      }
+      Object.keys(data).forEach((k) => delete data[k]);
+      Object.assign(data, allowed);
+      if (Object.keys(allowed).length === 0) {
+        return ctx.badRequest('Members may only update task progress and status');
+      }
+    }
 
     if (Object.prototype.hasOwnProperty.call(data, 'assigner')) {
       if (data.assigner == null || data.assigner === '') data.assigner = null;
@@ -582,6 +661,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
+    if (isPmOrgMemberRole(ctx)) {
+      return ctx.forbidden('Members cannot delete tasks');
+    }
 
     try {
       await logCrmActivity(strapi, {
@@ -613,7 +695,24 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const terminal = ['COMPLETED', 'CANCELLED'];
 
-    const [asAssignee, asCollaborator] = await Promise.all([
+    const projectTasksPromise =
+      isPmOrgMemberRole(ctx) && userId
+        ? projectIdsForMember(strapi, orgId, userId).then((pids) =>
+            pids.length
+              ? strapi.entityService.findMany(UID, {
+                  filters: {
+                    organization: orgId,
+                    projects: { id: { $in: pids } },
+                  },
+                  limit: 200,
+                  sort: { scheduledDate: 'ASC' },
+                  populate: ['leadCompany', 'assignee'],
+                })
+              : []
+          )
+        : Promise.resolve([]);
+
+    const [asAssignee, asCollaborator, fromProjects] = await Promise.all([
       strapi.entityService.findMany(UID, {
         filters: {
           organization: orgId,
@@ -632,6 +731,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         sort: { scheduledDate: 'ASC' },
         populate: ['leadCompany', 'assignee'],
       }),
+      projectTasksPromise,
     ]);
 
     const byId = new Map();
@@ -639,6 +739,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (t?.id != null) byId.set(t.id, t);
     }
     for (const t of asCollaborator) {
+      if (t?.id != null) byId.set(t.id, t);
+    }
+    for (const t of fromProjects || []) {
       if (t?.id != null) byId.set(t.id, t);
     }
 

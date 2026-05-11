@@ -30,10 +30,11 @@ export async function fetchOrganizationMembers() {
     return { members: [], error: 'no_org' }
   }
   const res = await strapiClient.request(`/organizations/${orgId}/users`, { method: 'GET' })
-  const rows = Array.isArray(res.data) ? res.data : []
+  const rows = Array.isArray(res?.data) ? res.data : []
   const members = rows
     .map((ou) => {
-      const raw = ou.user || ou.attributes?.user
+      /** Backend returns flat user rows (`GET /organizations/:id/users`), not always `{ user }`. */
+      const raw = ou?.user || ou?.attributes?.user || ou
       const u = flattenEntry(raw) || raw
       if (!u || u.id == null) return null
       return {
@@ -72,6 +73,20 @@ export function normalizeContactUser(entry) {
     lastName: flat.lastName,
     name: memberDisplayName(flat),
   }
+}
+
+/**
+ * Full organization roster for project PM / assignee pickers.
+ * Uses GET /organizations/:id/users first; falls back to assignable-users list.
+ */
+export async function fetchProjectDirectoryUsers() {
+  try {
+    const { members, error } = await fetchOrganizationMembers()
+    if (error !== 'no_org' && members?.length) return members
+  } catch (e) {
+    console.warn('fetchProjectDirectoryUsers: organization members unavailable', e)
+  }
+  return fetchPmAssignableUsers()
 }
 
 export async function fetchPmAssignableUsers() {
@@ -172,6 +187,7 @@ export async function sendDirectMessage(recipientId, content) {
 
 export default {
   fetchOrganizationMembers,
+  fetchProjectDirectoryUsers,
   fetchPmAssignableUsers,
   fetchMessageContacts,
   fetchConversation,

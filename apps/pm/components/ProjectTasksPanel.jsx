@@ -140,6 +140,8 @@ export default function ProjectTasksPanel({
   onOpenCreateSubtask,
   onEditTask,
   onDeleteTask,
+  /** Org Member role: only progress/status updates; hide task CRUD. */
+  memberScopedTasks = false,
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('all');
@@ -156,9 +158,16 @@ export default function ProjectTasksPanel({
 
   const updateTask = useCallback(
     async (task, patch) => {
+      let next = patch;
+      if (memberScopedTasks) {
+        next = {};
+        if (patch.status !== undefined) next.status = patch.status;
+        if (patch.progress !== undefined) next.progress = patch.progress;
+        if (Object.keys(next).length === 0) return;
+      }
       try {
         setSavingId(task.id);
-        await taskService.updateTask(task.id, patch);
+        await taskService.updateTask(task.id, next);
         await onRefresh?.();
       } catch (error) {
         console.error('Update task error:', error);
@@ -166,7 +175,7 @@ export default function ProjectTasksPanel({
         setSavingId(null);
       }
     },
-    [onRefresh]
+    [memberScopedTasks, onRefresh]
   );
 
   const copyTaskLink = useCallback(async (task) => {
@@ -378,7 +387,7 @@ export default function ProjectTasksPanel({
               value={row.priority}
               options={PRIORITY_OPTIONS}
               onChange={(priority) => updateTask(row, { priority })}
-              disabled={savingId === row.id}
+              disabled={memberScopedTasks || savingId === row.id}
               className="border-orange-200 bg-orange-50 py-1.5 text-xs font-semibold uppercase tracking-wide text-orange-800"
               containerClassName="min-w-[130px]"
               placeholder="Priority"
@@ -424,7 +433,7 @@ export default function ProjectTasksPanel({
               assignees={row.assignees}
               users={users}
               onChange={(assigneeUserIds) => updateTask(row, { assigneeUserIds })}
-              disabled={savingId === row.id}
+              disabled={memberScopedTasks || savingId === row.id}
               compact
             />
           </div>
@@ -455,11 +464,18 @@ export default function ProjectTasksPanel({
               triggerClassName="inline-flex h-9 w-9 items-center justify-center rounded-md p-2 text-teal-600 transition hover:bg-teal-50"
               items={[
                 { label: 'View', icon: Eye, onClick: () => router.push(`/tasks/${row.id}`) },
-                { label: 'Edit', icon: Edit3, onClick: () => onEditTask?.(row) },
+                ...(memberScopedTasks
+                  ? []
+                  : [
+                      { label: 'Edit', icon: Edit3, onClick: () => onEditTask?.(row) },
+                    ]),
                 { label: 'Copy link', icon: Copy, onClick: () => copyTaskLink(row) },
-                { label: 'Delete', icon: Trash2, danger: true, onClick: () => onDeleteTask?.(row) },
+                ...(memberScopedTasks
+                  ? []
+                  : [{ label: 'Delete', icon: Trash2, danger: true, onClick: () => onDeleteTask?.(row) }]),
               ]}
             />
+            {!memberScopedTasks ? (
             <Button
               variant="ghost"
               size="sm"
@@ -472,6 +488,7 @@ export default function ProjectTasksPanel({
             >
               <Pencil className="h-4 w-4" />
             </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
@@ -484,6 +501,7 @@ export default function ProjectTasksPanel({
             >
               <Link2 className="h-4 w-4" />
             </Button>
+            {!memberScopedTasks ? (
             <Button
               variant="ghost"
               size="sm"
@@ -496,6 +514,7 @@ export default function ProjectTasksPanel({
             >
               <Trash2 className="h-4 w-4" />
             </Button>
+            ) : null}
           </div>
         ),
       },
@@ -504,6 +523,7 @@ export default function ProjectTasksPanel({
       router,
       users,
       savingId,
+      memberScopedTasks,
       updateTask,
       copyTaskLink,
       onEditTask,
@@ -531,7 +551,7 @@ export default function ProjectTasksPanel({
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search tasks..."
-        showAdd
+        showAdd={!memberScopedTasks}
         onAddClick={onAddTask}
         addTitle="Add Task"
         variant="glass"
@@ -568,6 +588,7 @@ export default function ProjectTasksPanel({
                   colSpan={taskColumns.length}
                   users={users}
                   savingId={savingId}
+                  memberScopedTasks={memberScopedTasks}
                   onUpdateTask={updateTask}
                   onOpenTask={(subtask) => router.push(`/tasks/${subtask.id}`)}
                   onEditTask={(subtask) => onEditTask?.(subtask)}
@@ -586,7 +607,7 @@ export default function ProjectTasksPanel({
                 <p className="mb-4 text-sm text-gray-500">
                   {searchQuery || activeTab !== 'all' ? 'Try adjusting filters or search' : 'Create the first task for this project'}
                 </p>
-                {!searchQuery && activeTab === 'all' && (
+                {!searchQuery && activeTab === 'all' && !memberScopedTasks && (
                   <Button variant="primary" onClick={onAddTask} className="gap-2">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Task

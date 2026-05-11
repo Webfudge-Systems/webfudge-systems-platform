@@ -37,6 +37,52 @@ function isAdminRole(role) {
   return code === 'admin' || code.endsWith('-admin') || String(role?.name || '').toLowerCase() === 'admin';
 }
 
+/** Org role name/code from JWT middleware (organization-user.role). */
+function orgRoleFromCtx(ctx) {
+  return ctx?.state?.orgRoleDetails || { name: ctx?.state?.orgRole, code: ctx?.state?.orgRoleCode };
+}
+
+/**
+ * Organization Admin — full PM scope (row-level rules bypass).
+ */
+function isPmOrgAdminRole(ctx) {
+  return isAdminRole(orgRoleFromCtx(ctx));
+}
+
+/**
+ * System "Manager" org role (not Admin): may view all projects; edits only projects they manage.
+ */
+function isPmOrgManagerRole(ctx) {
+  if (isPmOrgAdminRole(ctx)) return false;
+  const r = orgRoleFromCtx(ctx);
+  const code = normalizeRoleCode(r);
+  const name = String(r?.name || ctx?.state?.orgRole || '').trim().toLowerCase();
+  return code === 'manager' || name === 'manager';
+}
+
+/**
+ * Everyone else at org level (custom roles, Member template, etc.) — PM member row-level rules.
+ */
+function isPmOrgMemberRole(ctx) {
+  return !isPmOrgAdminRole(ctx) && !isPmOrgManagerRole(ctx);
+}
+
+/**
+ * User may access a project row as team member or assigned project manager.
+ */
+function userCanAccessProjectRow(project, userId) {
+  if (!project || userId == null) return false;
+  const pmId = relationId(project.projectManager);
+  if (pmId != null && Number(pmId) === Number(userId)) return true;
+  const raw = project.teamMembers;
+  const list = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+  for (const u of list) {
+    const id = relationId(u);
+    if (id != null && Number(id) === Number(userId)) return true;
+  }
+  return false;
+}
+
 function roleBasePermissions(role) {
   if (role?.isSystem) return defaultPermissionsForSystemCode(role?.code || role?.name || 'member');
   const raw = role?.permissions;
@@ -156,10 +202,14 @@ module.exports = {
   getAccess,
   isAdminRole,
   isAssignedToCurrentUser,
+  isPmOrgAdminRole,
+  isPmOrgManagerRole,
+  isPmOrgMemberRole,
   membershipSummary,
   relationId,
   requireAppSettingsManage,
   requireModuleAccess,
   requireOwnerOrModuleManage,
   resolveEffectivePermissions,
+  userCanAccessProjectRow,
 };

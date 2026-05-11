@@ -1,8 +1,9 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@webfudge/auth'
 import {
   Card,
   Button,
@@ -19,10 +20,12 @@ import {
   DollarSign,
 } from 'lucide-react'
 import PMPageHeader from '../../../components/PMPageHeader'
+import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker'
 import projectService from '../../../lib/api/projectService'
 import strapiClient from '../../../lib/strapiClient'
-import { fetchPmAssignableUsers } from '../../../lib/api/messageService'
+import { fetchProjectDirectoryUsers } from '../../../lib/api/messageService'
 import { transformUser } from '../../../lib/api/dataTransformers'
+import { getPmOrgRoleKind } from '../../../lib/pmOrgRoles'
 
 const STATUS_OPTIONS = [
   { value: 'PLANNING', label: 'Planning' },
@@ -35,6 +38,12 @@ const STATUS_OPTIONS = [
 
 export default function AddProjectPage() {
   const router = useRouter()
+  const { user: authUser } = useAuth()
+  const currentUserId = useMemo(() => {
+    const u = authUser?.attributes || authUser
+    return u?.id ?? authUser?.id ?? null
+  }, [authUser])
+
   const [loading, setLoading] = useState(false)
   const [allUsers, setAllUsers] = useState([])
   const [clients, setClients] = useState([])
@@ -52,10 +61,21 @@ export default function AddProjectPage() {
     teamMemberIds: [],
   })
 
+  /** Org directory + current user if missing from roster (edge cases). */
+  const directoryUsers = useMemo(() => {
+    const base = allUsers
+    if (currentUserId == null) return base
+    const sid = String(currentUserId)
+    if (base.some((u) => String(u.id) === sid)) return base
+    const raw = authUser?.attributes || authUser
+    const merged = transformUser({ id: Number(currentUserId), ...raw })
+    return merged ? [...base, merged] : base
+  }, [allUsers, currentUserId, authUser])
+
   const loadData = useCallback(async () => {
     try {
       const [usersRes, clientsRes] = await Promise.allSettled([
-        fetchPmAssignableUsers(),
+        fetchProjectDirectoryUsers(),
         strapiClient.request('/lead-companies?pagination[pageSize]=100', { method: 'GET' }),
       ])
       if (usersRes.status === 'fulfilled') {
@@ -69,7 +89,24 @@ export default function AddProjectPage() {
     } catch {}
   }, [])
 
-  useEffect(() => { loadData() }, [loadData])
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    if (getPmOrgRoleKind() === 'member') {
+      router.replace('/projects')
+    }
+  }, [router])
+
+  /** Default project manager = creator (matches backend when PM omitted). */
+  useEffect(() => {
+    if (currentUserId == null) return
+    setForm((prev) => {
+      if (prev.projectManagerId) return prev
+      return { ...prev, projectManagerId: String(currentUserId) }
+    })
+  }, [currentUserId])
 
   const validate = () => {
     const errs = {}
@@ -94,9 +131,12 @@ export default function AddProjectPage() {
         endDate: form.endDate || null,
         budget: form.budget ? Number(form.budget) : null,
       }
-      if (form.clientId) payload.client = Number(form.clientId)
+      if (form.clientId) payload.clientAccount = Number(form.clientId)
+      else payload.clientAccount = null
+
       if (form.projectManagerId) payload.projectManager = Number(form.projectManagerId)
-      if (form.teamMemberIds.length) payload.team = form.teamMemberIds.map(Number)
+
+      payload.teamMembers = form.teamMemberIds.map(Number)
 
       const result = await projectService.createProject(payload)
       const newId = result?.data?.id || result?.id
@@ -113,19 +153,15 @@ export default function AddProjectPage() {
     }
   }
 
-  const handleTeamToggle = (userId) => {
-    setForm((prev) => {
-      const ids = prev.teamMemberIds.includes(userId)
-        ? prev.teamMemberIds.filter((id) => id !== userId)
-        : [...prev.teamMemberIds, userId]
-      return { ...prev, teamMemberIds: ids }
-    })
-  }
-
-  const userOptions = allUsers.map((u) => ({
+  const userOptions = directoryUsers.map((u) => ({
     value: String(u.id),
     label: u.name || u.username || u.email || `User ${u.id}`,
   }))
+
+  const assigneeUserIds = useMemo(
+    () => form.teamMemberIds.map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0),
+    [form.teamMemberIds]
+  )
 
   const clientOptions = clients.map((c) => {
     const attrs = c.attributes || c
@@ -235,7 +271,7 @@ export default function AddProjectPage() {
               <span>Budget & Assignment</span>
             </span>
           }
-          subtitle="Set project budget and assign project manager"
+          subtitle="Budget, client, one project manager, and multiple assignees (organization members)"
           variant="default"
         >
           <div className="space-y-4">
@@ -257,57 +293,40 @@ export default function AddProjectPage() {
               />
             )}
             <Select
-              label="Project Manager"
+              label="Project manager"
               value={form.projectManagerId}
               options={[{ value: '', label: 'Not assigned' }, ...userOptions]}
               onChange={(val) => setForm((p) => ({ ...p, projectManagerId: val }))}
-              placeholder="Assign a project manager"
+              placeholder="Choose one project manager"
             />
+            <p className="text-xs text-gray-500 -mt-2">
+              Defaults to you as creator. Only one person can be project manager.
+            </p>
+            <div>
+              <p className="mb-2 text-sm font-medium text-gray-800">Project assignees</p>
+              <p className="mb-2 text-xs text-gray-500">
+                Select everyone working on this project (multiple). Same directory as above.
+              </p>
+              {directoryUsers.length > 0 ? (
+                <TaskAssigneesPicker
+                  userIds={assigneeUserIds}
+                  users={directoryUsers}
+                  assignees={[]}
+                  onChange={(next) =>
+                    setForm((p) => ({
+                      ...p,
+                      teamMemberIds: next.map(String),
+                    }))
+                  }
+                  compact={false}
+                  popoverTitle="Project assignees"
+                />
+              ) : (
+                <p className="text-sm text-gray-500">Loading organization members…</p>
+              )}
+            </div>
           </div>
         </Card>
-
-        {/* Team Members */}
-        {allUsers.length > 0 && (
-          <Card
-            title={`Team Members (${form.teamMemberIds.length} selected)`}
-            variant="default"
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-              {allUsers.map((u) => {
-                const id = String(u.id)
-                const checked = form.teamMemberIds.includes(id)
-                return (
-                  <label
-                    key={u.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors border ${
-                      checked
-                        ? 'bg-orange-50 border-orange-200'
-                        : 'bg-white border-gray-100 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => handleTeamToggle(id)}
-                      className="w-4 h-4 accent-orange-500"
-                    />
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 font-bold text-sm flex-shrink-0">
-                        {(u.name || u.username || '?').charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {u.name || u.username}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">{u.email || ''}</p>
-                      </div>
-                    </div>
-                  </label>
-                )
-              })}
-            </div>
-          </Card>
-        )}
 
         {/* Submit */}
         <div className="flex items-center justify-between gap-4">

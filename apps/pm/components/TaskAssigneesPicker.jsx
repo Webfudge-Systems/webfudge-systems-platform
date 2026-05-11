@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { clsx } from 'clsx';
 import { Avatar, Checkbox } from '@webfudge/ui';
 import { ownerDisplayFromUser } from '@webfudge/ui';
 import { UserPlus } from 'lucide-react';
@@ -35,12 +36,18 @@ export default function TaskAssigneesPicker({
   disabled = false,
   compact = false,
   maxShown = null,
+  /** Override popover heading (e.g. project assignees vs task assignees) */
+  popoverTitle = 'Assignees (working on this task)',
 }) {
   const numericIds = Array.isArray(userIds)
     ? [...new Set(userIds.map(Number).filter((x) => Number.isFinite(x) && x > 0))]
     : [];
   const [open, setOpen] = useState(false);
+  /** @type {'below' | 'above'} */
+  const [placement, setPlacement] = useState('below');
   const rootRef = useRef(null);
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -50,6 +57,64 @@ export default function TaskAssigneesPicker({
     document.addEventListener('mousedown', fn);
     return () => document.removeEventListener('mousedown', fn);
   }, [open]);
+
+  useEffect(() => {
+    if (!open) setPlacement('below');
+  }, [open]);
+
+  /**
+   * Same idea as TableRowActionMenuPortal: if the panel clips the viewport, flip above the
+   * trigger when there is room, or clamp max-height (uses actual laid-out menu box).
+   */
+  useLayoutEffect(() => {
+    if (!open) return;
+    const trigger = triggerRef.current;
+    const menu = menuRef.current;
+    if (!trigger || !menu) return;
+
+    const pad = 8;
+    const gap = 4;
+    menu.style.maxHeight = '';
+
+    const tr = trigger.getBoundingClientRect();
+    const mr = menu.getBoundingClientRect();
+
+    const bottomOverflow = mr.bottom > window.innerHeight - pad;
+    const topOverflow = mr.top < pad;
+
+    if (!bottomOverflow && !topOverflow) return;
+
+    const spaceBelow = window.innerHeight - tr.bottom - gap - pad;
+    const spaceAbove = tr.top - gap - pad;
+
+    if (bottomOverflow && !topOverflow) {
+      if (spaceAbove >= mr.height) {
+        setPlacement('above');
+      } else {
+        menu.style.maxHeight = `${Math.max(120, spaceBelow)}px`;
+      }
+      return;
+    }
+
+    if (topOverflow && !bottomOverflow) {
+      if (spaceBelow >= mr.height) {
+        setPlacement('below');
+      } else {
+        menu.style.maxHeight = `${Math.max(100, spaceAbove)}px`;
+      }
+      return;
+    }
+
+    if (bottomOverflow && topOverflow) {
+      if (spaceAbove > spaceBelow) {
+        setPlacement('above');
+        menu.style.maxHeight = `${Math.max(100, spaceAbove)}px`;
+      } else {
+        setPlacement('below');
+        menu.style.maxHeight = `${Math.max(100, spaceBelow)}px`;
+      }
+    }
+  }, [open, users.length, compact, popoverTitle]);
 
   const stackUsers = usersForIds(numericIds, assignees, users);
   const cap = maxShown ?? (compact ? 5 : 8);
@@ -69,6 +134,7 @@ export default function TaskAssigneesPicker({
   return (
     <div className="relative inline-flex align-middle" ref={rootRef}>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={(e) => {
@@ -115,13 +181,19 @@ export default function TaskAssigneesPicker({
       </button>
       {open ? (
         <div
+          ref={menuRef}
           role="dialog"
           aria-label="Choose assignees"
-          className={`absolute left-0 top-full z-[100] mt-1 min-w-[14rem] max-w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white py-2 shadow-xl ${maxH} overflow-auto`}
+          className={clsx(
+            'absolute left-0 z-[100] min-w-[14rem] max-w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white py-2 shadow-xl',
+            maxH,
+            'overflow-auto',
+            placement === 'above' ? 'bottom-full mb-1' : 'top-full mt-1'
+          )}
           onClick={(e) => e.stopPropagation()}
         >
           <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            Assignees (working on this task)
+            {popoverTitle}
           </p>
           {users.length === 0 ? (
             <p className="px-3 pb-2 text-xs text-gray-500">No users available.</p>

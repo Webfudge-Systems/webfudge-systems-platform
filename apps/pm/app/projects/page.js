@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@webfudge/auth';
 import {
   Avatar,
   Button,
@@ -23,6 +24,7 @@ import {
   ViewToggleGroup,
   ownerDisplayFromUser,
 } from '@webfudge/ui';
+import { clsx } from 'clsx';
 import {
   CheckCircle,
   Copy,
@@ -56,6 +58,8 @@ import {
 } from '../../lib/api/projectActivityService';
 import projectService from '../../lib/api/projectService';
 import { transformProject, transformUser } from '../../lib/api/dataTransformers';
+import { canWritePM } from '../../lib/rbac';
+import { canCreateProjectsInPm, canEditProjectInPm } from '../../lib/pmOrgRoles';
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Projects' },
@@ -111,7 +115,7 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'endDate', label: 'Due date' },
   { key: 'startDate', label: 'Start date' },
   { key: 'tasks', label: 'Tasks (done / total)' },
-  { key: 'team', label: 'Team size' },
+  { key: 'team', label: 'Team' },
   { key: 'client', label: 'Client' },
   { key: 'budget', label: 'Budget' },
   { key: 'description', label: 'Description' },
@@ -267,8 +271,63 @@ function formatShortDate(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/** Overlapping avatar rings — same vocabulary as TaskAssigneesPicker */
+const TEAM_STACK_RINGS = [
+  'ring-2 ring-sky-400 ring-offset-[2px] ring-offset-white',
+  'ring-2 ring-amber-400 ring-offset-[2px] ring-offset-white',
+  'ring-2 ring-rose-400 ring-offset-[2px] ring-offset-white',
+];
+
+function TeamAvatarStack({ members, maxShown = 4, className }) {
+  const list = Array.isArray(members) ? members.filter(Boolean) : [];
+  if (list.length === 0) {
+    return <span className={clsx('text-xs text-gray-400', className)}>—</span>;
+  }
+  const shown = list.slice(0, maxShown);
+  const overflow = list.length - shown.length;
+  const title = list
+    .map((m) => m?.name || m?.username || m?.email)
+    .filter(Boolean)
+    .join(', ');
+  return (
+    <div className={clsx('flex items-center pt-0.5', className)} title={title}>
+      {shown.map((m, i) => {
+        const derived = ownerDisplayFromUser(m);
+        return (
+          <Avatar
+            key={m.id ?? `t-${i}`}
+            src={m.avatar || undefined}
+            alt={derived.label}
+            fallback={derived.avatarFallback}
+            size="sm"
+            className={clsx(
+              'relative border-2 border-white bg-gray-600 text-white',
+              TEAM_STACK_RINGS[i % TEAM_STACK_RINGS.length],
+              i > 0 && '-ml-2'
+            )}
+            style={{ zIndex: 10 + i }}
+          />
+        );
+      })}
+      {overflow > 0 ? (
+        <span
+          className="-ml-2 inline-flex h-7 min-w-[1.625rem] items-center justify-center rounded-full border-2 border-white bg-gray-200 px-1 text-[10px] font-bold text-gray-800 ring-2 ring-gray-300 ring-offset-2 ring-offset-white"
+          style={{ zIndex: 20 + shown.length }}
+        >
+          +{overflow}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ProjectsPage() {
   const router = useRouter();
+  const { user: authUser } = useAuth();
+  const currentUserId = useMemo(() => {
+    const u = authUser?.attributes || authUser;
+    return u?.id ?? authUser?.id ?? null;
+  }, [authUser]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [kpiRows, setKpiRows] = useState([]);
@@ -301,6 +360,8 @@ export default function ProjectsPage() {
   const columnDropIndicatorRef = useRef(null);
   const projectOwnerMenuRef = useRef(null);
   const pageSize = 12;
+
+  const canShowAddProject = useMemo(() => canWritePM('projects') && canCreateProjectsInPm(), []);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -689,13 +750,14 @@ export default function ProjectsPage() {
         render: (_, row) => {
           const meta = getProjectStatusMeta(row.strapiStatus);
           const chrome = STATUS_SELECT_VARIANT_CLASS[meta.variant] || STATUS_SELECT_VARIANT_CLASS.default;
+          const canEditRow = canEditProjectInPm(row, currentUserId);
           return (
             <div onClick={(event) => event.stopPropagation()}>
               <Select
                 value={row.strapiStatus}
                 options={PROJECT_STATUS_OPTIONS}
                 onChange={(status) => updateProjectStatus(row, status)}
-                disabled={savingId === row.id}
+                disabled={savingId === row.id || !canEditRow}
                 className={`py-1.5 text-xs font-semibold uppercase tracking-wide ${chrome}`}
                 containerClassName="min-w-[150px]"
                 placeholder="Status"
@@ -715,6 +777,7 @@ export default function ProjectsPage() {
         visibilityKey: 'projectManager',
         label: 'OWNER',
         render: (_, row) => {
+          const canEditRow = canEditProjectInPm(row, currentUserId);
           const pmUser = projectManagerUserForRow(row, users);
           const derived = ownerDisplayFromUser(pmUser);
           const label = ownerTableLabel(pmUser, derived);
@@ -728,10 +791,10 @@ export default function ProjectsPage() {
             >
               <button
                 type="button"
-                disabled={savingId === row.id}
+                disabled={savingId === row.id || !canEditRow}
                 onClick={() => setOwnerMenuProjectId((id) => (id === row.id ? null : row.id))}
                 className="flex w-full min-w-0 items-center gap-2.5 rounded-lg text-left transition hover:bg-gray-50 disabled:opacity-45"
-                title={label || 'Choose owner'}
+                title={canEditRow ? label || 'Choose owner' : 'Only admins or this project’s manager can change owner'}
               >
                 <Avatar
                   src={pmUser?.avatar || undefined}
@@ -824,14 +887,11 @@ export default function ProjectsPage() {
         key: 'team',
         visibilityKey: 'team',
         label: 'TEAM',
-        render: (_, row) => {
-          const n = row.teamMembers?.length ?? row.team?.length ?? 0;
-          return (
-            <span className="text-xs text-gray-700">
-              {n ? `${n} member${n === 1 ? '' : 's'}` : '—'}
-            </span>
-          );
-        },
+        render: (_, row) => (
+          <div onClick={(event) => event.stopPropagation()}>
+            <TeamAvatarStack members={row.teamMembers ?? row.team ?? []} maxShown={4} />
+          </div>
+        ),
       },
       {
         key: 'client',
@@ -902,27 +962,38 @@ export default function ProjectsPage() {
         key: 'actions',
         label: 'ACTIONS',
         className: 'w-[220px]',
-        render: (_, row) => (
+        render: (_, row) => {
+          const canMutateProject = canEditProjectInPm(row, currentUserId);
+          return (
           <div className="flex min-w-[220px] items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
             <PMRowActions
               wrapperClassName="flex shrink-0 items-center"
               triggerClassName="inline-flex h-9 w-9 items-center justify-center rounded-md p-2 text-teal-600 transition hover:bg-teal-50"
               items={[
                 { label: 'View', icon: Eye, onClick: () => router.push(`/projects/${row.slug || row.id}`) },
-                {
-                  label: 'Edit',
-                  icon: Edit3,
-                  onClick: () => router.push(`/projects/${row.slug || row.id}?edit=1`),
-                },
+                ...(canMutateProject
+                  ? [
+                      {
+                        label: 'Edit',
+                        icon: Edit3,
+                        onClick: () => router.push(`/projects/${row.slug || row.id}?edit=1`),
+                      },
+                    ]
+                  : []),
                 { label: 'Copy link', icon: Copy, onClick: () => copyProjectLink(row) },
-                {
-                  label: 'Delete',
-                  icon: Trash2,
-                  danger: true,
-                  onClick: () => setDeleteModal({ open: true, project: row }),
-                },
+                ...(canMutateProject
+                  ? [
+                      {
+                        label: 'Delete',
+                        icon: Trash2,
+                        danger: true,
+                        onClick: () => setDeleteModal({ open: true, project: row }),
+                      },
+                    ]
+                  : []),
               ]}
             />
+            {canMutateProject ? (
             <Button
               variant="ghost"
               size="sm"
@@ -935,6 +1006,7 @@ export default function ProjectsPage() {
             >
               <Pencil className="h-4 w-4" />
             </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
@@ -947,6 +1019,7 @@ export default function ProjectsPage() {
             >
               <Link2 className="h-4 w-4" />
             </Button>
+            {canMutateProject ? (
             <Button
               variant="ghost"
               size="sm"
@@ -959,14 +1032,17 @@ export default function ProjectsPage() {
             >
               <Trash2 className="h-4 w-4" />
             </Button>
+            ) : null}
           </div>
-        ),
+          );
+        },
       },
     ],
     [
       router,
       users,
       savingId,
+      currentUserId,
       updateProjectStatus,
       updateProjectManager,
       copyProjectLink,
@@ -1023,7 +1099,7 @@ export default function ProjectsPage() {
         breadcrumb={[{ label: 'PM', href: '/' }, { label: 'Projects', href: '/projects' }]}
         showProfile
         showActions
-        onAddClick={() => router.push('/projects/add')}
+        onAddClick={canShowAddProject ? () => router.push('/projects/add') : undefined}
         onFilterClick={() => setFilterOpen(true)}
         hasActiveFilters={hasActiveFilters}
         onImportClick={() => console.log('Import clicked')}
@@ -1093,7 +1169,7 @@ export default function ProjectsPage() {
             setCurrentPage(1);
           }}
           searchPlaceholder="Search projects..."
-          showAdd
+          showAdd={canShowAddProject}
           onAddClick={() => router.push('/projects/add')}
           addTitle="Create Project"
           showFilter
@@ -1251,10 +1327,8 @@ export default function ProjectsPage() {
                             <div className="mt-3">
                               <PMProgress value={project.progress} size="sm" />
                             </div>
-                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700">
-                                {(project.team || []).length} team
-                              </span>
+                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                              <TeamAvatarStack members={project.team || []} maxShown={3} className="min-h-7" />
                               <span
                                 className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                                   overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
@@ -1294,7 +1368,7 @@ export default function ProjectsPage() {
                     ? 'Try adjusting your filters or search'
                     : 'Create your first project to get started'}
                 </p>
-                {!searchQuery && activeTab === 'all' && !hasActiveFilters ? (
+                {!searchQuery && activeTab === 'all' && !hasActiveFilters && canShowAddProject ? (
                   <Button variant="primary" onClick={() => router.push('/projects/add')} className="gap-2">
                     <Plus className="mr-2 h-4 w-4" />
                     Create Project

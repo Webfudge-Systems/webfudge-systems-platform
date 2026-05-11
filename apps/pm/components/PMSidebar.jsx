@@ -23,6 +23,7 @@ import {
 import projectService from '../lib/api/projectService'
 import { transformProject } from '../lib/api/dataTransformers'
 import { canReadPM, canWritePM } from '../lib/rbac'
+import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 
 export default function PMSidebar({ collapsed = false, onToggle }) {
   const pathname = usePathname()
@@ -147,11 +148,15 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
     { label: 'Calendar', module: 'calendar', icon: Calendar, href: '/calendar' },
   ]
 
-  const visibleQuickActions = quickActionItems.filter((item) => canWritePM(item.module))
+  const visibleQuickActions = quickActionItems.filter((item) => {
+    if (!canWritePM(item.module)) return false
+    if (item.href === '/projects/add' && !canCreateProjectsInPm()) return false
+    return true
+  })
   const visibleNavigationItems = mainNavigationItems.filter((item) => canReadPM(item.module))
   const visiblePmTools = pmTools.filter((item) => !item.module || canReadPM(item.module))
   const canReadProjects = canReadPM('projects')
-  const canCreateProjects = canWritePM('projects')
+  const canCreateProjects = canWritePM('projects') && canCreateProjectsInPm()
 
   const isPmToolActive = (item) => {
     if (item.comingSoonFeature) {
