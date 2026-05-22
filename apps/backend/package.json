@@ -12,7 +12,8 @@
     "start": "strapi start",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+    "upgrade:dry": "npx @strapi/upgrade latest --dry",
+    "test:redis": "node scripts/test-redis.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
@@ -25,6 +26,7 @@
     "react-dom": "^18.0.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^6.0.0",
+    "redis": "^4.7.1",
     "styled-components": "^6.0.0"
   },
   "engines": {

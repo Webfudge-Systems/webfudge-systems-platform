@@ -318,11 +318,13 @@ NEXT_PUBLIC_SENTRY_DSN=https://xxxxx@sentry.io/xxxxx
 ### Redis (Caching)
 
 ```bash
-# In backend .env
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your_redis_password
+# In backend .env (or Railway-injected on API service)
+REDIS_URL=redis://default:password@host:6379
+# CACHE_TTL_SECONDS=300
+# REDIS_ENABLED=false
 ```
+
+See **[REDIS_CACHE.md](./REDIS_CACHE.md)** for Railway private vs public URL and verification steps.
 
 ---
 

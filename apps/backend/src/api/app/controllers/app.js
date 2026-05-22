@@ -20,14 +20,14 @@ module.exports = createCoreController('api::app.app', ({ strapi }) => ({
       const apps = await strapi.entityService.findMany('api::app.app', {
         filters,
         populate: {
-          modules: true
+          modules: true,
         },
-        sort: { order: 'asc' }
+        sort: { order: 'asc' },
       });
 
       return ctx.send({
         success: true,
-        data: apps
+        data: apps,
       });
     } catch (error) {
       console.error('Error fetching apps:', error);
@@ -43,9 +43,9 @@ module.exports = createCoreController('api::app.app', ({ strapi }) => ({
       const app = await strapi.entityService.findMany('api::app.app', {
         filters: { slug, isActive: true },
         populate: {
-          modules: true
+          modules: true,
         },
-        limit: 1
+        limit: 1,
       });
 
       if (!app || app.length === 0) {
@@ -54,7 +54,7 @@ module.exports = createCoreController('api::app.app', ({ strapi }) => ({
 
       return ctx.send({
         success: true,
-        data: app[0].modules
+        data: app[0].modules,
       });
     } catch (error) {
       console.error('Error fetching modules:', error);

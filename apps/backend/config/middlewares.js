@@ -66,4 +66,5 @@ module.exports = [
   'strapi::favicon',
   'strapi::public',
   'global::jwt-auth', // Custom JWT authentication middleware
+  'global::api-cache', // Redis cache for GET /api/* (leads, contacts, tasks, projects, …)
 ];

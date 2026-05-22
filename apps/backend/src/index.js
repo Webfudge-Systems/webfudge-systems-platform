@@ -6,6 +6,7 @@ const {
   ORG_ROLE_UID,
   ORG_MEMBERSHIP_UID,
 } = require('./utils/organization-role');
+const redis = require('./utils/redis');
 
 module.exports = {
   /**
@@ -25,6 +26,18 @@ module.exports = {
    */
   async bootstrap({ strapi }) {
     console.log('🚀 Strapi is bootstrapping...');
+
+    if (redis.isRedisConfigured()) {
+      const hostHint = (redis.resolveRedisUrl() || '').replace(/:[^:@]+@/, ':****@');
+      try {
+        const ok = await redis.ping();
+        console.log(ok ? `✅ Redis connected (${hostHint})` : '⚠️ Redis configured but ping failed');
+      } catch (e) {
+        console.warn('⚠️ Redis unavailable — API will run without cache:', e?.message || e);
+      }
+    } else {
+      console.log('ℹ️ Redis not configured (optional). Set REDIS_URL to enable caching.');
+    }
 
     const forceSeed = process.env.SEED_DATA === 'true';
     let runSeed = forceSeed;
@@ -161,5 +174,9 @@ module.exports = {
     }
 
     console.log('✅ Bootstrap complete!');
+  },
+
+  async destroy() {
+    await redis.disconnect();
   },
 };

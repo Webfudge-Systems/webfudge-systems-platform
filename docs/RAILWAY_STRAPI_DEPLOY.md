@@ -65,11 +65,22 @@ Generate secrets locally:
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-### 4. Do **not** copy local `.env` to Railway
+### 4. Redis (optional caching)
+
+Link the **Redis** service to the API so Railway injects `REDIS_URL` (private URL uses `redis.railway.internal`). After deploy, check API logs for `Redis connected` and:
+
+```bash
+curl https://<your-api-domain>/api/health/redis
+curl https://<your-api-domain>/api/apps
+```
+
+See [REDIS_CACHE.md](./REDIS_CACHE.md).
+
+### 5. Do **not** copy local `.env` to Railway
 
 Local dev uses SQLite and often `SEED_DATA=true`. Production must use **postgres** and **`SEED_DATA=false`**.
 
-### 5. After fixing variables
+### 6. After fixing variables
 
 1. Open **API service → Deployments → View logs** and confirm `strapi start` succeeds.
 2. Redeploy **once** (avoid a tight crash loop that holds DB connections).
