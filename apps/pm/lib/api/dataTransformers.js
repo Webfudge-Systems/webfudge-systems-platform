@@ -128,7 +128,7 @@ export function transformUser(strapiUser) {
 export function transformProject(strapiProject) {
   if (!strapiProject) return null;
   const p = strapiProject.attributes || strapiProject;
-  const id = strapiProject.id || p.id;
+  const id = strapiProject.id ?? p.id ?? strapiProject.documentId ?? p.documentId;
 
   const pm = p.projectManager?.data || p.projectManager;
   const teamMembers = (p.teamMembers?.data || p.teamMembers || []).map(transformUser).filter(Boolean);
@@ -144,6 +144,7 @@ export function transformProject(strapiProject) {
 
   return {
     id,
+    documentId: strapiProject.documentId ?? p.documentId ?? id,
     name: p.name || p.title || 'Untitled Project',
     slug: p.slug || String(id),
     description: p.description || '',

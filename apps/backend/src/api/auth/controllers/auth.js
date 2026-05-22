@@ -1,7 +1,7 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
-const { resolveOrganizationRoleId } = require('../../../utils/organization-role');
+const { createOrganizationOwnerMembership } = require('../../../utils/organization-role');
 const { membershipSummary } = require('../../../utils/rbac');
 const { normalizeUserUsername, uniqueUsernameFromEmail } = require('../../../utils/user-username');
 
@@ -72,16 +72,9 @@ async function ensureActiveOrganizationMembership(user) {
     },
   });
 
-  const adminRoleId = await resolveOrganizationRoleId(strapi, 'Admin');
-
-  await strapi.entityService.create(ORG_MEMBERSHIP_UID, {
-    data: {
-      user: user.id,
-      organization: organization.id,
-      role: adminRoleId,
-      isActive: true,
-      joinedAt: new Date(),
-    },
+  await createOrganizationOwnerMembership(strapi, {
+    userId: user.id,
+    organizationId: organization.id,
   });
 
   memberships = await listActiveMemberships(user.id, true);

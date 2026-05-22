@@ -6,6 +6,8 @@ export function Select({
   error,
   options = [],
   placeholder = 'Select an option',
+  /** When false, omits the empty placeholder option (for locked single-value fields). */
+  allowEmpty = true,
   required = false,
   className,
   containerClassName,
@@ -47,7 +49,7 @@ export function Select({
           onChange={handleChange}
           {...props}
         >
-          <option value="">{placeholder}</option>
+          {allowEmpty ? <option value="">{placeholder}</option> : null}
           {options.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}

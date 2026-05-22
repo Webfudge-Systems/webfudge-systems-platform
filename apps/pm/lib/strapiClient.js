@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE_URL =
-  process.env.NODE_ENV === 'production' ? 'https://api.webfudge.in' : 'http://localhost:1337';
+  process.env.NODE_ENV === 'production' ? 'https://api.webfudge.in' : 'http://localhost:1338';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
 
 class StrapiClient {
@@ -129,12 +129,61 @@ class StrapiClient {
     return this.request(endpoint, { method: 'DELETE' });
   }
 
+  /**
+   * Flatten `GET /organizations/:id/users` into user rows (nested `user` or flat member).
+   */
+  static normalizeOrganizationUsersResponse(body) {
+    const rows = body?.data;
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .map((row) => {
+        const raw = row?.user ?? row?.attributes?.user ?? row;
+        if (raw == null) return null;
+        if (typeof raw === 'object' && raw.attributes) {
+          return { id: raw.id, documentId: raw.documentId ?? raw.id, ...raw.attributes };
+        }
+        if (typeof raw === 'object' && raw.id != null) {
+          return { ...raw };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  }
+
+  /**
+   * Users for assignee dropdowns: org roster when `current-org-id` is set, else GET /users.
+   */
   async getXtrawrkxUsers(params = {}) {
     const queryParams = {
       'pagination[page]': params['pagination[page]'] ?? params.page ?? 1,
       'pagination[pageSize]': params['pagination[pageSize]'] ?? params.pageSize ?? 25,
       ...(params.populate && { populate: params.populate }),
     };
+
+    const orgId = this.getCurrentOrgId();
+    if (orgId) {
+      try {
+        const response = await this.get(`/organizations/${encodeURIComponent(orgId)}/users`);
+        const users = StrapiClient.normalizeOrganizationUsersResponse(response);
+        return {
+          data: users,
+          meta: response?.meta ?? {
+            pagination: {
+              page: 1,
+              pageSize: users.length,
+              pageCount: 1,
+              total: users.length,
+            },
+          },
+        };
+      } catch (e) {
+        console.warn(
+          'strapiClient.getXtrawrkxUsers: organization users failed, trying /users',
+          e?.message || e
+        );
+      }
+    }
+
     return this.get('/users', queryParams);
   }
 }

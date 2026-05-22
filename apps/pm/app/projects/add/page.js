@@ -319,6 +319,8 @@ export default function AddProjectPage() {
                     }))
                   }
                   compact={false}
+                  pickerMode="modal"
+                  searchable
                   popoverTitle="Project assignees"
                 />
               ) : (

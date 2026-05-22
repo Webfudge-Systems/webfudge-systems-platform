@@ -28,6 +28,6 @@ The Accounts Users page now reads organization members from the org-membership A
   - when opening an org or app, it sets `current-org-id` in localStorage
 
 ## Usage / Migration
-- Existing organizations keep existing memberships.
-- For all **newly created organizations**, the creator is stored as `Admin` by default.
+- **Restart the backend** after deploy so bootstrap can promote org owners who were incorrectly stored as `Member` to `Admin`.
+- For all **newly created organizations**, the creator is stored as `Admin` using Strapi 5 relation `connect`/`set` (see `createOrganizationOwnerMembership` in `apps/backend/src/utils/organization-role.js`).
 - Ensure login/profile flow sets `current-org-id` before entering org-scoped apps; this is now handled in landing profile app/org navigation.

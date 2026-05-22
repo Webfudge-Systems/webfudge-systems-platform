@@ -1,6 +1,11 @@
 const { seed } = require('../database/seeds/apps-and-modules');
 const rbac = require('./constants/rbac-app-matrix');
-const { resolveOrganizationRoleId, ORG_ROLE_UID } = require('./utils/organization-role');
+const {
+  resolveOrganizationRoleId,
+  assignMembershipRole,
+  ORG_ROLE_UID,
+  ORG_MEMBERSHIP_UID,
+} = require('./utils/organization-role');
 
 module.exports = {
   /**
@@ -94,17 +99,35 @@ module.exports = {
       }
 
       const memberRoleId = await resolveOrganizationRoleId(strapi, 'Member');
-      const memberships = await strapi.entityService.findMany('api::organization-user.organization-user', {
-        populate: { role: true },
+      const memberships = await strapi.entityService.findMany(ORG_MEMBERSHIP_UID, {
+        populate: {
+          role: true,
+          user: { fields: ['id'] },
+          organization: { populate: { owner: { fields: ['id'] } } },
+        },
         limit: 1000,
       });
 
       for (const membership of memberships) {
-        const hasRole = Boolean(membership?.role?.id || membership?.role);
-        if (hasRole) continue;
-        await strapi.entityService.update('api::organization-user.organization-user', membership.id, {
-          data: { role: memberRoleId },
-        });
+        /** @type {any} */
+        const row = membership;
+        const userId = typeof row.user === 'object' ? row.user?.id : row.user;
+        const org = row.organization;
+        const ownerId = typeof org?.owner === 'object' ? org.owner?.id : org?.owner;
+        const isOwner = userId && ownerId && String(userId) === String(ownerId);
+        const roleCode = String(row.role?.code || '').toLowerCase();
+        const hasRole = Boolean(row.role?.id || row.role);
+
+        if (isOwner) {
+          if (!hasRole || roleCode === 'member') {
+            await assignMembershipRole(strapi, row.id, 'Admin');
+          }
+          continue;
+        }
+
+        if (!hasRole) {
+          await assignMembershipRole(strapi, row.id, memberRoleId);
+        }
       }
     } catch (e) {
       console.warn('⚠️ Could not seed organization roles:', e?.message || e);

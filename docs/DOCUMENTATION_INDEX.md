@@ -29,6 +29,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[COMMANDS.md](./COMMANDS.md)**       | Complete command reference  | 15 min    | 🟡 Medium |
 | **[ENVIRONMENT.md](./ENVIRONMENT.md)** | Environment variables guide | 15 min    | 🟡 Medium |
 | **[ACCOUNTS_PRODUCTION_DEPLOY.md](./ACCOUNTS_PRODUCTION_DEPLOY.md)** | Accounts app production deploy (env, build, run) | 5 min | 🟡 Medium |
+| **[RAILWAY_STRAPI_DEPLOY.md](./RAILWAY_STRAPI_DEPLOY.md)** | Strapi on Railway: Postgres variables, SSL, pool, crash-loop fixes | 5 min | 🔴 High |
 
 ### 📋 Project Management
 
@@ -76,6 +77,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[LEAD_COMPANY_CONTACTS_BACKEND.md](./LEAD_COMPANY_CONTACTS_BACKEND.md)**                               | Lead company `contacts` relation, contact `contactRole` / `isPrimaryContact`, CRM populate + Contacts tab                                                                     |
 | **[LEAD_COMPANY_ADD_CONTACT_MODAL.md](./LEAD_COMPANY_ADD_CONTACT_MODAL.md)**                             | Lead company detail Contacts tab: gradient **Add Contact** button + modal create flow (`contactService.create`, list refresh)                                                 |
 | **[LEAD_COMPANIES_TABLE_COLUMN_VISIBILITY.md](./LEAD_COMPANIES_TABLE_COLUMN_VISIBILITY.md)**             | Lead companies list: all schema fields as optional table columns; eye toolbar + `localStorage` persistence                                                                    |
+| **[RAILWAY_STRAPI_DEPLOY.md](./RAILWAY_STRAPI_DEPLOY.md)**                                               | Strapi on Railway: Postgres linked vars, SSL, connection pool, `SEED_DATA`, monorepo root directory; fixes Knex timeout crashes when DB is healthy                          |
 | **[SAAS_ARCHITECTURE_UPDATE.md](./SAAS_ARCHITECTURE_UPDATE.md)**                                         | Multi-tenant architecture: org scoping, X-Organization-Id header, notifications API, PostgreSQL path, auth org context                                                        |
 | **[BACKEND_CORS_ORG_HEADER_UPDATE.md](./BACKEND_CORS_ORG_HEADER_UPDATE.md)**                             | Strapi CORS allows `X-Organization-Id`; lead-company API requires active org and safe org relation checks                                                                     |
 | **[AUTH_ACTIVE_ORG_BOOTSTRAP_FIX.md](./AUTH_ACTIVE_ORG_BOOTSTRAP_FIX.md)**                               | Auth bootstrap fix for users without active org memberships; auto-provisions organization + owner membership to prevent CRM `No active organization` 403s                    |

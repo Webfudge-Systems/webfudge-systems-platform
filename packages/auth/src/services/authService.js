@@ -5,7 +5,7 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === 'production'
     ? 'https://api.webfudge.in'
-    : 'http://localhost:1337');
+    : 'http://localhost:1338');
 
 const ACCESS_RANK = { none: 0, read: 1, write: 2, manage: 3 };
 

@@ -3,7 +3,7 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === 'production'
     ? 'https://api.webfudge.in'
-    : 'http://localhost:1337');
+    : 'http://localhost:1338');
 
 class StrapiClient {
   constructor() {

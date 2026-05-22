@@ -13,7 +13,7 @@ import type {
   Vendor,
 } from './types'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_STRAPI_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1337'
+const API_BASE_URL = process.env.NEXT_PUBLIC_STRAPI_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1338'
 
 type ListParams = Record<string, string | number | boolean | undefined>
 

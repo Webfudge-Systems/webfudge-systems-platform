@@ -1,9 +1,11 @@
 const allowedOrigins = [
   'http://localhost:3000', // Landing
-  'http://localhost:3001', // CRM
-  'http://localhost:3002', // PM
+  'http://localhost:3002', // VLM (automobile)
   'http://localhost:3003', // Accounts
   'http://localhost:3004', // Vendor
+  'http://localhost:3005', // Books
+  'http://localhost:3006', // PM
+  'http://localhost:3007', // CRM
   'https://webfudge.in',
   'https://www.webfudge.in',
   'https://crm.webfudge.in',

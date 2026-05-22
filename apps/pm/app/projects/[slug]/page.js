@@ -38,13 +38,13 @@ import {
   Target,
   Trash2,
   TrendingUp,
-  User,
   Users,
 } from 'lucide-react';
 import PMPageHeader from '../../../components/PMPageHeader';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
+import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
 import { InfoRow, InfoSection, SidebarCardTitle } from '../../../components/pmEntityDetailInfo';
 import { getProjectStatusMeta, PROJECT_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
@@ -54,6 +54,7 @@ import {
   fetchProjectComments,
 } from '../../../lib/api/projectActivityService';
 import taskService from '../../../lib/api/taskService';
+import { fetchPmAssignableUsers } from '../../../lib/api/messageService';
 import strapiClient from '../../../lib/strapiClient';
 import { formatDate, transformProject, transformTask, transformUser } from '../../../lib/api/dataTransformers';
 import { canEditProjectInPm, getPmOrgRoleKind } from '../../../lib/pmOrgRoles';
@@ -220,11 +221,11 @@ export default function ProjectDetailPage() {
 
   const loadUsers = useCallback(async () => {
     try {
-      const res = await strapiClient.getXtrawrkxUsers({ pageSize: 200 });
-      const list = Array.isArray(res) ? res : res?.data || [];
-      setUsers(list.map(transformUser).filter(Boolean));
+      const rawUsers = await fetchPmAssignableUsers();
+      setUsers(rawUsers.map(transformUser).filter(Boolean));
     } catch (error) {
       console.error('Load users error:', error);
+      setUsers([]);
     }
   }, []);
 
@@ -412,6 +413,12 @@ export default function ProjectDetailPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const changeProjectOwner = async (userId) => {
+    await updateProject({
+      projectManager: userId != null && Number.isFinite(Number(userId)) ? Number(userId) : null,
+    });
   };
 
   const saveTask = async (payload) => {
@@ -770,8 +777,8 @@ export default function ProjectDetailPage() {
 
           <div className="space-y-4">
             <Card variant="elevated" className="rounded-xl">
-              <h2 className="mb-3 text-xl font-semibold text-gray-900">Project owner</h2>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="mb-4 text-xl font-semibold text-gray-900">Project owner</h2>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   <Avatar
                     fallback={
@@ -781,25 +788,22 @@ export default function ProjectDetailPage() {
                     }
                     alt={project.projectManager ? userLabel(project.projectManager) : 'Unassigned'}
                     size="lg"
-                    className="!bg-brand-primary font-semibold text-white shadow-sm ring-2 ring-brand-primary/25"
+                    className="shrink-0 !bg-brand-primary font-semibold text-white shadow-sm ring-2 ring-brand-primary/25"
                   />
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-semibold text-gray-900">
-                      {project.projectManager ? userLabel(project.projectManager) : 'Unassigned'}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {project.projectManager?.email || project.projectManager?.role || 'Assign an owner in the project editor'}
-                    </p>
-                  </div>
+                  <p className="min-w-0 flex-1 truncate text-base font-semibold text-gray-900">
+                    {project.projectManager ? userLabel(project.projectManager) : 'Unassigned'}
+                  </p>
                 </div>
                 {canEditThisProject ? (
-                <Link
-                  href={editProjectHref}
-                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900 sm:w-auto"
-                >
-                  <User className="h-4 w-4 shrink-0 text-gray-600" strokeWidth={1.75} />
-                  Edit project
-                </Link>
+                  <div className="shrink-0 sm:ml-auto">
+                    <ProjectOwnerPicker
+                      users={users}
+                      ownerId={project.projectManager?.id}
+                      onChange={changeProjectOwner}
+                      disabled={!users.length}
+                      saving={saving}
+                    />
+                  </div>
                 ) : null}
               </div>
             </Card>
@@ -977,6 +981,12 @@ export default function ProjectDetailPage() {
         task={taskModal.task}
         parentContext={taskModal.parentContext}
         projects={[project]}
+        lockProject={!taskModal.task}
+        lockedProject={
+          taskModal.task || !project
+            ? null
+            : { id: project.id ?? project.documentId, name: project.name }
+        }
         users={users}
         defaultProjectId={project.id}
         defaultAssignerId={defaultAssignerId}

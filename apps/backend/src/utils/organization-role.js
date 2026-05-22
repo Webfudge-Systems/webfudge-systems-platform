@@ -1,6 +1,7 @@
 'use strict'
 
 const ORG_ROLE_UID = 'api::organization-role.organization-role'
+const ORG_MEMBERSHIP_UID = 'api::organization-user.organization-user'
 
 async function findSystemRoleByNameOrCode(strapi, role) {
   const normalized = String(role || '').trim()
@@ -128,12 +129,63 @@ async function resolveOrganizationRoleId(strapi, role = 'Member') {
   return resolved.id
 }
 
+/** Strapi 5 relation target: prefer documentId, fall back to numeric id. */
+async function resolveRoleConnectTarget(strapi, roleSpec) {
+  const roleId =
+    typeof roleSpec === 'number' && Number.isFinite(roleSpec)
+      ? roleSpec
+      : await resolveOrganizationRoleId(strapi, roleSpec || 'Member')
+
+  const role = await strapi.entityService.findOne(ORG_ROLE_UID, roleId, {
+    fields: ['id', 'documentId'],
+  })
+  if (!role) {
+    throw new Error(`Organization role not found (id ${roleId})`)
+  }
+  return role.documentId || role.id
+}
+
+/** Payload for manyToOne `role` on create/update (Strapi 5 connect syntax). */
+async function roleRelationData(strapi, roleSpec) {
+  const target = await resolveRoleConnectTarget(strapi, roleSpec)
+  return { connect: [target] }
+}
+
+async function assignMembershipRole(strapi, membershipId, roleSpec) {
+  const target = await resolveRoleConnectTarget(strapi, roleSpec)
+  return strapi.entityService.update(ORG_MEMBERSHIP_UID, membershipId, {
+    data: {
+      role: { set: [target] },
+    },
+  })
+}
+
+/** Create active membership for the org creator with Admin role (verified after create). */
+async function createOrganizationOwnerMembership(strapi, { userId, organizationId }) {
+  const membership = await strapi.entityService.create(ORG_MEMBERSHIP_UID, {
+    data: {
+      user: userId,
+      organization: organizationId,
+      role: await roleRelationData(strapi, 'Admin'),
+      isActive: true,
+      joinedAt: new Date(),
+    },
+  })
+  await assignMembershipRole(strapi, membership.id, 'Admin')
+  return membership
+}
+
 module.exports = {
   ORG_ROLE_UID,
+  ORG_MEMBERSHIP_UID,
   findOrganizationRoleByNameOrCode,
   findSystemRoleByNameOrCode,
   ensureOrganizationRole,
   resolveOrganizationRoleId,
   resolveOrganizationRoleIdForOrg,
   validateOrganizationRoleId,
+  resolveRoleConnectTarget,
+  roleRelationData,
+  assignMembershipRole,
+  createOrganizationOwnerMembership,
 }

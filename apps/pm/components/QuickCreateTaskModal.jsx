@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Input, Modal, Select, Textarea } from '@webfudge/ui';
 import { PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge';
 import TaskRecurrenceFormFields, { recurrencePayloadFromForm } from './TaskRecurrenceFormFields';
@@ -28,6 +28,26 @@ function userLabel(user) {
   return user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.username || user?.email || `User ${user?.id}`;
 }
 
+/** Resolve locked project for create flows (project detail, subtasks under a project). */
+function resolveFrozenProject({ lockProject, lockedProject, defaultProjectId, projects, isEdit }) {
+  if (isEdit) return null;
+  if (!lockProject && !lockedProject) return null;
+
+  const fromLocked = lockedProject?.id ?? lockedProject?.documentId;
+  const fromDefault = defaultProjectId != null && String(defaultProjectId).trim() !== '' ? defaultProjectId : null;
+  const fromSingle =
+    projects.length === 1 ? projects[0]?.id ?? projects[0]?.documentId : null;
+  const rawId = fromLocked ?? fromDefault ?? fromSingle;
+  if (rawId == null || String(rawId).trim() === '') return null;
+
+  const id = String(rawId);
+  const match = projects.find(
+    (p) => String(p.id) === id || String(p.documentId) === id
+  );
+  const name = lockedProject?.name || match?.name || 'Current project';
+  return { id, name };
+}
+
 export default function QuickCreateTaskModal({
   isOpen,
   onClose,
@@ -40,10 +60,19 @@ export default function QuickCreateTaskModal({
   defaultProjectId = '',
   defaultStatus = 'SCHEDULED',
   defaultAssignerId = '',
+  /** When true (e.g. project detail page), project cannot be changed on create. */
+  lockProject = false,
+  /** Optional `{ id, documentId?, name }` for display; id falls back to defaultProjectId. */
+  lockedProject = null,
   saving = false,
   title,
 }) {
   const [form, setForm] = useState(EMPTY_FORM);
+  const frozenProject = useMemo(
+    () => resolveFrozenProject({ lockProject, lockedProject, defaultProjectId, projects, isEdit: Boolean(task) }),
+    [lockProject, lockedProject, defaultProjectId, projects, task]
+  );
+  const projectLocked = Boolean(frozenProject?.id);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -79,16 +108,20 @@ export default function QuickCreateTaskModal({
       parentContext && parentContext.id != null && parentContext.projectId != null && parentContext.projectId !== ''
         ? String(parentContext.projectId)
         : '';
+    const lockedId = projectLocked ? frozenProject.id : '';
     setForm({
       ...EMPTY_FORM,
       status: defaultStatus || 'SCHEDULED',
-      projectId: fromParent || (defaultProjectId ? String(defaultProjectId) : ''),
+      projectId: lockedId || fromParent || (defaultProjectId ? String(defaultProjectId) : ''),
       assignerId: defaultAssignerId ? String(defaultAssignerId) : '',
       assigneeUserIds: [],
     });
-  }, [defaultAssignerId, defaultProjectId, defaultStatus, isOpen, task, parentContext]);
+  }, [defaultAssignerId, defaultProjectId, defaultStatus, frozenProject, isOpen, projectLocked, task, parentContext]);
 
-  const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const update = (key, value) => {
+    if (key === 'projectId' && projectLocked) return;
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
 
   const isSubtaskCreate = Boolean(parentContext && parentContext.id != null && !task);
   const isRecurring = !isSubtaskCreate && form.recurrenceFrequency && form.recurrenceFrequency !== 'none';
@@ -106,7 +139,7 @@ export default function QuickCreateTaskModal({
       priority: form.priority,
       startDate: form.startDate || null,
       scheduledDate: isRecurring ? null : form.scheduledDate || null,
-      projectId: form.projectId || null,
+      projectId: projectLocked ? frozenProject.id : form.projectId || null,
       assignerId: effectiveAssignerId,
       assigneeUserIds: [...form.assigneeUserIds],
       ...(isSubtaskCreate
@@ -199,13 +232,24 @@ export default function QuickCreateTaskModal({
               onChange={(event) => update('scheduledDate', event.target.value)}
             />
           ) : null}
-          <Select
-            label="Project"
-            value={form.projectId}
-            options={projects.map((project) => ({ value: String(project.id), label: project.name }))}
-            onChange={(value) => update('projectId', value)}
-            placeholder="No project"
-          />
+          {projectLocked ? (
+            <Select
+              label="Project"
+              value={frozenProject.id}
+              options={[{ value: frozenProject.id, label: frozenProject.name }]}
+              allowEmpty={false}
+              disabled
+              onChange={() => {}}
+            />
+          ) : (
+            <Select
+              label="Project"
+              value={form.projectId}
+              options={projects.map((project) => ({ value: String(project.id), label: project.name }))}
+              onChange={(value) => update('projectId', value)}
+              placeholder="No project"
+            />
+          )}
           <Select
             label={task ? 'Assigner' : 'Assigner (defaults to you when blank)'}
             value={form.assignerId}

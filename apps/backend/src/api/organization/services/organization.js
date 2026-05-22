@@ -5,7 +5,7 @@
  */
 
 const { createCoreService } = require('@strapi/strapi').factories;
-const { resolveOrganizationRoleId } = require('../../../utils/organization-role');
+const { createOrganizationOwnerMembership } = require('../../../utils/organization-role');
 
 module.exports = createCoreService('api::organization.organization', ({ strapi }) => ({
   async createWithOnboarding({ userId, organizationData, appId, moduleIds, userCount, invitedEmails }) {
@@ -31,17 +31,10 @@ module.exports = createCoreService('api::organization.organization', ({ strapi }
         }
       });
 
-      // 2. Add owner to organization users
-      const adminRoleId = await resolveOrganizationRoleId(strapi, 'Admin');
-      await strapi.entityService.create('api::organization-user.organization-user', {
-        data: {
-          user: userId,
-          organization: organization.id,
-          role: adminRoleId,
-          isActive: true,
-          joinedAt: new Date(),
-          publishedAt: new Date()
-        }
+      // 2. Add owner as Admin (Strapi 5 relation connect + post-create verify)
+      await createOrganizationOwnerMembership(strapi, {
+        userId,
+        organizationId: organization.id,
       });
 
       // 3. Create subscription if app selected
