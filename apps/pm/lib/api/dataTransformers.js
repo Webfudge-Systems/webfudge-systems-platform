@@ -236,6 +236,10 @@ export function transformTask(strapiTask) {
     };
   });
   const collaborators = (t.collaborators?.data || t.collaborators || []).map(transformUser).filter(Boolean);
+  const pendingCollaborators = (t.pendingCollaborators?.data || t.pendingCollaborators || [])
+    .map(transformUser)
+    .filter(Boolean);
+  const assignmentApprovalStatus = t.assignmentApprovalStatus || 'not_required';
   const primaryAssigneeUser = assignee && typeof assignee === 'object' ? transformUser(assignee) : null;
   let assignees = [...collaborators];
   if (
@@ -243,6 +247,10 @@ export function transformTask(strapiTask) {
     !assignees.some((u) => Number(u.id) === Number(primaryAssigneeUser.id))
   ) {
     assignees = [primaryAssigneeUser, ...assignees];
+  }
+  const assignmentPending = assignmentApprovalStatus === 'pending' && pendingCollaborators.length > 0;
+  if (assignmentPending) {
+    assignees = [...pendingCollaborators];
   }
   const subtasks = (t.subtasks?.data || t.subtasks || []).map(transformSubtask).filter(Boolean);
 
@@ -292,7 +300,6 @@ export function transformTask(strapiTask) {
     formattedStartDate: formatDate(t.startDate, 'short'),
     dueDate: t.scheduledDate || t.dueDate || null,
     formattedDueDate: formatDate(t.scheduledDate || t.dueDate, 'short'),
-    progress: typeof t.progress === 'number' ? t.progress : 0,
     assignee: primaryAssigneeUser,
     assigneeId:
       assigneeFlat?.id ??
@@ -306,6 +313,9 @@ export function transformTask(strapiTask) {
     assignees,
     assigneeUserIds: assignees.map((u) => u.id).filter((id) => id != null),
     collaborators,
+    pendingCollaborators,
+    assignmentApprovalStatus,
+    assignmentPending,
     projects,
     projectId: projects[0]?.id || null,
     project: projects[0]?.name || null,
@@ -381,7 +391,6 @@ export function transformSubtask(strapiSubtask) {
     priority: transformPriority(s.priority),
     startDate: s.startDate || null,
     dueDate: s.scheduledDate || s.dueDate || null,
-    progress: typeof s.progress === 'number' ? s.progress : 0,
     assignee: primaryAssigneeUser,
     assigneeId:
       assigneeFlat?.id ??

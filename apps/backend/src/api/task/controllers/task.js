@@ -19,6 +19,8 @@ const { logCrmActivity, collectChangedKeys } = require('../../../utils/crm-activ
 const {
   requireModuleAccess,
   isPmOrgMemberRole,
+  isPmOrgAdminRole,
+  isPmOrgManagerRole,
   relationId,
   userCanAccessProjectRow,
 } = require('../../../utils/rbac');
@@ -191,6 +193,65 @@ function collaboratorIdsFromEntity(entity) {
   return list.map((c) => c?.id ?? c?.attributes?.id).filter((x) => x != null);
 }
 
+function pendingCollaboratorIdsFromEntity(entity) {
+  const raw =
+    entity.pendingCollaborators?.data !== undefined
+      ? entity.pendingCollaborators.data
+      : entity.pendingCollaborators;
+  const list = Array.isArray(raw) ? raw : raw && typeof raw === 'object' ? [raw] : [];
+  return list.map((c) => c?.id ?? c?.attributes?.id).filter((x) => x != null);
+}
+
+function projectIdsFromProjectsInput(projectsInput) {
+  if (!projectsInput) return [];
+  if (Array.isArray(projectsInput)) return collectNumericIds(projectsInput);
+  if (typeof projectsInput === 'object') {
+    return collectNumericIds(projectsInput.set || projectsInput.connect || []);
+  }
+  return [];
+}
+
+function userMayApproveTaskAssignments(ctx) {
+  return isPmOrgAdminRole(ctx) || isPmOrgManagerRole(ctx);
+}
+
+async function memberMayCreateTaskOnProjects(strapi, orgId, userId, data) {
+  const pids = projectIdsFromProjectsInput(data.projects);
+  if (!pids.length) return false;
+  for (const pid of pids) {
+    const proj = await strapi.entityService.findOne(PROJECT_UID, pid, {
+      populate: ['teamMembers', 'projectManager'],
+    });
+    if (proj && orgIdFromRelation(proj.organization) === orgId && userCanAccessProjectRow(proj, userId)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Member-created tasks: requested assignees stay pending until admin/manager approves. */
+async function stashPendingAssignmentForMember(strapi, data, userId) {
+  const pending = new Set();
+  if (data.collaborators != null) {
+    const norm = await normalizeCollaboratorsInput(strapi, data.collaborators);
+    for (const id of norm.set || []) pending.add(id);
+    delete data.collaborators;
+  }
+  if (data.assignee != null && data.assignee !== '') {
+    const aid = await normalizeAssigneeInput(strapi, data.assignee);
+    if (aid != null) pending.add(aid);
+    delete data.assignee;
+  }
+  const ids = [...pending];
+  if (ids.length > 0) {
+    data.pendingCollaborators = { set: ids };
+    data.assignmentApprovalStatus = 'pending';
+    data.assignmentRequestedBy = userId;
+  } else {
+    data.assignmentApprovalStatus = 'not_required';
+  }
+}
+
 function assignerPkFromEntity(entity) {
   const raw = entity.assigner;
   if (raw == null || raw === '') return null;
@@ -224,7 +285,6 @@ async function spawnNextRecurrenceTask(strapi, orgId, actorUserId, entity) {
     description: entity.description ?? null,
     status: 'SCHEDULED',
     priority: entity.priority || 'medium',
-    progress: 0,
     tags: Array.isArray(entity.tags) ? entity.tags : [],
     organization: orgId,
     startDate: next.startDate,
@@ -312,7 +372,7 @@ function buildTaskPopulateConfig(rawPopulate) {
   for (const key of keys) {
     if (key === 'subtasks') {
       populate.subtasks = {
-        fields: ['id', 'name', 'status', 'priority', 'startDate', 'scheduledDate', 'progress', 'description'],
+        fields: ['id', 'name', 'status', 'priority', 'startDate', 'scheduledDate', 'description'],
         populate: ['assignee', 'assigner', 'collaborators'],
       };
       continue;
@@ -363,15 +423,21 @@ async function memberMayViewTask(strapi, orgId, userId, entry) {
     populate: {
       assignee: true,
       collaborators: true,
+      pendingCollaborators: true,
+      assignmentRequestedBy: true,
       projects: { populate: ['teamMembers', 'projectManager'] },
       organization: true,
     },
   });
   if (!row || orgIdFromRelation(row.organization) !== orgId) return false;
+  const requesterId = relationId(row.assignmentRequestedBy);
+  if (requesterId != null && Number(requesterId) === Number(userId)) return true;
   const aid = relationId(row.assignee);
   if (aid != null && Number(aid) === Number(userId)) return true;
   const cols = collaboratorIdsFromEntity(row);
   if (cols.some((id) => Number(id) === Number(userId))) return true;
+  const pending = pendingCollaboratorIdsFromEntity(row);
+  if (pending.some((id) => Number(id) === Number(userId))) return true;
   const raw = row.projects;
   const plist = Array.isArray(raw) ? raw : raw ? [raw] : [];
   for (const p of plist) {
@@ -380,7 +446,7 @@ async function memberMayViewTask(strapi, orgId, userId, entry) {
   return false;
 }
 
-const MEMBER_TASK_UPDATE_FIELDS = new Set(['progress', 'status']);
+const MEMBER_TASK_UPDATE_FIELDS = new Set(['status']);
 
 module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
@@ -466,13 +532,23 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'write');
     if (denied) return denied;
-    if (isPmOrgMemberRole(ctx)) {
-      return ctx.forbidden('Members cannot create tasks');
-    }
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
+
+    const isMember = isPmOrgMemberRole(ctx);
+    if (isMember) {
+      const ok = await memberMayCreateTaskOnProjects(
+        strapi,
+        ctx.state.orgId,
+        ctx.state.user.id,
+        data
+      );
+      if (!ok) {
+        return ctx.forbidden('You can only create tasks on projects you belong to');
+      }
+    }
 
     data.organization = ctx.state.orgId;
     if ((data.assigner == null || data.assigner === '') && ctx.state.user?.id) {
@@ -490,12 +566,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       data.assignee = await normalizeAssigneeInput(strapi, data.assignee);
     }
 
-    if (data.collaborators != null) {
-      data.collaborators = await normalizeCollaboratorsInput(strapi, data.collaborators);
-    }
-
     if (data.projects) {
       data.projects = await normalizeProjectsInput(strapi, ctx.state.orgId, data.projects);
+    }
+
+    if (isMember) {
+      await stashPendingAssignmentForMember(strapi, data, ctx.state.user.id);
+    } else {
+      data.assignmentApprovalStatus = data.assignmentApprovalStatus || 'not_required';
+      if (data.collaborators != null) {
+        data.collaborators = await normalizeCollaboratorsInput(strapi, data.collaborators);
+      }
     }
 
     if (Object.prototype.hasOwnProperty.call(data, 'parent')) {
@@ -565,7 +646,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       Object.keys(data).forEach((k) => delete data[k]);
       Object.assign(data, allowed);
       if (Object.keys(allowed).length === 0) {
-        return ctx.badRequest('Members may only update task progress and status');
+        return ctx.badRequest('Members may only update task status');
       }
     }
 
@@ -638,6 +719,111 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         changedKeys,
         previousEntity: existing,
         patch: data,
+      });
+    } catch (_) {
+      /* best-effort */
+    }
+    return { data: forLog };
+  },
+
+  async approveAssignment(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'write');
+    if (denied) return denied;
+    if (!userMayApproveTaskAssignments(ctx)) {
+      return ctx.forbidden('Only admins or managers can approve task assignments');
+    }
+
+    const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
+    if (pk == null) return ctx.notFound();
+
+    const existing = await strapi.entityService.findOne(UID, pk, {
+      populate: ['organization', 'pendingCollaborators', 'collaborators'],
+    });
+    if (!existing) return ctx.notFound();
+    if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
+      return ctx.forbidden('Access denied');
+    }
+    if (existing.assignmentApprovalStatus !== 'pending') {
+      return ctx.badRequest('Task has no pending assignment to approve');
+    }
+
+    const pendingIds = pendingCollaboratorIdsFromEntity(existing);
+    await strapi.entityService.update(UID, pk, {
+      data: {
+        collaborators: { set: pendingIds },
+        pendingCollaborators: { set: [] },
+        assignmentApprovalStatus: 'approved',
+        ...(pendingIds.length ? { assignee: pendingIds[0] } : { assignee: null }),
+      },
+    });
+
+    const forLog = await strapi.entityService.findOne(UID, pk, {
+      populate: ['assignee', 'collaborators', 'pendingCollaborators', 'projects'],
+    });
+    try {
+      await logCrmActivity(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        action: 'update',
+        subjectType: 'task',
+        entity: forLog,
+        subjectId: pk,
+        changedKeys: ['assignmentApprovalStatus', 'collaborators'],
+        previousEntity: existing,
+        patch: { assignmentApprovalStatus: 'approved' },
+      });
+    } catch (_) {
+      /* best-effort */
+    }
+    return { data: forLog };
+  },
+
+  async rejectAssignment(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'write');
+    if (denied) return denied;
+    if (!userMayApproveTaskAssignments(ctx)) {
+      return ctx.forbidden('Only admins or managers can reject task assignments');
+    }
+
+    const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
+    if (pk == null) return ctx.notFound();
+
+    const existing = await strapi.entityService.findOne(UID, pk, {
+      populate: ['organization', 'pendingCollaborators'],
+    });
+    if (!existing) return ctx.notFound();
+    if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
+      return ctx.forbidden('Access denied');
+    }
+    if (existing.assignmentApprovalStatus !== 'pending') {
+      return ctx.badRequest('Task has no pending assignment to reject');
+    }
+
+    await strapi.entityService.update(UID, pk, {
+      data: {
+        pendingCollaborators: { set: [] },
+        assignmentApprovalStatus: 'rejected',
+      },
+    });
+
+    const forLog = await strapi.entityService.findOne(UID, pk, {
+      populate: ['assignee', 'collaborators', 'pendingCollaborators', 'projects'],
+    });
+    try {
+      await logCrmActivity(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        action: 'update',
+        subjectType: 'task',
+        entity: forLog,
+        subjectId: pk,
+        changedKeys: ['assignmentApprovalStatus', 'pendingCollaborators'],
+        previousEntity: existing,
+        patch: { assignmentApprovalStatus: 'rejected' },
       });
     } catch (_) {
       /* best-effort */

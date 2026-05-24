@@ -38,6 +38,21 @@ function matchesQuery(u, query) {
   return memberHaystack(u).includes(q);
 }
 
+function isNodeInsideMenu(menuEl, node) {
+  if (!menuEl || !node) return false;
+  if (node instanceof Node && menuEl.contains(node)) return true;
+  return false;
+}
+
+function isScrollInsideMenu(menuEl, event) {
+  if (!menuEl) return false;
+  if (isNodeInsideMenu(menuEl, event.target)) return true;
+  if (typeof event.composedPath === 'function') {
+    return event.composedPath().includes(menuEl);
+  }
+  return false;
+}
+
 function MemberRow({ user, selected, disabled, onToggle, layout = 'list' }) {
   const derived = ownerDisplayFromUser(user);
   const secondary = user.email && user.email !== derived.label ? user.email : null;
@@ -74,12 +89,32 @@ function MemberRow({ user, selected, disabled, onToggle, layout = 'list' }) {
   }
 
   return (
-    <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50">
+    <div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      className="flex cursor-pointer items-center gap-2 px-3 py-1.5 hover:bg-gray-50"
+      onMouseDown={(e) => {
+        // Keep focus in the parent modal; avoids scroll-into-view closing the popover.
+        e.preventDefault();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!disabled) onToggle();
+      }}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
+    >
       <Checkbox
         checked={selected}
         onChange={() => onToggle()}
         disabled={disabled}
         aria-label={`Assign ${user.name || user.email || user.id}`}
+        className="pointer-events-none"
       />
       <Avatar
         src={user.avatar || undefined}
@@ -134,10 +169,11 @@ export default function TaskAssigneesPicker({
     : [];
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [placement, setPlacement] = useState('below');
+  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0, maxHeight: null });
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
   const menuRef = useRef(null);
+  const suppressScrollCloseRef = useRef(false);
 
   const useModal = pickerMode === 'modal';
   const searchable =
@@ -155,7 +191,10 @@ export default function TaskAssigneesPicker({
   useEffect(() => {
     if (!open || useModal) return;
     const fn = (e) => {
-      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+      const t = e.target;
+      if (rootRef.current?.contains(t)) return;
+      if (menuRef.current?.contains(t)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', fn);
     return () => document.removeEventListener('mousedown', fn);
@@ -163,7 +202,18 @@ export default function TaskAssigneesPicker({
 
   useEffect(() => {
     if (!open || useModal) return;
-    setPlacement('below');
+    const onScroll = (e) => {
+      if (suppressScrollCloseRef.current) return;
+      if (isScrollInsideMenu(menuRef.current, e)) return;
+      setOpen(false);
+    };
+    const onResize = () => setOpen(false);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
   }, [open, useModal]);
 
   useLayoutEffect(() => {
@@ -174,47 +224,39 @@ export default function TaskAssigneesPicker({
 
     const pad = 8;
     const gap = 4;
-    menu.style.maxHeight = '';
-
     const tr = trigger.getBoundingClientRect();
     const mr = menu.getBoundingClientRect();
+    const menuWidth = mr.width;
+    const menuHeight = mr.height;
 
-    const bottomOverflow = mr.bottom > window.innerHeight - pad;
-    const topOverflow = mr.top < pad;
-
-    if (!bottomOverflow && !topOverflow) return;
-
+    const left = Math.min(Math.max(pad, tr.left), Math.max(pad, window.innerWidth - menuWidth - pad));
     const spaceBelow = window.innerHeight - tr.bottom - gap - pad;
     const spaceAbove = tr.top - gap - pad;
 
-    if (bottomOverflow && !topOverflow) {
-      if (spaceAbove >= mr.height) {
-        setPlacement('above');
-      } else {
-        menu.style.maxHeight = `${Math.max(120, spaceBelow)}px`;
-      }
-      return;
-    }
+    let top = tr.bottom + gap;
+    let maxHeight = null;
 
-    if (topOverflow && !bottomOverflow) {
-      if (spaceBelow >= mr.height) {
-        setPlacement('below');
-      } else {
-        menu.style.maxHeight = `${Math.max(100, spaceAbove)}px`;
-      }
-      return;
-    }
+    const overflowsBottom = top + menuHeight > window.innerHeight - pad;
+    const fitsAbove = spaceAbove >= menuHeight;
+    const fitsBelow = spaceBelow >= menuHeight;
 
-    if (bottomOverflow && topOverflow) {
+    if (overflowsBottom && (fitsAbove || spaceAbove > spaceBelow)) {
+      top = Math.max(pad, tr.top - menuHeight - gap);
+    } else if (overflowsBottom) {
+      maxHeight = Math.max(120, spaceBelow);
+    } else if (!fitsBelow && fitsAbove) {
+      top = Math.max(pad, tr.top - menuHeight - gap);
+    } else if (!fitsBelow && !fitsAbove) {
       if (spaceAbove > spaceBelow) {
-        setPlacement('above');
-        menu.style.maxHeight = `${Math.max(100, spaceAbove)}px`;
+        top = pad;
+        maxHeight = Math.max(100, spaceAbove);
       } else {
-        setPlacement('below');
-        menu.style.maxHeight = `${Math.max(100, spaceBelow)}px`;
+        maxHeight = Math.max(100, spaceBelow);
       }
     }
-  }, [open, users.length, compact, popoverTitle, useModal, query]);
+
+    setMenuCoords({ top, left, maxHeight });
+  }, [open, users.length, compact, popoverTitle, useModal, query, filteredUsers.length]);
 
   const stackUsers = usersForIds(numericIds, assignees, users);
   const cap = maxShown ?? (compact ? 5 : 8);
@@ -222,6 +264,10 @@ export default function TaskAssigneesPicker({
   const overflow = stackUsers.length - shown.length;
 
   const toggle = (uid) => {
+    suppressScrollCloseRef.current = true;
+    window.setTimeout(() => {
+      suppressScrollCloseRef.current = false;
+    }, 200);
     const n = Number(uid);
     const set = new Set(numericIds);
     if (set.has(n)) set.delete(n);
@@ -231,7 +277,13 @@ export default function TaskAssigneesPicker({
 
   const openPicker = (e) => {
     e.stopPropagation();
-    if (!disabled) setOpen(true);
+    if (disabled) return;
+    const trigger = triggerRef.current;
+    if (trigger) {
+      const rect = trigger.getBoundingClientRect();
+      setMenuCoords({ top: rect.bottom + 4, left: rect.left, maxHeight: null });
+    }
+    setOpen(true);
   };
 
   const maxH = compact ? 'max-h-44' : 'max-h-60';
@@ -254,6 +306,45 @@ export default function TaskAssigneesPicker({
       />
     ));
   };
+
+  const popoverPicker =
+    open && !useModal && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={menuRef}
+            role="dialog"
+            aria-label="Choose assignees"
+            className={clsx(
+              'fixed z-[200] min-w-[16rem] max-w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white shadow-xl',
+              maxH,
+              'flex flex-col overflow-hidden'
+            )}
+            style={{
+              top: menuCoords.top,
+              left: menuCoords.left,
+              ...(menuCoords.maxHeight != null ? { maxHeight: menuCoords.maxHeight } : {}),
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="shrink-0 px-3 pb-1.5 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              {popoverTitle}
+            </p>
+            {searchable ? (
+              <div className="shrink-0 border-b border-gray-100 px-2 pb-2">
+                <AssigneeSearchField
+                  value={query}
+                  onChange={setQuery}
+                  placeholder="Search…"
+                  className="w-full"
+                />
+              </div>
+            ) : null}
+            <div className="min-h-0 flex-1 overflow-auto">{memberList('list')}</div>
+          </div>,
+          document.body
+        )
+      : null;
 
   const modalPicker =
     typeof document !== 'undefined' && useModal
@@ -354,35 +445,7 @@ export default function TaskAssigneesPicker({
         ) : null}
       </div>
 
-      {open && !useModal ? (
-        <div
-          ref={menuRef}
-          role="dialog"
-          aria-label="Choose assignees"
-          className={clsx(
-            'absolute left-0 z-[100] min-w-[16rem] max-w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-gray-200 bg-white shadow-xl',
-            maxH,
-            'flex flex-col overflow-hidden',
-            placement === 'above' ? 'bottom-full mb-1' : 'top-full mt-1'
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <p className="shrink-0 px-3 pb-1.5 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            {popoverTitle}
-          </p>
-          {searchable ? (
-            <div className="shrink-0 border-b border-gray-100 px-2 pb-2">
-              <AssigneeSearchField
-                value={query}
-                onChange={setQuery}
-                placeholder="Search…"
-                className="w-full"
-              />
-            </div>
-          ) : null}
-          <div className="min-h-0 flex-1 overflow-auto">{memberList('list')}</div>
-        </div>
-      ) : null}
+      {popoverPicker}
 
       {modalPicker}
     </div>

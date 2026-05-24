@@ -5,6 +5,7 @@ import { Button, Input, Modal, Select, Textarea } from '@webfudge/ui';
 import { PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge';
 import TaskRecurrenceFormFields, { recurrencePayloadFromForm } from './TaskRecurrenceFormFields';
 import TaskAssigneesPicker from './TaskAssigneesPicker';
+import { usersForProjectTaskAssignment } from '../lib/api/projectAssignableUsers';
 
 const EMPTY_FORM = {
   name: '',
@@ -57,6 +58,8 @@ export default function QuickCreateTaskModal({
   parentContext = null,
   projects = [],
   users = [],
+  /** When set, limits task assignee picker; assigner dropdown still uses `users`. */
+  assigneeUsers = null,
   defaultProjectId = '',
   defaultStatus = 'SCHEDULED',
   defaultAssignerId = '',
@@ -66,6 +69,10 @@ export default function QuickCreateTaskModal({
   lockedProject = null,
   saving = false,
   title,
+  /** When true, assignee helper text reflects project-team roster (project detail page). */
+  assigneePickerScopedToProject = false,
+  /** Org member: assignees require admin/manager approval before they take effect. */
+  requiresAssignmentApproval = false,
 }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const frozenProject = useMemo(
@@ -73,6 +80,22 @@ export default function QuickCreateTaskModal({
     [lockProject, lockedProject, defaultProjectId, projects, task]
   );
   const projectLocked = Boolean(frozenProject?.id);
+  const rosterForAssignees = useMemo(() => {
+    if (assigneeUsers != null) return assigneeUsers;
+    if (projectLocked) {
+      const pid = frozenProject?.id;
+      const projectRecord =
+        projects.find(
+          (p) => String(p.id) === String(pid) || String(p.documentId) === String(pid)
+        ) || projects[0];
+      if (projectRecord) {
+        return usersForProjectTaskAssignment(projectRecord, users, {
+          extraUsers: task?.assignees || [],
+        });
+      }
+    }
+    return users;
+  }, [assigneeUsers, projectLocked, frozenProject?.id, projects, users, task?.assignees]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -260,11 +283,17 @@ export default function QuickCreateTaskModal({
           />
           <div className="sm:col-span-2">
             <p className="mb-2 block text-sm font-medium leading-none text-black">Assignees</p>
-            <p className="mb-3 text-xs text-gray-500">People actively working on this task (shown as overlapping profile circles).</p>
+            <p className="mb-3 text-xs text-gray-500">
+              {requiresAssignmentApproval
+                ? 'Choose who should work on this task. An admin or manager must approve before they are assigned.'
+                : assigneePickerScopedToProject
+                  ? 'Only members of this project team can be assigned.'
+                  : 'People actively working on this task (shown as overlapping profile circles).'}
+            </p>
             <TaskAssigneesPicker
               userIds={form.assigneeUserIds}
               assignees={task?.assignees}
-              users={users}
+              users={rosterForAssignees}
               onChange={(next) => update('assigneeUserIds', next)}
               disabled={saving}
               compact={false}

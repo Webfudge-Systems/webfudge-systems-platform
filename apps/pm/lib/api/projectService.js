@@ -11,10 +11,9 @@ class ProjectService {
         'populate[teamMembers]': '*',
         'populate[tasks][fields][0]': 'id',
         'populate[tasks][fields][1]': 'status',
-        'populate[tasks][fields][2]': 'progress',
         'populate[clientAccount][fields][0]': 'id',
-        'populate[clientAccount][fields][1]': 'name',
-        'populate[clientAccount][fields][2]': 'companyName',
+        'populate[clientAccount][fields][1]': 'companyName',
+        'populate[clientAccount][fields][2]': 'status',
       };
 
       if (options.status) {
@@ -157,6 +156,17 @@ class ProjectService {
 
   async getProjectsByUser(userId, options = {}) {
     return this.getAllProjects({ ...options, userId });
+  }
+
+  /** Client accounts in the org for project client dropdown (PM projects read). */
+  async getProjectClientOptions() {
+    try {
+      const res = await strapiClient.get('/projects/client-options');
+      return Array.isArray(res?.data) ? res.data : [];
+    } catch (error) {
+      console.error('Error fetching project client options:', error);
+      return [];
+    }
   }
 }
 

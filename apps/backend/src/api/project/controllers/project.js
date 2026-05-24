@@ -24,6 +24,7 @@ const {
 } = require('../../../utils/rbac');
 
 const UID = 'api::project.project';
+const CLIENT_ACCOUNT_UID = 'api::client-account.client-account';
 
 const ALLOWED_POPULATE = new Set([
   'projectManager',
@@ -41,7 +42,49 @@ const sanitizePopulate = createPopulateSanitizer(ALLOWED_POPULATE, [
   'sourceDeal',
 ]);
 
+async function assertClientAccountInOrg(strapi, clientAccountId, orgId) {
+  if (clientAccountId == null || clientAccountId === '') return null;
+  const id =
+    typeof clientAccountId === 'object'
+      ? clientAccountId.id ?? clientAccountId.documentId
+      : Number(clientAccountId);
+  if (!id || Number.isNaN(id)) return 'Invalid client account';
+  const row = await strapi.entityService.findOne(CLIENT_ACCOUNT_UID, id, {
+    populate: ['organization'],
+  });
+  if (!row || orgIdFromRelation(row.organization) !== orgId) {
+    return 'Client account not found in this organization';
+  }
+  return null;
+}
+
 module.exports = createCoreController(UID, ({ strapi }) => ({
+  /**
+   * Org client accounts for PM project client picker (PM projects read; no CRM module required on client).
+   */
+  async clientOptions(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'pm', 'projects', 'read');
+    if (denied) return denied;
+
+    const rows = await strapi.entityService.findMany(CLIENT_ACCOUNT_UID, {
+      filters: { organization: ctx.state.orgId },
+      fields: ['companyName', 'status'],
+      sort: { companyName: 'asc' },
+      limit: 500,
+    });
+
+    const data = (rows || []).map((row) => ({
+      id: row.id,
+      companyName: row.companyName || '',
+      status: row.status || null,
+      label: row.companyName || `Account ${row.id}`,
+    }));
+
+    return { data };
+  },
+
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
@@ -129,6 +172,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     delete data.id;
     delete data.documentId;
 
+    if (data.clientAccount != null && data.clientAccount !== '') {
+      const clientErr = await assertClientAccountInOrg(strapi, data.clientAccount, ctx.state.orgId);
+      if (clientErr) return ctx.badRequest(clientErr);
+    }
+
     const entry = await strapi.entityService.create(UID, { data });
     try {
       const lookupKey = entry?.id ?? entry?.documentId;
@@ -184,6 +232,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
+
+    if (Object.prototype.hasOwnProperty.call(data, 'clientAccount') && data.clientAccount !== '') {
+      const clientErr = await assertClientAccountInOrg(strapi, data.clientAccount, ctx.state.orgId);
+      if (clientErr) return ctx.badRequest(clientErr);
+    }
 
     await strapi.entityService.update(UID, pk, { data });
     const changedKeys = collectChangedKeys(data);

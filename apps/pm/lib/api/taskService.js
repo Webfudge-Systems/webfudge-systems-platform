@@ -73,6 +73,10 @@ class TaskService {
         'populate[assignee]': '*',
         'populate[assigner]': '*',
         'populate[collaborators]': '*',
+        'populate[pendingCollaborators]': '*',
+        'populate[assignmentRequestedBy][fields][0]': 'id',
+        'populate[assignmentRequestedBy][fields][1]': 'username',
+        'populate[assignmentRequestedBy][fields][2]': 'email',
         'populate[projects][fields][0]': 'id',
         'populate[projects][fields][1]': 'name',
         'populate[projects][fields][2]': 'slug',
@@ -123,6 +127,10 @@ class TaskService {
         'populate[assignee]': '*',
         'populate[assigner]': '*',
         'populate[collaborators]': '*',
+        'populate[pendingCollaborators]': '*',
+        'populate[assignmentRequestedBy][fields][0]': 'id',
+        'populate[assignmentRequestedBy][fields][1]': 'username',
+        'populate[assignmentRequestedBy][fields][2]': 'email',
         'populate[projects][fields][0]': 'id',
         'populate[projects][fields][1]': 'name',
         'populate[projects][fields][2]': 'slug',
@@ -150,6 +158,10 @@ class TaskService {
         'populate[assignee]': '*',
         'populate[assigner]': '*',
         'populate[collaborators]': '*',
+        'populate[pendingCollaborators]': '*',
+        'populate[assignmentRequestedBy][fields][0]': 'id',
+        'populate[assignmentRequestedBy][fields][1]': 'username',
+        'populate[assignmentRequestedBy][fields][2]': 'email',
         'populate[projects][fields][0]': 'id',
         'populate[projects][fields][1]': 'name',
         'populate[projects][fields][2]': 'slug',
@@ -179,6 +191,10 @@ class TaskService {
         'populate[assignee]': '*',
         'populate[assigner]': '*',
         'populate[collaborators]': '*',
+        'populate[pendingCollaborators]': '*',
+        'populate[assignmentRequestedBy][fields][0]': 'id',
+        'populate[assignmentRequestedBy][fields][1]': 'username',
+        'populate[assignmentRequestedBy][fields][2]': 'email',
         'populate[projects][fields][0]': 'id',
         'populate[projects][fields][1]': 'name',
         'populate[projects][fields][2]': 'slug',
@@ -237,6 +253,10 @@ class TaskService {
         'populate[assignee]': '*',
         'populate[assigner]': '*',
         'populate[collaborators]': '*',
+        'populate[pendingCollaborators]': '*',
+        'populate[assignmentRequestedBy][fields][0]': 'id',
+        'populate[assignmentRequestedBy][fields][1]': 'username',
+        'populate[assignmentRequestedBy][fields][2]': 'email',
         'populate[projects][fields][0]': 'id',
         'populate[projects][fields][1]': 'name',
         'populate[projects][fields][2]': 'slug',
@@ -270,8 +290,22 @@ class TaskService {
     return this.updateTask(id, { status });
   }
 
-  async updateTaskProgress(id, progress) {
-    return this.updateTask(id, { progress: Math.min(100, Math.max(0, progress)) });
+  async approveTaskAssignment(id) {
+    try {
+      return await strapiClient.post(`/tasks/${id}/approve-assignment`, {});
+    } catch (error) {
+      console.error(`Error approving assignment for task ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async rejectTaskAssignment(id) {
+    try {
+      return await strapiClient.post(`/tasks/${id}/reject-assignment`, {});
+    } catch (error) {
+      console.error(`Error rejecting assignment for task ${id}:`, error);
+      throw error;
+    }
   }
 
   async deleteTask(id) {

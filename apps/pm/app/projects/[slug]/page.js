@@ -28,7 +28,7 @@ import {
   CheckSquare,
   Clock,
   Copy,
-  Edit,
+  Edit3,
   FileText,
   FolderOpen,
   IndianRupee,
@@ -41,6 +41,7 @@ import {
   Users,
 } from 'lucide-react';
 import PMPageHeader from '../../../components/PMPageHeader';
+import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
@@ -48,6 +49,7 @@ import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
 import { InfoRow, InfoSection, SidebarCardTitle } from '../../../components/pmEntityDetailInfo';
 import { getProjectStatusMeta, PROJECT_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
+import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions';
 import {
   addProjectComment,
   fetchProjectActivityTimeline,
@@ -55,9 +57,18 @@ import {
 } from '../../../lib/api/projectActivityService';
 import taskService from '../../../lib/api/taskService';
 import { fetchPmAssignableUsers } from '../../../lib/api/messageService';
-import strapiClient from '../../../lib/strapiClient';
+import { fetchChatMentionUsers } from '../../../lib/api/chatMentionUsers';
 import { formatDate, transformProject, transformTask, transformUser } from '../../../lib/api/dataTransformers';
-import { canEditProjectInPm, getPmOrgRoleKind } from '../../../lib/pmOrgRoles';
+import {
+  collectTaskAssigneeUsers,
+  usersForProjectTaskAssignment,
+} from '../../../lib/api/projectAssignableUsers';
+import {
+  canApproveTaskAssignmentsInPm,
+  canCreateTaskInProject,
+  canEditProjectInPm,
+  getPmOrgRoleKind,
+} from '../../../lib/pmOrgRoles';
 
 const DETAIL_TABS = [
   { key: 'overview', label: 'Overview' },
@@ -150,6 +161,7 @@ export default function ProjectDetailPage() {
   }, [authUser]);
   const pmOrgRoleKind = useMemo(() => getPmOrgRoleKind(), []);
   const memberScopedTasks = pmOrgRoleKind === 'member';
+  const canApproveAssignments = useMemo(() => canApproveTaskAssignmentsInPm(), []);
   const defaultAssignerId = useMemo(() => {
     const u = authUser?.attributes || authUser;
     const id = u?.id ?? authUser?.id ?? null;
@@ -161,9 +173,13 @@ export default function ProjectDetailPage() {
     () => (project ? canEditProjectInPm(project, currentUserId) : false),
     [project, currentUserId],
   );
+  const canCreateProjectTasks = useMemo(
+    () => (project ? canCreateTaskInProject(project, currentUserId) : false),
+    [project, currentUserId],
+  );
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [clientOptions, setClientOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -231,10 +247,11 @@ export default function ProjectDetailPage() {
 
   const loadClients = useCallback(async () => {
     try {
-      const body = await strapiClient.request('/lead-companies?pagination[pageSize]=100', { method: 'GET' });
-      setClients(body?.data || []);
+      const rows = await fetchProjectClientOptions();
+      setClientOptions(mapProjectClientSelectOptions(rows));
     } catch (error) {
       console.error('Load clients error:', error);
+      setClientOptions([]);
     }
   }, []);
 
@@ -264,6 +281,16 @@ export default function ProjectDetailPage() {
     const progress = total > 0 ? Math.round((completed / total) * 100) : project.progress ?? 0;
     return { total, completed, progress };
   }, [tasks, project]);
+
+  /** Task assignee picker: project team only (keeps existing assignees when editing). */
+  const projectTaskUsers = useMemo(() => {
+    if (!project) return users;
+    const extraFromTasks = collectTaskAssigneeUsers(tasks);
+    const extraFromModal = taskModal.task?.assignees || [];
+    return usersForProjectTaskAssignment(project, users, {
+      extraUsers: [...extraFromTasks, ...extraFromModal],
+    });
+  }, [project, users, tasks, taskModal.task]);
 
   const reloadProjectTimeline = useCallback(
     async (opts = {}) => {
@@ -335,18 +362,6 @@ export default function ProjectDetailPage() {
         label: u.name || u.username || u.email || `User ${u.id}`,
       })),
     [users]
-  );
-
-  const clientOptions = useMemo(
-    () =>
-      clients.map((c) => {
-        const attrs = c.attributes || c;
-        return {
-          value: String(c.id),
-          label: attrs.name || attrs.companyName || `Client ${c.id}`,
-        };
-      }),
-    [clients]
   );
 
   const openProjectInfoEdit = useCallback(() => {
@@ -499,57 +514,76 @@ export default function ProjectDetailPage() {
   const editProjectHref = `/projects/${project.slug || project.id}/edit`;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <PMPageHeader
-        title={project.name}
-        subtitle={project.clientName ? `Client: ${project.clientName}` : 'Project workspace'}
-        breadcrumb={[
-          { label: 'PM', href: '/' },
-          { label: 'Projects', href: '/projects' },
-          { label: project.name, href: `/projects/${project.slug || project.id}` },
-        ]}
-        showProfile
-      >
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {canEditThisProject ? (
-          <Link href={editProjectHref} className={headerIconBtnClass} title="Edit all project details" aria-label="Edit all project details">
-            <Edit className="h-5 w-5" />
-          </Link>
-          ) : null}
-          <button type="button" className={headerIconBtnClass} title="Copy link" onClick={copyProjectLink}>
-            <Share2 className="h-5 w-5" />
-          </button>
-          {!memberScopedTasks ? (
-          <button
-            type="button"
-            className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-orange-500 to-pink-500 shadow-md hover:opacity-95 transition-opacity shrink-0"
-            onClick={() => setTaskModal({ open: true, task: null, parentContext: null })}
-          >
-            <Plus className="h-4 w-4 shrink-0" aria-hidden />
-            Add Task
-          </button>
-          ) : null}
-          {canEditThisProject ? (
-          <button
-            type="button"
-            className={`group ${headerDangerIconBtnClass}`}
-            title="Delete project"
-            onClick={() => setDeleteProjectOpen(true)}
-          >
-            <Trash2 className="h-5 w-5 shrink-0 text-brand-text-light transition-colors group-hover:text-red-50" aria-hidden />
-          </button>
-          ) : null}
-          <PMRowActions
-            items={[
-              { label: 'Copy link', icon: Copy, onClick: copyProjectLink },
-              { label: 'Refresh', icon: RefreshCw, onClick: () => { loadProject(); loadTasks(); } },
-            ]}
-            label="More project actions"
-          />
-        </div>
-      </PMPageHeader>
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-3">
+        <PMPageHeader
+          title={project.name}
+          breadcrumb={[
+            { label: 'PM', href: '/' },
+            { label: 'Projects', href: '/projects' },
+            { label: project.name, href: `/projects/${project.slug || project.id}` },
+          ]}
+          showProfile
+        >
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {canEditThisProject ? (
+              <button
+                type="button"
+                className={headerIconBtnClass}
+                title="Edit project details"
+                onClick={openProjectInfoEdit}
+              >
+                <Edit3 className="h-5 w-5" />
+              </button>
+            ) : null}
+            <button type="button" className={headerIconBtnClass} title="Copy link" onClick={copyProjectLink}>
+              <Share2 className="h-5 w-5" />
+            </button>
+            {canEditThisProject ? (
+              <button
+                type="button"
+                className={`group ${headerDangerIconBtnClass}`}
+                title="Delete project"
+                onClick={() => setDeleteProjectOpen(true)}
+              >
+                <Trash2
+                  className="h-5 w-5 shrink-0 text-brand-text-light transition-colors group-hover:text-red-50"
+                  aria-hidden
+                />
+              </button>
+            ) : null}
+            <PMRowActions
+              items={[
+                ...(canEditThisProject
+                  ? [
+                    {
+                      label: 'Edit full page',
+                      icon: Edit3,
+                      onClick: () => router.push(`/projects/${project.slug || project.id}/edit`),
+                    },
+                  ]
+                  : []),
+                ...(canCreateProjectTasks
+                  ? [
+                    {
+                      label: 'Add task',
+                      icon: Plus,
+                      onClick: () => setTaskModal({ open: true, task: null, parentContext: null }),
+                    },
+                  ]
+                  : []),
+                { label: 'Copy link', icon: Copy, onClick: copyProjectLink },
+                { label: 'Refresh', icon: RefreshCw, onClick: () => { loadProject(); loadTasks(); } },
+              ]}
+              label="More project actions"
+            />
+          </div>
+        </PMPageHeader>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <ProjectDetailMetaBar project={project} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KPICard compact title="Total tasks" value={taskStats.total} icon={CheckSquare} colorScheme="orange" />
         <KPICard compact title="Completed" value={taskStats.completed} icon={CheckCircle2} colorScheme="orange" />
         <KPICard compact title="Progress" value={`${taskStats.progress}%`} icon={TrendingUp} colorScheme="orange" />
@@ -902,7 +936,7 @@ export default function ProjectDetailPage() {
         <ProjectTasksPanel
           tasks={tasks}
           tasksLoading={tasksLoading}
-          users={users}
+          users={projectTaskUsers}
           onRefresh={refreshTasksAndProject}
           onAddTask={() => setTaskModal({ open: true, task: null, parentContext: null })}
           onOpenCreateSubtask={(parentRow) =>
@@ -919,6 +953,8 @@ export default function ProjectDetailPage() {
           onEditTask={(task) => setTaskModal({ open: true, task, parentContext: null })}
           onDeleteTask={(task) => setDeleteTaskModal({ open: true, task })}
           memberScopedTasks={memberScopedTasks}
+          canCreateProjectTasks={canCreateProjectTasks}
+          canApproveAssignments={canApproveAssignments}
         />
       ) : null}
 
@@ -958,6 +994,8 @@ export default function ProjectDetailPage() {
               activityCount={activityCount}
               fetchCommentsFn={({ entityId }) => fetchProjectComments({ projectId: entityId, limit: 80 })}
               addCommentFn={handleAddProjectComment}
+              mentionUsers={projectTaskUsers}
+              fetchMentionUsers={fetchChatMentionUsers}
               chatFooterBadgeText="Messages are saved on this project for your team."
             />
           </div>
@@ -988,8 +1026,11 @@ export default function ProjectDetailPage() {
             : { id: project.id ?? project.documentId, name: project.name }
         }
         users={users}
+        assigneeUsers={projectTaskUsers}
         defaultProjectId={project.id}
         defaultAssignerId={defaultAssignerId}
+        assigneePickerScopedToProject
+        requiresAssignmentApproval={memberScopedTasks}
         saving={saving}
       />
 

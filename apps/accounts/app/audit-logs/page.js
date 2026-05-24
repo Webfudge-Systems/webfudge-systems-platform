@@ -66,6 +66,15 @@ function getModuleFromRow(row = {}) {
   const subjectType = String(row?.subjectType || '').toLowerCase()
   if (['task', 'project'].includes(subjectType)) return 'pm'
   if (['contact', 'lead_company', 'deal', 'client_account', 'meeting'].includes(subjectType)) return 'crm'
+  if (
+    ['organization_user', 'invitation', 'organization_role', 'team', 'department', 'app_access'].includes(
+      subjectType
+    )
+  ) {
+    return 'accounts'
+  }
+  const metaModule = row?.meta?.module || row?.metadata?.module
+  if (metaModule) return String(metaModule).toLowerCase()
   return 'accounts'
 }
 
@@ -133,6 +142,9 @@ function subjectTypeLabel(entityType) {
     task: 'Task',
     project: 'Project',
     meeting: 'Meeting',
+    organization_user: 'Organization member',
+    invitation: 'Invitation',
+    organization_role: 'Role',
     record: 'Record',
   }
   if (map[st]) return map[st]
@@ -188,6 +200,10 @@ function formatAuditTimeStack(dateString) {
 function getCategoryFromRow(row = {}) {
   const typeRaw = String(row?.type || row?.category || row?.eventType || '').toLowerCase()
   if (typeRaw) return typeRaw
+  const subjectType = String(row?.subjectType || '').toLowerCase()
+  if (['organization_user', 'invitation', 'organization_role', 'app_access'].includes(subjectType)) {
+    return 'access'
+  }
   const action = String(row?.action || row?.event || '').toLowerCase()
   if (action.includes('login') || action.includes('password') || action.includes('session') || action.includes('2fa')) {
     return 'authentication'
@@ -249,6 +265,7 @@ function normalizeAuditRows(rows = []) {
         row?.resource ||
         row?.subject ||
         row?.entityName ||
+        parseRowMeta(row?.meta)?.email ||
         (row?.subjectId != null ? `${String(row?.subjectType || 'record')} #${row.subjectId}` : '—'),
       severity: getSeverityFromRow(row),
       description: row?.description || row?.message || row?.summary || '',

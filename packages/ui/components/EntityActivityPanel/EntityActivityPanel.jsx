@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { ChatMessageText } from '../ChatMessageText';
+import { MentionComposer } from '../MentionComposer';
+import { mergeMentionUsers } from '../../utils/chatMentions';
 import {
   Activity,
   MessageSquare,
@@ -38,6 +41,8 @@ function formatDateLabel(iso) {
   if (msgDate.getTime() === yesterday.getTime()) return 'Yesterday';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+const EMPTY_MENTION_USERS = [];
 
 function extractComment(msg) {
   if (msg?.meta?.comment) return msg.meta.comment;
@@ -197,7 +202,7 @@ function ChatMessage({ msg, highlighted, onReact, onPin }) {
           </span>
         </div>
         <p className="mt-0.5 text-sm text-gray-700 leading-relaxed break-words whitespace-pre-wrap">
-          {text}
+          <ChatMessageText text={text} />
         </p>
         {/* Reactions row */}
         {reactionEntries.length > 0 && (
@@ -274,7 +279,12 @@ function PinnedMessageBanner({ message, onDismiss }) {
   return (
     <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border-b border-amber-100">
       <Pin className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-      <p className="flex-1 text-xs text-amber-800 line-clamp-1">{text}</p>
+      <p className="flex-1 text-xs text-amber-800 line-clamp-1">
+        <ChatMessageText
+          text={text}
+          linkClassName="text-amber-900 underline underline-offset-2 hover:text-amber-950 break-all"
+        />
+      </p>
       <button
         type="button"
         onClick={onDismiss}
@@ -306,6 +316,9 @@ function PinnedMessageBanner({ message, onDismiss }) {
  *  - defaultSubTab?: 'activity' | 'chat' — which sub-tab opens first (e.g. task Comments tab → chat)
  *  - className?: string — merged onto root card
  *  - minHeightPx / maxHeightPx?: number — panel height bounds (default 520 / 720)
+ *  - mentionUsers?: { id, name?, email?, username?, firstName?, lastName? }[] — @mention roster
+ *  - fetchMentionUsers?: () => Promise<mentionUsers[]> — loads roster when chat opens (merged with mentionUsers)
+ *  - composerAvatarFallback?: string — initials in composer (default "Y")
  */
 export function EntityActivityPanel({
   entityType: _entityType,
@@ -319,6 +332,9 @@ export function EntityActivityPanel({
   fetchCommentsFn,
   addCommentFn,
   chatFooterBadgeText,
+  mentionUsers: mentionUsersProp,
+  fetchMentionUsers,
+  composerAvatarFallback = 'Y',
   defaultSubTab = 'activity',
   className = '',
   minHeightPx = 520,
@@ -348,8 +364,36 @@ export function EntityActivityPanel({
   const messagesContainerRef = useRef(null);
   const textareaRef = useRef(null);
 
+  const staticMentionUsers = mentionUsersProp ?? EMPTY_MENTION_USERS;
+
+  const [resolvedMentionUsers, setResolvedMentionUsers] = useState(() =>
+    mergeMentionUsers(staticMentionUsers),
+  );
+
   const timelineCount = activityCount ?? crmTimeline?.length ?? 0;
   const canSendMessages = typeof addCommentFn === 'function';
+
+  useEffect(() => {
+    setResolvedMentionUsers((prev) => mergeMentionUsers(staticMentionUsers, prev));
+  }, [staticMentionUsers]);
+
+  useEffect(() => {
+    if (panelTab !== 'chat' || !fetchMentionUsers) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const loaded = await fetchMentionUsers();
+        if (!cancelled) {
+          setResolvedMentionUsers(mergeMentionUsers(staticMentionUsers, loaded));
+        }
+      } catch {
+        /* roster optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [panelTab, fetchMentionUsers, staticMentionUsers]);
 
   // ── Load chat messages ───────────────────────────────────────────────────
 
@@ -421,14 +465,6 @@ export function EntityActivityPanel({
       e.preventDefault();
       handleSend();
     }
-  };
-
-  // Auto-resize textarea
-  const handleDraftChange = (e) => {
-    setDraft(e.target.value);
-    const el = e.target;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   };
 
   // ── Filtered / grouped messages ──────────────────────────────────────────
@@ -680,18 +716,18 @@ export function EntityActivityPanel({
                   {/* Avatar of sender (decorative) */}
                   <div className="shrink-0 mb-0.5">
                     <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white text-[9px] font-bold shadow-sm">
-                      Y
+                      {composerAvatarFallback.slice(0, 2).toUpperCase()}
                     </div>
                   </div>
-                  <textarea
-                    ref={textareaRef}
+                  <MentionComposer
+                    textareaRef={textareaRef}
                     value={draft}
-                    onChange={handleDraftChange}
+                    onChange={setDraft}
                     onKeyDown={handleKeyDown}
-                    rows={1}
-                    placeholder="Write a message… (Ctrl+Enter to send)"
-                    className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed"
-                    style={{ minHeight: '22px', maxHeight: '120px', overflowY: 'auto' }}
+                    mentionUsers={resolvedMentionUsers}
+                    disabled={sending}
+                    placeholder="Write a message… (@ to mention, Ctrl+Enter to send)"
+                    textareaClassName="w-full resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed"
                   />
                   <button
                     type="button"
@@ -712,7 +748,7 @@ export function EntityActivityPanel({
                     <kbd className="rounded bg-gray-100 px-1 font-mono text-[9px] text-gray-500">
                       Ctrl+Enter
                     </kbd>{' '}
-                    to send
+                    to send · type <span className="font-medium text-gray-500">@</span> to mention
                   </p>
                   {draft.length > 0 && (
                     <p

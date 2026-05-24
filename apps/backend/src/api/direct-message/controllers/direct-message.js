@@ -8,7 +8,18 @@
 const { createCoreController } = require('@strapi/strapi').factories;
 const UID = 'api::direct-message.direct-message';
 
-const USER_FIELDS = ['id', 'email', 'username', 'firstName', 'lastName'];
+/** users-permissions user only has id, username, email (no firstName/lastName on schema). */
+const USER_POPULATE = ['sender', 'recipient'];
+
+function relationUserId(rel) {
+  if (rel == null) return null;
+  if (typeof rel === 'object') {
+    const id = rel.id;
+    return id != null ? Number(id) : null;
+  }
+  const n = Number(rel);
+  return Number.isNaN(n) ? null : n;
+}
 
 module.exports = createCoreController(UID, ({ strapi }) => ({
   /**
@@ -18,7 +29,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
 
-    const me = ctx.state.user.id;
+    const me = Number(ctx.state.user.id);
     const withUserRaw = ctx.query.withUser ?? ctx.query['filters[withUser][$eq]'];
     const withUserId = parseInt(withUserRaw, 10);
 
@@ -30,58 +41,63 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       return ctx.badRequest('Cannot list a conversation with yourself');
     }
 
-    const filters = {
-      $and: [
+    try {
+      const andFilters = [
         {
-          $or: [{ sender: { id: { $eq: me } } }, { recipient: { id: { $eq: me } } }],
+          $or: [{ sender: me }, { recipient: me }],
         },
-      ],
-    };
-    if (ctx.state.orgId) {
-      filters.$and.push({ organization: { id: { $eq: ctx.state.orgId } } });
+      ];
+      if (ctx.state.orgId) {
+        andFilters.push({ organization: ctx.state.orgId });
+      }
+
+      const poolLimit = Math.min(
+        parseInt(ctx.query['pagination[pageSize]'] || ctx.query.pageSize || '500', 10),
+        500
+      );
+
+      const pool = await strapi.entityService.findMany(UID, {
+        filters: { $and: andFilters },
+        sort: { createdAt: 'desc' },
+        limit: poolLimit,
+        populate: USER_POPULATE,
+      });
+
+      const thread = (pool || [])
+        .filter((m) => {
+          const sid = relationUserId(m.sender);
+          const rid = relationUserId(m.recipient);
+          return (sid === me && rid === withUserId) || (sid === withUserId && rid === me);
+        })
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+      return { data: thread };
+    } catch (err) {
+      strapi.log.error('[direct-message.find]', err?.message || err);
+      return ctx.internalServerError('Failed to load messages');
     }
-
-    const poolLimit = Math.min(
-      parseInt(ctx.query['pagination[pageSize]'] || ctx.query.pageSize || '500', 10),
-      500
-    );
-
-    const pool = await strapi.entityService.findMany(UID, {
-      filters,
-      sort: { createdAt: 'desc' },
-      limit: poolLimit,
-      populate: {
-        sender: { fields: USER_FIELDS },
-        recipient: { fields: USER_FIELDS },
-      },
-    });
-
-    const thread = pool
-      .filter((m) => {
-        const sid = m.sender?.id;
-        const rid = m.recipient?.id;
-        return (sid === me && rid === withUserId) || (sid === withUserId && rid === me);
-      })
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-
-    return { data: thread };
   },
 
   async findOne(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     const { id } = ctx.params;
-    const me = ctx.state.user.id;
+    const me = Number(ctx.state.user.id);
 
-    const msg = await strapi.entityService.findOne(UID, id, {
-      populate: { sender: { fields: USER_FIELDS }, recipient: { fields: USER_FIELDS } },
-    });
-    if (!msg) return ctx.notFound();
+    try {
+      const msg = await strapi.entityService.findOne(UID, id, {
+        populate: USER_POPULATE,
+      });
+      if (!msg) return ctx.notFound();
 
-    const sid = msg.sender?.id;
-    const rid = msg.recipient?.id;
-    if (sid !== me && rid !== me) return ctx.forbidden('Access denied');
+      const sid = relationUserId(msg.sender);
+      const rid = relationUserId(msg.recipient);
+      if (sid !== me && rid !== me) return ctx.forbidden('Access denied');
 
-    return { data: msg };
+      return { data: msg };
+    } catch (err) {
+      strapi.log.error('[direct-message.findOne]', err?.message || err);
+      return ctx.internalServerError('Failed to load message');
+    }
   },
 
   async create(ctx) {
@@ -94,9 +110,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const recipientId = parseInt(recipientRaw, 10);
 
     if (!content) return ctx.badRequest('content is required');
-    if (Number.isNaN(recipientId) || recipientId < 1) return ctx.badRequest('recipient (user id) is required');
+    if (Number.isNaN(recipientId) || recipientId < 1) {
+      return ctx.badRequest('recipient (user id) is required');
+    }
 
-    const me = ctx.state.user.id;
+    const me = Number(ctx.state.user.id);
     if (recipientId === me) return ctx.badRequest('Cannot send a message to yourself');
 
     const recipientUser = await strapi.db.query('plugin::users-permissions.user').findOne({
@@ -113,15 +131,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       data.organization = ctx.state.orgId;
     }
 
-    const entry = await strapi.entityService.create(UID, {
-      data,
-      populate: {
-        sender: { fields: USER_FIELDS },
-        recipient: { fields: USER_FIELDS },
-      },
-    });
+    try {
+      const entry = await strapi.entityService.create(UID, {
+        data,
+        populate: USER_POPULATE,
+      });
 
-    return { data: entry };
+      return { data: entry };
+    } catch (err) {
+      strapi.log.error('[direct-message.create]', err?.message || err);
+      return ctx.internalServerError('Failed to send message');
+    }
   },
 
   async update(ctx) {

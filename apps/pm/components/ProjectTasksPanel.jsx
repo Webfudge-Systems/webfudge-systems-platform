@@ -15,6 +15,7 @@ import {
   TableSkeleton,
   TabsWithActions,
   Textarea,
+  ChatMessageText,
   ownerDisplayFromUser,
 } from '@webfudge/ui';
 import {
@@ -140,8 +141,12 @@ export default function ProjectTasksPanel({
   onOpenCreateSubtask,
   onEditTask,
   onDeleteTask,
-  /** Org Member role: only progress/status updates; hide task CRUD. */
+  /** Org Member role: only status updates; hide task CRUD. */
   memberScopedTasks = false,
+  /** Project team member may create tasks (including org Members on the team). */
+  canCreateProjectTasks = true,
+  /** Org admin/manager may approve pending member assignments. */
+  canApproveAssignments = false,
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('all');
@@ -156,13 +161,42 @@ export default function ProjectTasksPanel({
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
 
+  const handleApproveAssignment = useCallback(
+    async (task) => {
+      try {
+        setSavingId(task.id);
+        await taskService.approveTaskAssignment(task.id);
+        await onRefresh?.();
+      } catch (error) {
+        console.error('Approve assignment error:', error);
+      } finally {
+        setSavingId(null);
+      }
+    },
+    [onRefresh]
+  );
+
+  const handleRejectAssignment = useCallback(
+    async (task) => {
+      try {
+        setSavingId(task.id);
+        await taskService.rejectTaskAssignment(task.id);
+        await onRefresh?.();
+      } catch (error) {
+        console.error('Reject assignment error:', error);
+      } finally {
+        setSavingId(null);
+      }
+    },
+    [onRefresh]
+  );
+
   const updateTask = useCallback(
     async (task, patch) => {
       let next = patch;
       if (memberScopedTasks) {
         next = {};
         if (patch.status !== undefined) next.status = patch.status;
-        if (patch.progress !== undefined) next.progress = patch.progress;
         if (Object.keys(next).length === 0) return;
       }
       try {
@@ -427,15 +461,43 @@ export default function ProjectTasksPanel({
         key: 'assignees',
         label: 'ASSIGNEES',
         render: (_, row) => (
-          <div className="min-w-[120px] py-0.5" onClick={(event) => event.stopPropagation()}>
+          <div className="min-w-[140px] py-0.5" onClick={(event) => event.stopPropagation()}>
+            {row.assignmentPending ? (
+              <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                Pending approval
+              </span>
+            ) : null}
             <TaskAssigneesPicker
               userIds={row.assigneeUserIds || []}
               assignees={row.assignees}
               users={users}
               onChange={(assigneeUserIds) => updateTask(row, { assigneeUserIds })}
-              disabled={memberScopedTasks || savingId === row.id}
+              disabled={memberScopedTasks || row.assignmentPending || savingId === row.id}
               compact
             />
+            {row.assignmentPending && canApproveAssignments ? (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-7 px-2 text-[10px]"
+                  disabled={savingId === row.id}
+                  onClick={() => handleApproveAssignment(row)}
+                >
+                  Approve
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-[10px]"
+                  disabled={savingId === row.id}
+                  onClick={() => handleRejectAssignment(row)}
+                >
+                  Reject
+                </Button>
+              </div>
+            ) : null}
           </div>
         ),
       },
@@ -524,6 +586,9 @@ export default function ProjectTasksPanel({
       users,
       savingId,
       memberScopedTasks,
+      canApproveAssignments,
+      handleApproveAssignment,
+      handleRejectAssignment,
       updateTask,
       copyTaskLink,
       onEditTask,
@@ -551,7 +616,7 @@ export default function ProjectTasksPanel({
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         searchPlaceholder="Search tasks..."
-        showAdd={!memberScopedTasks}
+        showAdd={canCreateProjectTasks}
         onAddClick={onAddTask}
         addTitle="Add Task"
         variant="glass"
@@ -607,7 +672,7 @@ export default function ProjectTasksPanel({
                 <p className="mb-4 text-sm text-gray-500">
                   {searchQuery || activeTab !== 'all' ? 'Try adjusting filters or search' : 'Create the first task for this project'}
                 </p>
-                {!searchQuery && activeTab === 'all' && !memberScopedTasks && (
+                {!searchQuery && activeTab === 'all' && canCreateProjectTasks && (
                   <Button variant="primary" onClick={onAddTask} className="gap-2">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Task
@@ -670,7 +735,7 @@ export default function ProjectTasksPanel({
                             <span className="text-xs text-gray-400">• {formatCommentTime(row.createdAt)}</span>
                           </div>
                           <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
-                            {commentTextFromMeta(row.meta)}
+                            <ChatMessageText text={commentTextFromMeta(row.meta)} />
                           </p>
                         </div>
                       </li>

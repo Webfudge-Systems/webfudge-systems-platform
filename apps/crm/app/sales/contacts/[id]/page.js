@@ -41,6 +41,7 @@ import CRMPageHeader from '../../../../components/CRMPageHeader';
 import contactService from '../../../../lib/api/contactService';
 import { fetchActivityTimeline, fetchContactComments, addContactComment } from '../../../../lib/api/crmActivityService';
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
+import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
 
 function formatDate(dateString) {
   if (!dateString) return '—';
@@ -1295,6 +1296,7 @@ export default function ContactDetailPage() {
                   addCommentFn={({ entityId, comment }) =>
                     addContactComment({ contactId: entityId, comment })
                   }
+                  fetchMentionUsers={fetchChatMentionUsers}
                 />
               </div>
             </div>

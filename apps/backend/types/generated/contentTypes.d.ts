@@ -1092,7 +1092,7 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
   }
   attributes: {
     budget: Schema.Attribute.Decimal
-    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     description: Schema.Attribute.Text
@@ -1264,6 +1264,11 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
   attributes: {
     assignee: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     assigner: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    assignmentApprovalStatus: Schema.Attribute.Enumeration<
+      ['not_required', 'pending', 'approved', 'rejected']
+    > &
+      Schema.Attribute.DefaultTo<'not_required'>
+    assignmentRequestedBy: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
     collaborators: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
     createdAt: Schema.Attribute.DateTime
@@ -1277,9 +1282,9 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String & Schema.Attribute.Required
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     parent: Schema.Attribute.Relation<'manyToOne', 'api::task.task'>
+    pendingCollaborators: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
     priority: Schema.Attribute.Enumeration<['low', 'medium', 'high']> &
       Schema.Attribute.DefaultTo<'medium'>
-    progress: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     projects: Schema.Attribute.Relation<'manyToMany', 'api::project.project'>
     publishedAt: Schema.Attribute.DateTime
     recurrenceCustomUnit: Schema.Attribute.Enumeration<['day', 'week', 'month']> &

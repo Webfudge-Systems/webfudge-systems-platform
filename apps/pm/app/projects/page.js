@@ -20,6 +20,7 @@ import {
   TableRowActionMenuPortal,
   TabsWithActions,
   Textarea,
+  ChatMessageText,
   ViewToggleButton,
   ViewToggleGroup,
   ownerDisplayFromUser,
@@ -1502,7 +1503,7 @@ export default function ProjectsPage() {
                                 <span className="text-xs text-gray-400">• {formatCommentTime(cRow.createdAt)}</span>
                               </div>
                               <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
-                                {commentTextFromMeta(cRow.meta)}
+                                <ChatMessageText text={commentTextFromMeta(cRow.meta)} />
                               </p>
                             </div>
                           </li>

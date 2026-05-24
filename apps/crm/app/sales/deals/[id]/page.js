@@ -65,6 +65,7 @@ import {
   PRIORITY_OPTIONS,
 } from '../../../../lib/dealFormOptions';
 import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../../lib/rbac';
+import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
 
 const headerIconBtnClass =
   'rounded-xl border border-white/20 bg-white/10 p-2.5 text-brand-text-light shadow-lg backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/20';
@@ -2047,6 +2048,7 @@ export default function DealDetailPage() {
                       ? ({ entityId, comment }) => addDealComment({ dealId: entityId, comment })
                       : null
                   }
+                  fetchMentionUsers={fetchChatMentionUsers}
                 />
               </div>
             </div>

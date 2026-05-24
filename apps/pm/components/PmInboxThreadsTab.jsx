@@ -11,7 +11,8 @@ import {
   CheckSquare,
   Loader2,
 } from 'lucide-react'
-import { Avatar, Badge, Button, Card, EmptyState, Input, LoadingSpinner, Textarea } from '@webfudge/ui'
+import { Avatar, Badge, Button, Card, ChatMessageText, EmptyState, Input, LoadingSpinner, MentionComposer } from '@webfudge/ui'
+import { fetchChatMentionUsers } from '../lib/api/chatMentionUsers'
 import { fetchPmThreadsCommentsFeed } from '../lib/api/pmInboxService'
 import { fetchProjectComments, addProjectComment } from '../lib/api/projectActivityService'
 import { fetchTaskComments, addTaskComment } from '../lib/api/taskActivityService'
@@ -202,6 +203,20 @@ export default function PmInboxThreadsTab() {
   const [refreshing, setRefreshing] = useState(false)
 
   const messagesEndRef = useRef(null)
+  const composerRef = useRef(null)
+  const [mentionUsers, setMentionUsers] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    fetchChatMentionUsers()
+      .then((users) => {
+        if (!cancelled) setMentionUsers(Array.isArray(users) ? users : [])
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const loadThreadList = useCallback(async (silent = false) => {
     if (!silent) setListLoading(true)
@@ -399,7 +414,7 @@ export default function PmInboxThreadsTab() {
                           <span className="text-[10px] text-gray-400">{formatRelTime(msg.createdAt)}</span>
                         </div>
                         <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-700">
-                          {extractComment(msg)}
+                          <ChatMessageText text={extractComment(msg)} />
                         </p>
                       </div>
                     </div>
@@ -411,21 +426,25 @@ export default function PmInboxThreadsTab() {
               <div className="flex-shrink-0 border-t border-gray-100 bg-white p-4">
                 {sendError ? <p className="mb-2 text-xs text-red-600">{sendError}</p> : null}
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                  <Textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSend()
-                      }
-                    }}
-                    placeholder="Write a comment…"
-                    rows={2}
-                    resize="vertical"
-                    className="min-h-[44px] flex-1 rounded-xl border-gray-200 text-sm"
-                    containerClassName="mb-0 flex-1"
-                  />
+                  <div className="min-h-[44px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100">
+                    <MentionComposer
+                      textareaRef={composerRef}
+                      value={draft}
+                      onChange={setDraft}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                          e.preventDefault()
+                          handleSend()
+                        }
+                      }}
+                      mentionUsers={mentionUsers}
+                      disabled={sending}
+                      placeholder="Write a comment… (@ to mention, Ctrl+Enter to send)"
+                      textareaClassName="w-full resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none"
+                      minHeightPx={44}
+                      maxHeightPx={120}
+                    />
+                  </div>
                   <Button
                     variant="primary"
                     size="sm"

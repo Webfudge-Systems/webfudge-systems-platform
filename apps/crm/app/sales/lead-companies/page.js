@@ -35,6 +35,7 @@ import {
   KPICard,
   Modal,
   Textarea,
+  ChatMessageText,
   TableCellCreated,
   TableCellDateOnly,
   TableCellOwner,
@@ -1849,7 +1850,7 @@ export default function LeadCompaniesPage() {
                                 <span className="text-xs text-gray-400">• {formatCommentTime(row.createdAt)}</span>
                               </div>
                               <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
-                                {commentTextFromMeta(row.meta)}
+                                <ChatMessageText text={commentTextFromMeta(row.meta)} />
                               </p>
                             </div>
                           </li>

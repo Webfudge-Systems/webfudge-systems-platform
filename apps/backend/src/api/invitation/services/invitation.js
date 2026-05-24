@@ -9,6 +9,7 @@ const { uniqueUsernameFromEmail } = require('../../../utils/user-username');
 const { createCoreService } = require('@strapi/strapi').factories;
 const crypto = require('crypto');
 const { ORG_ROLE_UID, resolveOrganizationRoleIdForOrg } = require('../../../utils/organization-role');
+const { logAccountsActivity, actorDisplayName } = require('../../../utils/crm-activity-log');
 
 module.exports = createCoreService('api::invitation.invitation', ({ strapi }) => ({
   async sendEmailSafe({ to, subject, text, html }) {
@@ -128,13 +129,40 @@ module.exports = createCoreService('api::invitation.invitation', ({ strapi }) =>
       });
     }
 
+    /** @type {any} */
+    const roleDoc = await strapi.entityService.findOne(ORG_ROLE_UID, roleId, { fields: ['name'] });
+    const roleLabel = roleDoc?.name || String(role || 'Member');
+
+    try {
+      const actorName = await actorDisplayName(strapi, addedById);
+      const reactivated = existingMembership.length > 0;
+      const summary = createdUser
+        ? `${actorName} added ${normalizedEmail} to the organization as ${roleLabel} (new account)`
+        : reactivated
+          ? `${actorName} reactivated ${normalizedEmail} in the organization as ${roleLabel}`
+          : `${actorName} added ${normalizedEmail} to the organization as ${roleLabel}`;
+      await logAccountsActivity(strapi, {
+        organizationId,
+        actorUserId: addedById,
+        action: reactivated ? 'update' : 'create',
+        subjectType: 'organization_user',
+        subjectId: membership.id,
+        summary,
+        meta: {
+          email: normalizedEmail,
+          role: roleLabel,
+          createdUser,
+          module: 'accounts',
+        },
+      });
+    } catch (_) {
+      /* logging is best-effort */
+    }
+
     if (sendWelcomeEmail) {
       const organization = await strapi.entityService.findOne('api::organization.organization', organizationId, {
         fields: ['name'],
       });
-      /** @type {any} */
-      const roleDoc = await strapi.entityService.findOne(ORG_ROLE_UID, roleId, { fields: ['name'] });
-      const roleLabel = roleDoc?.name || String(role || 'Member');
       const subject = `You've been added to ${organization?.name || 'an organization'}`;
       const text = createdUser
         ? [
@@ -204,6 +232,21 @@ module.exports = createCoreService('api::invitation.invitation', ({ strapi }) =>
         organizationName,
         roleLabel,
       });
+
+      try {
+        const actorName = await actorDisplayName(strapi, invitedById);
+        await logAccountsActivity(strapi, {
+          organizationId,
+          actorUserId: invitedById,
+          action: 'create',
+          subjectType: 'invitation',
+          subjectId: invitation.id,
+          summary: `${actorName} invited ${String(email).trim().toLowerCase()} as ${roleLabel}`,
+          meta: { email: String(email).trim().toLowerCase(), role: roleLabel, module: 'accounts' },
+        });
+      } catch (_) {
+        /* logging is best-effort */
+      }
     }
 
     return invitations;
@@ -255,7 +298,7 @@ module.exports = createCoreService('api::invitation.invitation', ({ strapi }) =>
     // Add user to organization
     const roleId = await resolveOrganizationRoleIdForOrg(strapi, inv.role || 'Member', organizationId);
 
-    await strapi.entityService.create('api::organization-user.organization-user', {
+    const membership = await strapi.entityService.create('api::organization-user.organization-user', {
       data: {
         user: user.id,
         organization: organizationId,
@@ -266,6 +309,31 @@ module.exports = createCoreService('api::invitation.invitation', ({ strapi }) =>
         publishedAt: new Date()
       }
     });
+
+    try {
+      const roleDoc = await strapi.entityService.findOne(ORG_ROLE_UID, roleId, { fields: ['name'] });
+      const roleLabel = roleDoc?.name || String(inv.role || 'Member');
+      await logAccountsActivity(strapi, {
+        organizationId,
+        actorUserId: user.id,
+        action: 'create',
+        subjectType: 'organization_user',
+        subjectId: membership.id,
+        summary: `${inv.email} accepted an invitation and joined as ${roleLabel}`,
+        meta: { email: inv.email, role: roleLabel, invitationId: inv.id, module: 'accounts' },
+      });
+      await logAccountsActivity(strapi, {
+        organizationId,
+        actorUserId: user.id,
+        action: 'update',
+        subjectType: 'invitation',
+        subjectId: inv.id,
+        summary: `Invitation for ${inv.email} was accepted`,
+        meta: { email: inv.email, status: 'accepted', module: 'accounts' },
+      });
+    } catch (_) {
+      /* logging is best-effort */
+    }
 
     // Update invitation status
     await strapi.entityService.update('api::invitation.invitation', inv.id, {

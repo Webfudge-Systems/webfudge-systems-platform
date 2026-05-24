@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@webfudge/auth';
-import { Users, DollarSign, TrendingUp, Target, Loader2, ShieldX } from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Target, ShieldX } from 'lucide-react';
 import { formatCurrency } from '@webfudge/utils';
 import { KPICard } from '@webfudge/ui';
 import CRMPageHeader from '../components/CRMPageHeader';
 import dashboardService from '../lib/api/dashboardService';
 import {
+  DashboardPageSkeleton,
   SalesAnalyticsWidget,
   MyWorkWidget,
   LeadSourcesWidget,
@@ -115,12 +116,7 @@ export default function DashboardPage() {
       />
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="flex items-center gap-3">
-            <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
-            <span className="text-gray-600">Loading dashboard...</span>
-          </div>
-        </div>
+        <DashboardPageSkeleton />
       ) : (
         <>
           <div className="space-y-4">

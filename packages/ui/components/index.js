@@ -48,6 +48,7 @@ export { Tabs } from './Tabs';
 export { TabsWithActions } from './TabsWithActions';
 export { ViewToggleGroup, ViewToggleButton } from './ViewToggleGroup';
 export { Modal } from './Modal';
+export { WorkspaceSearchModal } from './WorkspaceSearchModal';
 
 // AUTOMATION / WORKFLOW COMPONENTS
 export { NodeHandle } from './NodeHandle';
@@ -56,6 +57,9 @@ export { WorkflowStatusBadge } from './WorkflowStatusBadge';
 // CRM / entity activity (timeline + chats panel)
 export { ActivitiesTimeline } from './ActivitiesTimeline';
 export { EntityActivityPanel } from './EntityActivityPanel';
+export { LinkifiedText } from './LinkifiedText';
+export { ChatMessageText } from './ChatMessageText';
+export { MentionComposer } from './MentionComposer';
 
 // Workspace calendar (CRM + PM — meetings, tasks, project timelines)
 export { UnifiedWorkspaceCalendar } from './UnifiedWorkspaceCalendar';

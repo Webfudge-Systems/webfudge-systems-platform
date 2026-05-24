@@ -12,6 +12,7 @@ const {
   validateOrganizationRoleId,
   ORG_ROLE_UID,
 } = require('../../../utils/organization-role');
+const { logAccountsActivity, actorDisplayName } = require('../../../utils/crm-activity-log');
 
 function getRolesAdminError(ctx, orgIdFromParams) {
   if (!ctx.state.user) return 'Missing or invalid credentials';
@@ -469,6 +470,64 @@ module.exports = createCoreController('api::organization.organization', ({ strap
             data: { blocked: shouldBlock },
           });
         }
+      }
+
+      try {
+        const targetEmail =
+          membership?.user?.email || membership?.user?.username || `member #${membershipId}`;
+        const actorName = await actorDisplayName(strapi, user.id);
+        const changes = [];
+        if (typeof isActive === 'boolean') {
+          changes.push({
+            key: 'isActive',
+            label: 'Active',
+            before: membership.isActive ? 'Yes' : 'No',
+            after: isActive ? 'Yes' : 'No',
+          });
+        }
+        if (status === 'suspended' || status === 'active') {
+          changes.push({
+            key: 'status',
+            label: 'Status',
+            before: membership?.user?.blocked ? 'Suspended' : 'Active',
+            after: status === 'suspended' ? 'Suspended' : 'Active',
+          });
+        }
+        if (membershipUpdate.role != null) {
+          const prevRoleName = membership?.role?.name || membership?.role?.code || '—';
+          const newRole = await strapi.entityService.findOne(ORG_ROLE_UID, membershipUpdate.role, {
+            fields: ['name', 'code'],
+          });
+          const newRoleName = newRole?.name || newRole?.code || String(membershipUpdate.role);
+          changes.push({
+            key: 'role',
+            label: 'Role',
+            before: prevRoleName,
+            after: newRoleName,
+          });
+        }
+        if (changes.length > 0 || Object.keys(membershipUpdate).length > 0 || status) {
+          const parts = changes.map((c) => c.label).join(', ');
+          const summary =
+            changes.length > 0
+              ? `${actorName} updated ${targetEmail} (${parts})`
+              : `${actorName} updated ${targetEmail}`;
+          await logAccountsActivity(strapi, {
+            organizationId: id,
+            actorUserId: user.id,
+            action: 'update',
+            subjectType: 'organization_user',
+            subjectId: membership.id,
+            summary,
+            meta: {
+              email: targetEmail,
+              module: 'accounts',
+              ...(changes.length > 0 ? { changes } : {}),
+            },
+          });
+        }
+      } catch (_) {
+        /* logging is best-effort */
       }
 
       return ctx.send({ success: true });

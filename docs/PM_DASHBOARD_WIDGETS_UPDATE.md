@@ -1,31 +1,36 @@
 # PM Dashboard Widgets Update
 
 ## Summary
-Updated the PM dashboard (“My Tasks” + “Projects” cards) to match the provided reference layout. The changes focus on empty-state visuals for My Tasks and a table-like projects list (header + 4 rows) with the correct date formatting.
+PM dashboard layout updated to match the reference: **Upcoming Deadlines** (task list + mini calendar) and **Activity Feed** replace the sidebar **Projects** card. **My Tasks** remains full-width above those sections.
 
 ## Scope
-- App: `apps/pm/app/page.js`
-- Updated UI blocks:
-  - `My Tasks` card empty state
-  - `Projects` card table-like list + header
+- `apps/pm/app/page.js` — layout, data loading (`assigneeTasks` for deadlines)
+- `apps/pm/components/dashboard/UpcomingDeadlinesWidget.jsx` — new
+- `apps/pm/components/dashboard/DashboardActivityFeedWidget.jsx` — new (uses `fetchPmActivityFeed`)
+- `apps/pm/components/dashboard/DashboardPageSkeleton.jsx` — skeleton layout
 
 ## Details
-### My Tasks card
-- Removed the “View All” action from the card header.
-- Replaced the empty state UI with a centered menu icon in a rounded light-gray square.
-- Removed the “Create Task” action from the empty state to match the reference.
+### Removed
+- Dashboard **Projects** card (create button + project list). Projects remain in sidebar and `/projects`.
 
-### Projects card
-- Updated “+ Create New Project” button styling to use an orange->pink gradient and pill shape.
-- Replaced the previous colored-initials list with:
-  - A table-like header row (`PROJECT`, `DUE DATE`) including sort icons
-  - A 4-row list layout: avatar + project name on the left, due date with calendar icon on the right
-- Due dates are formatted as `MMM DD` (no year) to match the reference.
+### Added
+- **Upcoming Deadlines**: open assignee tasks with due dates, date badges, “days left” labels, mini month calendar with deadline dots, link to `/calendar`.
+- **Activity Feed**: org-wide PM activity (`project` + `task` subjects) via `/crm-activities/feed`, compact rows with `@webfudge/ui` `Avatar`, action icons, link to `/inbox` for full feed.
 
-### People + Private Notepad cards
-- People card now renders an avatar grid (top 6) using real transformed user data (not just the count), and shows a “Show More” affordance when there are more than 6 users.
-- Private Notepad card now uses a dashboard-style “editor” UI: toolbar affordances plus word/character footer and a Priority control. Notes are still persisted via `localStorage` on blur.
+### Unchanged
+- KPI row, **My Tasks** table, **People** + **Private Notepad** cards.
 
-## Testing / Verification
-- Open PM dashboard and confirm the “My Tasks” + “Projects” cards visually match the reference (spacing, alignment, empty-state icon, and projects table rows).
+## Bottom insight row (May 2026)
+### Removed
+- **AI Assistant** card and `AIAssistantWidget.jsx` (placeholder Beta UI).
 
+### Layout
+- Three equal columns on `lg+`: **Task Overview**, **Team Workload**, **Projects Overview** (`lg:grid-cols-3`, content-sized — no forced min-height).
+
+### UI polish (compact)
+- Shared `DashboardInsightShell`: `p-4` cards, `text-base` titles, light gray inner panel.
+- Smaller donut + side legend (full labels, no truncation).
+- List rows: `py-2`, single-line meta + thin progress bar (`DashboardProgressRow`).
+
+## Components
+Uses shared `@webfudge/ui`: `Card`, `KPICard`, `Table`, `Avatar`, `Button`, `EmptyState`, `LoadingSpinner`, `ownerDisplayFromUser`.

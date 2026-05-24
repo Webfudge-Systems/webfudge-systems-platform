@@ -2,7 +2,7 @@ import './globals.css';
 import { AuthProvider } from '@webfudge/auth';
 import LayoutContent from '../components/LayoutContent';
 
-const siteUrl = (process.env.NEXT_PUBLIC_PM_APP_URL || 'http://localhost:3002').replace(/\/$/, '');
+const siteUrl = (process.env.NEXT_PUBLIC_PM_APP_URL || 'http://localhost:3006').replace(/\/$/, '');
 const shareDescription =
   'A modern workspace for projects, tasks, team collaboration, and delivery.';
 

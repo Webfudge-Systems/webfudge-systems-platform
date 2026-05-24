@@ -35,10 +35,6 @@
     "startDate": {
       "type": "datetime"
     },
-    "progress": {
-      "type": "integer",
-      "default": 0
-    },
     "tags": {
       "type": "json",
       "default": []
@@ -56,6 +52,21 @@
     "collaborators": {
       "type": "relation",
       "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "pendingCollaborators": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "assignmentApprovalStatus": {
+      "type": "enumeration",
+      "enum": ["not_required", "pending", "approved", "rejected"],
+      "default": "not_required"
+    },
+    "assignmentRequestedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
       "target": "plugin::users-permissions.user"
     },
     "projects": {

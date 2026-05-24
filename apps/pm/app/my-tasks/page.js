@@ -18,6 +18,7 @@ import {
   TableRowActionMenuPortal,
   TabsWithActions,
   Textarea,
+  ChatMessageText,
   ViewToggleGroup,
   ViewToggleButton,
   ownerDisplayFromUser,
@@ -101,7 +102,6 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'assignees', label: 'Assignees' },
   { key: 'startDate', label: 'Start date' },
   { key: 'dueDate', label: 'Due date' },
-  { key: 'progress', label: 'Progress' },
   { key: 'tags', label: 'Tags' },
   { key: 'description', label: 'Description' },
   { key: 'createdAt', label: 'Created' },
@@ -852,14 +852,6 @@ export default function MyTasksPage() {
       ),
     },
     {
-      key: 'progress',
-      visibilityKey: 'progress',
-      label: 'PROGRESS',
-      render: (_, row) => (
-        <span className="inline-flex min-w-[3rem] tabular-nums text-xs font-semibold text-gray-800">{row.progress ?? 0}%</span>
-      ),
-    },
-    {
       key: 'tags',
       visibilityKey: 'tags',
       label: 'TAGS',
@@ -1385,7 +1377,7 @@ export default function MyTasksPage() {
                                 <span className="text-xs text-gray-400">• {formatCommentTime(row.createdAt)}</span>
                               </div>
                               <p className="whitespace-pre-wrap break-words text-sm text-gray-700">
-                                {commentTextFromMeta(row.meta)}
+                                <ChatMessageText text={commentTextFromMeta(row.meta)} />
                               </p>
                             </div>
                           </li>

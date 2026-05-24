@@ -1,0 +1,6 @@
+export { default as DashboardPageSkeleton } from './DashboardPageSkeleton'
+export { default as DashboardMyTasksWidget, DASHBOARD_MY_TASKS_LIMIT } from './DashboardMyTasksWidget'
+export { default as UpcomingDeadlinesWidget } from './UpcomingDeadlinesWidget'
+export { default as TaskOverviewWidget } from './TaskOverviewWidget'
+export { default as TeamWorkloadWidget } from './TeamWorkloadWidget'
+export { default as ProjectsOverviewWidget } from './ProjectsOverviewWidget'

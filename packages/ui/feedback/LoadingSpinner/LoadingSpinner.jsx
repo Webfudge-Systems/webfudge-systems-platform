@@ -135,3 +135,74 @@ export function TableSkeleton({ rows = 5, columns = 4 }) {
     </div>
   );
 }
+
+/**
+ * KPI card placeholder — matches KPICard layout on dashboard pages.
+ */
+export function KPICardSkeleton() {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm animate-pulse">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 space-y-2.5">
+          <div className="h-3 w-24 rounded bg-gray-200" />
+          <div className="h-8 w-20 rounded bg-gray-200" />
+          <div className="h-3 w-16 rounded bg-gray-100" />
+        </div>
+        <div className="h-10 w-10 shrink-0 rounded-lg bg-gray-200" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Row of KPI card skeletons.
+ */
+export function KPICardsRowSkeleton({ count = 4 }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: count }).map((_, index) => (
+        <KPICardSkeleton key={index} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Glass-style widget card placeholder for dashboard panels.
+ */
+export function WidgetCardSkeleton({ className = "", minHeight = "min-h-[280px]" }) {
+  return (
+    <div
+      className={`animate-pulse rounded-2xl border border-gray-200/80 bg-white/80 p-6 shadow-sm ${className}`}
+    >
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="space-y-2">
+          <div className="h-5 w-32 rounded bg-gray-200" />
+          <div className="h-3 w-48 rounded bg-gray-100" />
+        </div>
+        <div className="h-8 w-20 rounded-lg bg-gray-100" />
+      </div>
+      <div className={`rounded-xl bg-gray-50/90 ${minHeight}`} />
+    </div>
+  );
+}
+
+/**
+ * Compact loading status shown above dashboard skeleton content.
+ */
+export function DashboardContentLoader({ message = "Loading dashboard..." }) {
+  return (
+    <div
+      className="flex items-center gap-2 pb-1 text-sm text-gray-500"
+      role="status"
+      aria-live="polite"
+    >
+      <motion.div
+        className="h-4 w-4 shrink-0 rounded-full border-2 border-gray-200 border-t-orange-500"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+      />
+      <span className="animate-pulse">{message}</span>
+    </div>
+  );
+}

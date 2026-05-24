@@ -34,7 +34,6 @@ import {
   TableCellText,
   TableCellOrangePill,
   TableCellMultiline,
-  TableCellProbability,
   TableRowActionMenuPortal,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
@@ -71,7 +70,6 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'priority', label: 'Priority' },
   { key: 'assignee', label: 'Assignee' },
   { key: 'scheduledDate', label: 'Scheduled' },
-  { key: 'progress', label: 'Progress' },
   { key: 'clientAccount', label: 'Client account' },
   { key: 'deal', label: 'Deal' },
   { key: 'projects', label: 'Projects' },
@@ -873,12 +871,6 @@ export default function ClientsTasksPage() {
         visibilityKey: 'scheduledDate',
         label: 'SCHEDULED',
         render: (_, task) => <TableCellDateOnly dateString={task.scheduledDate} />,
-      },
-      {
-        key: 'progress',
-        visibilityKey: 'progress',
-        label: 'PROGRESS',
-        render: (_, task) => <TableCellProbability value={task.progress} />,
       },
       {
         key: 'clientAccount',

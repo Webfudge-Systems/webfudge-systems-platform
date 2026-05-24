@@ -9,6 +9,7 @@ import { CalendarRange, Loader2 } from 'lucide-react';
 import CRMPageHeader from '../../components/CRMPageHeader';
 import meetingService from '../../lib/api/meetingService';
 import { loadWorkspaceCalendarData } from '../../lib/loadWorkspaceCalendar';
+import { pmProjectDetailUrl } from '../../lib/pmAppUrl';
 
 const UnifiedWorkspaceCalendar = dynamic(() => import('../../components/WorkspaceCalendarClient'), {
   ssr: false,
@@ -118,8 +119,7 @@ export default function WorkspaceCalendarPage() {
           router.push('/clients/projects');
           return;
         }
-        const pmBase = process.env.NEXT_PUBLIC_PM_APP_URL || 'http://localhost:3002';
-        window.location.href = `${pmBase.replace(/\/$/, '')}/projects/${slug}`;
+        window.location.href = pmProjectDetailUrl(slug);
       }
     },
     [router]

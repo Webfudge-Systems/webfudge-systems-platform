@@ -150,8 +150,10 @@ export async function fetchMessageContacts({ excludeUserId } = {}) {
 export async function fetchConversation(withUserId) {
   const id = typeof withUserId === 'string' ? parseInt(withUserId, 10) : withUserId
   if (!id || Number.isNaN(id)) return []
-  const res = await strapiClient.request(`/direct-messages?withUser=${id}`, { method: 'GET' })
-  const list = Array.isArray(res.data) ? res.data : []
+  const res = await strapiClient.request(`/direct-messages?withUser=${encodeURIComponent(id)}`, {
+    method: 'GET',
+  })
+  const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : []
   return list.map((row) => normalizeMessage(row))
 }
 

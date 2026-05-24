@@ -15,6 +15,8 @@ module.exports = {
     { method: 'GET', path: '/tasks/:id', handler: `${UID}.findOne`, config: authFalse },
     { method: 'POST', path: '/tasks', handler: `${UID}.create`, config: authFalse },
     { method: 'PUT', path: '/tasks/:id', handler: `${UID}.update`, config: authFalse },
+    { method: 'POST', path: '/tasks/:id/approve-assignment', handler: `${UID}.approveAssignment`, config: authFalse },
+    { method: 'POST', path: '/tasks/:id/reject-assignment', handler: `${UID}.rejectAssignment`, config: authFalse },
     { method: 'DELETE', path: '/tasks/:id', handler: `${UID}.delete`, config: authFalse },
   ],
 };

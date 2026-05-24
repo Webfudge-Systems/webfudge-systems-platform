@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { Suspense, useState, useEffect, useCallback, useRef } from 'react'
+import { Suspense, useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import {
@@ -13,7 +13,8 @@ import {
   LoadingSpinner,
   Input,
   KPICard,
-  Textarea,
+  ChatMessageText,
+  MentionComposer,
 } from '@webfudge/ui'
 import {
   MessageSquare,
@@ -28,6 +29,7 @@ import {
 import PMPageHeader from '../../components/PMPageHeader'
 import PMRowActions from '../../components/PMRowActions'
 import messageService, { memberDisplayName } from '../../lib/api/messageService'
+import { fetchChatMentionUsers } from '../../lib/api/chatMentionUsers'
 
 function timeAgo(dateStr) {
   if (!dateStr) return ''
@@ -69,8 +71,10 @@ function MessagesPageContent() {
   const { user } = useAuth()
   const searchParams = useSearchParams()
   const messagesEndRef = useRef(null)
+  const composerRef = useRef(null)
 
   const [users, setUsers] = useState([])
+  const [mentionUsers, setMentionUsers] = useState([])
   const [selectedUser, setSelectedUser] = useState(null)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState('')
@@ -83,6 +87,30 @@ function MessagesPageContent() {
   const [sendError, setSendError] = useState(null)
 
   const currentUserId = getCurrentUserId(user)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchChatMentionUsers()
+      .then((list) => {
+        if (!cancelled) setMentionUsers(Array.isArray(list) ? list : [])
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const dmMentionUsers = useMemo(() => {
+    const roster = [...mentionUsers, ...users]
+    const seen = new Set()
+    return roster.filter((u) => {
+      if (!u?.id) return false
+      const key = String(u.id)
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [mentionUsers, users])
 
   const loadUsers = useCallback(async () => {
     try {
@@ -115,7 +143,12 @@ function MessagesPageContent() {
     } catch (e) {
       console.error('Failed to load messages:', e)
       setMessages([])
-      setMessagesError(e?.message || 'Could not load messages')
+      const raw = e?.message || 'Could not load messages'
+      setMessagesError(
+        /internal server error/i.test(raw)
+          ? 'Could not load messages. Restart the API if you just deployed a fix.'
+          : raw
+      )
     } finally {
       setLoadingMessages(false)
     }
@@ -395,7 +428,19 @@ function MessagesPageContent() {
                                 : 'rounded-tl-sm border border-gray-100 bg-white text-gray-800'
                             }`}
                           >
-                            {msg.content}
+                            <ChatMessageText
+                              text={msg.content}
+                              linkClassName={
+                                isOwn
+                                  ? 'break-all text-white underline decoration-white/50 underline-offset-2 hover:text-white'
+                                  : 'break-all text-blue-600 underline decoration-blue-600/40 underline-offset-2 hover:text-blue-700'
+                              }
+                              mentionClassName={
+                                isOwn
+                                  ? 'font-semibold text-white bg-white/20 rounded px-0.5'
+                                  : 'font-semibold text-orange-700 bg-orange-50/90 rounded px-0.5'
+                              }
+                            />
                           </div>
                           <span className="mt-1.5 text-[11px] text-gray-400">{timeAgo(msg.createdAt)}</span>
                         </div>
@@ -411,21 +456,25 @@ function MessagesPageContent() {
                   <p className="text-xs text-red-600">{sendError}</p>
                 ) : null}
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                  <Textarea
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleSendMessage()
-                      }
-                    }}
-                    placeholder={`Message ${getListDisplayName(selectedUser)}…`}
-                    rows={2}
-                    resize="vertical"
-                    className="min-h-[44px] flex-1 rounded-xl border-gray-200 text-sm"
-                    containerClassName="flex-1 mb-0"
-                  />
+                  <div className="min-h-[44px] flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100">
+                    <MentionComposer
+                      textareaRef={composerRef}
+                      value={newMessage}
+                      onChange={setNewMessage}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          handleSendMessage()
+                        }
+                      }}
+                      mentionUsers={dmMentionUsers}
+                      disabled={sending}
+                      placeholder={`Message ${getListDisplayName(selectedUser)}… (@ to mention)`}
+                      textareaClassName="w-full resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none"
+                      minHeightPx={44}
+                      maxHeightPx={120}
+                    />
+                  </div>
                   <Button
                     variant="primary"
                     size="sm"
@@ -437,7 +486,7 @@ function MessagesPageContent() {
                     Send
                   </Button>
                 </div>
-                <p className="text-[11px] text-gray-400">Enter to send · Shift+Enter for a new line</p>
+                <p className="text-[11px] text-gray-400">Enter to send · type @ to mention · Shift+Enter for a new line</p>
               </div>
             </>
           )}

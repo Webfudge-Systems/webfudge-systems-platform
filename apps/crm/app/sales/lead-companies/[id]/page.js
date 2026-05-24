@@ -60,6 +60,7 @@ import { fetchActivityTimeline, fetchLeadCompanyComments, addLeadCompanyComment 
 import strapiClient from '../../../../lib/strapiClient';
 import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
 import meetingService from '../../../../lib/api/meetingService';
+import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
 import {
   industryOptions,
   companyTypeSelectOptions,
@@ -2205,6 +2206,7 @@ export default function LeadCompanyDetailPage() {
                   addCommentFn={({ entityId, comment }) =>
                     addLeadCompanyComment({ leadCompanyId: entityId, comment })
                   }
+                  fetchMentionUsers={fetchChatMentionUsers}
                 />
               </div>
             </div>

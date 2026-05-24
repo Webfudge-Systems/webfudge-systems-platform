@@ -33,6 +33,7 @@ import {
   Plus,
   Activity,
   Receipt,
+  FolderKanban,
 } from 'lucide-react';
 import {
   Button,
@@ -51,17 +52,21 @@ import {
   TableRowActionMenuPortal,
   ActivitiesTimeline,
   EntityActivityPanel,
+  TableCellOrangePill,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import contactService from '../../../../lib/api/contactService';
 import dealService from '../../../../lib/api/dealService';
 import invoiceService from '../../../../lib/api/invoiceService';
+import projectService from '../../../../lib/api/projectService';
 import { fetchActivityTimeline, fetchClientAccountComments, addClientAccountComment } from '../../../../lib/api/crmActivityService';
 import strapiClient from '../../../../lib/strapiClient';
 import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
 import meetingService from '../../../../lib/api/meetingService';
 import { canWriteCRM } from '../../../../lib/rbac';
+import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
+import { pmAddProjectUrl, pmProjectDetailUrl } from '../../../../lib/pmAppUrl';
 import {
   industryOptions,
   companyTypeSelectOptions,
@@ -69,6 +74,7 @@ import {
   canonicalIndustryValue,
   canonicalCompanyTypeValue,
 } from '../../../../lib/leadCompanyProfileOptions';
+import { getIndustryVisual } from '../../../../lib/industryVisuals';
 
 function formatCurrency(value) {
   if (value == null || value === '') return '₹0';
@@ -129,6 +135,28 @@ function humanizeSource(source) {
     .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function isActiveProjectStatus(status) {
+  const s = (status || 'PLANNING').toUpperCase();
+  if (s === 'COMPLETED' || s === 'DONE' || s === 'CLOSED') return false;
+  if (s === 'PLANNING' || s === 'DRAFT') return false;
+  return true;
+}
+
+function projectTaskCount(project) {
+  const t = project?.tasks;
+  return Array.isArray(t) ? t.length : 0;
+}
+
+function openPmProject(project) {
+  const slug = project?.slug || project?.id;
+  if (!slug) return;
+  window.location.href = pmProjectDetailUrl(slug);
+}
+
+function openPmAddProject(clientAccountId) {
+  window.location.href = pmAddProjectUrl(clientAccountId);
 }
 
 const INVOICE_STATUS_BADGE = {
@@ -270,6 +298,8 @@ export default function ClientAccountDetailPage() {
   const [dealsLoading, setDealsLoading] = useState(true);
   const [linkedInvoices, setLinkedInvoices] = useState([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [linkedProjects, setLinkedProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const [meetingsCount, setMeetingsCount] = useState(0);
   const [detailTab, setDetailTab] = useState('overview');
 
@@ -288,6 +318,7 @@ export default function ClientAccountDetailPage() {
   const canEditClientAccount = canWriteCRM('client_accounts');
   const canCreateDeals = canWriteCRM('deals');
   const canCreateInvoices = canWriteCRM('client_invoices');
+  const canCreateProjects = canWriteCRM('client_projects');
 
   const [editingCompanyInfo, setEditingCompanyInfo] = useState(false);
   const [companyInfoDraft, setCompanyInfoDraft] = useState(null);
@@ -456,6 +487,52 @@ export default function ClientAccountDetailPage() {
     [id]
   );
 
+  const loadLinkedProjects = useCallback(
+    async (showLoadingSpinner = false) => {
+      if (!id) return;
+      if (showLoadingSpinner) setProjectsLoading(true);
+      try {
+        const idEq = Number.isNaN(Number(id)) ? id : Number(id);
+        const targetId = String(id);
+        const isRelatedToClientAccount = (project) => {
+          const ca = project?.clientAccount;
+          if (ca == null) return false;
+          if (typeof ca !== 'object') return String(ca) === targetId;
+          const cid = ca.id ?? ca.documentId ?? null;
+          return cid != null && String(cid) === targetId;
+        };
+        try {
+          const projRes = await projectService.getAll({
+            'pagination[pageSize]': 100,
+            sort: 'updatedAt:desc',
+            populate: ['projectManager', 'clientAccount', 'tasks', 'sourceDeal'],
+            filters: {
+              clientAccount: {
+                id: { $eq: idEq },
+              },
+            },
+          });
+          const raw = Array.isArray(projRes.data) ? projRes.data : [];
+          setLinkedProjects(raw.filter(isRelatedToClientAccount));
+        } catch {
+          const projRes = await projectService.getAll({
+            'pagination[pageSize]': 100,
+            sort: 'updatedAt:desc',
+            populate: ['projectManager', 'clientAccount', 'tasks', 'sourceDeal'],
+          });
+          const all = Array.isArray(projRes.data) ? projRes.data : [];
+          setLinkedProjects(all.filter(isRelatedToClientAccount));
+        }
+      } catch (e) {
+        console.error(e);
+        setLinkedProjects([]);
+      } finally {
+        if (showLoadingSpinner) setProjectsLoading(false);
+      }
+    },
+    [id]
+  );
+
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -463,8 +540,10 @@ export default function ClientAccountDetailPage() {
       setLoading(true);
       setDealsLoading(true);
       setInvoicesLoading(true);
+      setProjectsLoading(true);
       setLinkedDeals([]);
       setLinkedInvoices([]);
+      setLinkedProjects([]);
       setMeetingsCount(0);
       try {
         const res = await clientAccountService.getOne(id);
@@ -473,6 +552,7 @@ export default function ClientAccountDetailPage() {
           await loadLinkedContacts(res.data);
           await loadLinkedDeals(false);
           await loadLinkedInvoices(false);
+          await loadLinkedProjects(false);
           try {
             const n = await meetingService.countByClientAccount(id);
             if (!cancelled) setMeetingsCount(typeof n === 'number' && !Number.isNaN(n) ? n : 0);
@@ -484,6 +564,7 @@ export default function ClientAccountDetailPage() {
           setLinkedContacts([]);
           setLinkedDeals([]);
           setLinkedInvoices([]);
+          setLinkedProjects([]);
           setMeetingsCount(0);
         }
       } catch (e) {
@@ -493,6 +574,7 @@ export default function ClientAccountDetailPage() {
           setLinkedContacts([]);
           setLinkedDeals([]);
           setLinkedInvoices([]);
+          setLinkedProjects([]);
           setMeetingsCount(0);
         }
       } finally {
@@ -500,13 +582,14 @@ export default function ClientAccountDetailPage() {
           setLoading(false);
           setDealsLoading(false);
           setInvoicesLoading(false);
+          setProjectsLoading(false);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [id, loadLinkedContacts, loadLinkedDeals, loadLinkedInvoices]);
+  }, [id, loadLinkedContacts, loadLinkedDeals, loadLinkedInvoices, loadLinkedProjects]);
 
   const reloadCrmTimeline = useCallback(
     async (opts = {}) => {
@@ -566,44 +649,14 @@ export default function ClientAccountDetailPage() {
     return parts.length ? parts.join(', ') : '';
   }, [account]);
 
-  const healthPercent = useMemo(() => {
-    if (!account) return 0;
-    const h = account.healthScore ?? 0;
-    const n = Number(h);
-    if (Number.isNaN(n)) return 0;
-    return Math.min(100, Math.max(0, n));
-  }, [account]);
-
-  const healthVisual = useMemo(() => {
-    const p = healthPercent;
-    if (p >= 80)
-      return {
-        barClass: 'bg-emerald-500',
-        accentClass: 'text-emerald-600',
-        chipClass: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
-        summary: 'Strong engagement',
-      };
-    if (p >= 60)
-      return {
-        barClass: 'bg-lime-500',
-        accentClass: 'text-lime-700',
-        chipClass: 'bg-lime-50 text-lime-900 ring-lime-200',
-        summary: 'On track',
-      };
-    if (p >= 40)
-      return {
-        barClass: 'bg-amber-500',
-        accentClass: 'text-amber-700',
-        chipClass: 'bg-amber-50 text-amber-900 ring-amber-200',
-        summary: 'Needs attention',
-      };
-    return {
-      barClass: 'bg-red-500',
-      accentClass: 'text-red-600',
-      chipClass: 'bg-red-50 text-red-800 ring-red-200',
-      summary: 'At risk',
-    };
-  }, [healthPercent]);
+  const industryVisual = useMemo(() => {
+    const raw =
+      editingCompanyInfo && companyInfoDraft?.industry != null
+        ? companyInfoDraft.industry
+        : account?.industry;
+    return getIndustryVisual(raw);
+  }, [account?.industry, editingCompanyInfo, companyInfoDraft?.industry]);
+  const IndustryIcon = industryVisual.Icon;
 
   const statusUpper = (account?.status || 'ACTIVE').toString().replace(/_/g, ' ').toUpperCase();
   const activityCount = crmTimelineTotal;
@@ -1227,6 +1280,123 @@ export default function ClientAccountDetailPage() {
     [router]
   );
 
+  const clientAccountProjectsColumns = useMemo(
+    () => [
+      {
+        key: 'project',
+        label: 'PROJECT',
+        render: (_, project) => (
+          <div className="flex min-w-[200px] items-center gap-3">
+            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-orange-100">
+              <FolderKanban className="h-4 w-4 text-orange-600" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-gray-900">{project.name || 'Untitled project'}</div>
+              <div className="truncate text-sm text-gray-500">{project.slug || '—'}</div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'status',
+        label: 'STATUS',
+        render: (_, project) => <TableCellOrangePill value={project.status} />,
+      },
+      {
+        key: 'manager',
+        label: 'MANAGER',
+        render: (_, project) => {
+          const u = project.projectManager;
+          const label = assigneeName(u);
+          return (
+            <div className="flex min-w-[160px] items-center gap-2">
+              <Avatar
+                fallback={assigneeInitials(u)}
+                alt={label}
+                size="sm"
+                className="flex-shrink-0 bg-gray-600"
+              />
+              <span className="truncate font-semibold text-gray-900">{label}</span>
+            </div>
+          );
+        },
+      },
+      {
+        key: 'budget',
+        label: 'BUDGET',
+        render: (_, project) => (
+          <span className="whitespace-nowrap font-semibold tabular-nums text-gray-900">
+            {formatCurrency(project.budget)}
+          </span>
+        ),
+      },
+      {
+        key: 'dates',
+        label: 'TIMELINE',
+        render: (_, project) => (
+          <div className="min-w-[140px] text-sm text-gray-700">
+            <div className="whitespace-nowrap font-medium text-gray-900">
+              {formatDate(project.startDate)} – {formatDate(project.endDate)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'tasks',
+        label: 'TASKS',
+        render: (_, project) => (
+          <span className="whitespace-nowrap text-sm tabular-nums text-gray-700">
+            {projectTaskCount(project)}
+          </span>
+        ),
+      },
+      {
+        key: 'sourceDeal',
+        label: 'SOURCE DEAL',
+        render: (_, project) => {
+          const d = project.sourceDeal;
+          if (d && typeof d === 'object') {
+            const dn = d.name || 'Deal';
+            return (
+              <button
+                type="button"
+                className="max-w-[180px] truncate text-left text-sm font-medium text-orange-700 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (d.id != null) router.push(`/sales/deals/${d.id}`);
+                }}
+              >
+                {dn}
+              </button>
+            );
+          }
+          return <span className="text-sm text-gray-400">—</span>;
+        },
+      },
+      {
+        key: 'actions',
+        label: 'ACTIONS',
+        render: (_, project) => (
+          <div className="flex min-w-[80px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-slate-700 hover:bg-slate-100"
+              title="Open in PM"
+              onClick={(e) => {
+                e.stopPropagation();
+                openPmProject(project);
+              }}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    [router]
+  );
+
   const activeDealsCount = useMemo(
     () =>
       linkedDeals.filter((d) => {
@@ -1241,12 +1411,17 @@ export default function ClientAccountDetailPage() {
     [linkedDeals]
   );
 
+  const activeProjectsCount = useMemo(
+    () => linkedProjects.filter((p) => isActiveProjectStatus(p.status)).length,
+    [linkedProjects]
+  );
+
   const detailTabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'contacts', label: 'Contacts', badge: contactsCount || undefined },
     { key: 'activities', label: 'Activities' },
     { key: 'deals', label: 'Deals', badge: linkedDeals.length || undefined },
-    { key: 'projects', label: 'Projects' },
+    { key: 'projects', label: 'Projects', badge: linkedProjects.length || undefined },
     { key: 'invoices', label: 'Invoices', badge: linkedInvoices.length || undefined },
     { key: 'meetings', label: 'Meetings', badge: meetingsCount || undefined },
   ];
@@ -1310,15 +1485,15 @@ export default function ClientAccountDetailPage() {
         <>
           <Card
             variant="elevated"
-            className="rounded-2xl border border-emerald-50 bg-gradient-to-r from-emerald-50/80 via-white to-white p-4 sm:p-5"
+            className={`rounded-2xl border bg-gradient-to-r p-4 sm:p-5 ${industryVisual.cardBorderClass} ${industryVisual.cardGradientClass}`}
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 flex-1 items-start gap-4">
                 <div
-                  className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 shadow-inner ring-1 ring-emerald-200/80"
+                  className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl shadow-inner ring-1 ${industryVisual.iconBgClass} ${industryVisual.accentClass} ${industryVisual.iconRingClass}`}
                   aria-hidden
                 >
-                  <Building2 className="h-8 w-8" strokeWidth={1.75} />
+                  <IndustryIcon className="h-8 w-8" strokeWidth={1.75} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -1328,19 +1503,13 @@ export default function ClientAccountDetailPage() {
                     <span className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-800">
                       {statusUpper}
                     </span>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset ${healthVisual.chipClass}`}
-                    >
-                      {healthPercent}% HEALTH
-                    </span>
                     <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-900">
                       {humanizeSource(account.accountType || 'CUSTOMER')}
                     </span>
-
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 text-xs sm:text-sm text-gray-600">
-                    <Building2 className="h-3.5 w-3.5 text-emerald-500" aria-hidden />
-                    <span>{humanizeSource(account.industry || 'Other')}</span>
+                    <IndustryIcon className={`h-3.5 w-3.5 shrink-0 ${industryVisual.accentClass}`} aria-hidden />
+                    <span className="font-medium text-gray-700">{industryVisual.label}</span>
                   </div>
                 </div>
               </div>
@@ -1365,7 +1534,13 @@ export default function ClientAccountDetailPage() {
             <KPICard compact title="Total Contacts" value={contactsCount} icon={Users} colorScheme="orange" />
             <KPICard compact title="Active Deals" value={activeDealsCount} icon={DollarSign} colorScheme="orange" />
             <KPICard compact title="Won Deals" value={wonDealsCount} icon={Target} colorScheme="orange" />
-            <KPICard compact title="Active Projects" value={0} icon={Briefcase} colorScheme="orange" />
+            <KPICard
+              compact
+              title="Active Projects"
+              value={projectsLoading ? '—' : activeProjectsCount}
+              icon={Briefcase}
+              colorScheme="orange"
+            />
           </div>
 
           <TabsWithActions variant="pill" tabs={detailTabs} activeTab={detailTab} onTabChange={setDetailTab} />
@@ -1389,7 +1564,7 @@ export default function ClientAccountDetailPage() {
                             onChange={(value) => setCompanyInfoDraftField('industry', value)}
                             options={industrySelectOptions}
                             placeholder="Select industry"
-                            icon={Building2}
+                            icon={IndustryIcon}
                           />
                           <Select
                             label="Company type"
@@ -1478,8 +1653,8 @@ export default function ClientAccountDetailPage() {
                         <div className="mb-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                           <InfoRow
                             label="Industry"
-                            value={account.industry ? humanizeSource(account.industry) : ''}
-                            icon={Building2}
+                            value={industryVisual.label}
+                            icon={IndustryIcon}
                             emphasize
                           />
                           <InfoRow
@@ -1728,58 +1903,16 @@ export default function ClientAccountDetailPage() {
                 </Card>
 
                 <Card variant="elevated" className="rounded-xl">
-                  <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-                    <h2 className="text-xl font-semibold text-gray-900">Account health</h2>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${healthVisual.chipClass}`}
-                    >
-                      {healthVisual.summary}
-                    </span>
+                  <div className="mb-4">
+                    <h2 className="text-xl font-semibold text-gray-900">Account activity</h2>
+                    <p className="mt-1 text-sm text-gray-500">Recent engagement and timeline coverage.</p>
                   </div>
-                  <div className="rounded-xl bg-gradient-to-br from-slate-50 to-gray-50/90 p-4 ring-1 ring-gray-100">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
-                      <div className="flex shrink-0 items-center gap-3 sm:flex-col sm:items-stretch sm:gap-1">
-                        <p className="text-xs font-medium uppercase tracking-wide text-gray-500 sm:hidden">
-                          Health score
-                        </p>
-                        <div
-                          className={`flex min-w-[5.5rem] flex-col items-center justify-center rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-gray-100/80 ${healthVisual.accentClass}`}
-                        >
-                          <span className="text-3xl font-bold tabular-nums leading-none">{healthPercent}%</span>
-                          <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                            Score
-                          </span>
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="hidden text-xs font-medium uppercase tracking-wide text-gray-500 sm:block">
-                          Health score
-                        </p>
-                        <p className="mt-0 text-sm text-gray-600 sm:mt-1">
-                          Derived from the health score stored on this client account.
-                        </p>
-                        <div
-                          className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/90 shadow-inner ring-1 ring-gray-100/80"
-                          role="progressbar"
-                          aria-valuenow={healthPercent}
-                          aria-valuemin={0}
-                          aria-valuemax={100}
-                          aria-label="Health score"
-                        >
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ease-out ${healthVisual.barClass}`}
-                            style={{ width: `${healthPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="rounded-lg border border-gray-100 bg-gradient-to-br from-slate-50 to-white px-3.5 py-3 shadow-sm">
                       <p className="text-xs font-medium text-gray-500">Last activity</p>
                       <p className="mt-1 text-sm font-semibold leading-snug text-gray-900">{lastActivityDisplay}</p>
                     </div>
-                    <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
+                    <div className="rounded-lg border border-gray-100 bg-gradient-to-br from-slate-50 to-white px-3.5 py-3 shadow-sm">
                       <p className="text-xs font-medium text-gray-500">Timeline events</p>
                       <p className="mt-1 text-sm font-semibold tabular-nums text-gray-900">
                         {leadCompanyIdForTimeline ? activityCount : '—'}
@@ -1961,6 +2094,7 @@ export default function ClientAccountDetailPage() {
                       ? ({ entityId, comment }) => addClientAccountComment({ clientAccountId: entityId, comment })
                       : null
                   }
+                  fetchMentionUsers={fetchChatMentionUsers}
                 />
               </div>
             </div>
@@ -2037,13 +2171,73 @@ export default function ClientAccountDetailPage() {
           )}
 
           {detailTab === 'projects' && (
-            <Card variant="elevated" className="rounded-xl">
-              <EmptyState
-                icon={Briefcase}
-                title="No projects"
-                description="Active projects for this account will appear here."
-              />
-            </Card>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-h-[1.25rem] text-sm text-gray-600">
+                  {projectsLoading ? (
+                    <span className="text-gray-400">Loading projects…</span>
+                  ) : (
+                    <>
+                      Showing{' '}
+                      <span className="font-semibold text-gray-900">{linkedProjects.length}</span> result
+                      {linkedProjects.length !== 1 ? 's' : ''}
+                    </>
+                  )}
+                </div>
+                {canCreateProjects ? (
+                  <button
+                    type="button"
+                    onClick={() => openPmAddProject(id)}
+                    className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md transition-opacity hover:opacity-95 sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                    New project
+                  </button>
+                ) : null}
+              </div>
+              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                {projectsLoading ? (
+                  <div className="flex flex-col items-center justify-center p-12">
+                    <LoadingSpinner size="lg" message="Loading projects..." />
+                  </div>
+                ) : linkedProjects.length === 0 ? (
+                  <div className="p-6">
+                    <EmptyState
+                      icon={FolderKanban}
+                      title="No projects"
+                      description={
+                        canCreateProjects
+                          ? 'Projects linked to this client account will appear here. Create one in PM to get started.'
+                          : 'Projects linked to this client account will appear here.'
+                      }
+                      action={
+                        canCreateProjects ? (
+                          <Button
+                            type="button"
+                            onClick={() => openPmAddProject(id)}
+                            className="w-full border-0 bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md hover:opacity-95 sm:w-auto"
+                          >
+                            <Plus
+                              className="mr-2 inline h-4 w-4 shrink-0 align-text-bottom"
+                              aria-hidden
+                            />
+                            New project
+                          </Button>
+                        ) : null
+                      }
+                    />
+                  </div>
+                ) : (
+                  <Table
+                    columns={clientAccountProjectsColumns}
+                    data={linkedProjects}
+                    keyField="id"
+                    variant="modern"
+                    onRowClick={(row) => openPmProject(row)}
+                  />
+                )}
+              </div>
+            </div>
           )}
 
           {detailTab === 'invoices' && (

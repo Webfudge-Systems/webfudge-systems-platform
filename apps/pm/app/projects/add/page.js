@@ -2,7 +2,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import {
   Card,
@@ -22,7 +22,7 @@ import {
 import PMPageHeader from '../../../components/PMPageHeader'
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker'
 import projectService from '../../../lib/api/projectService'
-import strapiClient from '../../../lib/strapiClient'
+import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions'
 import { fetchProjectDirectoryUsers } from '../../../lib/api/messageService'
 import { transformUser } from '../../../lib/api/dataTransformers'
 import { getPmOrgRoleKind } from '../../../lib/pmOrgRoles'
@@ -38,6 +38,8 @@ const STATUS_OPTIONS = [
 
 export default function AddProjectPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const clientAccountFromQuery = searchParams.get('clientAccount')
   const { user: authUser } = useAuth()
   const currentUserId = useMemo(() => {
     const u = authUser?.attributes || authUser
@@ -46,7 +48,8 @@ export default function AddProjectPage() {
 
   const [loading, setLoading] = useState(false)
   const [allUsers, setAllUsers] = useState([])
-  const [clients, setClients] = useState([])
+  const [clientOptions, setClientOptions] = useState([])
+  const [clientsLoading, setClientsLoading] = useState(true)
   const [errors, setErrors] = useState({})
 
   const [form, setForm] = useState({
@@ -73,25 +76,39 @@ export default function AddProjectPage() {
   }, [allUsers, currentUserId, authUser])
 
   const loadData = useCallback(async () => {
+    setClientsLoading(true)
     try {
-      const [usersRes, clientsRes] = await Promise.allSettled([
+      const [usersRes, clients] = await Promise.allSettled([
         fetchProjectDirectoryUsers(),
-        strapiClient.request('/lead-companies?pagination[pageSize]=100', { method: 'GET' }),
+        fetchProjectClientOptions(),
       ])
       if (usersRes.status === 'fulfilled') {
         const raw = usersRes.value || []
         setAllUsers(raw.map(transformUser).filter(Boolean))
       }
-      if (clientsRes.status === 'fulfilled') {
-        const body = clientsRes.value
-        setClients(body?.data || [])
+      if (clients.status === 'fulfilled') {
+        setClientOptions(mapProjectClientSelectOptions(clients.value))
+      } else {
+        setClientOptions([])
       }
-    } catch {}
+    } catch {
+      setClientOptions([])
+    } finally {
+      setClientsLoading(false)
+    }
   }, [])
 
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  useEffect(() => {
+    if (!clientAccountFromQuery) return
+    setForm((prev) => {
+      if (prev.clientId) return prev
+      return { ...prev, clientId: String(clientAccountFromQuery) }
+    })
+  }, [clientAccountFromQuery])
 
   useEffect(() => {
     if (getPmOrgRoleKind() === 'member') {
@@ -162,14 +179,6 @@ export default function AddProjectPage() {
     () => form.teamMemberIds.map((id) => Number(id)).filter((n) => Number.isFinite(n) && n > 0),
     [form.teamMemberIds]
   )
-
-  const clientOptions = clients.map((c) => {
-    const attrs = c.attributes || c
-    return {
-      value: String(c.id),
-      label: attrs.name || attrs.companyName || `Client ${c.id}`,
-    }
-  })
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -283,15 +292,19 @@ export default function AddProjectPage() {
               onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
               placeholder="Enter project budget (optional)"
             />
-            {clientOptions.length > 0 && (
-              <Select
-                label="Client"
-                value={form.clientId}
-                options={[{ value: '', label: 'No client' }, ...clientOptions]}
-                onChange={(val) => setForm((p) => ({ ...p, clientId: val }))}
-                placeholder="Select a client (optional)"
-              />
-            )}
+            <Select
+              label="Client"
+              value={form.clientId}
+              options={[{ value: '', label: 'No client' }, ...clientOptions]}
+              onChange={(val) => setForm((p) => ({ ...p, clientId: val }))}
+              placeholder={clientsLoading ? 'Loading clients…' : 'Select a client (optional)'}
+              disabled={clientsLoading}
+            />
+            {!clientsLoading && clientOptions.length === 0 ? (
+              <p className="text-xs text-gray-500">
+                No client accounts found for your organization. Add accounts in CRM (Clients → Accounts), then link them here.
+              </p>
+            ) : null}
             <Select
               label="Project manager"
               value={form.projectManagerId}

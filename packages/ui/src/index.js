@@ -48,11 +48,15 @@ export {
   ViewToggleGroup,
   ViewToggleButton,
   Modal,
+  WorkspaceSearchModal,
   // Automation / Workflow Components
   NodeHandle,
   WorkflowStatusBadge,
   ActivitiesTimeline,
   EntityActivityPanel,
+  LinkifiedText,
+  ChatMessageText,
+  MentionComposer,
   UnifiedWorkspaceCalendar,
 } from '../components';
 
@@ -71,6 +75,10 @@ export {
   SkeletonLoader,
   CardSkeleton,
   TableSkeleton,
+  KPICardSkeleton,
+  KPICardsRowSkeleton,
+  WidgetCardSkeleton,
+  DashboardContentLoader,
 } from '../feedback';
 
 // THEME - Design tokens and configuration

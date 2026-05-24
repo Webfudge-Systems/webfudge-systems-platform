@@ -12,7 +12,6 @@ import {
   Card,
   EmptyState,
   EntityActivityPanel,
-  Input,
   KPICard,
   LoadingSpinner,
   Modal,
@@ -20,11 +19,9 @@ import {
   Table,
   TableCellCreated,
   TabsWithActions,
-  Textarea,
 } from '@webfudge/ui';
 import {
   Activity,
-  AlignLeft,
   Calendar,
   CheckCircle2,
   CheckSquare,
@@ -41,19 +38,19 @@ import {
   PlayCircle,
   Plus,
   RefreshCw,
-  Repeat,
   Share2,
   Target,
   Trash2,
   TrendingUp,
-  User,
 } from 'lucide-react';
 import PMPageHeader from '../../../components/PMPageHeader';
+import TaskDetailMetaBar from '../../../components/TaskDetailMetaBar';
+import TaskDetailsCard from '../../../components/TaskDetailsCard';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker';
-import TaskRecurrenceFormFields, { recurrencePayloadFromForm } from '../../../components/TaskRecurrenceFormFields';
-import { InfoRow, InfoSection, SidebarCardTitle } from '../../../components/pmEntityDetailInfo';
+import { recurrencePayloadFromForm } from '../../../components/TaskRecurrenceFormFields';
+import { SidebarCardTitle } from '../../../components/pmEntityDetailInfo';
 import { getTaskStatusMeta, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
 import {
@@ -65,6 +62,7 @@ import taskService from '../../../lib/api/taskService';
 import strapiClient from '../../../lib/strapiClient';
 import { formatDate, transformProject, transformTask, transformUser } from '../../../lib/api/dataTransformers';
 import { getPmOrgRoleKind } from '../../../lib/pmOrgRoles';
+import { fetchChatMentionUsers } from '../../../lib/api/chatMentionUsers';
 
 const DETAIL_TABS = [
   { key: 'overview', label: 'Overview' },
@@ -131,12 +129,6 @@ function taskStatusHeaderVisual(status) {
     Icon: ListTodo,
     label: meta.label,
   };
-}
-
-function isPresent(value) {
-  if (value == null) return false;
-  const s = String(value).trim();
-  return s.length > 0 && s !== '—';
 }
 
 function taskToInlineDraft(task) {
@@ -344,13 +336,38 @@ export default function TaskDetailPage() {
     [reloadTaskTimeline]
   );
 
+  const chatMentionUsers = useMemo(() => {
+    const roster = [...(task?.assignees || [])];
+    const projectId = task?.project?.id ?? task?.projectId;
+    const project = projects.find((p) => String(p.id) === String(projectId));
+    const team = project?.teamMembers || project?.team || [];
+    team.forEach((member) => roster.push(member));
+    if (project?.projectManager) roster.push(project.projectManager);
+    users.forEach((u) => roster.push(u));
+    const seen = new Set();
+    return roster.filter((u) => {
+      if (!u?.id) return false;
+      const key = String(u.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [task, projects, users]);
+
+  const composerAvatarFallback = useMemo(() => {
+    const u = authUser?.attributes || authUser;
+    const label = userLabel(u);
+    const parts = label.split(/[\s._-]/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return (label.slice(0, 2) || 'ME').toUpperCase();
+  }, [authUser]);
+
   const updateTask = async (patch) => {
     if (!task) return;
     let next = patch;
     if (isPmMember) {
       next = {};
       if (patch.status !== undefined) next.status = patch.status;
-      if (patch.progress !== undefined) next.progress = patch.progress;
       if (Object.keys(next).length === 0) return;
     }
     try {
@@ -411,7 +428,6 @@ export default function TaskDetailPage() {
       if (isPmMember) {
         next = {};
         if (patch.status !== undefined) next.status = patch.status;
-        if (patch.progress !== undefined) next.progress = patch.progress;
         if (Object.keys(next).length === 0) return;
       }
       try {
@@ -589,20 +605,6 @@ export default function TaskDetailPage() {
     taskInfoDraft && taskInfoDraft.recurrenceFrequency && taskInfoDraft.recurrenceFrequency !== 'none'
   );
 
-  const subtitle =
-    task.project && task.projectSlug ? (
-      <span className="text-gray-600">
-        Project:{' '}
-        <Link href={`/projects/${task.projectSlug}`} className="font-medium text-orange-600 hover:text-orange-700 hover:underline">
-          {task.project}
-        </Link>
-      </span>
-    ) : task.project ? (
-      `Project: ${task.project}`
-    ) : (
-      'Task detail'
-    );
-
   const subtasksTableColumns = [
       {
         key: 'name',
@@ -768,35 +770,47 @@ export default function TaskDetailPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <PMPageHeader
-        title={task.name}
-        subtitle={subtitle}
-        breadcrumb={breadcrumbItems}
-        showProfile
-      >
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {!isPmMember ? (
-          <button type="button" className={headerIconBtnClass} title="Edit task details" onClick={openTaskInfoEdit}>
-            <Edit3 className="h-5 w-5" />
-          </button>
-          ) : null}
-          <button type="button" className={headerIconBtnClass} title="Copy link" onClick={copyTaskLink}>
-            <Share2 className="h-5 w-5" />
-          </button>
-          {!isPmMember ? (
-          <button type="button" className={`group ${headerDangerIconBtnClass}`} title="Delete task" onClick={() => setDeleteModalOpen(true)}>
-            <Trash2 className="h-5 w-5 shrink-0 text-brand-text-light transition-colors group-hover:text-red-50" aria-hidden />
-          </button>
-          ) : null}
-          <PMRowActions
-            items={[
-              { label: 'Copy link', icon: Copy, onClick: copyTaskLink },
-              { label: 'Refresh', icon: RefreshCw, onClick: refreshAll },
-            ]}
-            label="More task actions"
-          />
-        </div>
-      </PMPageHeader>
+      <div className="space-y-3">
+        <PMPageHeader title={task.name} breadcrumb={breadcrumbItems} showProfile>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!isPmMember ? (
+              <button
+                type="button"
+                className={headerIconBtnClass}
+                title="Edit task details"
+                onClick={openTaskInfoEdit}
+              >
+                <Edit3 className="h-5 w-5" />
+              </button>
+            ) : null}
+            <button type="button" className={headerIconBtnClass} title="Copy link" onClick={copyTaskLink}>
+              <Share2 className="h-5 w-5" />
+            </button>
+            {!isPmMember ? (
+              <button
+                type="button"
+                className={`group ${headerDangerIconBtnClass}`}
+                title="Delete task"
+                onClick={() => setDeleteModalOpen(true)}
+              >
+                <Trash2
+                  className="h-5 w-5 shrink-0 text-brand-text-light transition-colors group-hover:text-red-50"
+                  aria-hidden
+                />
+              </button>
+            ) : null}
+            <PMRowActions
+              items={[
+                { label: 'Copy link', icon: Copy, onClick: copyTaskLink },
+                { label: 'Refresh', icon: RefreshCw, onClick: refreshAll },
+              ]}
+              label="More task actions"
+            />
+          </div>
+        </PMPageHeader>
+
+        <TaskDetailMetaBar task={task} />
+      </div>
 
       <div
         className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 ${
@@ -817,304 +831,37 @@ export default function TaskDetailPage() {
         <div className="space-y-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <Card variant="elevated" className="rounded-xl">
-              {!(editingTaskInfo && taskInfoDraft) ? (
-                <>
-                  <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 flex-1 pr-2">
-                      <h2 className="text-xl font-semibold text-gray-900">Task details</h2>
-                      <p className="mt-1.5 text-base text-gray-500">
-                        {isRecurring
-                          ? 'Description, assignment, start date, repeat rule, and related project.'
-                          : 'Description, assignment, start and due dates, and related project.'}
-                      </p>
-                    </div>
-                    <div
-                      className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-start sm:justify-end sm:gap-2.5"
-                      role="group"
-                      aria-label="Task status"
-                    >
-                      <span
-                        className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold uppercase tracking-widest shadow-md ring-2 ${statusVisual.pillClass}`}
-                        role="status"
-                      >
-                        <StatusIcon className="h-5 w-5 shrink-0 opacity-90" strokeWidth={2.25} aria-hidden />
-                        {statusVisual.label}
-                      </span>
-                      <Select
-                        value={task.strapiStatus}
-                        options={TASK_STATUS_OPTIONS}
-                        onChange={(status) => updateTask({ status })}
-                        disabled={saving}
-                        containerClassName="sm:w-56"
-                        placeholder="Change status"
-                      />
-                      {isPmMember ? (
-                        <div className="w-full sm:w-56">
-                          <label className="mb-1 block text-xs font-medium text-gray-600">
-                            Progress ({task.progress ?? 0}%)
-                          </label>
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            value={task.progress ?? 0}
-                            onChange={(e) => updateTask({ progress: Number(e.target.value) })}
-                            disabled={saving}
-                            className="w-full accent-orange-600"
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="space-y-5">
-                    <InfoSection title="Key info" icon={CheckSquare} isFirst>
-                      <div className="mb-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-                        <InfoRow label="Assigner" icon={User}>
-                          <div className="flex items-center gap-2">
-                            <Avatar fallback={(task.assignerName || 'U').charAt(0).toUpperCase()} size="sm" className="bg-gray-600 text-white" />
-                            <span className="font-semibold text-gray-900">{task.assignerName || '—'}</span>
-                          </div>
-                        </InfoRow>
-                        <InfoRow label="Assignees">
-                          {(task.assigneeUserIds?.length ?? 0) > 0 || (task.assignees?.length ?? 0) > 0 ? (
-                            <TaskAssigneesPicker
-                              userIds={task.assigneeUserIds || []}
-                              assignees={task.assignees}
-                              users={users}
-                              disabled
-                              compact
-                            />
-                          ) : (
-                            <span className="text-gray-400">None</span>
-                          )}
-                        </InfoRow>
-                        <InfoRow label="Start date" value={formatDate(task.startDate, 'short') || '—'} icon={Calendar} />
-                        {!isRecurring ? (
-                          <InfoRow label="Due date" value={formatDate(task.dueDate, 'short') || '—'} icon={Calendar} />
-                        ) : null}
-                        <InfoRow label="Related project">
-                          {task.project ? (
-                            task.projectSlug ? (
-                              <Link href={`/projects/${task.projectSlug}`} className="font-semibold text-orange-700 hover:text-orange-800 hover:underline">
-                                {task.project}
-                              </Link>
-                            ) : (
-                              <span className="font-semibold text-gray-900">{task.project}</span>
-                            )
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </InfoRow>
-                        {task.parentTask?.id ? (
-                          <InfoRow label="Parent task" icon={ListTree}>
-                            <Link
-                              href={`/tasks/${task.parentTask.id}`}
-                              className="font-semibold text-orange-700 hover:text-orange-800 hover:underline"
-                            >
-                              {task.parentTask.name || 'View parent'}
-                            </Link>
-                          </InfoRow>
-                        ) : null}
-                        <InfoRow label="Progress" value={`${task.progress ?? 0}%`} />
-                        <InfoRow label="Created" value={formatDate(task.createdAt, 'short') || '—'} icon={Activity} />
-                        <InfoRow label="Updated" value={formatDate(task.updatedAt, 'short') || '—'} icon={Activity} />
-                        <div className="sm:col-span-2">
-                          <InfoRow label="Repeats" icon={Repeat}>
-                            <span className="text-gray-900">
-                              <span className="font-semibold">{task.recurrenceSummary || 'Does not repeat'}</span>
-                              {task.recurrenceEndsAt ? (
-                                <span className="font-normal text-gray-600">
-                                  {' '}
-                                  · Until {formatDate(task.recurrenceEndsAt, 'short')}
-                                </span>
-                              ) : null}
-                            </span>
-                          </InfoRow>
-                        </div>
-                      </div>
-                    </InfoSection>
-
-                    <section className="border-t border-gray-100 pt-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <AlignLeft className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
-                        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Description</h3>
-                      </div>
-                      {isPresent(task.description) ? (
-                        <p className="mt-2.5 whitespace-pre-wrap text-base font-normal leading-relaxed text-gray-800">{task.description}</p>
-                      ) : (
-                        <p className="mt-2.5 text-base font-normal text-gray-400">No task description yet.</p>
-                      )}
-                    </section>
-
-                    <p className="border-t border-gray-100 pt-3 text-center text-sm text-gray-500">
-                      {!isPmMember ? (
-                        <>
-                          <button type="button" onClick={openTaskInfoEdit} className="font-medium text-orange-600 hover:underline">
-                            Edit task details
-                          </button>
-                          <span className="mx-2 text-gray-300" aria-hidden>
-                            ·
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setEditModalOpen(true)}
-                            className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
-                          >
-                            Full edit (all fields)
-                          </button>
-                        </>
-                      ) : (
-                        <span className="text-gray-400">Update progress and status above; use Comments for discussion.</span>
-                      )}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0 flex-1 pr-2">
-                      <h2 className="text-xl font-semibold text-gray-900">Task details</h2>
-                      <p className="mt-1.5 text-base text-gray-500">
-                        {draftRecurring
-                          ? 'Edit name, assignment, start date, repeat rule, project, and description.'
-                          : 'Edit name, assignment, dates, project, and description.'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-5">
-                    <Input
-                      label="Task name"
-                      required
-                      value={taskInfoDraft.name}
-                      onChange={(e) => setTaskInfoField('name', e.target.value)}
-                      disabled={saving}
-                    />
-                    <InfoSection title="Key info" icon={CheckSquare} isFirst>
-                      <TaskRecurrenceFormFields
-                        className="mb-4"
-                        value={taskInfoDraft}
-                        onChange={(patch) =>
-                          setTaskInfoDraft((prev) => {
-                            if (!prev) return prev;
-                            const next = { ...prev, ...patch };
-                            if (patch.recurrenceFrequency && patch.recurrenceFrequency !== 'none') {
-                              next.scheduledDate = '';
-                            }
-                            return next;
-                          })
-                        }
-                        disabled={saving}
-                      />
-                      <div className="mb-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
-                        <Select
-                          label="Status"
-                          value={taskInfoDraft.status}
-                          options={TASK_STATUS_OPTIONS}
-                          onChange={(v) => setTaskInfoField('status', v)}
-                          disabled={saving}
-                        />
-                        <Select
-                          label="Priority"
-                          value={taskInfoDraft.priority}
-                          options={PRIORITY_OPTIONS}
-                          onChange={(v) => setTaskInfoField('priority', v)}
-                          disabled={saving}
-                        />
-                        <Select
-                          label="Assigner"
-                          value={taskInfoDraft.assignerId}
-                          options={userSelectOptions}
-                          onChange={(v) => setTaskInfoField('assignerId', v)}
-                          disabled={saving}
-                          placeholder="Unassigned"
-                        />
-                        <div className="sm:col-span-2">
-                          <p className="mb-2 text-sm font-medium text-gray-800">Assignees</p>
-                          <TaskAssigneesPicker
-                            userIds={taskInfoDraft.assigneeUserIds || []}
-                            assignees={task.assignees}
-                            users={users}
-                            onChange={(next) => setTaskInfoField('assigneeUserIds', next)}
-                            disabled={saving}
-                          />
-                        </div>
-                        <Input
-                          label="Start date"
-                          type="date"
-                          value={taskInfoDraft.startDate}
-                          onChange={(e) => setTaskInfoField('startDate', e.target.value)}
-                          disabled={saving}
-                        />
-                        {!draftRecurring ? (
-                          <Input
-                            label="Due date"
-                            type="date"
-                            value={taskInfoDraft.scheduledDate}
-                            onChange={(e) => setTaskInfoField('scheduledDate', e.target.value)}
-                            disabled={saving}
-                          />
-                        ) : null}
-                        <div className="sm:col-span-2">
-                          <Select
-                            label="Project"
-                            value={taskInfoDraft.projectId}
-                            options={[{ value: '', label: 'No project' }, ...projects.map((p) => ({ value: String(p.id), label: p.name }))]}
-                            onChange={(v) => setTaskInfoField('projectId', v)}
-                            disabled={saving}
-                            placeholder="No project"
-                          />
-                        </div>
-                      </div>
-                    </InfoSection>
-
-                    <section className="border-t border-gray-100 pt-4">
-                      <div className="mb-2 flex items-center gap-2">
-                        <AlignLeft className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
-                        <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Description</h3>
-                      </div>
-                      <Textarea
-                        rows={5}
-                        value={taskInfoDraft.description}
-                        onChange={(e) => setTaskInfoField('description', e.target.value)}
-                        disabled={saving}
-                        className="mt-1 text-base"
-                        placeholder="Add context, acceptance criteria, or notes"
-                        resize="none"
-                      />
-                    </section>
-
-                    {taskInfoSaveError ? <p className="text-center text-sm text-red-600">{taskInfoSaveError}</p> : null}
-
-                    <div className="mt-4 flex flex-wrap items-center justify-center gap-3 border-t border-gray-100 pt-4">
-                      <Button type="button" variant="primary" disabled={saving} onClick={saveTaskInfo}>
-                        {saving ? 'Saving…' : 'Save changes'}
-                      </Button>
-                      <Button type="button" variant="outline" disabled={saving} onClick={cancelTaskInfoEdit}>
-                        Cancel
-                      </Button>
-                    </div>
-
-                    <p className="text-center text-sm text-gray-500">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          cancelTaskInfoEdit();
-                          setEditModalOpen(true);
-                        }}
-                        className="font-medium text-gray-500 hover:text-orange-600 hover:underline"
-                      >
-                        Open full edit dialog
-                      </button>
-                      <span className="mx-2 text-gray-300" aria-hidden>
-                        ·
-                      </span>
-                      <span className="text-gray-400">for the same fields in a modal</span>
-                    </p>
-                  </div>
-                </>
-              )}
-            </Card>
+            <TaskDetailsCard
+              task={task}
+              editing={Boolean(editingTaskInfo && taskInfoDraft)}
+              taskInfoDraft={taskInfoDraft}
+              isRecurring={isRecurring}
+              draftRecurring={draftRecurring}
+              isPmMember={isPmMember}
+              saving={saving}
+              users={users}
+              projects={projects}
+              userSelectOptions={userSelectOptions}
+              statusVisual={statusVisual}
+              StatusIcon={StatusIcon}
+              taskInfoSaveError={taskInfoSaveError}
+              formatDate={formatDate}
+              onStatusChange={(status) => updateTask({ status })}
+              onOpenSectionEdit={openTaskInfoEdit}
+              onOpenFullPageEdit={() => {
+                if (editingTaskInfo) cancelTaskInfoEdit();
+                setEditModalOpen(true);
+              }}
+              onCancelEdit={cancelTaskInfoEdit}
+              onSaveEdit={saveTaskInfo}
+              onTaskInfoFieldChange={setTaskInfoField}
+              onSetTaskInfoDraft={setTaskInfoDraft}
+              onViewProject={() => {
+                if (task.projectSlug) router.push(`/projects/${task.projectSlug}`);
+              }}
+              onViewFiles={() => setActiveTab('files')}
+              onViewSubtasks={() => setActiveTab('subtasks')}
+            />
           </div>
 
           <div className="space-y-4">
@@ -1236,6 +983,9 @@ export default function TaskDetailPage() {
             activityCount={activityCount}
             fetchCommentsFn={({ entityId }) => fetchTaskComments({ taskId: entityId, limit: 80 })}
             addCommentFn={handleAddTaskComment}
+            mentionUsers={chatMentionUsers}
+            fetchMentionUsers={fetchChatMentionUsers}
+            composerAvatarFallback={composerAvatarFallback}
             chatFooterBadgeText="Messages are saved on this task for your team."
             defaultSubTab="chat"
             className="w-full"
@@ -1252,7 +1002,7 @@ export default function TaskDetailPage() {
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">Subtasks</h2>
-                <p className="mt-1 text-sm text-gray-500">Break this task into smaller items. Progress is tracked on each subtask.</p>
+                <p className="mt-1 text-sm text-gray-500">Break this task into smaller items.</p>
               </div>
               {!isPmMember ? (
               <Button type="button" variant="primary" className="gap-2 shrink-0" onClick={() => setSubtaskModalOpen(true)}>
@@ -1295,6 +1045,9 @@ export default function TaskDetailPage() {
             activityCount={activityCount}
             fetchCommentsFn={({ entityId }) => fetchTaskComments({ taskId: entityId, limit: 80 })}
             addCommentFn={handleAddTaskComment}
+            mentionUsers={chatMentionUsers}
+            fetchMentionUsers={fetchChatMentionUsers}
+            composerAvatarFallback={composerAvatarFallback}
             chatFooterBadgeText="Messages are saved on this task for your team."
             defaultSubTab="chat"
             className="w-full"
@@ -1329,12 +1082,6 @@ export default function TaskDetailPage() {
                     : 'None'}
                 </span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-                <span className="text-xs font-medium text-gray-600">Progress</span>
-                <span className="inline-flex rounded-lg bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-900 ring-1 ring-orange-200/80">
-                  {task.progress ?? 0}%
-                </span>
-              </div>
             </div>
           </Card>
           <div className="min-w-0 lg:col-span-3">
@@ -1349,6 +1096,9 @@ export default function TaskDetailPage() {
               activityCount={activityCount}
               fetchCommentsFn={({ entityId }) => fetchTaskComments({ taskId: entityId, limit: 80 })}
               addCommentFn={handleAddTaskComment}
+              mentionUsers={chatMentionUsers}
+              fetchMentionUsers={fetchChatMentionUsers}
+              composerAvatarFallback={composerAvatarFallback}
               chatFooterBadgeText="Messages are saved on this task for your team."
               defaultSubTab="activity"
               className="w-full"

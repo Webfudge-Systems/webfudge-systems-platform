@@ -17,7 +17,8 @@ import {
   Pin,
   Hash,
 } from 'lucide-react';
-import { Card, EmptyState, LoadingSpinner, Badge, Avatar } from '@webfudge/ui';
+import { Card, EmptyState, LoadingSpinner, Badge, Avatar, ChatMessageText, MentionComposer } from '@webfudge/ui';
+import { fetchChatMentionUsers } from '../../lib/chatMentionUsers';
 import CRMPageHeader from '../../components/CRMPageHeader';
 import {
   fetchGlobalCommentsFeed,
@@ -274,7 +275,7 @@ function ChatMessage({ msg, highlighted, onPin }) {
           </span>
         </div>
         <p className="mt-0.5 text-sm text-gray-700 leading-relaxed break-words whitespace-pre-wrap">
-          {text}
+          <ChatMessageText text={text} />
         </p>
         {reactionEntries.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
@@ -436,6 +437,19 @@ export default function ThreadsPage() {
 
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  const [mentionUsers, setMentionUsers] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchChatMentionUsers()
+      .then((users) => {
+        if (!cancelled) setMentionUsers(Array.isArray(users) ? users : []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ── Load thread list ───────────────────────────────────────────────────────
 
@@ -557,13 +571,6 @@ export default function ThreadsPage() {
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const handleDraftChange = (e) => {
-    setDraft(e.target.value);
-    const el = e.target;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   };
 
   // ── Filtered chat messages ────────────────────────────────────────────────
@@ -821,7 +828,12 @@ export default function ThreadsPage() {
               {pinnedMessage && (
                 <div className="shrink-0 flex items-start gap-2 px-3 py-2 bg-amber-50 border-b border-amber-100">
                   <Pin className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
-                  <p className="flex-1 text-xs text-amber-800 line-clamp-1">{extractComment(pinnedMessage)}</p>
+                  <p className="flex-1 text-xs text-amber-800 line-clamp-1">
+                    <ChatMessageText
+                      text={extractComment(pinnedMessage)}
+                      linkClassName="text-amber-900 underline underline-offset-2 hover:text-amber-950 break-all"
+                    />
+                  </p>
                   <button type="button" onClick={() => setPinnedMessage(null)} className="text-amber-400 hover:text-amber-600 transition-colors shrink-0">
                     <X className="w-3 h-3" />
                   </button>
@@ -895,15 +907,15 @@ export default function ThreadsPage() {
                       Y
                     </div>
                   </div>
-                  <textarea
-                    ref={textareaRef}
+                  <MentionComposer
+                    textareaRef={textareaRef}
                     value={draft}
-                    onChange={handleDraftChange}
+                    onChange={setDraft}
                     onKeyDown={handleKeyDown}
-                    rows={1}
-                    placeholder={`Reply in ${selectedThread.entityName || selectedConfig?.label || 'thread'}… (Ctrl+Enter to send)`}
-                    className="flex-1 resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed"
-                    style={{ minHeight: '22px', maxHeight: '120px', overflowY: 'auto' }}
+                    mentionUsers={mentionUsers}
+                    disabled={sending}
+                    placeholder={`Reply in ${selectedThread.entityName || selectedConfig?.label || 'thread'}… (@ to mention, Ctrl+Enter to send)`}
+                    textareaClassName="w-full resize-none bg-transparent text-sm text-gray-800 placeholder-gray-400 outline-none leading-relaxed"
                   />
                   <button
                     type="button"
@@ -922,7 +934,7 @@ export default function ThreadsPage() {
                 <div className="mt-1.5 flex items-center justify-between">
                   <p className="text-[10px] text-gray-400">
                     <kbd className="rounded bg-gray-100 px-1 font-mono text-[9px] text-gray-500">Ctrl+Enter</kbd>{' '}
-                    to send
+                    to send · type <span className="font-medium text-gray-500">@</span> to mention
                   </p>
                   {draft.length > 0 && (
                     <p className={`text-[10px] tabular-nums ${draft.length > 4500 ? 'text-red-500' : 'text-gray-400'}`}>
