@@ -11,7 +11,8 @@
     "./layouts": "./layouts/index.js",
     "./layouts/*": "./layouts/*/index.js",
     "./feedback": "./feedback/index.js",
-    "./themes": "./themes/index.js"
+    "./themes": "./themes/index.js",
+    "./utils/*": "./utils/*"
   },
   "scripts": {
     "lint": "eslint .",

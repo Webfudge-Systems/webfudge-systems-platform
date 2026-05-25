@@ -2,7 +2,9 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
+import Link from 'next/link'
 import {
   Card,
   EmptyState,
@@ -63,13 +65,19 @@ function saveArchivedIds(set) {
   }
 }
 
-function getNotificationIcon(type) {
+function getNotificationIcon(type, isUrgent) {
+  if (isUrgent || (type || '').toLowerCase() === 'mention') {
+    return <AlertTriangle className="h-4 w-4 text-amber-600" />
+  }
   const map = {
     info: <Info className="h-4 w-4 text-blue-500" />,
     warning: <AlertTriangle className="h-4 w-4 text-yellow-500" />,
     error: <AlertCircle className="h-4 w-4 text-red-500" />,
     message: <MessageSquare className="h-4 w-4 text-purple-500" />,
     success: <Check className="h-4 w-4 text-green-500" />,
+    mention: <AlertTriangle className="h-4 w-4 text-amber-600" />,
+    task_comment: <MessageSquare className="h-4 w-4 text-purple-500" />,
+    project_comment: <MessageSquare className="h-4 w-4 text-purple-500" />,
   }
   return map[(type || '').toLowerCase()] || <Bell className="h-4 w-4 text-gray-400" />
 }
@@ -93,8 +101,14 @@ function pmEntityHrefForRow(row) {
   return null
 }
 
+function notificationIsUrgent(attrs) {
+  const data = attrs?.data || {}
+  return data.priority === 'urgent' || String(attrs?.type || '').toLowerCase() === 'mention'
+}
+
 export default function InboxPage() {
   const { user } = useAuth()
+  const router = useRouter()
 
   const [mainTab, setMainTab] = useState('activity')
   const [notifySub, setNotifySub] = useState('all')
@@ -415,6 +429,7 @@ export default function InboxPage() {
                   {filtered.map((notification) => {
                     const attrs = notification.attributes || notification
                     const isRead = attrs.read || attrs.isRead
+                    const isUrgent = notificationIsUrgent(attrs)
                     const isSelected = selectedId === notification.id
                     return (
                       <button
@@ -423,24 +438,39 @@ export default function InboxPage() {
                         onClick={() => {
                           setSelectedId(notification.id)
                           if (!isRead && notifySub !== 'archived') handleMarkRead(notification.id)
+                          const href = attrs.data?.href
+                          if (href) router.push(href)
                         }}
                         className={`w-full p-4 text-left transition-colors ${
-                          isSelected ? 'border-r-2 border-orange-500 bg-orange-50' : 'hover:bg-gray-50'
+                          isSelected
+                            ? 'border-r-2 border-orange-500 bg-orange-50'
+                            : isUrgent && !isRead
+                              ? 'bg-amber-50/60 hover:bg-amber-50'
+                              : 'hover:bg-gray-50'
                         }`}
                       >
                         <div className="flex items-start gap-3">
                           <div
                             className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
-                              isRead ? 'bg-gray-100' : 'bg-orange-100'
+                              isUrgent && !isRead
+                                ? 'bg-amber-100'
+                                : isRead
+                                  ? 'bg-gray-100'
+                                  : 'bg-orange-100'
                             }`}
                           >
-                            {getNotificationIcon(attrs.type)}
+                            {getNotificationIcon(attrs.type, isUrgent)}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <p className={`truncate text-sm font-medium ${isRead ? 'text-gray-600' : 'text-gray-900'}`}>
                                 {attrs.title || 'Notification'}
                               </p>
+                              {isUrgent && !isRead ? (
+                                <Badge variant="warning" className="text-[10px] px-1.5 py-0">
+                                  Urgent
+                                </Badge>
+                              ) : null}
                               {!isRead && notifySub !== 'archived' && (
                                 <span className="h-2 w-2 flex-shrink-0 rounded-full bg-orange-500" />
                               )}
@@ -463,22 +493,43 @@ export default function InboxPage() {
                 {(() => {
                   const attrs = selectedNotification.attributes || selectedNotification
                   const isRead = attrs.read || attrs.isRead
+                  const isUrgent = notificationIsUrgent(attrs)
                   const isArchived = archivedIds.has(String(selectedNotification.id))
+                  const deepLink = attrs.data?.href
                   return (
                     <>
                       <div className="mb-4 flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
-                            {getNotificationIcon(attrs.type)}
+                          <div
+                            className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                              isUrgent ? 'bg-amber-100' : 'bg-orange-100'
+                            }`}
+                          >
+                            {getNotificationIcon(attrs.type, isUrgent)}
                           </div>
                           <div>
                             <h2 className="text-lg font-semibold text-gray-900">{attrs.title || 'Notification'}</h2>
                             <p className="text-sm text-gray-500">{timeAgo(attrs.createdAt)}</p>
                           </div>
                         </div>
-                        {!isRead && <Badge variant="warning" dot>Unread</Badge>}
+                        <div className="flex flex-col items-end gap-1">
+                          {!isRead && <Badge variant="warning" dot>Unread</Badge>}
+                          {isUrgent && !isRead ? (
+                            <Badge variant="warning" className="text-[10px]">
+                              Urgent
+                            </Badge>
+                          ) : null}
+                        </div>
                       </div>
                       <p className="leading-relaxed text-gray-700">{attrs.message || attrs.body || 'No content.'}</p>
+                      {deepLink && (
+                        <Link
+                          href={deepLink}
+                          className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-orange-600 hover:underline"
+                        >
+                          Open related item →
+                        </Link>
+                      )}
                       {attrs.link && (
                         <a href={attrs.link} className="mt-4 inline-flex items-center gap-2 text-sm text-orange-600 hover:underline">
                           Open link →

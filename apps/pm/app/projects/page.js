@@ -47,6 +47,7 @@ import {
 import PMPageHeader from '../../components/PMPageHeader';
 import PMProgress from '../../components/PMProgress';
 import PMRowActions from '../../components/PMRowActions';
+import ProjectsKanbanBoard from '../../components/ProjectsKanbanBoard';
 import {
   PROJECT_STATUS_OPTIONS,
   getProjectStatusMeta,
@@ -70,41 +71,6 @@ const STATUS_TABS = [
   { id: 'ON_HOLD', label: 'On Hold' },
   { id: 'COMPLETED', label: 'Completed' },
 ];
-
-const BOARD_COLUMNS = PROJECT_STATUS_OPTIONS.filter((status) => status.value !== 'CANCELLED');
-
-const BOARD_COLUMN_STYLES = {
-  PLANNING: {
-    header: 'bg-blue-50 border-blue-200',
-    text: 'text-blue-700',
-    badge: 'bg-blue-100 text-blue-700',
-  },
-  ACTIVE: {
-    header: 'bg-cyan-50 border-cyan-200',
-    text: 'text-cyan-700',
-    badge: 'bg-cyan-100 text-cyan-700',
-  },
-  IN_PROGRESS: {
-    header: 'bg-amber-50 border-amber-200',
-    text: 'text-amber-700',
-    badge: 'bg-amber-100 text-amber-700',
-  },
-  ON_HOLD: {
-    header: 'bg-violet-50 border-violet-200',
-    text: 'text-violet-700',
-    badge: 'bg-violet-100 text-violet-700',
-  },
-  COMPLETED: {
-    header: 'bg-emerald-50 border-emerald-200',
-    text: 'text-emerald-700',
-    badge: 'bg-emerald-100 text-emerald-700',
-  },
-  default: {
-    header: 'bg-gray-50 border-gray-200',
-    text: 'text-gray-700',
-    badge: 'bg-gray-100 text-gray-700',
-  },
-};
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'pm.projects.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'pm.projects.tableColumnOrder';
@@ -173,6 +139,8 @@ function persistColumnOrder(order) {
 const STATUS_SELECT_VARIANT_CLASS = {
   primary: 'border-blue-200 bg-blue-50 text-blue-800',
   warning: 'border-amber-200 bg-amber-50 text-amber-800',
+  orange: 'border-orange-200 bg-orange-50 text-orange-800',
+  cyan: 'border-cyan-200 bg-cyan-50 text-cyan-800',
   purple: 'border-purple-200 bg-purple-50 text-purple-800',
   success: 'border-green-200 bg-green-50 text-green-800',
   danger: 'border-red-200 bg-red-50 text-red-800',
@@ -1068,11 +1036,6 @@ export default function ProjectsPage() {
     return out;
   }, [columnOrder, columnVisibility, taskTableDataColumns]);
 
-  const boardGroups = BOARD_COLUMNS.map((column) => ({
-    ...column,
-    projects: projects.filter((project) => project.strapiStatus === column.value),
-  }));
-
   const projectViewSwitcher = (
     <ViewToggleGroup aria-label="Project layout">
       <ViewToggleButton
@@ -1283,70 +1246,24 @@ export default function ProjectsPage() {
         </div>
       ) : activeView === 'kanban' ? (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-gray-50/60">
-          <div className="flex gap-4 p-4 pb-5 md:p-5">
-            {boardGroups.map((group) => {
-              const style = BOARD_COLUMN_STYLES[group.value] || BOARD_COLUMN_STYLES.default;
-              return (
-                <div
-                  key={group.value}
-                  className="flex min-h-[420px] min-w-[280px] max-w-[320px] flex-shrink-0 flex-col rounded-2xl border border-gray-200 bg-gray-50/60"
-                >
-                  <div
-                    className={`flex items-center justify-between rounded-t-2xl border-b px-4 py-3 ${style.header}`}
-                  >
-                    <h3 className={`text-[11px] font-extrabold uppercase tracking-widest ${style.text}`}>
-                      {group.label}
-                    </h3>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${style.badge}`}>
-                      {group.projects.length}
-                    </span>
-                  </div>
-                  <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto p-3">
-                    {group.projects.length === 0 ? (
-                      <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white/40 p-4 text-center">
-                        <p className="text-[11px] text-gray-400">No projects</p>
-                      </div>
-                    ) : (
-                      group.projects.map((project) => {
-                        const overdue = isProjectOverdue(project);
-                        return (
-                          <button
-                            key={project.id}
-                            type="button"
-                            onClick={() => router.push(`/projects/${project.slug || project.id}`)}
-                            className="group rounded-xl border border-gray-200 bg-white p-3.5 text-left shadow-sm transition-all hover:border-orange-200 hover:shadow-md"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="line-clamp-2 flex-1 text-sm font-semibold leading-snug text-gray-900 group-hover:text-orange-600">
-                                {project.name || 'Untitled project'}
-                              </p>
-                              <FolderOpen className="mt-0.5 h-4 w-4 flex-shrink-0 text-orange-500" />
-                            </div>
-                            <p className="mt-1 line-clamp-2 text-xs text-gray-500">
-                              {project.description || project.clientName || 'No description'}
-                            </p>
-                            <div className="mt-3">
-                              <PMProgress value={project.progress} size="sm" />
-                            </div>
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <TeamAvatarStack members={project.team || []} maxShown={3} className="min-h-7" />
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                  overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
-                                }`}
-                              >
-                                Due {formatShortDate(project.endDate)}
-                              </span>
-                            </div>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {projects.length === 0 ? (
+            <div className="p-12 text-center">
+              <FolderOpen className="mx-auto mb-3 h-12 w-12 text-gray-300" />
+              <h3 className="text-lg font-semibold text-gray-700">No projects found</h3>
+              <p className="mt-2 text-sm text-gray-500">
+                {searchQuery || activeTab !== 'all' || hasActiveFilters
+                  ? 'Try adjusting your filters or search'
+                  : 'Create your first project to get started'}
+              </p>
+            </div>
+          ) : (
+            <ProjectsKanbanBoard
+              projects={projects}
+              router={router}
+              currentUserId={currentUserId}
+              onStatusChange={updateProjectStatus}
+            />
+          )}
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

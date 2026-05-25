@@ -9,6 +9,7 @@ const variants = {
   error: 'bg-red-50 text-red-700 border border-red-200',
   info: 'bg-blue-50 text-blue-700 border border-blue-200',
   orange: 'bg-orange-50 text-orange-700 border border-orange-200',
+  cyan: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
   purple: 'bg-purple-50 text-purple-700 border border-purple-200',
   pink: 'bg-pink-50 text-pink-700 border border-pink-200',
   gray: 'bg-gray-50 text-gray-700 border border-gray-200',

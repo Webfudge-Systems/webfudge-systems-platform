@@ -1,9 +1,10 @@
 'use client'
 
-import { AppShell } from '@webfudge/ui'
+import { AppShell, PwaInstallPrompt } from '@webfudge/ui'
 import { ShieldX } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import PMSidebar from './PMSidebar'
+import PMQuickActionsFab from './PMQuickActionsFab'
 import { canReadCurrentPMPath } from '../lib/rbac'
 
 const PUBLIC_PATHS = ['/login', '/unauthorized', '/coming-soon']
@@ -16,8 +17,12 @@ export default function LayoutContent({ children }) {
 
   return (
     <AppShell sidebar={PMSidebar}>
+      <PwaInstallPrompt appName="Webfudge PM" storageKey="pm" />
       {canView ? (
-        children
+        <>
+          {children}
+          <PMQuickActionsFab />
+        </>
       ) : (
         <div className="min-h-full bg-white p-8 flex items-center justify-center">
           <div className="max-w-md text-center">

@@ -35,9 +35,9 @@ const TASK_STATUS_META = {
 };
 
 const PROJECT_STATUS_META = {
-  PLANNING: { variant: 'warning', label: 'Planning' },
-  ACTIVE: { variant: 'primary', label: 'Active' },
-  IN_PROGRESS: { variant: 'warning', label: 'In Progress' },
+  PLANNING: { variant: 'primary', label: 'Planning' },
+  ACTIVE: { variant: 'cyan', label: 'Active' },
+  IN_PROGRESS: { variant: 'orange', label: 'In Progress' },
   ON_HOLD: { variant: 'purple', label: 'On Hold' },
   COMPLETED: { variant: 'success', label: 'Completed' },
   CANCELLED: { variant: 'danger', label: 'Cancelled' },

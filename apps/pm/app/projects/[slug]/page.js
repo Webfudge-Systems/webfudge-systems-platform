@@ -110,7 +110,7 @@ function projectStatusHeaderVisual(status) {
       label: meta.label,
     };
   }
-  if (s === 'ACTIVE' || s === 'IN_PROGRESS') {
+  if (s === 'IN_PROGRESS') {
     return {
       pillClass:
         'border border-orange-300/90 bg-gradient-to-br from-orange-50 via-orange-50 to-orange-100/90 text-orange-950 ring-orange-200/70',
@@ -118,9 +118,25 @@ function projectStatusHeaderVisual(status) {
       label: meta.label,
     };
   }
+  if (s === 'ACTIVE') {
+    return {
+      pillClass:
+        'border border-cyan-300/90 bg-gradient-to-br from-cyan-50 via-cyan-50 to-cyan-100/90 text-cyan-950 ring-cyan-200/70',
+      Icon: Target,
+      label: meta.label,
+    };
+  }
+  if (s === 'PLANNING') {
+    return {
+      pillClass:
+        'border border-blue-300/90 bg-gradient-to-br from-blue-50 via-blue-50 to-blue-100/90 text-blue-950 ring-blue-200/70',
+      Icon: Target,
+      label: meta.label,
+    };
+  }
   return {
     pillClass:
-      'border border-amber-300/90 bg-gradient-to-br from-amber-50 via-amber-50 to-amber-100/90 text-amber-950 ring-amber-200/70',
+      'border border-gray-300/90 bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100/90 text-gray-950 ring-gray-200/70',
     Icon: Target,
     label: meta.label,
   };

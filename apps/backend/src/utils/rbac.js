@@ -173,6 +173,11 @@ function canManageAppSettings(ctx) {
   );
 }
 
+/** Org Admin role or CRM/PM settings manage — used for Accounts organization profile (sync checks only). */
+function canManageOrganizationProfile(ctx) {
+  return canManageAppSettings(ctx) || isAdminRole(orgRoleFromCtx(ctx));
+}
+
 function requireAppSettingsManage(ctx) {
   if (canManageAppSettings(ctx)) return null;
   return ctx.forbidden('You need manage access to CRM or PM settings');
@@ -199,6 +204,7 @@ module.exports = {
   canAccess,
   canAccessPermissions,
   canManageAppSettings,
+  canManageOrganizationProfile,
   getAccess,
   isAdminRole,
   isAssignedToCurrentUser,

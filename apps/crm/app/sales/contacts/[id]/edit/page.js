@@ -14,6 +14,12 @@ import {
 import CRMPageHeader from '../../../../../components/CRMPageHeader';
 import contactService from '../../../../../lib/api/contactService';
 import leadCompanyService from '../../../../../lib/api/leadCompanyService';
+import clientAccountService from '../../../../../lib/api/clientAccountService';
+import { isLeadCompanyConverted } from '../../../../../lib/meetingCrmLink';
+import {
+  contactFieldsFromClientAccount,
+  contactFieldsFromLeadCompany,
+} from '../../../../../lib/contactCompanyFields';
 import { canEditCRMRecord } from '../../../../../lib/rbac';
 import {
   ArrowLeft,
@@ -42,8 +48,9 @@ export default function EditContactPage() {
   const [contact, setContact] = useState(null);
   const canEditContact = contact ? canEditCRMRecord('contacts', contact) : false;
 
-  const [leadCompaniesLoading, setLeadCompaniesLoading] = useState(false);
+  const [refsLoading, setRefsLoading] = useState(false);
   const [leadCompanies, setLeadCompanies] = useState([]);
+  const [clientAccounts, setClientAccounts] = useState([]);
 
   const statusOptions = useMemo(
     () => [
@@ -78,6 +85,9 @@ export default function EditContactPage() {
     department: '',
     contactRole: 'PRIMARY_CONTACT',
     leadCompany: '',
+    clientAccount: '',
+    companyName: '',
+    companyWebsite: '',
     address: '',
     city: '',
     state: '',
@@ -98,7 +108,15 @@ export default function EditContactPage() {
         if (!cancelled && res?.data) {
           const d = res.data;
           setContact(d);
-          const lcId = d.leadCompany && typeof d.leadCompany === 'object' ? d.leadCompany.id ?? d.leadCompany.documentId : d.leadCompany;
+          const lcId =
+            d.leadCompany && typeof d.leadCompany === 'object'
+              ? d.leadCompany.id ?? d.leadCompany.documentId
+              : d.leadCompany;
+          const caId =
+            d.clientAccount && typeof d.clientAccount === 'object'
+              ? d.clientAccount.id ?? d.clientAccount.documentId
+              : d.clientAccount;
+          const linkedClient = caId != null && String(caId).trim() !== '';
           setForm((prev) => ({
             ...prev,
             firstName: d.firstName ?? '',
@@ -110,7 +128,10 @@ export default function EditContactPage() {
             jobTitle: d.jobTitle ?? '',
             department: d.department ?? '',
             contactRole: d.contactRole ?? 'PRIMARY_CONTACT',
-            leadCompany: lcId != null ? String(lcId) : '',
+            leadCompany: linkedClient ? '' : lcId != null ? String(lcId) : '',
+            clientAccount: linkedClient && caId != null ? String(caId) : '',
+            companyName: d.companyName ?? '',
+            companyWebsite: d.companyWebsite ?? '',
             address: d.address ?? '',
             city: d.city ?? '',
             state: d.state ?? '',
@@ -132,36 +153,101 @@ export default function EditContactPage() {
     if (!id) return;
     let cancelled = false;
     (async () => {
-      setLeadCompaniesLoading(true);
+      setRefsLoading(true);
       try {
-        const res = await leadCompanyService.getAll({
-          sort: 'createdAt:desc',
-          'pagination[pageSize]': 200,
-          populate: [],
-        });
-        const list = Array.isArray(res.data) ? res.data : [];
+        const [lcRes, caRes] = await Promise.allSettled([
+          leadCompanyService.getAll({
+            sort: 'companyName:asc',
+            'pagination[pageSize]': 200,
+          }),
+          clientAccountService.getAll({
+            sort: 'companyName:asc',
+            'pagination[pageSize]': 200,
+          }),
+        ]);
         if (cancelled) return;
-        setLeadCompanies(list);
+        setLeadCompanies(lcRes.status === 'fulfilled' ? (lcRes.value.data || []) : []);
+        setClientAccounts(caRes.status === 'fulfilled' ? (caRes.value.data || []) : []);
       } catch {
         if (cancelled) return;
         setLeadCompanies([]);
+        setClientAccounts([]);
       } finally {
-        if (!cancelled) setLeadCompaniesLoading(false);
+        if (!cancelled) setRefsLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const leadCompanyOptions = useMemo(() => {
-    const arr = leadCompanies || [];
-    return [
+    const open = (leadCompanies || []).filter((c) => !isLeadCompanyConverted(c));
+    const base = [
       { value: '', label: 'No lead company' },
-      ...arr.map((lc) => ({
+      ...open.map((lc) => ({
         value: String(lc.id ?? lc.documentId),
         label: lc.companyName || lc.name || `Lead company ${lc.id ?? ''}`.trim(),
       })),
-    ].filter((o) => o.value !== 'undefined');
-  }, [leadCompanies]);
+    ];
+    const sel = String(form.leadCompany || '').trim();
+    if (sel && !base.some((o) => o.value === sel)) {
+      const row = leadCompanies.find((c) => String(c.id ?? c.documentId) === sel);
+      if (row) {
+        return [
+          { value: sel, label: `${row.companyName || row.name || 'Lead'} (converted)` },
+          ...base.filter((o) => o.value !== sel),
+        ];
+      }
+    }
+    return base.filter((o) => o.value !== 'undefined');
+  }, [leadCompanies, form.leadCompany]);
+
+  const clientAccountOptions = useMemo(
+    () => [
+      { value: '', label: 'No client account' },
+      ...(clientAccounts || []).map((a) => ({
+        value: String(a.id ?? a.documentId),
+        label: a.companyName || a.name || `Account #${a.id ?? ''}`,
+      })),
+    ].filter((o) => o.value !== 'undefined'),
+    [clientAccounts]
+  );
+
+  const onClientAccountChange = (v) => {
+    const id = v ? String(v) : '';
+    if (!id) {
+      setForm((prev) => ({ ...prev, clientAccount: '' }));
+      setSubmitError('');
+      return;
+    }
+    const acc =
+      clientAccounts.find((a) => String(a.id ?? a.documentId) === id) || null;
+    setForm((prev) => ({
+      ...prev,
+      clientAccount: id,
+      leadCompany: '',
+      ...(acc ? contactFieldsFromClientAccount(acc) : {}),
+    }));
+    setSubmitError('');
+  };
+
+  const onLeadCompanyChange = (v) => {
+    const id = v ? String(v) : '';
+    if (!id) {
+      setForm((prev) => ({ ...prev, leadCompany: '' }));
+      setSubmitError('');
+      return;
+    }
+    const lc = leadCompanies.find((c) => String(c.id ?? c.documentId) === id) || null;
+    setForm((prev) => ({
+      ...prev,
+      leadCompany: id,
+      clientAccount: '',
+      ...(lc ? contactFieldsFromLeadCompany(lc) : {}),
+    }));
+    setSubmitError('');
+  };
 
   const setFormField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -209,22 +295,11 @@ export default function EditContactPage() {
       if (form.contactRole) payload.contactRole = form.contactRole.trim();
       if (payload.contactRole) payload.isPrimaryContact = payload.contactRole === 'PRIMARY_CONTACT';
 
-      if (form.leadCompany) payload.leadCompany = form.leadCompany;
+      payload.leadCompany = form.leadCompany ? form.leadCompany : null;
+      payload.clientAccount = form.clientAccount ? form.clientAccount : null;
 
-      // Keep denormalized company fields in sync with the selected lead company.
-      if (form.leadCompany) {
-        const selectedLead = leadCompanies.find(
-          (lc) => String(lc.id ?? lc.documentId) === String(form.leadCompany)
-        );
-        if (selectedLead) {
-          if (selectedLead.companyName || selectedLead.name) {
-            payload.companyName = (selectedLead.companyName || selectedLead.name || '').trim();
-          }
-          if (selectedLead.website) {
-            payload.companyWebsite = selectedLead.website.trim();
-          }
-        }
-      }
+      if (form.companyName.trim()) payload.companyName = form.companyName.trim();
+      if (form.companyWebsite.trim()) payload.companyWebsite = form.companyWebsite.trim();
 
       if (form.address.trim()) payload.address = form.address.trim();
       if (form.city.trim()) payload.city = form.city.trim();
@@ -436,7 +511,9 @@ export default function EditContactPage() {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Company Association</h2>
-                  <p className="text-sm text-gray-500">Lead company linked to this contact</p>
+                  <p className="text-sm text-gray-500">
+                    Link to a lead company or client account (select one)
+                  </p>
                 </div>
               </div>
 
@@ -444,17 +521,32 @@ export default function EditContactPage() {
                 <Select
                   label="Lead Company"
                   value={form.leadCompany}
-                  onChange={(v) => setFormField('leadCompany', v)}
+                  onChange={onLeadCompanyChange}
                   options={leadCompanyOptions}
                   placeholder="Select lead company"
-                  disabled={leadCompaniesLoading}
+                  disabled={refsLoading || Boolean(form.clientAccount)}
                 />
                 <Select
                   label="Client Account"
-                  value=""
-                  onChange={() => {}}
-                  options={[{ value: '', label: '— No client account linked —' }]}
-                  disabled
+                  value={form.clientAccount}
+                  onChange={onClientAccountChange}
+                  options={clientAccountOptions}
+                  placeholder="Select client account"
+                  disabled={refsLoading || Boolean(form.leadCompany)}
+                />
+              </div>
+              <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+                <Input
+                  label="Company name"
+                  value={form.companyName}
+                  onChange={(e) => setFormField('companyName', e.target.value)}
+                  icon={Building2}
+                />
+                <Input
+                  label="Company website"
+                  value={form.companyWebsite}
+                  onChange={(e) => setFormField('companyWebsite', e.target.value)}
+                  placeholder="https://company.com"
                 />
               </div>
             </Card>

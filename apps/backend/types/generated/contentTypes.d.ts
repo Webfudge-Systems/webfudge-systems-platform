@@ -493,7 +493,6 @@ export interface ApiClientAccountClientAccount extends Struct.CollectionTypeSche
     publishedAt: Schema.Attribute.DateTime
     state: Schema.Attribute.String
     status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'ACTIVE'>
-    subType: Schema.Attribute.String
     twitter: Schema.Attribute.String
     type: Schema.Attribute.String
     updatedAt: Schema.Attribute.DateTime
@@ -937,12 +936,23 @@ export interface ApiNotificationNotification extends Struct.CollectionTypeSchema
         'success',
         'warning',
         'error',
+        'mention',
         'lead_created',
         'lead_updated',
         'lead_assigned',
+        'lead_comment',
         'deal_created',
         'deal_updated',
+        'deal_comment',
+        'contact_updated',
+        'contact_comment',
+        'client_account_updated',
+        'client_account_comment',
         'task_assigned',
+        'task_updated',
+        'task_comment',
+        'project_updated',
+        'project_comment',
         'invite_sent',
         'invite_accepted',
         'system',

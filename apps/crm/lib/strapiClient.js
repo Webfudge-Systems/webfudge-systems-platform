@@ -175,20 +175,20 @@ class StrapiClient {
   }
 
   /**
-   * Flatten `GET /organizations/:id/users` → `{ success, data: [{ user }] }` into CRM user rows.
+   * Flatten `GET /organizations/:id/users` into user rows (nested `user` or flat member).
    */
   static normalizeOrganizationUsersResponse(body) {
     const rows = body?.data;
     if (!Array.isArray(rows)) return [];
     return rows
       .map((row) => {
-        const u = row?.user;
-        if (u == null) return null;
-        if (typeof u === 'object' && u.attributes) {
-          return { id: u.id, documentId: u.documentId ?? u.id, ...u.attributes };
+        const raw = row?.user ?? row?.attributes?.user ?? row;
+        if (raw == null) return null;
+        if (typeof raw === 'object' && raw.attributes) {
+          return { id: raw.id, documentId: raw.documentId ?? raw.id, ...raw.attributes };
         }
-        if (typeof u === 'object' && u.id != null) {
-          return { ...u };
+        if (typeof raw === 'object' && raw.id != null) {
+          return { ...raw };
         }
         return null;
       })

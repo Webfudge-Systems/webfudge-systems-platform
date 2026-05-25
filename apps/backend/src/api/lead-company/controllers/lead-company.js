@@ -8,7 +8,8 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { logCrmActivity, collectChangedKeys } = require('../../../utils/crm-activity-log');
+const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../../utils/crm-activity-log');
+const { emitUpdateNotifications, assignedStakeholderIds } = require('../../../utils/notification-emitter');
 const {
   orgIdFromRelation,
   readListQuery,
@@ -265,6 +266,19 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const entry = await strapi.entityService.update(UID, id, { data });
     const changedKeys = collectChangedKeys(data);
     try {
+      const actorName = await actorDisplayName(strapi, ctx.state.user?.id);
+      await emitUpdateNotifications(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'lead_company',
+        subjectId: Number(id),
+        entityName: (entry?.companyName || entry?.name || 'Lead').trim() || 'Lead',
+        changedKeys,
+        stakeholderIds: assignedStakeholderIds(existing),
+        previousEntity: existing,
+        patch: data,
+      });
       await logCrmActivity(strapi, {
         organizationId: ctx.state.orgId,
         actorUserId: ctx.state.user?.id,
@@ -316,7 +330,6 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       companyName: leadCompany.companyName,
       industry: leadCompany.industry || null,
       type: leadCompany.type || null,
-      subType: leadCompany.subType || null,
       website: leadCompany.website || null,
       phone: leadCompany.phone || null,
       email: leadCompany.email || null,

@@ -11,6 +11,8 @@
     "dev": "turbo run dev --filter=!backend --filter=!./apps/[(]automobile[)]/*",
     "dev:all": "turbo run dev",
     "dev:books": "turbo run dev --filter=@webfudge/books",
+    "dev:crm": "turbo run dev --filter=@webfudge/crm",
+    "dev:pm": "turbo run dev --filter=@webfudge/pm",
     "dev:auto": "turbo run dev --filter=./apps/[(]automobile[)]/*",
     "dev:backend": "turbo run dev --filter=backend",
     "build": "turbo run build",
@@ -23,6 +25,7 @@
   },
   "devDependencies": {
     "prettier": "^3.1.1",
+    "serwist": "^9.5.11",
     "turbo": "^1.11.2"
   },
   "engines": {
@@ -31,6 +34,7 @@
   },
   "packageManager": "npm@10.2.5",
   "dependencies": {
+    "@serwist/next": "^9.5.11",
     "ajv": "^8.0.0"
   }
 }

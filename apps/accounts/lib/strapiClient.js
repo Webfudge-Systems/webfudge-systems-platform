@@ -54,7 +54,13 @@ class StrapiClient {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData?.error?.message || `HTTP ${response.status}`)
+      const err = errorData?.error || errorData
+      const message =
+        err?.message ||
+        (Array.isArray(err?.details?.errors) && err.details.errors[0]?.message) ||
+        (typeof err === 'string' ? err : null) ||
+        `HTTP ${response.status}`
+      throw new Error(message)
     }
     return response.json()
   }

@@ -6,6 +6,8 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { emitDirectMessageNotification } = require('../../../utils/notification-emitter');
+const { actorDisplayName } = require('../../../utils/crm-activity-log');
 const UID = 'api::direct-message.direct-message';
 
 /** users-permissions user only has id, username, email (no firstName/lastName on schema). */
@@ -136,6 +138,21 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         data,
         populate: USER_POPULATE,
       });
+
+      if (ctx.state.orgId) {
+        const actorName = await actorDisplayName(strapi, me);
+        try {
+          await emitDirectMessageNotification(strapi, {
+            organizationId: ctx.state.orgId,
+            actorUserId: me,
+            actorName,
+            recipientId,
+            content,
+          });
+        } catch (_) {
+          /* best-effort */
+        }
+      }
 
       return { data: entry };
     } catch (err) {

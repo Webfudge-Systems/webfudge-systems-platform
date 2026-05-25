@@ -457,8 +457,8 @@ export function getProjectStatusColor(status) {
   const s = status?.toLowerCase();
   const colors = {
     'planning': { bg: 'bg-blue-100', text: 'text-blue-700' },
-    'active': { bg: 'bg-green-100', text: 'text-green-700' },
-    'in progress': { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+    'active': { bg: 'bg-cyan-100', text: 'text-cyan-700' },
+    'in progress': { bg: 'bg-orange-100', text: 'text-orange-700' },
     'on hold': { bg: 'bg-orange-100', text: 'text-orange-700' },
     'completed': { bg: 'bg-gray-100', text: 'text-gray-700' },
     'cancelled': { bg: 'bg-red-100', text: 'text-red-700' },

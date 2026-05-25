@@ -14,7 +14,8 @@ const {
   safeCount,
   resolveEntityPkForRouteParam,
 } = require('../../../utils/content-api-helpers');
-const { logCrmActivity, collectChangedKeys } = require('../../../utils/crm-activity-log');
+const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../../utils/crm-activity-log');
+const { emitUpdateNotifications, projectStakeholderIds } = require('../../../utils/notification-emitter');
 const {
   requireModuleAccess,
   isPmOrgAdminRole,
@@ -248,6 +249,19 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     });
 
     try {
+      const actorName = await actorDisplayName(strapi, ctx.state.user?.id);
+      await emitUpdateNotifications(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'project',
+        subjectId: pk,
+        entityName: (forLog?.name || 'Project').trim() || 'Project',
+        changedKeys,
+        stakeholderIds: projectStakeholderIds(existing),
+        previousEntity: existing,
+        patch: data,
+      });
       await logCrmActivity(strapi, {
         organizationId: ctx.state.orgId,
         actorUserId: ctx.state.user?.id,

@@ -1,6 +1,6 @@
 'use client'
 
-import { AppShell } from '@webfudge/ui'
+import { AppShell, PwaInstallPrompt } from '@webfudge/ui'
 import { ShieldX } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import CRMSidebar from './CRMSidebar'
@@ -24,6 +24,7 @@ export default function LayoutContent({ children }) {
 
   return (
     <AppShell sidebar={CRMSidebar}>
+      <PwaInstallPrompt appName="Webfudge CRM" storageKey="crm" />
       {canView ? (
         children
       ) : (

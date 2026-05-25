@@ -11,6 +11,43 @@ const MEETING_UID = 'api::meeting.meeting';
 const TASK_UID = 'api::task.task';
 const PROJECT_UID = 'api::project.project';
 
+const {
+  emitCommentNotifications,
+  taskStakeholderIds,
+  projectStakeholderIds,
+  assignedStakeholderIds,
+} = require('../../../utils/notification-emitter');
+
+async function notifyAfterComment(strapi, {
+  organizationId,
+  actorUserId,
+  actorName,
+  subjectType,
+  subjectId,
+  entityName,
+  comment,
+  entity,
+}) {
+  let stakeholderIds = assignedStakeholderIds(entity);
+  if (subjectType === 'task') stakeholderIds = taskStakeholderIds(entity);
+  else if (subjectType === 'project') stakeholderIds = projectStakeholderIds(entity);
+
+  try {
+    await emitCommentNotifications(strapi, {
+      organizationId,
+      actorUserId,
+      actorName,
+      subjectType,
+      subjectId,
+      entityName,
+      comment,
+      stakeholderIds,
+    });
+  } catch (_) {
+    /* best-effort */
+  }
+}
+
 function orgIdFromRelation(rel) {
   if (rel == null) return null;
   if (typeof rel === 'object') return rel.id ?? null;
@@ -324,7 +361,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (Number.isNaN(dealId)) return ctx.badRequest('Invalid dealId');
 
       const deal = await strapi.entityService.findOne(DEAL_UID, dealId, {
-        populate: ['organization', 'leadCompany'],
+        populate: ['organization', 'leadCompany', 'assignedTo'],
       });
       if (!deal) return ctx.notFound('Deal not found');
       if (orgIdFromRelation(deal.organization) !== ctx.state.orgId) {
@@ -354,6 +391,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         populate: ['actor'],
       });
 
+      await notifyAfterComment(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'deal',
+        subjectId: dealId,
+        entityName: dealName,
+        comment,
+        entity: deal,
+      });
+
       return { data: entry };
     }
 
@@ -363,7 +411,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (Number.isNaN(contactId)) return ctx.badRequest('Invalid contactId');
 
       const contact = await strapi.entityService.findOne(CONTACT_UID, contactId, {
-        populate: ['organization'],
+        populate: ['organization', 'assignedTo'],
       });
       if (!contact) return ctx.notFound('Contact not found');
       if (orgIdFromRelation(contact.organization) !== ctx.state.orgId) {
@@ -387,6 +435,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         populate: ['actor'],
       });
 
+      await notifyAfterComment(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'contact',
+        subjectId: contactId,
+        entityName: contactName,
+        comment,
+        entity: contact,
+      });
+
       return { data: entry };
     }
 
@@ -396,7 +455,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (Number.isNaN(clientAccountId)) return ctx.badRequest('Invalid clientAccountId');
 
       const clientAccount = await strapi.entityService.findOne(CLIENT_ACCOUNT_UID, clientAccountId, {
-        populate: ['organization'],
+        populate: ['organization', 'assignedTo'],
       });
       if (!clientAccount) return ctx.notFound('Client account not found');
       if (orgIdFromRelation(clientAccount.organization) !== ctx.state.orgId) {
@@ -420,6 +479,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         populate: ['actor'],
       });
 
+      await notifyAfterComment(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'client_account',
+        subjectId: clientAccountId,
+        entityName: accountName,
+        comment,
+        entity: clientAccount,
+      });
+
       return { data: entry };
     }
 
@@ -429,7 +499,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (Number.isNaN(taskId)) return ctx.badRequest('Invalid taskId');
 
       const task = await strapi.entityService.findOne(TASK_UID, taskId, {
-        populate: ['organization'],
+        populate: ['organization', 'assignee', 'assigner', 'collaborators'],
       });
       if (!task) return ctx.notFound('Task not found');
       if (orgIdFromRelation(task.organization) !== ctx.state.orgId) {
@@ -451,6 +521,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         populate: ['actor'],
       });
 
+      await notifyAfterComment(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'task',
+        subjectId: taskId,
+        entityName: taskName,
+        comment,
+        entity: task,
+      });
+
       return { data: entry };
     }
 
@@ -460,7 +541,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (Number.isNaN(projectId)) return ctx.badRequest('Invalid projectId');
 
       const proj = await strapi.entityService.findOne(PROJECT_UID, projectId, {
-        populate: ['organization'],
+        populate: ['organization', 'projectManager', 'teamMembers'],
       });
       if (!proj) return ctx.notFound('Project not found');
       if (orgIdFromRelation(proj.organization) !== ctx.state.orgId) {
@@ -482,6 +563,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         populate: ['actor'],
       });
 
+      await notifyAfterComment(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'project',
+        subjectId: projectId,
+        entityName: projectName,
+        comment,
+        entity: proj,
+      });
+
       return { data: entry };
     }
 
@@ -492,7 +584,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
 
     const lead = await strapi.entityService.findOne(LEAD_UID, leadCompanyId, {
-      populate: ['organization'],
+      populate: ['organization', 'assignedTo'],
     });
     if (!lead) return ctx.notFound('Lead company not found');
     if (orgIdFromRelation(lead.organization) !== ctx.state.orgId) {
@@ -514,6 +606,17 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         meta: { comment },
       },
       populate: ['actor'],
+    });
+
+    await notifyAfterComment(strapi, {
+      organizationId: ctx.state.orgId,
+      actorUserId: ctx.state.user?.id,
+      actorName,
+      subjectType: 'lead_company',
+      subjectId: leadCompanyId,
+      entityName: leadName,
+      comment,
+      entity: lead,
     });
 
     return { data: entry };

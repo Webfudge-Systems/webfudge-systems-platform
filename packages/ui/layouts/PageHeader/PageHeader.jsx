@@ -7,8 +7,6 @@ import {
   ChevronRight,
   ChevronDown,
   Search,
-  Plus,
-  Filter,
   Upload,
   Download,
   Settings,
@@ -143,27 +141,6 @@ export default function PageHeader({
             {children ||
               (showActions && (
                 <div className="flex items-center gap-2">
-                  {onAddClick && (
-                    <button
-                      onClick={onAddClick}
-                      className="p-2.5 bg-white/10 backdrop-blur-md border border-white/20 text-orange-500 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 group shadow-lg"
-                    >
-                      <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                    </button>
-                  )}
-
-                  {onFilterClick && (
-                    <button
-                      onClick={onFilterClick}
-                      className="relative p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg"
-                    >
-                      <Filter className="w-5 h-5 text-gray-600" />
-                      {hasActiveFilters && (
-                        <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white/95 shadow-sm"></span>
-                      )}
-                    </button>
-                  )}
-
                   {onImportClick && (
                     <button
                       onClick={onImportClick}

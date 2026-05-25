@@ -1,11 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Input, Select, Textarea, Modal, FormSectionCard } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import contactService from '../../../../lib/api/contactService';
+import leadCompanyService from '../../../../lib/api/leadCompanyService';
+import clientAccountService from '../../../../lib/api/clientAccountService';
 import strapiClient from '../../../../lib/strapiClient';
+import { isLeadCompanyConverted } from '../../../../lib/meetingCrmLink';
+import {
+  contactFieldsFromClientAccount,
+  contactFieldsFromLeadCompany,
+} from '../../../../lib/contactCompanyFields';
 import { useAuth } from '@webfudge/auth';
 import {
   User,
@@ -72,18 +79,31 @@ const initialForm = {
   linkedinUrl: '',
   twitter: '',
   notes: '',
+  leadCompany: '',
+  clientAccount: '',
 };
 
 export default function NewContactPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const prefilledClientAccount = searchParams?.get('clientAccount') || '';
+  const prefilledLeadCompany = searchParams?.get('leadCompany') || '';
   const { user } = useAuth();
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(() => ({
+    ...initialForm,
+    clientAccount: prefilledClientAccount,
+    leadCompany: prefilledLeadCompany,
+  }));
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [loadingRefs, setLoadingRefs] = useState(true);
+  const [leadCompanies, setLeadCompanies] = useState([]);
+  const [clientAccounts, setClientAccounts] = useState([]);
+  const prefilledEntityApplied = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,6 +156,144 @@ export default function NewContactPage() {
       cancelled = true;
     };
   }, [user?.email]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingRefs(true);
+      try {
+        const [lcRes, caRes] = await Promise.allSettled([
+          leadCompanyService.getAll({ sort: 'companyName:asc', 'pagination[pageSize]': 200 }),
+          clientAccountService.getAll({ sort: 'companyName:asc', 'pagination[pageSize]': 200 }),
+        ]);
+        if (cancelled) return;
+        setLeadCompanies(lcRes.status === 'fulfilled' ? (lcRes.value.data || []) : []);
+        setClientAccounts(caRes.status === 'fulfilled' ? (caRes.value.data || []) : []);
+      } catch (err) {
+        console.error('Error loading company references:', err);
+        if (!cancelled) {
+          setLeadCompanies([]);
+          setClientAccounts([]);
+        }
+      } finally {
+        if (!cancelled) setLoadingRefs(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (prefilledEntityApplied.current) return;
+    const caId = String(prefilledClientAccount || '').trim();
+    const lcId = String(prefilledLeadCompany || '').trim();
+    if (!caId && !lcId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        if (caId) {
+          const res = await clientAccountService.getOne(caId);
+          if (cancelled || !res?.data) return;
+          prefilledEntityApplied.current = true;
+          const fields = contactFieldsFromClientAccount(res.data);
+          setForm((prev) => ({
+            ...prev,
+            clientAccount: caId,
+            leadCompany: '',
+            source: 'CLIENT_ACCOUNT',
+            ...fields,
+          }));
+          return;
+        }
+        if (lcId) {
+          const res = await leadCompanyService.getOne(lcId);
+          if (cancelled || !res?.data) return;
+          prefilledEntityApplied.current = true;
+          const fields = contactFieldsFromLeadCompany(res.data);
+          setForm((prev) => ({
+            ...prev,
+            leadCompany: lcId,
+            clientAccount: '',
+            source: 'LEAD_COMPANY',
+            ...fields,
+          }));
+        }
+      } catch (err) {
+        console.error('Error pre-filling company from URL:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [prefilledClientAccount, prefilledLeadCompany]);
+
+  const leadCompanyOptions = useMemo(() => {
+    const open = (leadCompanies || []).filter((c) => !isLeadCompanyConverted(c));
+    const base = [
+      { value: '', label: 'No lead company' },
+      ...open.map((lc) => ({
+        value: String(lc.id ?? lc.documentId),
+        label: lc.companyName || lc.name || `Lead company ${lc.id ?? ''}`.trim(),
+      })),
+    ];
+    const sel = String(form.leadCompany || '').trim();
+    if (sel && !base.some((o) => o.value === sel)) {
+      const row = leadCompanies.find((c) => String(c.id ?? c.documentId) === sel);
+      if (row) {
+        return [
+          { value: sel, label: `${row.companyName || row.name || 'Lead'} (converted)` },
+          ...base.filter((o) => o.value !== sel),
+        ];
+      }
+    }
+    return base.filter((o) => o.value !== 'undefined');
+  }, [leadCompanies, form.leadCompany]);
+
+  const clientAccountOptions = useMemo(
+    () => [
+      { value: '', label: 'No client account' },
+      ...(clientAccounts || []).map((a) => ({
+        value: String(a.id ?? a.documentId),
+        label: a.companyName || a.name || `Account #${a.id ?? ''}`,
+      })),
+    ].filter((o) => o.value !== 'undefined'),
+    [clientAccounts]
+  );
+
+  const onClientAccountChange = (v) => {
+    const id = v ? String(v) : '';
+    if (!id) {
+      setForm((prev) => ({ ...prev, clientAccount: '' }));
+      return;
+    }
+    const acc =
+      clientAccounts.find((a) => String(a.id ?? a.documentId) === id) || null;
+    setForm((prev) => ({
+      ...prev,
+      clientAccount: id,
+      leadCompany: '',
+      source: 'CLIENT_ACCOUNT',
+      ...(acc ? contactFieldsFromClientAccount(acc) : {}),
+    }));
+  };
+
+  const onLeadCompanyChange = (v) => {
+    const id = v ? String(v) : '';
+    if (!id) {
+      setForm((prev) => ({ ...prev, leadCompany: '' }));
+      return;
+    }
+    const lc = leadCompanies.find((c) => String(c.id ?? c.documentId) === id) || null;
+    setForm((prev) => ({
+      ...prev,
+      leadCompany: id,
+      clientAccount: '',
+      source: 'LEAD_COMPANY',
+      ...(lc ? contactFieldsFromLeadCompany(lc) : {}),
+    }));
+  };
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -194,6 +352,16 @@ export default function NewContactPage() {
       if (form.linkedinUrl.trim()) payload.linkedinUrl = form.linkedinUrl.trim();
       if (form.twitter.trim()) payload.twitter = form.twitter.trim();
       if (form.notes.trim()) payload.notes = form.notes.trim();
+
+      if (form.leadCompany) {
+        const n = parseInt(form.leadCompany, 10);
+        payload.leadCompany = Number.isNaN(n) ? form.leadCompany : n;
+        payload.source = 'LEAD_COMPANY';
+      } else if (form.clientAccount) {
+        const n = parseInt(form.clientAccount, 10);
+        payload.clientAccount = Number.isNaN(n) ? form.clientAccount : n;
+        payload.source = 'CLIENT_ACCOUNT';
+      }
 
       const res = await contactService.create(payload);
       const created = res?.data ?? res;
@@ -392,6 +560,36 @@ export default function NewContactPage() {
             </div>
           </FormSectionCard>
 
+          {/* Company association */}
+          <FormSectionCard
+            icon={Building2}
+            title="Company association"
+            description="Link this contact to a lead company or client account (select one)"
+            cardClassName="rounded-2xl border border-white/30 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-xl backdrop-blur-xl"
+          >
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <Select
+                label="Lead company"
+                value={form.leadCompany}
+                onChange={onLeadCompanyChange}
+                options={leadCompanyOptions}
+                placeholder="Select lead company"
+                disabled={loadingRefs || Boolean(form.clientAccount)}
+              />
+              <Select
+                label="Client account"
+                value={form.clientAccount}
+                onChange={onClientAccountChange}
+                options={clientAccountOptions}
+                placeholder="Select client account"
+                disabled={loadingRefs || Boolean(form.leadCompany)}
+              />
+            </div>
+            <p className="mt-3 text-xs text-gray-500">
+              Choose either a lead company or a client account. Company details below update from your selection.
+            </p>
+          </FormSectionCard>
+
           {/* Professional information */}
           <FormSectionCard
             icon={Briefcase}
@@ -415,7 +613,7 @@ export default function NewContactPage() {
                 placeholder="Department"
               />
               <Input
-                label="Company"
+                label="Company name"
                 value={form.companyName}
                 onChange={(e) => handleChange('companyName', e.target.value)}
                 placeholder="Company name"

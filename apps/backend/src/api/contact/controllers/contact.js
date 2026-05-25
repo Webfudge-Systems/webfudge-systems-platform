@@ -7,7 +7,8 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { logCrmActivity, collectChangedKeys } = require('../../../utils/crm-activity-log');
+const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../../utils/crm-activity-log');
+const { emitUpdateNotifications, assignedStakeholderIds } = require('../../../utils/notification-emitter');
 const {
   orgIdFromRelation,
   readListQuery,
@@ -152,6 +153,23 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         entry?.id != null
           ? await strapi.entityService.findOne(UID, entry.id, { populate: ['leadCompany', 'assignedTo'] })
           : entry;
+      const actorName = await actorDisplayName(strapi, ctx.state.user?.id);
+      const contactName =
+        [forLog?.firstName, forLog?.lastName].filter(Boolean).join(' ').trim() ||
+        forLog?.email ||
+        'Contact';
+      await emitUpdateNotifications(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'contact',
+        subjectId: Number(id),
+        entityName: contactName,
+        changedKeys,
+        stakeholderIds: assignedStakeholderIds(forLog || existing),
+        previousEntity: existing,
+        patch: data,
+      });
       await logCrmActivity(strapi, {
         organizationId: ctx.state.orgId,
         actorUserId: ctx.state.user?.id,

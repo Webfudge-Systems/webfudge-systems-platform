@@ -78,6 +78,8 @@ export default function UsersPage() {
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
   const [inviteError, setInviteError] = useState('')
   const [editUser, setEditUser] = useState(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
   const [editRoleSelection, setEditRoleSelection] = useState('code:member')
   const [editStatus, setEditStatus] = useState('active')
   const [editSubmitting, setEditSubmitting] = useState(false)
@@ -246,6 +248,8 @@ export default function UsersPage() {
   const openEditModal = useCallback(
     (user) => {
       setEditUser(user)
+      setEditName(user?.username || getUserDisplayName(user))
+      setEditEmail(user?.email || '')
       if (user?.roleId) {
         setEditRoleSelection(`id:${user.roleId}`)
       } else {
@@ -265,6 +269,21 @@ export default function UsersPage() {
       return
     }
 
+    const name = editName.trim()
+    const email = editEmail.trim().toLowerCase()
+    if (!name) {
+      setEditError('Name is required.')
+      return
+    }
+    if (name.length < 3) {
+      setEditError('Name must be at least 3 characters.')
+      return
+    }
+    if (!email) {
+      setEditError('Email is required.')
+      return
+    }
+
     try {
       setEditSubmitting(true)
       setEditError('')
@@ -274,6 +293,8 @@ export default function UsersPage() {
         roleId: editedRole.roleId,
         roleCode: editedRole.roleCode || undefined,
         status: editStatus,
+        email,
+        username: name,
       })
       setEditUser(null)
       await fetchUsers()
@@ -282,7 +303,7 @@ export default function UsersPage() {
     } finally {
       setEditSubmitting(false)
     }
-  }, [editRoleSelection, editStatus, editUser, fetchUsers])
+  }, [editEmail, editName, editRoleSelection, editStatus, editUser, fetchUsers])
 
   const toggleUserStatus = useCallback(
     async (user, nextStatus) => {
@@ -607,9 +628,23 @@ export default function UsersPage() {
         closeOnBackdrop={!editSubmitting}
       >
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <p className="text-sm font-semibold text-gray-900">{getUserDisplayName(editUser || {})}</p>
-            <p className="text-xs text-gray-500">{editUser?.email}</p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Name</label>
+            <Input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Username"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Email</label>
+            <Input
+              type="email"
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              placeholder="user@company.com"
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Role</label>

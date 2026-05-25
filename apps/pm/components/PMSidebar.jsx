@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { SidebarTrialUpsell, LoadingSpinner } from '@webfudge/ui'
+import { LoadingSpinner } from '@webfudge/ui'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -19,74 +20,30 @@ import {
   FileText,
   Calendar,
   Target,
+  Building2,
+  PieChart,
 } from 'lucide-react'
 import projectService from '../lib/api/projectService'
 import { transformProject } from '../lib/api/dataTransformers'
-import { canReadPM, canWritePM } from '../lib/rbac'
+import { canReadPM, canWritePM, canReadClientAccounts } from '../lib/rbac'
 import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
+import { usePmSidebarBadges } from '../lib/usePmSidebarBadges'
 
 export default function PMSidebar({ collapsed = false, onToggle }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const trialDaysRemaining = (() => {
-    const n = Number(process.env.NEXT_PUBLIC_TRIAL_DAYS_REMAINING)
-    return Number.isFinite(n) ? n : 12
-  })()
-
-  const [quickActionsOpen, setQuickActionsOpen] = useState(false)
+  const { inboxCount, messageCount } = usePmSidebarBadges()
   const [projects, setProjects] = useState([])
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [showAllProjects, setShowAllProjects] = useState(false)
   const [expandedProjectId, setExpandedProjectId] = useState(null)
 
-  const quickActionsRef = useRef(null)
-
   const isActive = (href) => {
     if (!href || href === '/') return pathname === '/'
     return pathname.startsWith(href)
   }
-
-  const toggleQuickActions = () => setQuickActionsOpen((o) => !o)
-
-  const quickActionItems = [
-    {
-      label: 'New Task',
-      module: 'my_tasks',
-      icon: CheckSquare,
-      href: '/my-tasks?createTask=1',
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
-    },
-    {
-      label: 'New Project',
-      module: 'projects',
-      icon: FolderOpen,
-      href: '/projects/add',
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
-    },
-  ]
-
-  const handleQuickActionClick = (href) => {
-    setQuickActionsOpen(false)
-    router.push(href)
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (quickActionsRef.current && !quickActionsRef.current.contains(event.target)) {
-        setQuickActionsOpen(false)
-      }
-    }
-    if (quickActionsOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [quickActionsOpen])
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -128,6 +85,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       label: 'Inbox',
       icon: Inbox,
       href: '/inbox',
+      badge: inboxCount,
     },
     {
       id: 'message',
@@ -135,6 +93,21 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       label: 'Message',
       icon: MessageCircle,
       href: '/message',
+      badge: messageCount,
+    },
+    {
+      id: 'clients',
+      module: 'client_accounts',
+      label: 'Clients',
+      icon: Building2,
+      href: '/clients/accounts',
+    },
+    {
+      id: 'reports',
+      module: 'analytics',
+      label: 'Reports',
+      icon: PieChart,
+      href: '/coming-soon?feature=reports',
     },
   ]
 
@@ -148,12 +121,10 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
     { label: 'Calendar', module: 'calendar', icon: Calendar, href: '/calendar' },
   ]
 
-  const visibleQuickActions = quickActionItems.filter((item) => {
-    if (!canWritePM(item.module)) return false
-    if (item.href === '/projects/add' && !canCreateProjectsInPm()) return false
-    return true
+  const visibleNavigationItems = mainNavigationItems.filter((item) => {
+    if (item.id === 'clients') return canReadClientAccounts()
+    return canReadPM(item.module)
   })
-  const visibleNavigationItems = mainNavigationItems.filter((item) => canReadPM(item.module))
   const visiblePmTools = pmTools.filter((item) => !item.module || canReadPM(item.module))
   const canReadProjects = canReadPM('projects')
   const canCreateProjects = canWritePM('projects') && canCreateProjectsInPm()
@@ -161,6 +132,10 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
   const isPmToolActive = (item) => {
     if (item.comingSoonFeature) {
       return pathname === '/coming-soon' && searchParams.get('feature') === item.comingSoonFeature
+    }
+    if (item.href?.startsWith('/coming-soon')) {
+      const feature = item.href.split('feature=')[1]?.split('&')[0]
+      return pathname === '/coming-soon' && searchParams.get('feature') === feature
     }
     const pathOnly = item.href.split('?')[0]
     if (!pathOnly) return false
@@ -229,15 +204,46 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
         collapsed ? 'w-16' : 'w-64'
       } h-full min-h-0 bg-white backdrop-blur-xl border-r border-white/30 flex flex-col shadow-xl overflow-hidden transition-[width] duration-300 flex-shrink-0`}
     >
-      <div className="shrink-0 p-4 border-b border-white/20">
-        <div className="flex items-center justify-between">
-          {!collapsed && (
-            <span className="font-bold text-xl text-brand-foreground">Webfudge PM</span>
+      <div className="shrink-0 px-4 pt-4 pb-3">
+        <div
+          className={`flex gap-2 ${
+            collapsed ? 'flex-col items-center' : 'items-center justify-between'
+          }`}
+        >
+          {collapsed ? (
+            <Link href="/" className="flex shrink-0" aria-label="Webfudge PM home">
+              <Image
+                src="/logo/Vertical logo 1 bg removed.png"
+                alt="Webfudge"
+                width={32}
+                height={32}
+                className="h-8 w-8 object-contain"
+                priority
+              />
+            </Link>
+          ) : (
+            <Link
+              href="/"
+              className="flex min-w-0 flex-1 items-center gap-2.5"
+              aria-label="Webfudge PM home"
+            >
+              <Image
+                src="/logo/Vertical logo 1 bg removed.png"
+                alt=""
+                width={44}
+                height={44}
+                className="h-11 w-11 shrink-0 object-contain"
+                priority
+              />
+              <span className="min-w-0 font-bold text-xl tracking-tight bg-gradient-to-r from-orange-700 via-orange-500 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)]">
+                Webfudge PM
+              </span>
+            </Link>
           )}
           <button
             type="button"
             onClick={onToggle}
-            className="p-2 rounded-lg hover:bg-gray-50 transition-colors"
+            className="shrink-0 p-2 rounded-lg hover:bg-gray-50 transition-colors"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? (
@@ -247,89 +253,61 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
             )}
           </button>
         </div>
-
-        <div className="relative mt-3" ref={quickActionsRef}>
-          <button
-            type="button"
-            onClick={toggleQuickActions}
-            disabled={visibleQuickActions.length === 0}
-            className={`w-full bg-gradient-to-r from-orange-500/20 to-orange-600/10 backdrop-blur-md border ${
-              quickActionsOpen
-                ? 'border-orange-300/60'
-                : 'border-white/30 hover:border-orange-200/50'
-            } text-brand-foreground rounded-xl py-2.5 px-3 flex items-center ${
-              collapsed ? 'justify-center' : 'justify-between gap-2'
-            } shadow-lg transition-all`}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
-                <Plus className="w-4 h-4 text-white" />
-              </div>
-              {!collapsed && (
-                <span className="text-sm font-semibold text-gray-800 truncate">Quick Actions</span>
-              )}
-            </div>
-            {!collapsed && (
-              <ChevronDown
-                className={`w-4 h-4 text-gray-600 flex-shrink-0 transition-transform ${
-                  quickActionsOpen ? 'rotate-180' : ''
-                }`}
-              />
-            )}
-          </button>
-
-          {quickActionsOpen && !collapsed && (
-            <div className="absolute left-0 right-0 top-full mt-2 z-[100] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[min(70vh,24rem)] overflow-y-auto">
-              <div className="p-2">
-                <p className="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                  Quick actions
-                </p>
-                {visibleQuickActions.map((item, index) => {
-                  const QIcon = item.icon
-                  return (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() => handleQuickActionClick(item.href)}
-                      className="w-full flex items-center gap-3 p-3 text-sm text-gray-800 rounded-xl hover:bg-gray-50 transition-colors group/item text-left"
-                    >
-                      <div
-                        className={`w-9 h-9 ${item.bgColor} ${item.borderColor} border rounded-lg flex items-center justify-center flex-shrink-0`}
-                      >
-                        <QIcon className={`w-4 h-4 ${item.color}`} />
-                      </div>
-                      <span className="font-medium flex-1">{item.label}</span>
-                      <ChevronRight className="w-4 h-4 text-gray-400 opacity-0 group-hover/item:opacity-100" />
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        {!collapsed ? (
+          <div
+            className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-orange-400/50 to-transparent"
+            aria-hidden
+          />
+        ) : null}
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
         <div className="px-3 pt-3 pb-2">
           {sectionRule('Navigate')}
-          <div className={`grid gap-3 ${collapsed ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          <div
+            className={`grid gap-2.5 ${
+              collapsed ? 'grid-cols-1' : 'grid-cols-2'
+            }`}
+          >
             {visibleNavigationItems.map((item) => {
               const Icon = item.icon
-              const active = item.href ? isActive(item.href) : false
+              const active = item.href
+                ? item.id === 'clients'
+                  ? pathname.startsWith('/clients')
+                  : item.href.startsWith('/coming-soon')
+                    ? pathname === '/coming-soon' &&
+                      searchParams.get('feature') === item.href.split('feature=')[1]?.split('&')[0]
+                    : isActive(item.href.split('?')[0])
+                : false
+              const badge = item.badge > 0 ? item.badge : 0
+              const badgeLabel = badge > 9 ? '9+' : String(badge)
               return (
                 <Link
                   key={item.id}
                   href={item.href || '/'}
-                  className={`rounded-2xl px-2 py-4 sm:py-5 flex flex-col items-center justify-center gap-2 min-h-[5.25rem] transition-all shadow-md border ${
+                  className={`relative rounded-xl px-2 py-3.5 flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] transition-all border shadow-md ${
                     active
-                      ? 'bg-brand-primary text-white border-brand-primary/40'
-                      : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/30'
+                      ? 'bg-brand-primary text-white border-brand-primary/40 shadow-lg shadow-orange-500/25'
+                      : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/35 hover:shadow-lg'
                   }`}
                   title={collapsed ? item.label : undefined}
                 >
-                  <Icon className="w-7 h-7 shrink-0" strokeWidth={2} />
+                  <span className="relative inline-flex">
+                    <Icon className="w-6 h-6 shrink-0" strokeWidth={2} />
+                    {badge > 0 ? (
+                      <span
+                        className={`absolute -top-1.5 -right-2 min-w-[1rem] h-4 px-0.5 flex items-center justify-center rounded-full text-[9px] font-bold leading-none ${
+                          active
+                            ? 'bg-white text-orange-600 ring-1 ring-orange-200'
+                            : 'bg-red-500 text-white ring-2 ring-white'
+                        }`}
+                      >
+                        {badgeLabel}
+                      </span>
+                    ) : null}
+                  </span>
                   {!collapsed && (
-                    <span className="text-xs font-semibold text-center leading-snug px-0.5">
+                    <span className="text-xs font-semibold text-center leading-snug px-0.5 line-clamp-2">
                       {item.label}
                     </span>
                   )}
@@ -339,29 +317,33 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           </div>
         </div>
 
-        {/* Projects — same list-table chrome as CRM activity feed */}
+        {/* Projects */}
         {!collapsed && canReadProjects && (
           <div className="px-3 py-2 relative z-0">
             {sectionRule('Projects')}
-            <div className="rounded-xl border border-gray-300 bg-white shadow-md overflow-hidden relative z-0 ring-1 ring-black/[0.04]">
-              <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-200 bg-gray-50 text-xs font-semibold text-gray-900">
-                <span className="flex items-center gap-1.5 min-w-0">
-                  <FolderOpen className="w-3.5 h-3.5 shrink-0 text-gray-600" />
-                  <span className="truncate">Projects</span>
+            <div className="rounded-xl border border-orange-200/80 bg-gradient-to-b from-orange-50/50 via-white to-white shadow-md overflow-hidden ring-1 ring-orange-100/60">
+              <div className="flex items-center justify-between border-b border-orange-200/50 bg-gradient-to-r from-orange-500/12 via-orange-50/90 to-transparent px-3 py-2.5">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-orange-500/15 ring-1 ring-orange-300/40">
+                    <FolderOpen className="h-4 w-4 text-orange-600" strokeWidth={2.25} />
+                  </span>
+                  <span className="truncate text-xs font-bold tracking-wide text-orange-900">
+                    Projects
+                  </span>
                 </span>
                 {canCreateProjects ? (
                   <button
                     type="button"
                     onClick={() => router.push('/projects/add')}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 shadow-sm transition-colors hover:bg-gray-50 hover:text-gray-900"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500 text-white shadow-sm shadow-orange-500/30 transition-colors hover:bg-orange-600"
                     title="New project"
                   >
-                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                    <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
                   </button>
                 ) : null}
               </div>
 
-              <div className="max-h-80 overflow-y-auto overscroll-contain px-1.5 pb-2">
+              <div className="px-1.5 py-1.5">
                 {loadingProjects ? (
                   <div className="flex justify-center py-6">
                     <LoadingSpinner size="sm" />
@@ -374,19 +356,19 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                     </p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-gray-100">
+                  <div className="space-y-0.5">
                     {displayedProjects.map((project) => {
                       const slugPath = project.slug || project.id
                       const routeActive = pathname.startsWith(`/projects/${slugPath}`)
                       const health = getProjectHealthStyles(project)
                       const isOpen = expandedProjectId === project.id
                       return (
-                        <div key={project.id} className="first:border-t-0">
+                        <div key={project.id}>
                           <div
-                            className={`flex items-center gap-1 rounded-lg transition-colors ${
+                            className={`flex items-center gap-1 rounded-lg border-l-[3px] transition-colors ${
                               routeActive
-                                ? 'bg-orange-50/90 ring-1 ring-orange-200/80'
-                                : 'hover:bg-gray-50'
+                                ? 'border-l-orange-500 bg-orange-100/70 shadow-sm shadow-orange-500/10'
+                                : 'border-l-transparent hover:border-l-orange-300/80 hover:bg-orange-50/80'
                             }`}
                           >
                             <button
@@ -401,18 +383,22 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                               </span>
                               <span
                                 className={`truncate text-sm font-medium ${
-                                  routeActive ? 'text-gray-900' : 'text-gray-800'
+                                  routeActive ? 'text-orange-950' : 'text-gray-800'
                                 }`}
                               >
                                 {project.name}
                               </span>
                             </button>
                             <span
-                              className="inline-flex shrink-0 rounded-md border border-gray-200/90 bg-white p-1 shadow-sm"
+                              className={`inline-flex shrink-0 rounded-md border p-1 shadow-sm ${
+                                routeActive
+                                  ? 'border-orange-200/90 bg-white'
+                                  : 'border-orange-100/80 bg-white/90'
+                              }`}
                               title={`${health.label} · ${project.progress ?? 0}% complete`}
                             >
                               <BarChart3
-                                className={`h-3.5 w-3.5 ${health.icon}`}
+                                className={`h-3.5 w-3.5 ${routeActive ? 'text-orange-600' : health.icon}`}
                                 strokeWidth={2.5}
                               />
                             </span>
@@ -424,7 +410,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                                   id === project.id ? null : project.id
                                 )
                               }}
-                              className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-white/80 hover:text-gray-600"
+                              className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-orange-400/90 transition-colors hover:bg-orange-100/80 hover:text-orange-700"
                               aria-expanded={isOpen}
                               aria-label={
                                 isOpen ? 'Collapse project details' : 'Expand project details'
@@ -438,8 +424,8 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                             </button>
                           </div>
                           {isOpen && (
-                            <div className="border-t border-gray-100 bg-gray-50/80 px-3 py-2 pl-[3.25rem] text-[11px] leading-relaxed text-gray-600">
-                              <span className="font-medium text-gray-700">{project.status}</span>
+                            <div className="border-t border-orange-100/80 bg-orange-50/60 px-3 py-2 pl-[3.25rem] text-[11px] leading-relaxed text-gray-600">
+                              <span className="font-medium text-orange-800">{project.status}</span>
                               <span className="mx-1.5 text-gray-300">·</span>
                               <span>{project.progress ?? 0}% done</span>
                               {(project.totalTasks ?? 0) > 0 && (
@@ -474,11 +460,11 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
                     <div className="px-1 pb-1 pt-1">
                       <Link
                         href="/projects"
-                        className="flex w-full items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-[11px] font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900"
+                        className="flex w-full items-center gap-2 rounded-lg border border-orange-200/70 bg-white px-3 py-2 text-[11px] font-semibold text-orange-800 transition-colors hover:border-orange-300 hover:bg-orange-50"
                       >
-                        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+                        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-orange-600" />
                         <span>All projects</span>
-                        <ChevronRight className="ml-auto h-3.5 w-3.5 text-gray-400" />
+                        <ChevronRight className="ml-auto h-3.5 w-3.5 text-orange-500" />
                       </Link>
                     </div>
                   </div>
@@ -524,13 +510,6 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           </div>
         )}
 
-      </div>
-      <div className="shrink-0 border-t border-white/20 bg-white/90 backdrop-blur-sm">
-        <SidebarTrialUpsell
-          collapsed={collapsed}
-          daysRemaining={trialDaysRemaining}
-          upgradeHref="/coming-soon?feature=upgrade"
-        />
       </div>
     </div>
   )

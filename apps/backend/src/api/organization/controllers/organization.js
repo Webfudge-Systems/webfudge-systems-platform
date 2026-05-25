@@ -6,13 +6,19 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const rbac = require('../../../constants/rbac-app-matrix');
-const { canAccess, canManageAppSettings } = require('../../../utils/rbac');
+const {
+  canAccess,
+  canManageAppSettings,
+  canManageOrganizationProfile,
+  relationId,
+} = require('../../../utils/rbac');
 const {
   resolveOrganizationRoleIdForOrg,
   validateOrganizationRoleId,
   ORG_ROLE_UID,
 } = require('../../../utils/organization-role');
 const { logAccountsActivity, actorDisplayName } = require('../../../utils/crm-activity-log');
+const { usernameExists } = require('../../../utils/user-username');
 
 function getRolesAdminError(ctx, orgIdFromParams) {
   if (!ctx.state.user) return 'Missing or invalid credentials';
@@ -51,14 +57,46 @@ const ORGANIZATION_SETTINGS_FIELDS = [
   'onboardingCompleted',
 ];
 
+const OPTIONAL_STRING_FIELDS = new Set([
+  'companyEmail',
+  'companyPhone',
+  'website',
+  'industry',
+  'size',
+]);
+
 function pickOrganizationSettings(body) {
   const data = {};
   ORGANIZATION_SETTINGS_FIELDS.forEach((key) => {
-    if (Object.prototype.hasOwnProperty.call(body || {}, key)) {
-      data[key] = body[key];
+    if (!Object.prototype.hasOwnProperty.call(body || {}, key)) return;
+    let value = body[key];
+    if (typeof value === 'string') {
+      value = value.trim();
+      if (key === 'name') {
+        if (!value) return;
+        data[key] = value;
+        return;
+      }
+      if (OPTIONAL_STRING_FIELDS.has(key) && value === '') {
+        data[key] = null;
+        return;
+      }
     }
+    data[key] = value;
   });
   return data;
+}
+
+async function resolveCanEditOrganizationSettings(strapi, ctx, orgId) {
+  if (canManageOrganizationProfile(ctx)) return true;
+  const userId = ctx.state.user?.id;
+  if (!userId || !orgId) return false;
+  const org = await strapi.entityService.findOne('api::organization.organization', orgId, {
+    fields: ['id'],
+    populate: { owner: { fields: ['id'] } },
+  });
+  const ownerId = relationId(org?.owner);
+  return ownerId != null && String(ownerId) === String(userId);
 }
 
 module.exports = createCoreController('api::organization.organization', ({ strapi }) => ({
@@ -138,6 +176,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
       });
 
       if (!organization) return ctx.notFound('Organization not found');
+      const canEditOrganizationSettings = await resolveCanEditOrganizationSettings(strapi, ctx, orgId);
       return ctx.send({
         success: true,
         data: {
@@ -145,6 +184,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
           currentRole: ctx.state.orgRole || 'Member',
           currentRoleCode: ctx.state.orgRoleCode || 'member',
           permissions: ctx.state.effectivePermissions || ctx.state.orgPermissions || rbac.normalizePermissions({}),
+          canEditOrganizationSettings,
         },
       });
     } catch (error) {
@@ -160,19 +200,25 @@ module.exports = createCoreController('api::organization.organization', ({ strap
     if (String(ctx.state.orgId || '') !== String(id)) {
       return ctx.forbidden('Select this organization before updating settings');
     }
-    if (!canManageAppSettings(ctx)) {
-      return ctx.forbidden('You need manage access to CRM or PM settings');
-    }
-
     try {
       const hasAccess = await strapi.service('api::organization.organization').checkUserAccess(id, user.id);
       if (!hasAccess) {
         return ctx.forbidden('You do not have access to this organization');
       }
 
+      const canEdit = await resolveCanEditOrganizationSettings(strapi, ctx, id);
+      if (!canEdit) {
+        return ctx.forbidden(
+          'You need organization Admin access, workspace ownership, or manage access to CRM or PM settings'
+        );
+      }
+
       const data = pickOrganizationSettings(ctx.request.body || {});
       if (Object.keys(data).length === 0) {
         return ctx.badRequest('No supported settings were provided');
+      }
+      if (!data.name && Object.prototype.hasOwnProperty.call(ctx.request.body || {}, 'name')) {
+        return ctx.badRequest('Organization name is required');
       }
 
       const updated = await strapi.entityService.update('api::organization.organization', id, { data });
@@ -420,7 +466,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
   async updateUserMembership(ctx) {
     const { id, membershipId } = ctx.params;
     const user = ctx.state.user;
-    const { roleId, roleCode, roleName, isActive, status } = ctx.request.body || {};
+    const { roleId, roleCode, roleName, isActive, status, email, username } = ctx.request.body || {};
 
     if (!user) {
       return ctx.unauthorized('Missing or invalid credentials');
@@ -462,12 +508,47 @@ module.exports = createCoreController('api::organization.organization', ({ strap
         });
       }
 
+      const targetUserId = membership?.user?.id;
+      const userUpdate = {};
+
       if (status === 'suspended' || status === 'active') {
-        const shouldBlock = status === 'suspended';
-        const targetUserId = membership?.user?.id;
         if (targetUserId) {
+          userUpdate.blocked = status === 'suspended';
+        }
+      }
+
+      if (targetUserId) {
+        const normalizedEmail =
+          typeof email === 'string' && email.trim() !== ''
+            ? email.trim().toLowerCase()
+            : null;
+        const normalizedUsername =
+          typeof username === 'string' && username.trim() !== '' ? username.trim() : null;
+
+        if (normalizedEmail) {
+          const emailTaken = await strapi.query('plugin::users-permissions.user').findOne({
+            where: { email: normalizedEmail },
+          });
+          if (emailTaken && String(emailTaken.id) !== String(targetUserId)) {
+            return ctx.badRequest('Email is already in use');
+          }
+          userUpdate.email = normalizedEmail;
+        }
+
+        if (normalizedUsername) {
+          if (normalizedUsername.length < 3) {
+            return ctx.badRequest('Name must be at least 3 characters');
+          }
+          const taken = await usernameExists(strapi, normalizedUsername, targetUserId);
+          if (taken) {
+            return ctx.badRequest('Name is already in use');
+          }
+          userUpdate.username = normalizedUsername;
+        }
+
+        if (Object.keys(userUpdate).length > 0) {
           await strapi.entityService.update('plugin::users-permissions.user', targetUserId, {
-            data: { blocked: shouldBlock },
+            data: userUpdate,
           });
         }
       }
@@ -493,6 +574,22 @@ module.exports = createCoreController('api::organization.organization', ({ strap
             after: status === 'suspended' ? 'Suspended' : 'Active',
           });
         }
+        if (userUpdate.email) {
+          changes.push({
+            key: 'email',
+            label: 'Email',
+            before: membership?.user?.email || '—',
+            after: userUpdate.email,
+          });
+        }
+        if (userUpdate.username) {
+          changes.push({
+            key: 'username',
+            label: 'Name',
+            before: membership?.user?.username || '—',
+            after: userUpdate.username,
+          });
+        }
         if (membershipUpdate.role != null) {
           const prevRoleName = membership?.role?.name || membership?.role?.code || '—';
           const newRole = await strapi.entityService.findOne(ORG_ROLE_UID, membershipUpdate.role, {
@@ -506,7 +603,11 @@ module.exports = createCoreController('api::organization.organization', ({ strap
             after: newRoleName,
           });
         }
-        if (changes.length > 0 || Object.keys(membershipUpdate).length > 0 || status) {
+        if (
+          changes.length > 0 ||
+          Object.keys(membershipUpdate).length > 0 ||
+          Object.keys(userUpdate).length > 0
+        ) {
           const parts = changes.map((c) => c.label).join(', ');
           const summary =
             changes.length > 0

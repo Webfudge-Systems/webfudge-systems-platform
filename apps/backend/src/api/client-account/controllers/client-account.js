@@ -7,7 +7,8 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { logCrmActivity } = require('../../../utils/crm-activity-log');
+const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../../utils/crm-activity-log');
+const { emitUpdateNotifications, assignedStakeholderIds } = require('../../../utils/notification-emitter');
 const {
   orgIdFromRelation,
   readListQuery,
@@ -166,7 +167,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
-      populate: ['organization'],
+      populate: ['organization', 'assignedTo'],
     });
     if (!existing) return ctx.notFound();
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
@@ -179,6 +180,40 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     delete data.organization;
 
     const entry = await strapi.entityService.update(UID, id, { data });
+    const changedKeys = collectChangedKeys(data);
+    try {
+      const forLog =
+        entry?.id != null
+          ? await strapi.entityService.findOne(UID, entry.id, { populate: ['assignedTo'] })
+          : entry;
+      const actorName = await actorDisplayName(strapi, ctx.state.user?.id);
+      const accountName =
+        (forLog?.companyName || forLog?.name || 'Client account').trim() || 'Client account';
+      await emitUpdateNotifications(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'client_account',
+        subjectId: Number(id),
+        entityName: accountName,
+        changedKeys,
+        stakeholderIds: assignedStakeholderIds(forLog || existing),
+        previousEntity: existing,
+        patch: data,
+      });
+      await logCrmActivity(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        action: 'update',
+        subjectType: 'client_account',
+        entity: forLog,
+        changedKeys,
+        previousEntity: existing,
+        patch: data,
+      });
+    } catch (_) {
+      /* best-effort */
+    }
     return { data: entry };
   },
 

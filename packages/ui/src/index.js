@@ -24,6 +24,7 @@ export {
   KPICard,
   FormSectionCard,
   SidebarTrialUpsell,
+  PwaInstallPrompt,
   WorkspaceHeader,
   TableCellCreated,
   TableCellDateOnly,

@@ -38,7 +38,14 @@ class UsersService {
     })
   }
 
-  async updateMembership({ membershipId, roleId, roleCode, status }) {
+  async updateMembership({
+    membershipId,
+    roleId,
+    roleCode,
+    status,
+    email,
+    username,
+  }) {
     if (typeof window === 'undefined') throw new Error('Update is only available in browser')
 
     const orgId = localStorage.getItem('current-org-id')
@@ -54,6 +61,12 @@ class UsersService {
       body.roleId = Number.isFinite(idNum) ? idNum : roleId
     } else if (roleCode != null && String(roleCode).trim() !== '') {
       body.roleCode = String(roleCode).trim()
+    }
+    if (email != null && String(email).trim() !== '') {
+      body.email = String(email).trim().toLowerCase()
+    }
+    if (username != null && String(username).trim() !== '') {
+      body.username = String(username).trim()
     }
 
     return strapiClient.patch(`/organizations/${orgId}/users/${membershipId}`, body)

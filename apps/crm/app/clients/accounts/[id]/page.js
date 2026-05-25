@@ -70,8 +70,9 @@ import { pmAddProjectUrl, pmProjectDetailUrl } from '../../../../lib/pmAppUrl';
 import {
   industryOptions,
   companyTypeSelectOptions,
-  getSubTypeOptionsForType,
-  canonicalIndustryValue,
+  INDUSTRY_OTHER_VALUE,
+  industryFormFromStored,
+  resolveIndustryForSave,
   canonicalCompanyTypeValue,
 } from '../../../../lib/leadCompanyProfileOptions';
 import { getIndustryVisual } from '../../../../lib/industryVisuals';
@@ -691,10 +692,11 @@ export default function ClientAccountDetailPage() {
   const openCompanyInfoEdit = () => {
     if (!canEditClientAccount) return;
     if (!account) return;
+    const { industry, industryOther } = industryFormFromStored(account.industry ?? '');
     setCompanyInfoDraft({
-      industry: canonicalIndustryValue(account.industry ?? ''),
+      industry,
+      industryOther,
       type: canonicalCompanyTypeValue(account.type ?? ''),
-      subType: account.subType ?? '',
       employees: account.employees != null ? String(account.employees) : '',
       billingCycle: account.billingCycle ?? '',
       accountType: account.accountType ?? '',
@@ -716,13 +718,6 @@ export default function ClientAccountDetailPage() {
     setCompanyInfoDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
-  const industrySelectOptions = useMemo(() => {
-    const v = companyInfoDraft?.industry?.trim();
-    if (!v) return industryOptions;
-    if (industryOptions.some((o) => o.value === v)) return industryOptions;
-    return [{ value: v, label: humanizeSource(v) }, ...industryOptions];
-  }, [companyInfoDraft?.industry]);
-
   const typeSelectOptions = useMemo(() => {
     const v = companyInfoDraft?.type?.trim();
     if (!v) return companyTypeSelectOptions;
@@ -730,25 +725,32 @@ export default function ClientAccountDetailPage() {
     return [{ value: v, label: humanizeSource(v) }, ...companyTypeSelectOptions];
   }, [companyInfoDraft?.type]);
 
-  const subTypeSelectOptions = useMemo(() => {
-    const t = companyInfoDraft?.type || '';
-    const base = getSubTypeOptionsForType(t);
-    const v = companyInfoDraft?.subType?.trim();
-    if (!v) return base;
-    if (base.some((o) => o.value === v)) return base;
-    return [{ value: v, label: v }, ...base];
-  }, [companyInfoDraft?.type, companyInfoDraft?.subType]);
-
   const saveCompanyInfo = async () => {
     if (!id || !companyInfoDraft) return;
     if (!canEditClientAccount) return;
     setSavingCompanyInfo(true);
     setCompanyInfoSaveError('');
     try {
+      const resolvedIndustry = resolveIndustryForSave(
+        companyInfoDraft.industry,
+        companyInfoDraft.industryOther
+      );
+      if (!resolvedIndustry) {
+        setCompanyInfoSaveError('Industry is required');
+        setSavingCompanyInfo(false);
+        return;
+      }
+      if (
+        companyInfoDraft.industry === INDUSTRY_OTHER_VALUE &&
+        !companyInfoDraft.industryOther?.trim()
+      ) {
+        setCompanyInfoSaveError('Please specify your industry');
+        setSavingCompanyInfo(false);
+        return;
+      }
       const payload = {
-        industry: companyInfoDraft.industry.trim() || null,
+        industry: resolvedIndustry,
         type: companyInfoDraft.type.trim() || null,
-        subType: companyInfoDraft.subType.trim() || null,
         employees: companyInfoDraft.employees.trim() || null,
         billingCycle: companyInfoDraft.billingCycle.trim() || null,
         accountType: companyInfoDraft.accountType.trim() || null,
@@ -1561,28 +1563,38 @@ export default function ClientAccountDetailPage() {
                           <Select
                             label="Industry"
                             value={companyInfoDraft.industry}
-                            onChange={(value) => setCompanyInfoDraftField('industry', value)}
-                            options={industrySelectOptions}
+                            onChange={(value) => {
+                              setCompanyInfoDraft((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      industry: value,
+                                      industryOther:
+                                        value === INDUSTRY_OTHER_VALUE ? prev.industryOther : '',
+                                    }
+                                  : prev
+                              );
+                            }}
+                            options={industryOptions}
                             placeholder="Select industry"
                             icon={IndustryIcon}
                           />
+                          {companyInfoDraft.industry === INDUSTRY_OTHER_VALUE ? (
+                            <Input
+                              label="Specify industry"
+                              value={companyInfoDraft.industryOther}
+                              onChange={(e) =>
+                                setCompanyInfoDraftField('industryOther', e.target.value)
+                              }
+                              placeholder="Enter your industry"
+                            />
+                          ) : null}
                           <Select
                             label="Company type"
                             value={companyInfoDraft.type}
                             onChange={(value) => setCompanyInfoDraftField('type', value)}
                             options={typeSelectOptions}
                             placeholder="Select company type"
-                            icon={Layers}
-                          />
-                          <Select
-                            label="Sub-type"
-                            value={companyInfoDraft.subType}
-                            onChange={(value) => setCompanyInfoDraftField('subType', value)}
-                            options={subTypeSelectOptions}
-                            placeholder={
-                              companyInfoDraft.type ? 'Select sub-type' : 'Select company type first'
-                            }
-                            disabled={!companyInfoDraft.type}
                             icon={Layers}
                           />
                           <Input
@@ -1660,11 +1672,6 @@ export default function ClientAccountDetailPage() {
                           <InfoRow
                             label="Company type"
                             value={account.type ? humanizeSource(account.type) : ''}
-                            icon={Layers}
-                          />
-                          <InfoRow
-                            label="Sub-type"
-                            value={account.subType ? humanizeSource(account.subType) : ''}
                             icon={Layers}
                           />
                           <InfoRow
@@ -1995,7 +2002,10 @@ export default function ClientAccountDetailPage() {
                     </>
                   )}
                 </div>
-                <Link href="/sales/contacts/new" className="w-full shrink-0 sm:w-auto">
+                <Link
+                  href={`/sales/contacts/new?clientAccount=${encodeURIComponent(String(id))}`}
+                  className="w-full shrink-0 sm:w-auto"
+                >
                   <Button
                     type="button"
                     className="w-full bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:opacity-95 sm:w-auto"
@@ -2016,7 +2026,7 @@ export default function ClientAccountDetailPage() {
                     </div>
                     <h3 className="mb-2 text-lg font-semibold text-gray-700">No contacts found</h3>
                     <p className="mb-4 text-sm text-gray-500">Add your first contact to get started</p>
-                    <Link href="/sales/contacts/new">
+                    <Link href={`/sales/contacts/new?clientAccount=${encodeURIComponent(String(id))}`}>
                       <Button variant="primary">
                         Add Contact
                       </Button>

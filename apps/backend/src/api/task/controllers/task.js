@@ -15,7 +15,12 @@ const {
   safeCount,
   resolveEntityPkForRouteParam,
 } = require('../../../utils/content-api-helpers');
-const { logCrmActivity, collectChangedKeys } = require('../../../utils/crm-activity-log');
+const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../../utils/crm-activity-log');
+const {
+  emitUpdateNotifications,
+  emitTaskCreatedNotification,
+  taskStakeholderIds,
+} = require('../../../utils/notification-emitter');
 const {
   requireModuleAccess,
   isPmOrgMemberRole,
@@ -608,6 +613,20 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         entity: forLog,
         changedKeys: null,
       });
+      const actorName = await actorDisplayName(strapi, ctx.state.user?.id);
+      const forNotify =
+        lookupKey != null
+          ? await strapi.entityService.findOne(UID, lookupKey, {
+              populate: ['assignee', 'collaborators'],
+            })
+          : forLog;
+      await emitTaskCreatedNotification(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        task: forNotify,
+        taskId: lookupKey,
+      });
     } catch (_) {
       /* best-effort */
     }
@@ -624,7 +643,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (pk == null) return ctx.notFound();
 
     const existing = await strapi.entityService.findOne(UID, pk, {
-      populate: ['organization', 'assignee', 'projects'],
+      populate: ['organization', 'assignee', 'assigner', 'collaborators', 'projects'],
     });
     if (!existing) return ctx.notFound();
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
@@ -720,6 +739,19 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         previousEntity: existing,
         patch: data,
       });
+      const actorName = await actorDisplayName(strapi, ctx.state.user?.id);
+      await emitUpdateNotifications(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'task',
+        subjectId: pk,
+        entityName: (forLog?.name || 'Task').trim() || 'Task',
+        changedKeys,
+        stakeholderIds: taskStakeholderIds(existing),
+        previousEntity: existing,
+        patch: data,
+      });
     } catch (_) {
       /* best-effort */
     }
@@ -773,6 +805,19 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         changedKeys: ['assignmentApprovalStatus', 'collaborators'],
         previousEntity: existing,
         patch: { assignmentApprovalStatus: 'approved' },
+      });
+      const actorName = await actorDisplayName(strapi, ctx.state.user?.id);
+      await emitUpdateNotifications(strapi, {
+        organizationId: ctx.state.orgId,
+        actorUserId: ctx.state.user?.id,
+        actorName,
+        subjectType: 'task',
+        subjectId: pk,
+        entityName: (forLog?.name || 'Task').trim() || 'Task',
+        changedKeys: ['assignee', 'collaborators', 'assignmentApprovalStatus'],
+        stakeholderIds: taskStakeholderIds(forLog),
+        previousEntity: existing,
+        patch: { assignee: forLog?.assignee, collaborators: forLog?.collaborators },
       });
     } catch (_) {
       /* best-effort */

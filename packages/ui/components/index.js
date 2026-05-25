@@ -22,6 +22,7 @@ export { TableResultsCount, TableEmptyBelow } from './TableEmptyBelow';
 export { KPICard } from './KPICard';
 export { FormSectionCard } from './FormSectionCard';
 export { SidebarTrialUpsell } from './SidebarTrialUpsell';
+export { PwaInstallPrompt } from './PwaInstallPrompt';
 export { WorkspaceHeader } from './WorkspaceHeader';
 export {
   TableCellCreated,

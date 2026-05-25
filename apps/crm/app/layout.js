@@ -2,28 +2,55 @@ import './globals.css';
 import { AuthProvider } from '@webfudge/auth';
 import LayoutContent from '../components/LayoutContent';
 
+export const viewport = {
+  themeColor: '#F5630F',
+  width: 'device-width',
+  initialScale: 1,
+};
+
+const siteUrl = (process.env.NEXT_PUBLIC_CRM_APP_URL || 'http://localhost:3007').replace(/\/$/, '');
+const shareDescription =
+  'A modern CRM workspace for leads, deals, client accounts, projects, and communication workflows.';
+
 export const metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: 'Webfudge CRM',
     template: '%s | Webfudge CRM',
   },
-  description: 'Webfudge CRM for lead management, deals, accounts, projects, invoices, and team collaboration.',
+  description:
+    'Webfudge CRM for lead management, deals, accounts, projects, invoices, and team collaboration.',
   applicationName: 'Webfudge CRM',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Webfudge CRM',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   keywords: ['CRM', 'sales CRM', 'lead management', 'deal pipeline', 'client accounts'],
   alternates: {
     canonical: '/',
   },
   openGraph: {
     title: 'Webfudge CRM',
-    description:
-      'A modern CRM workspace for leads, deals, client accounts, projects, and communication workflows.',
+    description: shareDescription,
     type: 'website',
+    images: [
+      {
+        url: '/favicon/web-app-manifest-512x512.png',
+        width: 512,
+        height: 512,
+        alt: 'Webfudge CRM',
+      },
+    ],
   },
   twitter: {
     card: 'summary',
     title: 'Webfudge CRM',
-    description:
-      'A modern CRM workspace for leads, deals, client accounts, projects, and communication workflows.',
+    description: shareDescription,
+    images: ['/favicon/web-app-manifest-512x512.png'],
   },
   robots: {
     index: false,

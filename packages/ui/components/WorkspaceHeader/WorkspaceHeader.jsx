@@ -1,19 +1,18 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
+  AlertTriangle,
   Bell,
   Check,
   CheckCheck,
   ChevronDown,
   ChevronRight,
   Download,
-  Filter,
   Image,
   LogOut,
-  Plus,
   Search,
   Settings,
   Upload,
@@ -53,6 +52,7 @@ export function WorkspaceHeader({
   profileDropdownClassName,
 }) {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, logout, currentOrg } = useAuth()
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false)
@@ -142,6 +142,17 @@ export function WorkspaceHeader({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [showSearch, showGlobalSearch])
 
+  const handleNotificationClick = async (notification) => {
+    if (!notification?.id) return
+    if (!notification.isRead) {
+      await handleMarkAsRead(notification.id)
+    }
+    if (notification.href) {
+      setShowNotificationDropdown(false)
+      router.push(notification.href)
+    }
+  }
+
   const handleMarkAsRead = async (notificationId) => {
     if (!notificationService) return
     try {
@@ -199,13 +210,7 @@ export function WorkspaceHeader({
     searchInputClassName ||
     'w-64 pl-10 pr-4 py-2.5 bg-white border border-orange-500/40 rounded-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all duration-300 placeholder:text-gray-400 text-gray-800'
 
-  const hasDefaultActionButtons = !!(
-    onAddClick ||
-    onFilterClick ||
-    onImportClick ||
-    onExportClick ||
-    onShareImageClick
-  )
+  const hasDefaultActionButtons = !!(onImportClick || onExportClick || onShareImageClick)
   const activeRole =
     currentOrg?.role ||
     currentOrg?.roleName ||
@@ -280,22 +285,6 @@ export function WorkspaceHeader({
             {children ||
               (showActions && hasDefaultActionButtons && (
                 <div className="flex items-center gap-2">
-                  {onAddClick && (
-                    <button
-                      onClick={onAddClick}
-                      className={`${resolvedActionClass} text-brand-primary`}
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  )}
-                  {onFilterClick && (
-                    <button onClick={onFilterClick} className={`relative ${resolvedActionClass}`}>
-                      <Filter className="w-5 h-5 text-brand-text-light" />
-                      {hasActiveFilters ? (
-                        <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white/95 shadow-sm" />
-                      ) : null}
-                    </button>
-                  )}
                   {onImportClick && (
                     <button
                       onClick={onImportClick}
@@ -353,9 +342,15 @@ export function WorkspaceHeader({
               >
                 <Bell className="w-5 h-5 text-brand-text-light" />
                 {unreadCount > 0 ? (
-                  <span className="absolute top-1.5 right-1.5 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white/95 shadow-sm">
+                  <span className="absolute top-1.5 right-1.5 min-w-[1.25rem] h-5 px-1 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white/95 shadow-sm">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
+                ) : null}
+                {notifications.some((n) => !n.isRead && n.isUrgent) ? (
+                  <span
+                    className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-amber-400 border border-white animate-pulse"
+                    aria-hidden
+                  />
                 ) : null}
               </button>
               {showNotificationDropdown && (
@@ -394,19 +389,36 @@ export function WorkspaceHeader({
                           {notifications.map((notification) => (
                             <button
                               key={notification.id}
-                              onClick={() => handleMarkAsRead(notification.id)}
-                              className={`w-full text-left p-4 hover:bg-brand-hover transition-colors ${!notification.isRead ? 'bg-blue-50/50' : ''}`}
+                              onClick={() => handleNotificationClick(notification)}
+                              className={`w-full text-left p-4 hover:bg-brand-hover transition-colors ${
+                                notification.isUrgent && !notification.isRead
+                                  ? 'bg-amber-50/80 border-l-4 border-amber-500'
+                                  : !notification.isRead
+                                    ? 'bg-blue-50/50'
+                                    : ''
+                              }`}
                             >
                               <div className="flex items-start gap-3">
-                                <div
-                                  className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notification.isRead ? 'bg-blue-500' : 'bg-transparent'}`}
-                                />
+                                {notification.isUrgent ? (
+                                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                ) : (
+                                  <div
+                                    className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!notification.isRead ? 'bg-blue-500' : 'bg-transparent'}`}
+                                  />
+                                )}
                                 <div className="flex-1 min-w-0">
-                                  <p
-                                    className={`text-sm font-medium ${!notification.isRead ? 'text-brand-foreground' : 'text-brand-text-light'}`}
-                                  >
-                                    {notification.title}
-                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <p
+                                      className={`text-sm font-medium ${!notification.isRead ? 'text-brand-foreground' : 'text-brand-text-light'}`}
+                                    >
+                                      {notification.title}
+                                    </p>
+                                    {notification.isUrgent && !notification.isRead ? (
+                                      <span className="text-[10px] font-bold uppercase tracking-wide text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                        Urgent
+                                      </span>
+                                    ) : null}
+                                  </div>
                                   <p className="text-xs text-brand-text-light mt-1 line-clamp-2">
                                     {notification.message}
                                   </p>

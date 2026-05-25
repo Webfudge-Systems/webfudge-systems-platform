@@ -1,14 +1,17 @@
 import strapiClient from '../strapiClient'
+import { buildOrganizationSettingsPayload } from '../organizationSettings'
 
 class OrganizationService {
   async getCurrent() {
     return strapiClient.get('/organizations/current')
   }
 
-  async updateSettings(payload) {
+  /** @param {Record<string, unknown>} formValues */
+  async updateSettings(formValues) {
     if (typeof window === 'undefined') throw new Error('Organization API is browser-only')
     const orgId = localStorage.getItem('current-org-id')
     if (!orgId) throw new Error('No active organization selected')
+    const payload = buildOrganizationSettingsPayload(formValues)
     return strapiClient.patch(`/organizations/${orgId}/settings`, payload)
   }
 

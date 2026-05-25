@@ -690,9 +690,7 @@ export default function AddLeadCompanyPage() {
             title="Contact Information"
             description="Add contacts for this lead company"
             cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div />
+            headerAction={
               <Button
                 type="button"
                 onClick={addContact}
@@ -702,9 +700,9 @@ export default function AddLeadCompanyPage() {
                 <Plus className="w-4 h-4 mr-2" />
                 Add Contact
               </Button>
-            </div>
-
-            <div className="space-y-6">
+            }
+          >
+            <div className="space-y-4">
               {contacts.map((contact, index) => (
                 <div
                   key={contact.id}

@@ -2,6 +2,12 @@ import './globals.css';
 import { AuthProvider } from '@webfudge/auth';
 import LayoutContent from '../components/LayoutContent';
 
+export const viewport = {
+  themeColor: '#F5630F',
+  width: 'device-width',
+  initialScale: 1,
+};
+
 const siteUrl = (process.env.NEXT_PUBLIC_PM_APP_URL || 'http://localhost:3006').replace(/\/$/, '');
 const shareDescription =
   'A modern workspace for projects, tasks, team collaboration, and delivery.';
@@ -15,6 +21,14 @@ export const metadata = {
   description:
     'Webfudge Project Management for tracking projects, tasks, teams, messages, and delivery.',
   applicationName: 'Webfudge PM',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Webfudge PM',
+  },
+  formatDetection: {
+    telephone: false,
+  },
   keywords: [
     'project management',
     'tasks',

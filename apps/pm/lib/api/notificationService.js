@@ -1,4 +1,5 @@
 import strapiClient from '../strapiClient';
+import { transformNotificationForDisplay } from '@webfudge/ui/utils/notificationDisplay';
 
 class NotificationService {
   async getNotifications(userId, options = {}) {
@@ -83,26 +84,7 @@ class NotificationService {
   }
 
   transformNotification(notification) {
-    const notificationData = notification.attributes || notification;
-    const user = notificationData.user || notification.user || {};
-    const userData = user.attributes || user;
-    const userName =
-      userData.firstName && userData.lastName
-        ? `${userData.firstName} ${userData.lastName}`
-        : userData.name || userData.email || 'Unknown User';
-
-    return {
-      id: notificationData.id || notification.id,
-      type: notificationData.type || notification.type,
-      title: notificationData.title || notification.title,
-      message: notificationData.message || notification.message,
-      isRead: notificationData.isRead !== undefined ? notificationData.isRead : notification.isRead || false,
-      createdAt: notificationData.createdAt || notification.createdAt,
-      readAt: notificationData.readAt || notification.readAt,
-      name: userName,
-      timeAgo: this.formatTime(notificationData.createdAt || notification.createdAt),
-      date: notificationData.createdAt || notification.createdAt,
-    };
+    return transformNotificationForDisplay(notification, (ts) => this.formatTime(ts));
   }
 }
 

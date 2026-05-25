@@ -1,6 +1,7 @@
 // Notification service for CRM Portal
 import strapiClient from '../strapiClient';
 import { addPopulate } from './strapiContentApi';
+import { transformNotificationForDisplay } from '@webfudge/ui/utils/notificationDisplay';
 
 class NotificationService {
   /**
@@ -124,26 +125,7 @@ class NotificationService {
    * Transform notification data for frontend
    */
   transformNotification(notification) {
-    // Handle different notification structures (Strapi v5 may wrap in attributes)
-    const notificationData = notification.attributes || notification;
-    const user = notificationData.user || notification.user || notification.createdBy || {};
-    const userData = user.attributes || user;
-    const userName = userData.firstName && userData.lastName
-      ? `${userData.firstName} ${userData.lastName}`
-      : userData.name || userData.email || 'Unknown User';
-
-    return {
-      id: notificationData.id || notification.id,
-      type: notificationData.type || notification.type,
-      title: notificationData.title || notification.title,
-      message: notificationData.message || notification.message,
-      isRead: notificationData.isRead !== undefined ? notificationData.isRead : (notification.isRead || false),
-      createdAt: notificationData.createdAt || notification.createdAt,
-      readAt: notificationData.readAt || notification.readAt,
-      name: userName,
-      timeAgo: this.formatTime(notificationData.createdAt || notification.createdAt),
-      date: notificationData.createdAt || notification.createdAt,
-    };
+    return transformNotificationForDisplay(notification, (ts) => this.formatTime(ts));
   }
 }
 

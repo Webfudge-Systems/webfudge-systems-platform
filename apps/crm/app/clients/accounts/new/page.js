@@ -10,16 +10,20 @@ import {
   Textarea,
   Modal,
   FormSectionCard,
+  Badge,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
+import contactService from '../../../../lib/api/contactService';
+import { contactFieldsFromClientAccount } from '../../../../lib/contactCompanyFields';
 import strapiClient from '../../../../lib/strapiClient';
 import { canWriteCRM } from '../../../../lib/rbac';
 import { useAuth } from '@webfudge/auth';
 import {
   industryOptions,
   companyTypes,
-  subTypeOptionsByCompanyType,
+  INDUSTRY_OTHER_VALUE,
+  resolveIndustryForSave,
 } from '../../../../lib/leadCompanyProfileOptions';
 import {
   Building2,
@@ -40,6 +44,10 @@ import {
   MapPinned,
   Briefcase,
   FileText,
+  Users,
+  User,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 
 const employeeSizeOptions = [
@@ -66,6 +74,7 @@ const billingCycleOptions = [
   { value: 'MONTHLY', label: 'Monthly' },
   { value: 'QUARTERLY', label: 'Quarterly' },
   { value: 'ANNUALLY', label: 'Annually' },
+  { value: 'PROJECT_BASIS', label: 'Project basis' },
 ];
 
 const paymentTermsOptions = [
@@ -74,6 +83,26 @@ const paymentTermsOptions = [
   { value: 'NET_60', label: 'Net 60 days' },
   { value: 'DUE_ON_RECEIPT', label: 'Due on receipt' },
 ];
+
+const contactRoleOptions = [
+  { value: 'PRIMARY_CONTACT', label: 'Primary contact' },
+  { value: 'DECISION_MAKER', label: 'Decision maker' },
+  { value: 'INFLUENCER', label: 'Influencer' },
+  { value: 'CONTACT', label: 'Contact' },
+  { value: 'GATEKEEPER', label: 'Gatekeeper' },
+];
+
+const initialContactRow = {
+  id: 1,
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  jobTitle: '',
+  department: '',
+  role: 'PRIMARY_CONTACT',
+  isPrimary: true,
+};
 
 export default function NewClientAccountPage() {
   const router = useRouter();
@@ -89,8 +118,8 @@ export default function NewClientAccountPage() {
   const [form, setForm] = useState({
     companyName: '',
     industry: '',
+    industryOther: '',
     type: '',
-    subType: '',
     website: '',
     phone: '',
     email: '',
@@ -117,13 +146,7 @@ export default function NewClientAccountPage() {
     assignedTo: '',
   });
 
-  const subTypeOptions = subTypeOptionsByCompanyType;
-
-  const getSubTypeOptions = () => {
-    if (!form.type) return [];
-    const list = subTypeOptions[form.type];
-    return (list || []).map((subType) => ({ value: subType, label: subType }));
-  };
+  const [contacts, setContacts] = useState([{ ...initialContactRow }]);
 
   useEffect(() => {
     fetchUsers();
@@ -174,7 +197,9 @@ export default function NewClientAccountPage() {
   const handleChange = (field, value) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      if (field === 'type') next.subType = '';
+      if (field === 'industry' && value !== INDUSTRY_OTHER_VALUE) {
+        next.industryOther = '';
+      }
       return next;
     });
     if (errors[field]) {
@@ -182,19 +207,80 @@ export default function NewClientAccountPage() {
     }
   };
 
+  const handleContactChange = (contactId, field, value) => {
+    setContacts((prev) =>
+      prev.map((c) => (c.id === contactId ? { ...c, [field]: value } : c))
+    );
+    const errorKey = `contact_${contactId}_${field}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => ({ ...prev, [errorKey]: null }));
+    }
+  };
+
+  const addContact = () => {
+    const newId = Math.max(...contacts.map((c) => c.id), 0) + 1;
+    setContacts((prev) => [
+      ...prev,
+      {
+        id: newId,
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        jobTitle: '',
+        department: '',
+        role: 'CONTACT',
+        isPrimary: false,
+      },
+    ]);
+  };
+
+  const removeContact = (contactId) => {
+    if (contacts.length > 1) {
+      setContacts((prev) => prev.filter((c) => c.id !== contactId));
+    }
+  };
+
+  const setPrimaryContact = (contactId) => {
+    setContacts((prev) =>
+      prev.map((c) => ({
+        ...c,
+        isPrimary: c.id === contactId,
+        role: c.id === contactId ? 'PRIMARY_CONTACT' : c.role === 'PRIMARY_CONTACT' ? 'CONTACT' : c.role,
+      }))
+    );
+  };
+
   const validateForm = () => {
     const newErrors = {};
     if (!form.companyName.trim()) {
       newErrors.companyName = 'Company name is required';
     }
-    if (!form.industry) {
+    const resolvedIndustry = resolveIndustryForSave(form.industry, form.industryOther);
+    if (!resolvedIndustry) {
       newErrors.industry = 'Industry is required';
+    }
+    if (form.industry === INDUSTRY_OTHER_VALUE && !form.industryOther?.trim()) {
+      newErrors.industryOther = 'Please specify your industry';
     }
     if (!form.email.trim()) {
       newErrors.email = 'Company email is required';
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
+    contacts.forEach((contact) => {
+      if (!contact.firstName.trim()) {
+        newErrors[`contact_${contact.id}_firstName`] = 'First name is required';
+      }
+      if (!contact.lastName.trim()) {
+        newErrors[`contact_${contact.id}_lastName`] = 'Last name is required';
+      }
+      if (!contact.email.trim()) {
+        newErrors[`contact_${contact.id}_email`] = 'Email is required';
+      } else if (!/\S+@\S+\.\S+/.test(contact.email)) {
+        newErrors[`contact_${contact.id}_email`] = 'Please enter a valid email';
+      }
+    });
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -203,7 +289,7 @@ export default function NewClientAccountPage() {
     const hsRaw = parseInt(String(form.healthScore), 10);
     const payload = {
       companyName: form.companyName.trim(),
-      industry: form.industry,
+      industry: resolveIndustryForSave(form.industry, form.industryOther),
       status: form.status,
       accountType: form.accountType,
       billingCycle: form.billingCycle,
@@ -212,7 +298,6 @@ export default function NewClientAccountPage() {
     };
 
     if (form.type) payload.type = form.type;
-    if (form.subType) payload.subType = form.subType;
     if (form.website?.trim()) payload.website = form.website.trim();
     if (form.phone?.trim()) payload.phone = form.phone.trim();
     if (form.email?.trim()) payload.email = form.email.trim();
@@ -259,6 +344,49 @@ export default function NewClientAccountPage() {
     try {
       const res = await clientAccountService.create(buildPayload());
       const newId = res?.id ?? res?.data?.id;
+
+      if (newId && contactService?.create) {
+        const companyFields = contactFieldsFromClientAccount({
+          companyName: form.companyName.trim(),
+          website: form.website,
+          address: form.address,
+          city: form.city,
+          state: form.state,
+          zipCode: form.zipCode,
+          country: form.country,
+        });
+        const validContacts = contacts.filter(
+          (c) => c.firstName?.trim() && c.lastName?.trim() && c.email?.trim()
+        );
+        const accountId = parseInt(String(newId), 10);
+        const clientAccountRef = Number.isNaN(accountId) ? newId : accountId;
+
+        for (const contact of validContacts) {
+          const contactData = {
+            firstName: contact.firstName.trim(),
+            lastName: contact.lastName.trim(),
+            email: contact.email.trim(),
+            phone: contact.phone?.trim(),
+            jobTitle: contact.jobTitle?.trim(),
+            department: contact.department?.trim(),
+            contactRole: contact.role,
+            status: 'ACTIVE',
+            source: 'CLIENT_ACCOUNT',
+            clientAccount: clientAccountRef,
+            isPrimaryContact: !!contact.isPrimary,
+            ...companyFields,
+          };
+          if (form.assignedTo) {
+            contactData.assignedTo = parseInt(form.assignedTo, 10);
+          }
+          try {
+            await contactService.create(contactData);
+          } catch (err) {
+            console.error('Error creating contact:', err);
+          }
+        }
+      }
+
       setShowSuccess(true);
       setTimeout(() => {
         router.push(newId ? `/clients/accounts/${newId}` : '/clients/accounts');
@@ -347,6 +475,11 @@ export default function NewClientAccountPage() {
                 {errors.email && (
                   <li className="font-medium text-red-700">Company email (valid format)</li>
                 )}
+                {Object.keys(errors).filter((k) => k.includes('contact_')).length > 0 && (
+                  <li className="font-medium text-red-700">
+                    Contact information (first name, last name, and valid email for each contact)
+                  </li>
+                )}
               </ul>
             </div>
           </div>
@@ -364,7 +497,7 @@ export default function NewClientAccountPage() {
       <div className="p-4 space-y-6">
         <CRMPageHeader
           title="Add New Client Account"
-          subtitle="Create a new client company account with billing and profile details"
+          subtitle="Create a new client company account with contacts, billing, and profile details"
           breadcrumb={[
             { label: 'Dashboard', href: '/' },
             { label: 'Clients', href: '/clients' },
@@ -391,6 +524,11 @@ export default function NewClientAccountPage() {
                     )}
                     {errors.industry && <li className="font-medium">Industry is required</li>}
                     {errors.email && <li className="font-medium">{errors.email}</li>}
+                    {Object.keys(errors).filter((k) => k.includes('contact_')).length > 0 && (
+                      <li className="font-medium">
+                        Contact information: first name, last name, and valid email for each contact
+                      </li>
+                    )}
                   </ul>
                 </div>
               </div>
@@ -426,6 +564,18 @@ export default function NewClientAccountPage() {
                   icon={Building2}
                 />
               </div>
+              {form.industry === INDUSTRY_OTHER_VALUE ? (
+                <div>
+                  <Input
+                    label="Specify industry *"
+                    value={form.industryOther}
+                    onChange={(e) => handleChange('industryOther', e.target.value)}
+                    error={errors.industryOther}
+                    placeholder="Enter your industry"
+                    icon={Briefcase}
+                  />
+                </div>
+              ) : null}
 
               <div>
                 <Select
@@ -434,17 +584,6 @@ export default function NewClientAccountPage() {
                   onChange={(value) => handleChange('type', value)}
                   options={companyTypes.map((t) => ({ value: t.id, label: t.name }))}
                   placeholder="Select company type"
-                  icon={Layers}
-                />
-              </div>
-              <div>
-                <Select
-                  label="Sub-Type"
-                  value={form.subType}
-                  onChange={(value) => handleChange('subType', value)}
-                  options={getSubTypeOptions()}
-                  placeholder={form.type ? 'Select sub-type' : 'Select company type first'}
-                  disabled={!form.type}
                   icon={Layers}
                 />
               </div>
@@ -632,6 +771,131 @@ export default function NewClientAccountPage() {
                   disabled={loadingUsers}
                 />
               </div>
+            </div>
+          </FormSectionCard>
+
+          {/* Contact persons */}
+          <FormSectionCard
+            icon={Users}
+            title="Contact persons"
+            description="Add people linked to this client account"
+            cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            headerAction={
+              <Button
+                type="button"
+                onClick={addContact}
+                size="sm"
+                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white hover:from-blue-600 hover:to-purple-600"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add contact
+              </Button>
+            }
+          >
+            <div className="space-y-4">
+              {contacts.map((contact, index) => (
+                <div
+                  key={contact.id}
+                  className="relative rounded-xl border border-white/30 bg-gradient-to-br from-white/60 to-white/40 p-4 backdrop-blur-sm"
+                >
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-gray-500" />
+                      <span className="font-medium text-gray-900">Contact {index + 1}</span>
+                      {contact.isPrimary && (
+                        <Badge variant="success" size="sm">
+                          Primary
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!contact.isPrimary && (
+                        <Button
+                          type="button"
+                          onClick={() => setPrimaryContact(contact.id)}
+                          size="sm"
+                          variant="outline"
+                        >
+                          Set as primary
+                        </Button>
+                      )}
+                      {contacts.length > 1 && (
+                        <Button
+                          type="button"
+                          onClick={() => removeContact(contact.id)}
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    <Input
+                      label="First name *"
+                      value={contact.firstName}
+                      onChange={(e) =>
+                        handleContactChange(contact.id, 'firstName', e.target.value)
+                      }
+                      error={errors[`contact_${contact.id}_firstName`]}
+                      placeholder="John"
+                    />
+                    <Input
+                      label="Last name *"
+                      value={contact.lastName}
+                      onChange={(e) =>
+                        handleContactChange(contact.id, 'lastName', e.target.value)
+                      }
+                      error={errors[`contact_${contact.id}_lastName`]}
+                      placeholder="Doe"
+                    />
+                    <Input
+                      label="Email *"
+                      type="email"
+                      value={contact.email}
+                      onChange={(e) => handleContactChange(contact.id, 'email', e.target.value)}
+                      error={errors[`contact_${contact.id}_email`]}
+                      placeholder="john.doe@company.com"
+                      icon={Mail}
+                    />
+                    <Input
+                      label="Phone"
+                      type="tel"
+                      value={contact.phone}
+                      onChange={(e) => handleContactChange(contact.id, 'phone', e.target.value)}
+                      placeholder="+1 (555) 123-4567"
+                      icon={Phone}
+                    />
+                    <Input
+                      label="Job title"
+                      value={contact.jobTitle}
+                      onChange={(e) =>
+                        handleContactChange(contact.id, 'jobTitle', e.target.value)
+                      }
+                      placeholder="CEO, Manager, etc."
+                    />
+                    <Input
+                      label="Department"
+                      value={contact.department}
+                      onChange={(e) =>
+                        handleContactChange(contact.id, 'department', e.target.value)
+                      }
+                      placeholder="Sales, Marketing, IT, etc."
+                    />
+                    <div className="md:col-span-2 lg:col-span-1">
+                      <Select
+                        label="Contact role"
+                        value={contact.role}
+                        onChange={(value) => handleContactChange(contact.id, 'role', value)}
+                        options={contactRoleOptions}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </FormSectionCard>
 

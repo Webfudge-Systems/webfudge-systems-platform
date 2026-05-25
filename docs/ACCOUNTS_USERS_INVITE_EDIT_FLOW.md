@@ -25,11 +25,11 @@ Backend organization APIs were extended to support membership updates and role-l
   - Optional temporary password (direct-add mode)
   - Calls `POST /api/organizations/:id/invite-users`
 - Added row action button (`Edit`) and `Edit User` modal:
-  - Fields: role, status (`active` / `suspended`)
+  - Fields: name (username), email, role, status (`active` / `suspended`)
   - Calls `PATCH /api/organizations/:id/users/:membershipId`
 - Added backend endpoint:
   - `PATCH /organizations/:id/users/:membershipId` (`organization.updateUserMembership`)
-  - Updates membership role relation and optionally user blocked status
+  - Updates membership role relation, user `email` / `username`, and optionally blocked status
 - Extended `POST /organizations/:id/invite-users` to support two modes:
   - `directAdd = false` -> invitation mode (token + email link)
   - `directAdd = true` -> direct add mode (create/add user to org immediately)

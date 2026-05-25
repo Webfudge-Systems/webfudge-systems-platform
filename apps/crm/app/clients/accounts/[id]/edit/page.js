@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -19,8 +19,9 @@ import { canWriteCRM } from '../../../../../lib/rbac';
 import {
   industryOptions,
   companyTypes,
-  subTypeOptionsByCompanyType,
-  canonicalIndustryValue,
+  INDUSTRY_OTHER_VALUE,
+  industryFormFromStored,
+  resolveIndustryForSave,
   canonicalCompanyTypeValue,
 } from '../../../../../lib/leadCompanyProfileOptions';
 import {
@@ -66,6 +67,7 @@ const billingCycleOptions = [
   { value: 'MONTHLY', label: 'Monthly' },
   { value: 'QUARTERLY', label: 'Quarterly' },
   { value: 'ANNUALLY', label: 'Annually' },
+  { value: 'PROJECT_BASIS', label: 'Project basis' },
 ];
 
 const paymentTermsOptions = [
@@ -85,8 +87,8 @@ function toDateInput(iso) {
 const initialForm = {
   companyName: '',
   industry: '',
+  industryOther: '',
   type: '',
-  subType: '',
   website: '',
   phone: '',
   email: '',
@@ -134,27 +136,6 @@ export default function EditClientAccountPage() {
     () => companyTypes.map((t) => ({ value: t.id, label: t.name })),
     []
   );
-
-  const getSubTypeOptions = useCallback(() => {
-    if (!form.type) return [];
-    const list = subTypeOptionsByCompanyType[form.type];
-    return (list || []).map((subType) => ({ value: subType, label: subType }));
-  }, [form.type]);
-
-  const subTypeSelectOptions = useMemo(() => {
-    const base = getSubTypeOptions();
-    const v = form.subType?.trim();
-    if (!v) return base;
-    if (base.some((o) => o.value === v)) return base;
-    return [{ value: v, label: v }, ...base];
-  }, [form.subType, getSubTypeOptions]);
-
-  const industrySelectOptions = useMemo(() => {
-    const v = form.industry?.trim();
-    if (!v) return industryOptions;
-    if (industryOptions.some((o) => o.value === v)) return industryOptions;
-    return [{ value: v, label: v }, ...industryOptions];
-  }, [form.industry]);
 
   useEffect(() => {
     if (!canEditClientAccount) {
@@ -214,11 +195,12 @@ export default function EditClientAccountPage() {
             d.assignedTo && typeof d.assignedTo === 'object'
               ? d.assignedTo.id
               : d.assignedTo;
+          const { industry, industryOther } = industryFormFromStored(d.industry ?? '');
           setForm({
             companyName: name,
-            industry: canonicalIndustryValue(d.industry ?? ''),
+            industry,
+            industryOther,
             type: canonicalCompanyTypeValue(d.type ?? ''),
-            subType: d.subType ?? '',
             website: d.website ?? '',
             phone: d.phone ?? '',
             email: d.email ?? '',
@@ -259,7 +241,9 @@ export default function EditClientAccountPage() {
   const handleChange = (field, value) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      if (field === 'type') next.subType = '';
+      if (field === 'industry' && value !== INDUSTRY_OTHER_VALUE) {
+        next.industryOther = '';
+      }
       return next;
     });
     setSubmitError('');
@@ -269,7 +253,7 @@ export default function EditClientAccountPage() {
     const hsRaw = parseInt(String(form.healthScore), 10);
     const payload = {
       companyName: form.companyName.trim(),
-      industry: form.industry,
+      industry: resolveIndustryForSave(form.industry, form.industryOther),
       status: form.status,
       accountType: form.accountType,
       billingCycle: form.billingCycle,
@@ -278,7 +262,6 @@ export default function EditClientAccountPage() {
     };
 
     if (form.type) payload.type = form.type;
-    if (form.subType) payload.subType = form.subType;
     if (form.website?.trim()) payload.website = form.website.trim();
     if (form.phone?.trim()) payload.phone = form.phone.trim();
     if (form.email?.trim()) payload.email = form.email.trim();
@@ -322,8 +305,13 @@ export default function EditClientAccountPage() {
       setSubmitError('Company name is required');
       return;
     }
-    if (!form.industry) {
+    const resolvedIndustry = resolveIndustryForSave(form.industry, form.industryOther);
+    if (!resolvedIndustry) {
       setSubmitError('Industry is required');
+      return;
+    }
+    if (form.industry === INDUSTRY_OTHER_VALUE && !form.industryOther?.trim()) {
+      setSubmitError('Please specify your industry');
       return;
     }
     if (!form.email.trim()) {
@@ -469,25 +457,25 @@ export default function EditClientAccountPage() {
                   label="Industry *"
                   value={form.industry}
                   onChange={(v) => handleChange('industry', v)}
-                  options={industrySelectOptions}
+                  options={industryOptions}
                   placeholder="Select industry"
                   icon={Building2}
                 />
+                {form.industry === INDUSTRY_OTHER_VALUE ? (
+                  <Input
+                    label="Specify industry *"
+                    value={form.industryOther}
+                    onChange={(e) => handleChange('industryOther', e.target.value)}
+                    placeholder="Enter your industry"
+                    icon={Briefcase}
+                  />
+                ) : null}
                 <Select
                   label="Company type"
                   value={form.type}
                   onChange={(v) => handleChange('type', v)}
                   options={companyTypeSelectOptions}
                   placeholder="Select company type"
-                  icon={Layers}
-                />
-                <Select
-                  label="Sub-type"
-                  value={form.subType}
-                  onChange={(v) => handleChange('subType', v)}
-                  options={subTypeSelectOptions}
-                  placeholder={form.type ? 'Select sub-type' : 'Select company type first'}
-                  disabled={!form.type}
                   icon={Layers}
                 />
                 <Input
