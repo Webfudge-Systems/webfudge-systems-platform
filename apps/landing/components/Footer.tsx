@@ -124,9 +124,6 @@ export default function Footer() {
               <Link href="/resources" className="text-white/70 hover:text-white text-base transition-colors">
                 Resources
               </Link>
-              <Link href="/how-we-work" className="text-white/70 hover:text-white text-base transition-colors">
-                How we work
-              </Link>
             </div>
           </div>
         </div>

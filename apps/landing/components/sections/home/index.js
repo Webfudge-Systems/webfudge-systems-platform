@@ -1,7 +1,0 @@
-// Home Page Sections
-export { default as HeroSection } from './HeroSection'
-export { default as AppUISection } from './AppUISection'
-export { default as QuoteSection } from './QuoteSection'
-export { default as FAQSection } from './FAQSection'
-export { default as TrustedBySection } from './TrustedBySection'
-export { default as ContactSection } from './ContactSection'

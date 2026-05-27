@@ -464,4 +464,12 @@ Before you start developing:
 
 ---
 
-_Last Updated: January 7, 2026_
+_Last Updated: May 27, 2026_
+
+---
+
+## 🆕 Recent Updates
+
+| Document | Description | Date |
+|----------|-------------|------|
+| **[LANDING_PREMIUM_REDESIGN.md](./LANDING_PREMIUM_REDESIGN.md)** | Complete premium redesign of the landing page — new design system, animations, all sections | May 2026 |

@@ -8,6 +8,7 @@ export default function ConditionalNavbar() {
 
   // Hide navbar on login, signup, profile, and about (about has its own sticky header)
   const hideNavbar =
+    pathname === '/' ||
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname === '/profile' ||
