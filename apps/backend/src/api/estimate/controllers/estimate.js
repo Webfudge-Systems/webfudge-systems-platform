@@ -8,10 +8,13 @@ const LI_UID = 'api::estimate-line-item.estimate-line-item';
 
 const base = makeBooksCrudController(UID, { defaultPopulate: ['customer', 'project', 'invoice'] });
 
-module.exports = {
-  ...base,
+module.exports = (params) => {
+  const core = base(params);
 
-  async create(ctx) {
+  return {
+    ...core,
+
+    async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const body = ctx.request?.body || {};
@@ -47,9 +50,9 @@ module.exports = {
       });
     }
     return { data: estimate };
-  },
+    },
 
-  async updateStatus(ctx) {
+    async updateStatus(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const estimate = await strapi.entityService.findOne(UID, ctx.params.id, { populate: ['organization'] });
@@ -66,9 +69,9 @@ module.exports = {
 
     const entry = await strapi.entityService.update(UID, ctx.params.id, { data: updateData });
     return { data: entry };
-  },
+    },
 
-  async convertToInvoice(ctx) {
+    async convertToInvoice(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const estimate = await strapi.entityService.findOne(UID, ctx.params.id, { populate: ['organization', 'customer', 'project'] });
@@ -121,5 +124,6 @@ module.exports = {
     });
 
     return { data: invoice };
-  },
+    },
+  };
 };

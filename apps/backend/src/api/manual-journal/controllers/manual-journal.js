@@ -31,10 +31,13 @@ async function updateCOABalances(orgId, lines, multiplier = 1) {
   }
 }
 
-module.exports = {
-  ...base,
+module.exports = (params) => {
+  const core = base(params);
 
-  async find(ctx) {
+  return {
+    ...core,
+
+    async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const q = ctx.query || {};
@@ -51,9 +54,9 @@ module.exports = {
       strapi.db.query(UID).count({ where: filters }),
     ]);
     return { data: results, meta: { pagination: { page, limit, total, pageCount: Math.ceil(total / limit) } } };
-  },
+    },
 
-  async create(ctx) {
+    async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const body = ctx.request?.body || {};
@@ -72,9 +75,9 @@ module.exports = {
       },
     });
     return { data: entry };
-  },
+    },
 
-  async update(ctx) {
+    async update(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const existing = await strapi.entityService.findOne(UID, ctx.params.id, { populate: ['organization'] });
@@ -92,9 +95,9 @@ module.exports = {
       data: { ...payload, totalDebit, totalCredit, isBalanced: totalDebit === totalCredit },
     });
     return { data: entry };
-  },
+    },
 
-  async delete(ctx) {
+    async delete(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const existing = await strapi.entityService.findOne(UID, ctx.params.id, { populate: ['organization'] });
@@ -103,9 +106,9 @@ module.exports = {
     if (existing.status === 'published') return ctx.forbidden('Published journals cannot be deleted');
     const entry = await strapi.entityService.delete(UID, ctx.params.id);
     return { data: entry };
-  },
+    },
 
-  async publish(ctx) {
+    async publish(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     if (!['Owner', 'Admin'].includes(ctx.state.orgRole)) return ctx.forbidden('Only Owner/Admin can publish journals');
@@ -129,9 +132,9 @@ module.exports = {
     await updateCOABalances(ctx.state.orgId, lines, 1);
 
     return { data: entry };
-  },
+    },
 
-  async reverse(ctx) {
+    async reverse(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
 
@@ -170,5 +173,6 @@ module.exports = {
     await updateCOABalances(ctx.state.orgId, reversedLines, 1);
 
     return { data: reversal };
-  },
+    },
+  };
 };

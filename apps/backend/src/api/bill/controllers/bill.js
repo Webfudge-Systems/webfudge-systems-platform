@@ -9,10 +9,13 @@ const LI_UID = 'api::bill-line-item.bill-line-item';
 
 const base = makeBooksCrudController(UID, { defaultPopulate: ['vendor', 'organization'] });
 
-module.exports = {
-  ...base,
+module.exports = (params) => {
+  const core = base(params);
 
-  async find(ctx) {
+  return {
+    ...core,
+
+    async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const q = ctx.query || {};
@@ -29,9 +32,9 @@ module.exports = {
       strapi.db.query(UID).count({ where: filters }),
     ]);
     return { data: results, meta: { pagination: { page, limit, total, pageCount: Math.ceil(total / limit) } } };
-  },
+    },
 
-  async create(ctx) {
+    async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
 
@@ -65,9 +68,9 @@ module.exports = {
       });
     }
     return { data: bill };
-  },
+    },
 
-  async updateStatus(ctx) {
+    async updateStatus(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
 
@@ -113,5 +116,6 @@ module.exports = {
 
     const updated = await strapi.entityService.findOne(UID, ctx.params.id, { populate: ['vendor'] });
     return { data: updated };
-  },
+    },
+  };
 };

@@ -418,6 +418,229 @@ export interface ApiAppApp extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiBankAccountBankAccount extends Struct.CollectionTypeSchema {
+  collectionName: 'bank_accounts'
+  info: {
+    description: 'Bank and cash accounts'
+    displayName: 'Bank Account'
+    pluralName: 'bank-accounts'
+    singularName: 'bank-account'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    accountName: Schema.Attribute.String & Schema.Attribute.Required
+    accountNumber: Schema.Attribute.String
+    accountType: Schema.Attribute.Enumeration<
+      ['checking', 'savings', 'cash', 'credit_card', 'payment_clearing']
+    > &
+      Schema.Attribute.Required
+    bankName: Schema.Attribute.String
+    connectionStatus: Schema.Attribute.Enumeration<['manual', 'connected', 'disconnected']> &
+      Schema.Attribute.DefaultTo<'manual'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    description: Schema.Attribute.String
+    ifscCode: Schema.Attribute.String
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    isPrimary: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    lastSyncAt: Schema.Attribute.DateTime
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::bank-account.bank-account'> &
+      Schema.Attribute.Private
+    openingBalance: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    openingBalanceDate: Schema.Attribute.Date
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiBankTransactionBankTransaction extends Struct.CollectionTypeSchema {
+  collectionName: 'bank_transactions'
+  info: {
+    description: 'Individual bank account transactions'
+    displayName: 'Bank Transaction'
+    pluralName: 'bank-transactions'
+    singularName: 'bank-transaction'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.Required
+    bankAccount: Schema.Attribute.Relation<'manyToOne', 'api::bank-account.bank-account'>
+    category: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    description: Schema.Attribute.String
+    expense: Schema.Attribute.Relation<'manyToOne', 'api::expense.expense'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::bank-transaction.bank-transaction'
+    > &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.String
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paymentMade: Schema.Attribute.Relation<'manyToOne', 'api::payment-made.payment-made'>
+    paymentReceived: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::payment-received.payment-received'
+    >
+    publishedAt: Schema.Attribute.DateTime
+    referenceNumber: Schema.Attribute.String
+    source: Schema.Attribute.Enumeration<['manual', 'import', 'auto_payment', 'auto_receipt']> &
+      Schema.Attribute.DefaultTo<'manual'>
+    status: Schema.Attribute.Enumeration<
+      ['uncategorized', 'categorized', 'excluded', 'reconciled']
+    > &
+      Schema.Attribute.DefaultTo<'uncategorized'>
+    transactionDate: Schema.Attribute.Date & Schema.Attribute.Required
+    transactionType: Schema.Attribute.Enumeration<['credit', 'debit']> & Schema.Attribute.Required
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiBillLineItemBillLineItem extends Struct.CollectionTypeSchema {
+  collectionName: 'bill_line_items'
+  info: {
+    description: 'Line items for bills, purchase orders, vendor credits'
+    displayName: 'Bill Line Item'
+    pluralName: 'bill-line-items'
+    singularName: 'bill-line-item'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    bill: Schema.Attribute.Relation<'manyToOne', 'api::bill.bill'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    discountPercent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    item: Schema.Attribute.Relation<'manyToOne', 'api::item.item'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::bill-line-item.bill-line-item'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>
+    rate: Schema.Attribute.Integer & Schema.Attribute.Required & Schema.Attribute.DefaultTo<0>
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiBillBill extends Struct.CollectionTypeSchema {
+  collectionName: 'bills'
+  info: {
+    description: 'Vendor bills / supplier invoices'
+    displayName: 'Bill'
+    pluralName: 'bills'
+    singularName: 'bill'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    balanceDue: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    billDate: Schema.Attribute.Date & Schema.Attribute.Required
+    billNumber: Schema.Attribute.String
+    billType: Schema.Attribute.Enumeration<
+      ['regular', 'subcontractor', 'software_saas', 'travel', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'regular'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    discountAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    dueDate: Schema.Attribute.Date
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::bill.bill'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paidAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    purchaseOrder: Schema.Attribute.Relation<'manyToOne', 'api::purchase-order.purchase-order'>
+    status: Schema.Attribute.Enumeration<
+      ['draft', 'pending_approval', 'approved', 'partial', 'paid', 'overdue', 'void']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>
+    subtotal: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vendor: Schema.Attribute.Relation<'manyToOne', 'api::vendor.vendor'>
+    vendorBillNumber: Schema.Attribute.String
+  }
+}
+
+export interface ApiChartOfAccountChartOfAccount extends Struct.CollectionTypeSchema {
+  collectionName: 'chart_of_accounts'
+  info: {
+    description: 'Double-entry chart of accounts per organization'
+    displayName: 'Chart of Account'
+    pluralName: 'chart-of-accounts'
+    singularName: 'chart-of-account'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    accountCode: Schema.Attribute.String & Schema.Attribute.Required
+    accountName: Schema.Attribute.String & Schema.Attribute.Required
+    accountSubType: Schema.Attribute.String
+    accountType: Schema.Attribute.Enumeration<
+      [
+        'asset',
+        'liability',
+        'equity',
+        'income',
+        'expense',
+        'cost_of_goods_sold',
+        'other_income',
+        'other_expense',
+      ]
+    > &
+      Schema.Attribute.Required
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    currentBalance: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    description: Schema.Attribute.Text
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    isSystem: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::chart-of-account.chart-of-account'
+    > &
+      Schema.Attribute.Private
+    openingBalance: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    parentAccount: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiClientAccountClientAccount extends Struct.CollectionTypeSchema {
   collectionName: 'client_accounts'
   info: {
@@ -487,19 +710,28 @@ export interface ApiContactContact extends Struct.CollectionTypeSchema {
   attributes: {
     address: Schema.Attribute.String
     assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    billingAddress: Schema.Attribute.JSON
     birthDate: Schema.Attribute.Date
     city: Schema.Attribute.String
     clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    clientType: Schema.Attribute.Enumeration<
+      ['agency_client', 'direct_client', 'partner', 'individual']
+    > &
+      Schema.Attribute.DefaultTo<'agency_client'>
     companyName: Schema.Attribute.String
     companyWebsite: Schema.Attribute.String
     contactRole: Schema.Attribute.String
     country: Schema.Attribute.String
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    creditLimit: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
     department: Schema.Attribute.String
     email: Schema.Attribute.Email & Schema.Attribute.Required
     firstName: Schema.Attribute.String & Schema.Attribute.Required
+    isCustomer: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     isPrimaryContact: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    isVendor: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     jobTitle: Schema.Attribute.String
     lastName: Schema.Attribute.String & Schema.Attribute.Required
     leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
@@ -509,17 +741,62 @@ export interface ApiContactContact extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private
     notes: Schema.Attribute.Text
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paymentTerms: Schema.Attribute.Enumeration<
+      ['net_15', 'net_30', 'net_45', 'net_60', 'due_on_receipt']
+    > &
+      Schema.Attribute.DefaultTo<'net_30'>
     phone: Schema.Attribute.String
+    portalAccess: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     preferredContactMethod: Schema.Attribute.String
     publishedAt: Schema.Attribute.DateTime
+    shippingAddress: Schema.Attribute.JSON
     source: Schema.Attribute.String & Schema.Attribute.DefaultTo<'OTHER'>
     state: Schema.Attribute.String
     status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'ACTIVE'>
+    taxNumber: Schema.Attribute.String
     timezone: Schema.Attribute.String
     twitter: Schema.Attribute.String
+    unusedCredits: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     zipCode: Schema.Attribute.String
+  }
+}
+
+export interface ApiCreditNoteCreditNote extends Struct.CollectionTypeSchema {
+  collectionName: 'credit_notes'
+  info: {
+    description: 'Customer credit notes'
+    displayName: 'Credit Note'
+    pluralName: 'credit-notes'
+    singularName: 'credit-note'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    balanceAvailable: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    creditNoteDate: Schema.Attribute.Date
+    creditNoteNumber: Schema.Attribute.String
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::credit-note.credit-note'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    reason: Schema.Attribute.Text
+    status: Schema.Attribute.Enumeration<['draft', 'open', 'closed', 'void']> &
+      Schema.Attribute.DefaultTo<'draft'>
+    subtotal: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
 }
 
@@ -555,6 +832,43 @@ export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiDeliveryChallanDeliveryChallan extends Struct.CollectionTypeSchema {
+  collectionName: 'delivery_challans'
+  info: {
+    description: 'Delivery challans for dispatched goods'
+    displayName: 'Delivery Challan'
+    pluralName: 'delivery-challans'
+    singularName: 'delivery-challan'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    challanDate: Schema.Attribute.Date
+    challanNumber: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    deliveryAddress: Schema.Attribute.JSON
+    deliveryDate: Schema.Attribute.Date
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::delivery-challan.delivery-challan'
+    > &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    salesOrder: Schema.Attribute.Relation<'manyToOne', 'api::sales-order.sales-order'>
+    status: Schema.Attribute.Enumeration<['draft', 'dispatched', 'delivered', 'cancelled']> &
+      Schema.Attribute.DefaultTo<'draft'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiDirectMessageDirectMessage extends Struct.CollectionTypeSchema {
   collectionName: 'direct_messages'
   info: {
@@ -579,6 +893,200 @@ export interface ApiDirectMessageDirectMessage extends Struct.CollectionTypeSche
     sender: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiDocumentDocument extends Struct.CollectionTypeSchema {
+  collectionName: 'documents'
+  info: {
+    description: 'Uploaded financial documents'
+    displayName: 'Document'
+    pluralName: 'documents'
+    singularName: 'document'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    documentType: Schema.Attribute.Enumeration<
+      ['invoice', 'bill', 'expense', 'bank_statement', 'contract', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'other'>
+    emailSubject: Schema.Attribute.String
+    extractedData: Schema.Attribute.JSON
+    fileName: Schema.Attribute.String & Schema.Attribute.Required
+    fileSize: Schema.Attribute.Integer
+    fileType: Schema.Attribute.String
+    fileUrl: Schema.Attribute.String & Schema.Attribute.Required
+    inboxType: Schema.Attribute.Enumeration<['all_documents', 'bank_statements']> &
+      Schema.Attribute.DefaultTo<'all_documents'>
+    isLinked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    linkedBill: Schema.Attribute.Relation<'manyToOne', 'api::bill.bill'>
+    linkedExpense: Schema.Attribute.Relation<'manyToOne', 'api::expense.expense'>
+    linkedInvoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::document.document'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    status: Schema.Attribute.Enumeration<['processing', 'processed', 'unreadable']> &
+      Schema.Attribute.DefaultTo<'processing'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    uploadedBy: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+  }
+}
+
+export interface ApiEstimateLineItemEstimateLineItem extends Struct.CollectionTypeSchema {
+  collectionName: 'estimate_line_items'
+  info: {
+    description: 'Line items for estimates'
+    displayName: 'Estimate Line Item'
+    pluralName: 'estimate-line-items'
+    singularName: 'estimate-line-item'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    discountPercent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    estimate: Schema.Attribute.Relation<'manyToOne', 'api::estimate.estimate'>
+    item: Schema.Attribute.Relation<'manyToOne', 'api::item.item'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::estimate-line-item.estimate-line-item'
+    > &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>
+    rate: Schema.Attribute.Integer & Schema.Attribute.Required & Schema.Attribute.DefaultTo<0>
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiEstimateEstimate extends Struct.CollectionTypeSchema {
+  collectionName: 'estimates'
+  info: {
+    description: 'Customer estimates / quotes'
+    displayName: 'Estimate'
+    pluralName: 'estimates'
+    singularName: 'estimate'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    acceptedAt: Schema.Attribute.DateTime
+    convertedToInvoice: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    declinedAt: Schema.Attribute.DateTime
+    discountAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    discountType: Schema.Attribute.Enumeration<['percentage', 'fixed']>
+    discountValue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    estimateDate: Schema.Attribute.Date & Schema.Attribute.Required
+    estimateNumber: Schema.Attribute.String
+    expiryDate: Schema.Attribute.Date
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::estimate.estimate'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    project: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
+    publishedAt: Schema.Attribute.DateTime
+    sentAt: Schema.Attribute.DateTime
+    status: Schema.Attribute.Enumeration<
+      ['draft', 'sent', 'viewed', 'accepted', 'declined', 'expired', 'invoiced']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>
+    subtotal: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    termsConditions: Schema.Attribute.Text
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiExpenseExpense extends Struct.CollectionTypeSchema {
+  collectionName: 'expenses'
+  info: {
+    description: 'Business expenses'
+    displayName: 'Expense'
+    pluralName: 'expenses'
+    singularName: 'expense'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.Required
+    approvedBy: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    bankAccount: Schema.Attribute.Relation<'manyToOne', 'api::bank-account.bank-account'>
+    billable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    category: Schema.Attribute.Enumeration<
+      [
+        'subcontractor',
+        'software_saas',
+        'travel',
+        'office',
+        'meals',
+        'training',
+        'marketing',
+        'utilities',
+        'rent',
+        'salaries',
+        'other',
+      ]
+    > &
+      Schema.Attribute.Required
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    description: Schema.Attribute.Text
+    expenseDate: Schema.Attribute.Date & Schema.Attribute.Required
+    expenseNumber: Schema.Attribute.String
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>
+    invoiced: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    invoicedOn: Schema.Attribute.DateTime
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::expense.expense'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paymentMode: Schema.Attribute.Enumeration<['cash', 'card', 'bank_transfer', 'upi', 'other']> &
+      Schema.Attribute.DefaultTo<'card'>
+    project: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
+    publishedAt: Schema.Attribute.DateTime
+    referenceNumber: Schema.Attribute.String
+    reimbursable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    status: Schema.Attribute.Enumeration<
+      ['draft', 'submitted', 'approved', 'rejected', 'reimbursed']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>
+    submittedBy: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vendor: Schema.Attribute.Relation<'manyToOne', 'api::vendor.vendor'>
   }
 }
 
@@ -610,6 +1118,150 @@ export interface ApiInvitationInvitation extends Struct.CollectionTypeSchema {
     status: Schema.Attribute.Enumeration<['pending', 'accepted', 'expired']> &
       Schema.Attribute.DefaultTo<'pending'>
     token: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.Unique
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiInvoiceLineItemInvoiceLineItem extends Struct.CollectionTypeSchema {
+  collectionName: 'invoice_line_items'
+  info: {
+    description: 'Line items for invoices'
+    displayName: 'Invoice Line Item'
+    pluralName: 'invoice-line-items'
+    singularName: 'invoice-line-item'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    discountPercent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>
+    item: Schema.Attribute.Relation<'manyToOne', 'api::item.item'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::invoice-line-item.invoice-line-item'
+    > &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    quantity: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>
+    rate: Schema.Attribute.Integer & Schema.Attribute.Required & Schema.Attribute.DefaultTo<0>
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
+  collectionName: 'invoices'
+  info: {
+    description: 'Customer invoices'
+    displayName: 'Invoice'
+    pluralName: 'invoices'
+    singularName: 'invoice'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    adjustment: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    balanceDue: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    billingAddress: Schema.Attribute.JSON
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    discountAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    discountType: Schema.Attribute.Enumeration<['percentage', 'fixed']> &
+      Schema.Attribute.DefaultTo<'percentage'>
+    discountValue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    dueDate: Schema.Attribute.Date
+    estimate: Schema.Attribute.Relation<'manyToOne', 'api::estimate.estimate'>
+    exchangeRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>
+    invoiceDate: Schema.Attribute.Date & Schema.Attribute.Required
+    invoiceNumber: Schema.Attribute.String
+    isBilledFromTime: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::invoice.invoice'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paidAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    paidAt: Schema.Attribute.DateTime
+    paymentTerms: Schema.Attribute.Enumeration<
+      ['net_15', 'net_30', 'net_45', 'net_60', 'due_on_receipt', 'custom']
+    >
+    portalLink: Schema.Attribute.String
+    project: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
+    publishedAt: Schema.Attribute.DateTime
+    sentAt: Schema.Attribute.DateTime
+    shippingAddress: Schema.Attribute.JSON
+    shippingCharge: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    status: Schema.Attribute.Enumeration<
+      ['draft', 'sent', 'viewed', 'partial', 'paid', 'overdue', 'void']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>
+    subtotal: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    termsConditions: Schema.Attribute.Text
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    viewedAt: Schema.Attribute.DateTime
+    voidedAt: Schema.Attribute.DateTime
+    voidReason: Schema.Attribute.String
+  }
+}
+
+export interface ApiItemItem extends Struct.CollectionTypeSchema {
+  collectionName: 'items'
+  info: {
+    description: 'Products and services catalog'
+    displayName: 'Item'
+    pluralName: 'items'
+    singularName: 'item'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    description: Schema.Attribute.Text
+    hsnCode: Schema.Attribute.String
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::item.item'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    purchaseAccount: Schema.Attribute.String
+    purchaseRate: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    rate: Schema.Attribute.Integer & Schema.Attribute.Required & Schema.Attribute.DefaultTo<0>
+    reorderPoint: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    salesAccount: Schema.Attribute.String
+    sku: Schema.Attribute.String
+    stockOnHand: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    taxRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    trackInventory: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    type: Schema.Attribute.Enumeration<
+      ['service', 'goods', 'digital', 'retainer_package', 'milestone']
+    > &
+      Schema.Attribute.DefaultTo<'service'>
+    unit: Schema.Attribute.String & Schema.Attribute.DefaultTo<'hrs'>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
@@ -664,6 +1316,58 @@ export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     website: Schema.Attribute.String
     zipCode: Schema.Attribute.String
+  }
+}
+
+export interface ApiManualJournalManualJournal extends Struct.CollectionTypeSchema {
+  collectionName: 'manual_journals'
+  info: {
+    description: 'Double-entry journal entries'
+    displayName: 'Manual Journal'
+    pluralName: 'manual-journals'
+    singularName: 'manual-journal'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    isBalanced: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    journalDate: Schema.Attribute.Date & Schema.Attribute.Required
+    journalNumber: Schema.Attribute.String
+    lines: Schema.Attribute.JSON
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::manual-journal.manual-journal'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    referenceNumber: Schema.Attribute.String
+    reversalOf: Schema.Attribute.String
+    source: Schema.Attribute.Enumeration<
+      [
+        'manual',
+        'auto_invoice',
+        'auto_payment',
+        'auto_bill',
+        'auto_expense',
+        'auto_receipt',
+        'auto_payment_received',
+        'auto_payment_made',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'manual'>
+    sourceId: Schema.Attribute.String
+    sourceType: Schema.Attribute.String
+    status: Schema.Attribute.Enumeration<['draft', 'published']> &
+      Schema.Attribute.DefaultTo<'draft'>
+    totalCredit: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    totalDebit: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
 }
 
@@ -794,10 +1498,27 @@ export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema
   attributes: {
     activeModules: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
     address: Schema.Attribute.JSON
+    baseCurrency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    billSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    booksActivated: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     companyEmail: Schema.Attribute.Email
     companyPhone: Schema.Attribute.String
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    creditNoteSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    defaultTaxRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<18>
+    estimatePrefix: Schema.Attribute.String & Schema.Attribute.DefaultTo<'EST'>
+    estimateSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    expenseSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    fiscalYearStart: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 12
+          min: 1
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<4>
     industry: Schema.Attribute.Enumeration<
       [
         'technology',
@@ -810,6 +1531,9 @@ export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema
         'other',
       ]
     >
+    invoicePrefix: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INV'>
+    invoiceSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    journalSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::organization.organization'> &
       Schema.Attribute.Private
@@ -821,18 +1545,106 @@ export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema
       'api::organization-user.organization-user'
     >
     owner: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    paymentSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    poSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     publishedAt: Schema.Attribute.DateTime
+    retainerSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     size: Schema.Attribute.Enumeration<
       ['size_1_10', 'size_11_50', 'size_51_200', 'size_201_500', 'size_500_plus']
     >
     slug: Schema.Attribute.UID<'name'> & Schema.Attribute.Required
+    soSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     status: Schema.Attribute.Enumeration<['trial', 'active', 'suspended', 'cancelled']> &
       Schema.Attribute.DefaultTo<'trial'>
     subscriptions: Schema.Attribute.Relation<'oneToMany', 'api::subscription.subscription'>
+    taxName: Schema.Attribute.String & Schema.Attribute.DefaultTo<'GST'>
     trialEndsAt: Schema.Attribute.DateTime
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vendorSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     website: Schema.Attribute.String
+  }
+}
+
+export interface ApiPaymentMadePaymentMade extends Struct.CollectionTypeSchema {
+  collectionName: 'payments_made'
+  info: {
+    description: 'Payments made to vendors'
+    displayName: 'Payment Made'
+    pluralName: 'payments-made'
+    singularName: 'payment-made'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.Required
+    bankAccount: Schema.Attribute.Relation<'manyToOne', 'api::bank-account.bank-account'>
+    bill: Schema.Attribute.Relation<'manyToOne', 'api::bill.bill'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::payment-made.payment-made'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paymentDate: Schema.Attribute.Date & Schema.Attribute.Required
+    paymentMode: Schema.Attribute.Enumeration<
+      ['bank_transfer', 'cash', 'cheque', 'credit_card', 'upi', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'bank_transfer'>
+    paymentNumber: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    referenceNumber: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vendor: Schema.Attribute.Relation<'manyToOne', 'api::vendor.vendor'>
+  }
+}
+
+export interface ApiPaymentReceivedPaymentReceived extends Struct.CollectionTypeSchema {
+  collectionName: 'payments_received'
+  info: {
+    description: 'Payments received from customers'
+    displayName: 'Payment Received'
+    pluralName: 'payments-received'
+    singularName: 'payment-received'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.Required
+    bankAccount: Schema.Attribute.Relation<'manyToOne', 'api::bank-account.bank-account'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    excessAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    exchangeRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>
+    isRefund: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::payment-received.payment-received'
+    > &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paymentDate: Schema.Attribute.Date & Schema.Attribute.Required
+    paymentMode: Schema.Attribute.Enumeration<
+      ['bank_transfer', 'cash', 'cheque', 'credit_card', 'upi', 'razorpay', 'stripe', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'bank_transfer'>
+    paymentNumber: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    referenceNumber: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
 }
 
@@ -848,18 +1660,34 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
     draftAndPublish: false
   }
   attributes: {
+    billableHours: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    billableStatus: Schema.Attribute.Enumeration<['billable', 'non_billable']> &
+      Schema.Attribute.DefaultTo<'billable'>
+    billingMethod: Schema.Attribute.Enumeration<
+      ['hourly', 'daily_rate_per_user', 'fixed_cost', 'based_on_tasks', 'milestone', 'non_billable']
+    > &
+      Schema.Attribute.DefaultTo<'hourly'>
+    booksStatus: Schema.Attribute.Enumeration<['active', 'completed', 'archived']> &
+      Schema.Attribute.DefaultTo<'active'>
     budget: Schema.Attribute.Decimal
+    budgetAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    budgetType: Schema.Attribute.Enumeration<['hours', 'amount']> &
+      Schema.Attribute.DefaultTo<'amount'>
     clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
     description: Schema.Attribute.Text
     endDate: Schema.Attribute.DateTime
+    hourlyRate: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     icon: Schema.Attribute.String
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::project.project'> &
       Schema.Attribute.Private
     name: Schema.Attribute.String & Schema.Attribute.Required
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    projectCode: Schema.Attribute.String
     projectManager: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     publishedAt: Schema.Attribute.DateTime
     slug: Schema.Attribute.UID<'name'>
@@ -867,6 +1695,224 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
     status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'PLANNING'>
     tasks: Schema.Attribute.Relation<'manyToMany', 'api::task.task'>
     teamMembers: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
+    totalLoggedHours: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    unbilledAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiPurchaseOrderPurchaseOrder extends Struct.CollectionTypeSchema {
+  collectionName: 'purchase_orders'
+  info: {
+    description: 'Purchase orders to vendors'
+    displayName: 'Purchase Order'
+    pluralName: 'purchase-orders'
+    singularName: 'purchase-order'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    deliveryAddress: Schema.Attribute.JSON
+    expectedDelivery: Schema.Attribute.Date
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::purchase-order.purchase-order'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    poDate: Schema.Attribute.Date
+    poNumber: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    status: Schema.Attribute.Enumeration<['draft', 'sent', 'billed', 'cancelled']> &
+      Schema.Attribute.DefaultTo<'draft'>
+    subtotal: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vendor: Schema.Attribute.Relation<'manyToOne', 'api::vendor.vendor'>
+  }
+}
+
+export interface ApiRecurringExpenseRecurringExpense extends Struct.CollectionTypeSchema {
+  collectionName: 'recurring_expenses'
+  info: {
+    description: 'Recurring expense profiles'
+    displayName: 'Recurring Expense'
+    pluralName: 'recurring-expenses'
+    singularName: 'recurring-expense'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    billable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    category: Schema.Attribute.Enumeration<
+      [
+        'subcontractor',
+        'software_saas',
+        'travel',
+        'office',
+        'meals',
+        'training',
+        'marketing',
+        'utilities',
+        'rent',
+        'salaries',
+        'other',
+      ]
+    >
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    endDate: Schema.Attribute.Date
+    frequency: Schema.Attribute.Enumeration<['weekly', 'monthly', 'quarterly', 'yearly']> &
+      Schema.Attribute.DefaultTo<'monthly'>
+    lastCreatedAt: Schema.Attribute.DateTime
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::recurring-expense.recurring-expense'
+    > &
+      Schema.Attribute.Private
+    nextExpenseDate: Schema.Attribute.Date
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    profileName: Schema.Attribute.String
+    project: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
+    publishedAt: Schema.Attribute.DateTime
+    startDate: Schema.Attribute.Date
+    status: Schema.Attribute.Enumeration<['active', 'paused', 'expired']> &
+      Schema.Attribute.DefaultTo<'active'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vendor: Schema.Attribute.Relation<'manyToOne', 'api::vendor.vendor'>
+  }
+}
+
+export interface ApiRecurringInvoiceRecurringInvoice extends Struct.CollectionTypeSchema {
+  collectionName: 'recurring_invoices'
+  info: {
+    description: 'Recurring invoice profiles'
+    displayName: 'Recurring Invoice'
+    pluralName: 'recurring-invoices'
+    singularName: 'recurring-invoice'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    endDate: Schema.Attribute.Date
+    frequency: Schema.Attribute.Enumeration<['weekly', 'monthly', 'quarterly', 'yearly']> &
+      Schema.Attribute.DefaultTo<'monthly'>
+    lastSentAt: Schema.Attribute.DateTime
+    lineItems: Schema.Attribute.JSON
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::recurring-invoice.recurring-invoice'
+    > &
+      Schema.Attribute.Private
+    nextInvoiceDate: Schema.Attribute.Date
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    profileName: Schema.Attribute.String
+    project: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
+    publishedAt: Schema.Attribute.DateTime
+    startDate: Schema.Attribute.Date
+    status: Schema.Attribute.Enumeration<['active', 'paused', 'expired']> &
+      Schema.Attribute.DefaultTo<'active'>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    totalInvoicesSent: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiRetainerInvoiceRetainerInvoice extends Struct.CollectionTypeSchema {
+  collectionName: 'retainer_invoices'
+  info: {
+    description: 'Retainer / advance invoices'
+    displayName: 'Retainer Invoice'
+    pluralName: 'retainer-invoices'
+    singularName: 'retainer-invoice'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.Required & Schema.Attribute.DefaultTo<0>
+    balanceDue: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    dueDate: Schema.Attribute.Date
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::retainer-invoice.retainer-invoice'
+    > &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paidAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    project: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
+    publishedAt: Schema.Attribute.DateTime
+    retainerDate: Schema.Attribute.Date
+    retainerNumber: Schema.Attribute.String
+    retainerType: Schema.Attribute.Enumeration<['advance', 'monthly', 'project_based']> &
+      Schema.Attribute.DefaultTo<'project_based'>
+    status: Schema.Attribute.Enumeration<['draft', 'sent', 'viewed', 'partial', 'paid', 'void']> &
+      Schema.Attribute.DefaultTo<'draft'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiSalesOrderSalesOrder extends Struct.CollectionTypeSchema {
+  collectionName: 'sales_orders'
+  info: {
+    description: 'Sales orders to customers'
+    displayName: 'Sales Order'
+    pluralName: 'sales-orders'
+    singularName: 'sales-order'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    deliveryAddress: Schema.Attribute.JSON
+    expectedShipDate: Schema.Attribute.Date
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::sales-order.sales-order'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    soDate: Schema.Attribute.Date
+    soNumber: Schema.Attribute.String
+    status: Schema.Attribute.Enumeration<['draft', 'confirmed', 'invoiced', 'cancelled']> &
+      Schema.Attribute.DefaultTo<'draft'>
+    subtotal: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
@@ -925,14 +1971,20 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
   }
   attributes: {
     assignee: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    billable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
     collaborators: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     description: Schema.Attribute.Text
+    endTime: Schema.Attribute.String
+    hoursLogged: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    invoiced: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    invoicedOn: Schema.Attribute.DateTime
     leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::task.task'> &
       Schema.Attribute.Private
+    logDate: Schema.Attribute.Date
     name: Schema.Attribute.String & Schema.Attribute.Required
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     parent: Schema.Attribute.Relation<'manyToOne', 'api::task.task'>
@@ -941,15 +1993,97 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     progress: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     projects: Schema.Attribute.Relation<'manyToMany', 'api::project.project'>
     publishedAt: Schema.Attribute.DateTime
+    rate: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     scheduledDate: Schema.Attribute.DateTime
+    startTime: Schema.Attribute.String
     status: Schema.Attribute.Enumeration<
       ['SCHEDULED', 'IN_PROGRESS', 'INTERNAL_REVIEW', 'COMPLETED', 'CANCELLED', 'OVERDUE']
     > &
       Schema.Attribute.DefaultTo<'SCHEDULED'>
     subtasks: Schema.Attribute.Relation<'oneToMany', 'api::task.task'>
     tags: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
+    timeInvoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>
+    timeProject: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
+    timerRunning: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    timerStartedAt: Schema.Attribute.DateTime
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiVendorCreditVendorCredit extends Struct.CollectionTypeSchema {
+  collectionName: 'vendor_credits'
+  info: {
+    description: 'Credits received from vendors'
+    displayName: 'Vendor Credit'
+    pluralName: 'vendor-credits'
+    singularName: 'vendor-credit'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    balanceAvailable: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    bill: Schema.Attribute.Relation<'manyToOne', 'api::bill.bill'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    creditDate: Schema.Attribute.Date
+    creditNumber: Schema.Attribute.String
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::vendor-credit.vendor-credit'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    reason: Schema.Attribute.Text
+    status: Schema.Attribute.Enumeration<['draft', 'open', 'closed', 'void']> &
+      Schema.Attribute.DefaultTo<'draft'>
+    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vendor: Schema.Attribute.Relation<'manyToOne', 'api::vendor.vendor'>
+  }
+}
+
+export interface ApiVendorVendor extends Struct.CollectionTypeSchema {
+  collectionName: 'vendors'
+  info: {
+    description: 'Vendors / suppliers'
+    displayName: 'Vendor'
+    pluralName: 'vendors'
+    singularName: 'vendor'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    bankDetails: Schema.Attribute.JSON
+    billingAddress: Schema.Attribute.JSON
+    companyName: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    displayName: Schema.Attribute.String & Schema.Attribute.Required
+    email: Schema.Attribute.Email
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::vendor.vendor'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    paymentTerms: Schema.Attribute.Enumeration<
+      ['net_15', 'net_30', 'net_45', 'net_60', 'due_on_receipt']
+    > &
+      Schema.Attribute.DefaultTo<'net_30'>
+    phone: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    taxNumber: Schema.Attribute.String
+    unusedCredits: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vendorCode: Schema.Attribute.String
   }
 }
 
@@ -1337,36 +2471,22 @@ export interface PluginUsersPermissionsUser extends Struct.CollectionTypeSchema 
     timestamps: true
   }
   attributes: {
-    blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
-    confirmationToken: Schema.Attribute.String & Schema.Attribute.Private
-    confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
-    email: Schema.Attribute.Email &
-      Schema.Attribute.Required &
+    firstName: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
-        minLength: 6
+        maxLength: 80
+      }>
+    lastName: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 80
       }>
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'plugin::users-permissions.user'> &
       Schema.Attribute.Private
-    password: Schema.Attribute.Password &
-      Schema.Attribute.Private &
-      Schema.Attribute.SetMinMaxLength<{
-        minLength: 6
-      }>
-    provider: Schema.Attribute.String
     publishedAt: Schema.Attribute.DateTime
-    resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private
-    role: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.role'>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
-    username: Schema.Attribute.String &
-      Schema.Attribute.Required &
-      Schema.Attribute.Unique &
-      Schema.Attribute.SetMinMaxLength<{
-        minLength: 3
-      }>
   }
 }
 
@@ -1382,19 +2502,43 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission
       'admin::user': AdminUser
       'api::app.app': ApiAppApp
+      'api::bank-account.bank-account': ApiBankAccountBankAccount
+      'api::bank-transaction.bank-transaction': ApiBankTransactionBankTransaction
+      'api::bill-line-item.bill-line-item': ApiBillLineItemBillLineItem
+      'api::bill.bill': ApiBillBill
+      'api::chart-of-account.chart-of-account': ApiChartOfAccountChartOfAccount
       'api::client-account.client-account': ApiClientAccountClientAccount
       'api::contact.contact': ApiContactContact
+      'api::credit-note.credit-note': ApiCreditNoteCreditNote
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity
+      'api::delivery-challan.delivery-challan': ApiDeliveryChallanDeliveryChallan
       'api::direct-message.direct-message': ApiDirectMessageDirectMessage
+      'api::document.document': ApiDocumentDocument
+      'api::estimate-line-item.estimate-line-item': ApiEstimateLineItemEstimateLineItem
+      'api::estimate.estimate': ApiEstimateEstimate
+      'api::expense.expense': ApiExpenseExpense
       'api::invitation.invitation': ApiInvitationInvitation
+      'api::invoice-line-item.invoice-line-item': ApiInvoiceLineItemInvoiceLineItem
+      'api::invoice.invoice': ApiInvoiceInvoice
+      'api::item.item': ApiItemItem
       'api::lead-company.lead-company': ApiLeadCompanyLeadCompany
+      'api::manual-journal.manual-journal': ApiManualJournalManualJournal
       'api::module.module': ApiModuleModule
       'api::notification.notification': ApiNotificationNotification
       'api::organization-user.organization-user': ApiOrganizationUserOrganizationUser
       'api::organization.organization': ApiOrganizationOrganization
+      'api::payment-made.payment-made': ApiPaymentMadePaymentMade
+      'api::payment-received.payment-received': ApiPaymentReceivedPaymentReceived
       'api::project.project': ApiProjectProject
+      'api::purchase-order.purchase-order': ApiPurchaseOrderPurchaseOrder
+      'api::recurring-expense.recurring-expense': ApiRecurringExpenseRecurringExpense
+      'api::recurring-invoice.recurring-invoice': ApiRecurringInvoiceRecurringInvoice
+      'api::retainer-invoice.retainer-invoice': ApiRetainerInvoiceRetainerInvoice
+      'api::sales-order.sales-order': ApiSalesOrderSalesOrder
       'api::subscription.subscription': ApiSubscriptionSubscription
       'api::task.task': ApiTaskTask
+      'api::vendor-credit.vendor-credit': ApiVendorCreditVendorCredit
+      'api::vendor.vendor': ApiVendorVendor
       'plugin::content-releases.release': PluginContentReleasesRelease
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction
       'plugin::i18n.locale': PluginI18NLocale

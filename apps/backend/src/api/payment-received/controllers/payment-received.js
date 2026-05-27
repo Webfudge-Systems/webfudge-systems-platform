@@ -8,10 +8,13 @@ const UID = 'api::payment-received.payment-received';
 
 const base = makeBooksCrudController(UID, { defaultPopulate: ['customer', 'invoice', 'bankAccount'] });
 
-module.exports = {
-  ...base,
+module.exports = (params) => {
+  const core = base(params);
 
-  async create(ctx) {
+  return {
+    ...core,
+
+    async create(ctx) {
     if (!ctx.state.user) return ctx.unauthorized();
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
 
@@ -107,5 +110,6 @@ module.exports = {
     }
 
     return { data: payment };
-  },
+    },
+  };
 };
