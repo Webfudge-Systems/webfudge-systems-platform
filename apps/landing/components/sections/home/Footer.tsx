@@ -34,7 +34,7 @@ export default function Footer() {
       <div className="absolute inset-0 grid-pattern opacity-20 pointer-events-none" />
 
       {/* ── MAIN CONTENT ── */}
-      <div className="relative z-10 mx-auto px-4 sm:px-6 lg:px-8 max-w-[1400px] pt-20 pb-10">
+      <div className="relative z-10 mx-auto px-4 sm:px-6 lg:px-8 max-w-[1400px] pt-12 sm:pt-20 pb-8 sm:pb-10">
         {/* Top row: CTA left + info grid right */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-14 lg:gap-12">
           {/* LEFT — CTA */}
@@ -44,12 +44,12 @@ export default function Footer() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-              className="font-bold leading-[1.06] tracking-tight text-white mb-8 whitespace-nowrap"
-              style={{ fontSize: 'clamp(32px, 3.5vw, 52px)' }}
+              className="font-bold leading-[1.06] tracking-tight text-white mb-6 sm:mb-8"
+              style={{ fontSize: 'clamp(1.75rem, 6vw, 3.25rem)' }}
             >
-              Have a Cool Idea?
+              Ready to Build
               <br />
-              Let&apos;s Collaborate<span style={{ color: '#F5630F' }}>.</span>
+              Your Software<span style={{ color: '#F5630F' }}>?</span>
             </motion.h2>
 
             <motion.a
@@ -70,7 +70,7 @@ export default function Footer() {
           </div>
 
           {/* RIGHT — Info grid */}
-          <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-10 lg:gap-8">
+          <div className="flex-1 grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 lg:gap-8">
             {/* Location */}
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/35 mb-5">
@@ -119,10 +119,10 @@ export default function Footer() {
                   +91 99999 99999
                 </a>
                 <a
-                  href="mailto:hello@webfudgesystems.in"
+                  href="mailto:webfudgesystems@gmail.com"
                   className="text-base text-white/65 hover:text-white transition-colors duration-200"
                 >
-                  hello@webfudgesystems.in
+                  webfudgesystems@gmail.com
                 </a>
               </div>
             </div>
@@ -152,13 +152,13 @@ export default function Footer() {
         <div className="mt-16 mb-6 h-px" style={{ background: 'rgba(255,255,255,0.07)' }} />
 
         {/* Bottom bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-white/30">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs sm:text-sm text-white/30 text-center sm:text-left">
           <span>©Webfudge {new Date().getFullYear()}</span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center justify-center gap-1.5">
             <span style={{ color: '#F5630F' }}>◆</span>
             Built with passion by Webfudge Systems
           </span>
-          <span>Crafting digital excellence since 2022</span>
+          <span className="text-center sm:text-right">Crafting digital excellence since 2022</span>
         </div>
       </div>
 
@@ -183,13 +183,14 @@ export default function Footer() {
 
         {/* The big WEBFUDGE text */}
         <div
-          className="absolute bottom-0 left-1/2 z-20 whitespace-nowrap font-bold select-none"
+          className="absolute bottom-0 left-1/2 z-20 font-bold select-none px-4 w-full text-center overflow-hidden"
           style={{
             transform: 'translateX(-50%)',
-            fontSize: '280px',
+            fontSize: 'clamp(4rem, 22vw, 280px)',
             lineHeight: 0.85,
             letterSpacing: '-0.02em',
             color: '#F5630F',
+            maxWidth: '100vw',
           }}
         >
           WEBFUDGE

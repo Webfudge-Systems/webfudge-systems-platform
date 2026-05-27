@@ -42,6 +42,8 @@ Your complete guide to the Webfudge Platform documentation.
 
 | Document                                                                                                 | Description                                                                                                                                                                   |
 | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[LANDING_CONTACT_FORM.md](./LANDING_CONTACT_FORM.md)**                                                 | Landing Get in Touch form — Gmail SMTP API route, env setup, submissions to webfugesystems@gmail.com                                                                          |
+| **[LANDING_MOBILE_RESPONSIVE_UPDATE.md](./LANDING_MOBILE_RESPONSIVE_UPDATE.md)**                         | Landing home page mobile responsive pass: overflow fixes, responsive grids, sticky/stack behavior, typography, navbar menu                                                     |
 | **[AUTOMATION_BUILDER.md](./AUTOMATION_BUILDER.md)**                                                     | Visual Automation Builder: drag-and-drop canvas, NodeLibrary, NodeConfigPanel, 14 node types, useAutomationBuilder hook, automationService, packages/ui NodeHandle + WorkflowStatusBadge |
 | **[PM_CRM_RBAC_FOUNDATION.md](./PM_CRM_RBAC_FOUNDATION.md)**                                             | PM + CRM RBAC foundation: effective backend permissions, Accounts settings/app access, shared auth helpers, and PM/CRM module gating                                           |
 | **[ACCOUNTS_ORGANIZATION_SETTINGS_UPDATE.md](./ACCOUNTS_ORGANIZATION_SETTINGS_UPDATE.md)**               | Accounts Organization Settings: save fixes (blank → null), owner/Admin edit access, UI/UX refresh on `/settings`                                                                |
@@ -473,3 +475,5 @@ _Last Updated: May 27, 2026_
 | Document | Description | Date |
 |----------|-------------|------|
 | **[LANDING_PREMIUM_REDESIGN.md](./LANDING_PREMIUM_REDESIGN.md)** | Complete premium redesign of the landing page — new design system, animations, all sections | May 2026 |
+| **[LANDING_CONTENT_UPDATE_2026.md](./LANDING_CONTENT_UPDATE_2026.md)** | Full content refresh — brand repositioning, 5 core services, updated copy across all sections | May 2026 |
+| **[LANDING_INDUSTRIES_UPDATE.md](./LANDING_INDUSTRIES_UPDATE.md)** | New Industries section (8 industries), expanded Why Choose Us to 6 cards, fixed Navbar dead links | May 2026 |

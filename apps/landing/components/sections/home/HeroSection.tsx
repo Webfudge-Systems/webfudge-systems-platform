@@ -112,12 +112,12 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 mb-8 md:mb-10"
+          className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-white/20 mb-6 sm:mb-8 md:mb-10 max-w-full"
           style={{ background: 'rgba(255,255,255,0.12)' }}
         >
-          <Zap size={11} className="text-white" />
-          <span className="text-xs font-semibold text-white/90 tracking-widest uppercase">
-            Premium Software Solutions
+          <Zap size={11} className="text-white flex-shrink-0" />
+          <span className="text-[10px] sm:text-xs font-semibold text-white/90 tracking-wider sm:tracking-widest uppercase text-center">
+            Custom Business Software Solutions
           </span>
         </motion.div>
 
@@ -126,10 +126,12 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          className="font-extrabold leading-tight tracking-tight text-white whitespace-nowrap mb-5"
-          style={{ fontSize: 'clamp(3.6rem, 6.2vw, 7.5rem)' }}
+          className="font-extrabold leading-[1.05] sm:leading-tight tracking-tight text-white mb-4 sm:mb-5 px-1"
+          style={{ fontSize: 'clamp(1.75rem, 7vw, 6.5rem)' }}
         >
-          Automate. Scale. Grow Faster.
+          Custom Software
+          <br />
+          For Business
         </motion.h1>
 
         {/* Description */}
@@ -137,10 +139,10 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.38 }}
-          className="text-white/65 text-base leading-relaxed max-w-xl mb-9"
+          className="text-white/65 text-sm sm:text-base leading-relaxed max-w-xl mb-7 sm:mb-9 px-2"
         >
-          We engineer scalable software, CRM systems, SaaS platforms and digital experiences that
-          help businesses grow faster and smarter.
+          We help businesses streamline operations, manage customers, automate workflows, and
+          improve productivity through scalable and easy-to-use software systems.
         </motion.p>
 
         {/* CTAs — centered */}
@@ -148,15 +150,15 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="flex flex-wrap items-center justify-center gap-4 mb-14 md:mb-16"
+          className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-14 md:mb-16 w-full max-w-sm sm:max-w-none px-2"
         >
           <motion.a
             href="#contact"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-sm font-semibold bg-white text-[#F5630F]"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-sm font-semibold bg-white text-[#F5630F] w-full sm:w-auto"
             whileHover={{ scale: 1.04, y: -2, boxShadow: '0 16px 40px rgba(0,0,0,0.25)' }}
             whileTap={{ scale: 0.97 }}
           >
-            Let&apos;s Get Started
+            Get Started
             <motion.span
               animate={{ x: [0, 3, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}
@@ -166,12 +168,12 @@ export default function HeroSection() {
           </motion.a>
 
           <motion.a
-            href="#solutions"
-            className="inline-flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
+            href="#contact"
+            className="inline-flex items-center justify-center gap-2 text-sm font-medium text-white/70 hover:text-white transition-colors w-full sm:w-auto py-2"
             whileHover={{ x: 3 }}
           >
             <Play size={12} fill="currentColor" />
-            View Our Work
+            Book a Consultation
           </motion.a>
         </motion.div>
 

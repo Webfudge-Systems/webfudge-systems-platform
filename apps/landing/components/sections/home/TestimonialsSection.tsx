@@ -15,78 +15,78 @@ const testimonials = [
     color: '#F5630F',
     rating: 5,
     feedback:
-      'Webfudge transformed our operations. The custom CRM reduced our sales cycle by 40% and gave us real-time visibility we never had before.',
+      'Webfudge built a custom CRM that completely transformed how our team manages leads. Our sales cycle shortened by 40% within the first quarter.',
     metric: '40% faster sales cycle',
   },
   {
     name: 'Priya Nair',
-    role: 'Founder, CloudStack SaaS',
+    role: 'Founder, Buildora Agency',
     avatar: 'PN',
     color: '#8B5CF6',
     rating: 5,
     feedback:
-      'They helped us architect the entire platform and launched our SaaS product in just 4 months. Quality that feels like a 50-person team.',
-    metric: 'Launched in 4 months',
+      'The project management software they built for us is exactly what we needed — simple, fast, and our team adopted it immediately. No bloat.',
+    metric: 'Full team adoption in week 1',
   },
   {
     name: 'Rahul Mehta',
-    role: 'Head of Technology, TechForge',
+    role: 'Head of Operations, TechForge',
     avatar: 'RM',
     color: '#3B82F6',
     rating: 5,
     feedback:
-      "Webfudge rebuilt our legacy platform, automated half our manual processes, and improved performance by 10x. Best tech investment we've made.",
-    metric: '10x performance boost',
+      'Webfudge automated over half of our manual workflows. What used to take our team hours now runs automatically. Best investment we have made.',
+    metric: '60% reduction in manual work',
   },
   {
     name: 'Sneha Kulkarni',
-    role: 'Product Manager, RetailEdge',
+    role: 'Director, RetailEdge',
     avatar: 'SK',
     color: '#22C55E',
     rating: 5,
     feedback:
-      'Our customer portal saw a 65% increase in engagement within the first month. Design + engineering — a rare combination.',
-    metric: '65% engagement increase',
+      'The admin dashboard they built gives us real-time visibility across all our store operations. Clean, intuitive, and exactly what we asked for.',
+    metric: 'Full ops visibility in real-time',
   },
   {
     name: 'Vikram Singh',
-    role: 'Operations Director, LogiTrack',
+    role: 'Operations Manager, LogiTrack',
     avatar: 'VS',
     color: '#F59E0B',
     rating: 5,
     feedback:
-      'Their automation platform processes 10,000+ logistics events per day. AI integrations have saved us 200+ hours of manual work per week.',
+      'Our custom ERP system handles thousands of logistics events daily without a single issue. The team delivered on time and within our budget.',
     metric: '200+ hours saved weekly',
   },
   {
     name: 'Aisha Patel',
-    role: 'CTO, FinBridge Capital',
+    role: 'Co-Founder, MediSoft Health',
     avatar: 'AP',
     color: '#EC4899',
     rating: 5,
     feedback:
-      'The fintech dashboard handles real-time data for thousands of users flawlessly. Exceptional attention to security, performance, and UX.',
+      'Webfudge built a patient management system tailored to our clinic workflows. It is easy for staff to use and has made a real difference in daily operations.',
     metric: '99.9% uptime achieved',
   },
   {
     name: 'Rohan Verma',
-    role: 'Co-Founder, EdTech Nexus',
+    role: 'Founder, LearnQuest Education',
     avatar: 'RV',
     color: '#14B8A6',
     rating: 5,
     feedback:
-      "From concept to launch in 90 days. The team's ability to move fast without sacrificing quality is remarkable. 50,000+ students served.",
-    metric: '50K+ active students',
+      'They understood our requirements from day one and delivered a platform that is both easy to use and scalable. Our team loves working with it.',
+    metric: 'Delivered in 10 weeks',
   },
   {
     name: 'Meera Joshi',
-    role: 'VP Engineering, DataPulse AI',
+    role: 'Director, PropNest Real Estate',
     avatar: 'MJ',
     color: '#6366F1',
     rating: 5,
     feedback:
-      'Webfudge integrated complex ML pipelines into our product seamlessly. They understood our technical requirements deeply.',
-    metric: '3x model inference speed',
+      'The CRM Webfudge built for our property business tracks every lead, follow-up, and deal in one place. Our team efficiency has improved tremendously.',
+    metric: '3x improvement in lead conversion',
   },
 ]
 
@@ -95,7 +95,7 @@ const testimonials = [
 function TestimonialCard({ t }: { t: (typeof testimonials)[number] }) {
   return (
     <div
-      className="relative flex-shrink-0 w-[380px] h-[430px] rounded-[28px] mx-3 p-8 flex flex-col justify-between overflow-hidden"
+      className="relative flex-shrink-0 w-[min(320px,calc(100vw-2.5rem))] sm:w-[360px] md:w-[380px] min-h-[380px] sm:h-[430px] rounded-2xl sm:rounded-[28px] mx-2 sm:mx-3 p-6 sm:p-8 flex flex-col justify-between overflow-hidden"
       style={{
         background: '#141414',
         border: '1px solid rgba(255,255,255,0.06)',
@@ -109,12 +109,12 @@ function TestimonialCard({ t }: { t: (typeof testimonials)[number] }) {
       </div>
 
       {/* Quote */}
-      <p className="text-[22px] text-white/95 leading-relaxed font-medium flex-1 pt-4 pb-5">
+      <p className="text-base sm:text-lg md:text-[22px] text-white/95 leading-relaxed font-medium flex-1 pt-4 pb-5">
         &ldquo;{t.feedback}&rdquo;
       </p>
 
       {/* Author row */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         {/* <div
           className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0"
           style={{
@@ -127,7 +127,7 @@ function TestimonialCard({ t }: { t: (typeof testimonials)[number] }) {
           <div className="text-[13px] font-semibold text-white leading-tight">{t.name}</div>
           <div className="text-[11px] text-white/40 mt-0.5">{t.role}</div>
         </div>
-        <div className="ml-auto text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 text-brand-light bg-brand-dark/30 ">
+        <div className="sm:ml-auto text-[10px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 self-start sm:self-auto text-brand-light bg-brand-dark/30">
           {t.metric}
         </div>
       </div>
@@ -167,7 +167,7 @@ function MarqueeRow({ speed = 45 }: { speed?: number }) {
 
 export default function TestimonialsSection() {
   return (
-    <section className="relative py-28 md:py-36 overflow-hidden" style={{ background: '#080808' }}>
+    <section className="relative py-16 sm:py-28 md:py-36 overflow-hidden" style={{ background: '#080808' }}>
       {/* Noise texture overlay */}
       <div
         className="absolute inset-0 pointer-events-none z-0 opacity-[0.03]"
@@ -212,11 +212,11 @@ export default function TestimonialsSection() {
         {/* Full-bleed marquee */}
         <div className="relative">
           <div
-            className="absolute inset-y-0 left-0 w-40 z-10 pointer-events-none"
+            className="absolute inset-y-0 left-0 w-12 sm:w-24 md:w-40 z-10 pointer-events-none"
             style={{ background: 'linear-gradient(90deg, #080808 0%, transparent 100%)' }}
           />
           <div
-            className="absolute inset-y-0 right-0 w-40 z-10 pointer-events-none"
+            className="absolute inset-y-0 right-0 w-12 sm:w-24 md:w-40 z-10 pointer-events-none"
             style={{ background: 'linear-gradient(270deg, #080808 0%, transparent 100%)' }}
           />
           <MarqueeRow speed={50} />

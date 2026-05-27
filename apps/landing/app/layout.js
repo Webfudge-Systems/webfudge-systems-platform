@@ -4,7 +4,7 @@ import { AuthProvider } from '@webfudge/auth'
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://webfudgesystems.in'
 const organizationName = 'Webfudge Systems'
 const defaultDescription =
-  'Webfudge Systems engineers scalable software, CRM systems, SaaS platforms and digital experiences that help businesses grow faster.'
+  'Webfudge Systems builds custom software solutions — CRM systems, project management software, business automation, ERP, and admin panels — that help businesses streamline operations and grow faster.'
 
 export const metadata = {
   title: {
@@ -23,15 +23,17 @@ export const metadata = {
     telephone: false,
   },
   keywords: [
-    'CRM software',
     'custom software development',
-    'SaaS development',
-    'enterprise software',
-    'UI/UX design',
-    'AI automation',
+    'CRM software development',
+    'project management software',
+    'business automation software',
+    'ERP software development',
+    'dashboard development',
+    'admin panel development',
     'Webfudge Systems',
-    'business solutions',
-    'web development India',
+    'business software solutions',
+    'affordable software development India',
+    'scalable software solutions',
   ],
   alternates: {
     canonical: '/',
@@ -106,7 +108,7 @@ export default function RootLayout({ children }) {
   }
 
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth overflow-x-clip">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

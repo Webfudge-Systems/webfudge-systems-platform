@@ -9,35 +9,35 @@ import Container from '../../ui/Container'
 const faqs = [
   {
     question: 'What services does Webfudge Systems offer?',
-    answer: 'We offer end-to-end software development services including custom software development, CRM systems, SaaS product development, UI/UX design, AI automation, and performance marketing. We work with startups, SMEs, and enterprises across various industries.',
+    answer: 'We specialize in five core services: Custom Software Development, CRM Software, Project Management Software, Business Automation & ERP Systems, and Dashboard & Admin Panel Development. We work with startups, agencies, and businesses across various industries to deliver scalable, easy-to-use software solutions.',
   },
   {
-    question: 'How long does a typical development project take?',
-    answer: 'Project timelines vary based on scope and complexity. A simple web application typically takes 4–8 weeks. A full-scale SaaS product or enterprise system ranges from 3–6 months. We provide a detailed timeline estimate during our discovery phase and keep you updated throughout.',
+    question: 'How long does a typical software project take?',
+    answer: 'Project timelines depend on scope and complexity. A CRM or project management system typically takes 6–12 weeks. A full custom ERP or enterprise platform ranges from 3–6 months. We provide a detailed timeline estimate during our discovery phase and keep you updated at every stage.',
   },
   {
     question: 'Do you build fully custom software from scratch?',
-    answer: 'Absolutely. Custom software is our specialty. We don\'t use cookie-cutter templates or force your requirements into pre-built frameworks. Every system is architected specifically for your business goals, workflows, and scale requirements.',
+    answer: 'Absolutely. Custom software is our core specialty. We don\'t use generic templates or force your requirements into pre-built frameworks. Every system is designed specifically around your business goals, workflows, and operational requirements.',
   },
   {
-    question: 'Can you redesign and modernize our existing systems?',
-    answer: 'Yes, we handle both greenfield development and legacy system modernization. We can migrate your existing platform to modern architecture, improve performance, add new features, or completely redesign the user experience — all while keeping your business running.',
+    question: 'Can you build a CRM tailored specifically for our business?',
+    answer: 'Yes. We build fully custom CRM systems designed around your sales process — with lead tracking, deal pipelines, customer communication tools, and automation built exactly the way your team works. No unnecessary features, no compromises.',
   },
   {
     question: 'What kind of post-launch support do you provide?',
-    answer: 'We offer multiple support tiers post-launch, including bug fixes, feature additions, security patches, and performance monitoring. Our dedicated support team ensures your product runs smoothly, and we provide SLA-based response times for critical issues.',
+    answer: 'We offer long-term support post-launch, including bug fixes, feature additions, performance improvements, and system updates. Our team ensures your software continues to run smoothly as your business grows and requirements evolve.',
   },
   {
-    question: 'How do you handle data security and privacy?',
-    answer: 'Security is a first-class concern in everything we build. We implement industry best practices including data encryption at rest and in transit, RBAC, secure API design, regular security audits, and compliance-ready architectures (GDPR, SOC 2). Your data is always protected.',
+    question: 'Are your software solutions affordable for small businesses?',
+    answer: 'Yes. We build affordable, high-quality software solutions suitable for startups, small businesses, and growing companies. We offer flexible engagement models and phased development approaches so you get maximum value within your budget.',
   },
   {
     question: 'What is your development process like?',
-    answer: 'We follow an agile development methodology with two-week sprints, daily standups, and weekly client demos. You\'ll have direct access to your project manager and development team throughout the engagement, with full transparency into progress via project management tools.',
+    answer: 'We follow an agile development approach with regular client check-ins, milestone-based delivery, and full transparency throughout the project. You\'ll have direct access to your project manager and team, with clear visibility into progress at every stage.',
   },
   {
-    question: 'Do you work with startups or only established businesses?',
-    answer: 'We work with both. We love helping startups turn their MVP ideas into production-ready products, and we equally enjoy solving complex technical challenges for established enterprises. Our flexible engagement models accommodate different budgets and timelines.',
+    question: 'Which industries do you work with?',
+    answer: 'We work across a wide range of industries including startups, agencies, ecommerce, healthcare, education, logistics, real estate, and service businesses. Our software solutions are designed to be flexible and adaptable to different business models and workflows.',
   },
 ]
 
@@ -58,10 +58,10 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
     >
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-5 px-7 py-6 text-left"
+        className="w-full flex items-start sm:items-center justify-between gap-3 sm:gap-5 px-4 sm:px-7 py-4 sm:py-6 text-left"
       >
         <span
-          className={`text-[15px] font-semibold leading-snug transition-colors ${
+          className={`text-sm sm:text-[15px] font-semibold leading-snug transition-colors pr-2 ${
             open ? 'text-[#F5630F]' : 'text-[#111111]'
           }`}
         >
@@ -85,7 +85,7 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
             transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
             className="overflow-hidden"
           >
-            <div className="px-7 pb-7">
+            <div className="px-4 sm:px-7 pb-5 sm:pb-7">
               <div className="h-px bg-[rgba(245,99,15,0.12)] mb-5" />
               <p className="text-[14px] text-[#555555] leading-relaxed">{faq.answer}</p>
             </div>
@@ -98,9 +98,9 @@ function FAQItem({ faq, index }: { faq: typeof faqs[0]; index: number }) {
 
 export default function FAQSection() {
   return (
-    <section className="py-24 md:py-32 bg-white">
+    <section id="faq" className="py-16 sm:py-24 md:py-32 bg-white">
       <Container>
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-16 lg:gap-20 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-10 sm:gap-16 lg:gap-20 items-start">
 
           {/* ── Left: sticky header ── */}
           <div className="lg:sticky lg:top-28">
@@ -109,7 +109,7 @@ export default function FAQSection() {
               title="Frequently asked"
               accentText="questions"
               accentStyle="gradient"
-              description="Make smarter decisions and scale effortlessly with advanced analytics."
+              description="Everything you need to know about our software development services and process."
               align="left"
               size="xl"
               theme="light"

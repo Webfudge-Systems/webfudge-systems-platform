@@ -145,7 +145,7 @@ export default function ClientLogoStrip({ dark = false }: ClientLogoStripProps) 
 
   return (
     <section
-      className={`overflow-hidden ${dark ? 'py-14' : 'py-16 border-y border-[rgba(0,0,0,0.06)]'}`}
+      className={`overflow-hidden ${dark ? 'py-10 sm:py-14' : 'py-12 sm:py-16 border-y border-[rgba(0,0,0,0.06)]'}`}
       style={{ background: bg }}
     >
       <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-[1400px] mb-10">
@@ -164,11 +164,11 @@ export default function ClientLogoStrip({ dark = false }: ClientLogoStripProps) 
       <div className="relative overflow-hidden">
         {/* Fade edges */}
         <div
-          className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none"
+          className="absolute left-0 top-0 bottom-0 w-12 sm:w-24 md:w-32 z-10 pointer-events-none"
           style={{ background: `linear-gradient(90deg, ${fadeBg}, transparent)` }}
         />
         <div
-          className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none"
+          className="absolute right-0 top-0 bottom-0 w-12 sm:w-24 md:w-32 z-10 pointer-events-none"
           style={{ background: `linear-gradient(270deg, ${fadeBg}, transparent)` }}
         />
 
@@ -182,7 +182,7 @@ export default function ClientLogoStrip({ dark = false }: ClientLogoStripProps) 
           {[...logos, ...logos].map((logo, i) => (
             <div
               key={`${logo.name}-${i}`}
-              className={`flex items-center justify-center mx-12 sm:mx-16 transition-opacity duration-300 ${dark ? 'opacity-80 hover:opacity-100' : 'opacity-80 hover:opacity-100 grayscale hover:grayscale-0'}`}
+              className={`flex items-center justify-center mx-6 sm:mx-12 md:mx-16 transition-opacity duration-300 ${dark ? 'opacity-80 hover:opacity-100' : 'opacity-80 hover:opacity-100 grayscale hover:grayscale-0'}`}
               style={dark ? { filter: 'brightness(0) invert(1)' } : {}}
             >
               <div className="flex items-center gap-2.5">

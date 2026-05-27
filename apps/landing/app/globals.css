@@ -23,10 +23,12 @@
     margin: 0;
     padding: 0;
     scroll-behavior: smooth;
+    overflow-x: clip;
   }
 
   body {
     @apply font-inter text-[#111111] antialiased bg-white;
+    -webkit-overflow-scrolling: touch;
   }
 
   h1, h2, h3, h4, h5, h6 {

@@ -2,6 +2,7 @@
 
 import React, { useRef, useState } from 'react'
 import { motion, useScroll, useTransform, useMotionValueEvent, MotionValue } from 'framer-motion'
+import FeatureShowcaseIllustration from './FeatureShowcaseIllustration'
 
 type Feature = {
   eyebrow: string
@@ -16,8 +17,8 @@ type Feature = {
 
 const features: Feature[] = [
   {
-    eyebrow: 'Architecture',
-    title: 'Scalable Architecture\nBuilt for Growth',
+    eyebrow: 'Scalability',
+    title: 'Scalable & Secure\nArchitecture',
     color: '#F5630F',
     bg: '#FFFFFF',
     text: '#111111',
@@ -26,8 +27,8 @@ const features: Feature[] = [
     dark: false,
   },
   {
-    eyebrow: 'Performance',
-    title: 'Lightning Fast,\nEvery Time',
+    eyebrow: 'Usability',
+    title: 'Easy to Use,\nEvery Time',
     color: '#FFFFFF',
     bg: '#F5630F',
     text: '#FFFFFF',
@@ -36,8 +37,8 @@ const features: Feature[] = [
     dark: true,
   },
   {
-    eyebrow: 'AI Integration',
-    title: 'Powered by\nIntelligent Automation',
+    eyebrow: 'Affordability',
+    title: 'Affordable Solutions\nfor Every Business',
     color: '#F5630F',
     bg: '#FFFFFF',
     text: '#111111',
@@ -46,13 +47,33 @@ const features: Feature[] = [
     dark: false,
   },
   {
-    eyebrow: 'Security',
-    title: 'Enterprise-Grade\nSecurity',
+    eyebrow: 'Long-term Support',
+    title: 'Built to Last,\nSupported Always',
     color: '#FFFFFF',
     bg: '#F5630F',
     text: '#FFFFFF',
     sub: 'rgba(255,255,255,0.5)',
     number: '04',
+    dark: true,
+  },
+  {
+    eyebrow: 'UI/UX Design',
+    title: 'Modern UI/UX\nFocused Platforms',
+    color: '#F5630F',
+    bg: '#FFFFFF',
+    text: '#111111',
+    sub: 'rgba(0,0,0,0.3)',
+    number: '05',
+    dark: false,
+  },
+  {
+    eyebrow: 'Business Focus',
+    title: 'Built Around\nYour Business',
+    color: '#FFFFFF',
+    bg: '#F5630F',
+    text: '#FFFFFF',
+    sub: 'rgba(255,255,255,0.5)',
+    number: '06',
     dark: true,
   },
 ]
@@ -117,8 +138,19 @@ function FeatureCard({
         }}
       />
 
+      {/* Animated illustration — top-right blank space */}
+      <div
+        className="absolute top-[8%] right-[4%] sm:top-[10%] sm:right-[6%] md:top-[12%] md:right-[10%] z-[5] pointer-events-none hidden sm:block"
+        style={{
+          width: 'min(52vw, 440px)',
+          height: 'min(50vh, 360px)',
+        }}
+      >
+        <FeatureShowcaseIllustration index={index} dark={feature.dark} accent={feature.color} />
+      </div>
+
       {/* Content — bottom left */}
-      <div className="relative z-10 px-12 pb-16 md:px-20 md:pb-20 max-w-[680px]">
+      <div className="relative z-10 px-5 sm:px-10 md:px-20 pb-12 sm:pb-16 md:pb-20 max-w-[680px]">
         {/* Eyebrow */}
         <div
           className="flex items-center gap-2.5 mb-5 text-[11px] font-bold uppercase tracking-[0.22em]"
@@ -136,7 +168,7 @@ function FeatureCard({
           className="font-bold tracking-tight leading-[1.06]"
           style={{
             color: feature.text,
-            fontSize: 'clamp(2.6rem, 5.5vw, 5rem)',
+            fontSize: 'clamp(1.75rem, 8vw, 5rem)',
             whiteSpace: 'pre-line',
           }}
         >
@@ -146,10 +178,10 @@ function FeatureCard({
 
       {/* Feature number — bottom right */}
       <div
-        className="absolute bottom-16 right-12 md:bottom-20 md:right-20 z-10 tabular-nums font-bold leading-none select-none"
+        className="absolute bottom-12 right-5 sm:bottom-16 sm:right-12 md:bottom-20 md:right-20 z-10 tabular-nums font-bold leading-none select-none"
         style={{
           color: feature.color,
-          fontSize: 'clamp(5rem, 12vw, 11rem)',
+          fontSize: 'clamp(3.5rem, 14vw, 11rem)',
           opacity: 0.12,
           letterSpacing: '-0.04em',
           lineHeight: 1,
@@ -178,8 +210,13 @@ export default function FeatureShowcase() {
   const active = features[activeIndex]
 
   return (
-    <section ref={sectionRef} id="about" className="relative" style={{ height: `${n * 100}vh` }}>
-      <div className="sticky top-0 h-screen overflow-hidden">
+    <section
+      ref={sectionRef}
+      id="about"
+      className="relative h-[calc(var(--feature-count)*70vh)] md:h-[calc(var(--feature-count)*100vh)]"
+      style={{ '--feature-count': n } as React.CSSProperties}
+    >
+      <div className="sticky top-0 h-[70vh] md:h-screen overflow-hidden">
         {/* Stacking cards */}
         {features.map((feature, i) => (
           <FeatureCard
@@ -192,7 +229,7 @@ export default function FeatureShowcase() {
         ))}
 
         {/* Counter — top right, adapts to card brightness */}
-        <div className="absolute top-8 right-10 md:right-12 z-50">
+        <div className="absolute top-5 right-5 sm:top-8 sm:right-10 md:right-12 z-50">
           <span
             className="text-[11px] font-bold tracking-widest tabular-nums transition-colors duration-500"
             style={{ color: active.sub }}
@@ -202,7 +239,7 @@ export default function FeatureShowcase() {
         </div>
 
         {/* Progress dots — bottom right, adapts to card brightness */}
-        <div className="absolute bottom-10 right-10 md:right-12 z-50 flex items-center gap-2">
+        <div className="absolute bottom-6 right-5 sm:bottom-10 sm:right-10 md:right-12 z-50 flex items-center gap-2">
           {features.map((feat, i) => (
             <div
               key={i}

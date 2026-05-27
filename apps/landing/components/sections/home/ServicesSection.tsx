@@ -9,56 +9,47 @@ const services = [
   {
     number: '01',
     title: 'Custom Software Development',
-    tags: ['Enterprise Solutions', 'Internal Tools', 'Full-Stack'],
+    tags: ['Business Workflows', 'Internal Tools', 'Full-Stack'],
     description:
-      'Bespoke software solutions engineered precisely to your business requirements. From complex enterprise applications to lightweight internal tools — built to scale and evolve with you.',
+      'Tailored software solutions designed specifically around your business workflows and operational requirements. Built to scale and evolve as your business grows.',
     bg: '#ffffff',
     accentBg: 'rgba(245,99,15,0.05)',
   },
   {
     number: '02',
-    title: 'CRM Development',
-    tags: ['Sales Pipelines', 'Automation', 'Real-time Analytics'],
+    title: 'CRM Software Development',
+    tags: ['Lead Tracking', 'Sales Management', 'Customer Communication'],
     description:
-      'Tailored CRM systems that fit your exact sales process — with custom pipelines, automation, integrations, and real-time analytics that give your team a genuine edge.',
+      'Customer relationship management systems focused on lead tracking, sales management, customer communication, and business growth — built around your exact process.',
     bg: '#fafafa',
     accentBg: 'rgba(245,99,15,0.06)',
   },
   {
     number: '03',
-    title: 'SaaS Development',
-    tags: ['Multi-tenancy', 'Subscription Billing', 'Scalable Infra'],
+    title: 'Project Management Software',
+    tags: ['Task Management', 'Team Collaboration', 'Deadline Tracking'],
     description:
-      'End-to-end SaaS product development with scalable architecture, multi-tenancy, subscription billing, and growth-ready infrastructure — built for the long haul.',
+      'Smart project management platforms that help teams manage tasks, workflows, deadlines, and collaboration efficiently — so every project stays on track.',
     bg: '#f7f7f7',
     accentBg: 'rgba(245,99,15,0.05)',
   },
   {
     number: '04',
-    title: 'UI/UX Design',
-    tags: ['User Research', 'Conversion Focused', 'Design Systems'],
+    title: 'Business Automation Systems',
+    tags: ['Workflow Automation', 'ERP & Operations', 'Process Efficiency'],
     description:
-      'Premium interface design that balances aesthetics with usability. We craft experiences that convert visitors into loyal customers and keep them coming back.',
+      'Automate repetitive processes, improve operational efficiency, and streamline internal workflows with custom automation and ERP systems built for your business.',
     bg: '#f5f5f5',
     accentBg: 'rgba(245,99,15,0.06)',
   },
   {
     number: '05',
-    title: 'AI Automation',
-    tags: ['LLM Integration', 'Workflow Automation', 'Smart Pipelines'],
+    title: 'Dashboard & Admin Panels',
+    tags: ['Real-time Analytics', 'Business Controls', 'Modern UI'],
     description:
-      'Intelligent automation powered by the latest AI models. Automate workflows, generate insights, and make smarter decisions at scale — without added headcount.',
+      'Modern dashboards and management systems with real-time insights, analytics, and business controls — giving you complete visibility across your operations.',
     bg: '#f3f3f3',
     accentBg: 'rgba(245,99,15,0.05)',
-  },
-  {
-    number: '06',
-    title: 'Performance Marketing',
-    tags: ['SEO & Content', 'Paid Campaigns', 'Growth Strategy'],
-    description:
-      'Data-driven digital marketing strategies that maximise ROI — from SEO and content to paid campaigns and conversion optimisation that compound over time.',
-    bg: '#f0f0f0',
-    accentBg: 'rgba(245,99,15,0.06)',
   },
 ]
 
@@ -75,8 +66,8 @@ function ServiceCard({
 }) {
   return (
     <div
+      className="lg:sticky"
       style={{
-        position: 'sticky',
         top: STICKY_BASE + index * STICKY_STEP,
         zIndex: index + 1,
       }}
@@ -91,7 +82,7 @@ function ServiceCard({
           background: service.bg,
           border: '1px solid rgba(0,0,0,0.07)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.08)',
-          minHeight: 320,
+          minHeight: 280,
         }}
       >
         {/* Subtle radial accent behind number */}
@@ -100,7 +91,7 @@ function ServiceCard({
           style={{ background: `radial-gradient(ellipse at left center, ${service.accentBg} 0%, transparent 70%)` }}
         />
 
-        <div className="relative z-10 grid grid-cols-1 md:grid-cols-[220px_1fr_auto] gap-8 p-8 md:p-10 lg:p-12 items-center">
+        <div className="relative z-10 grid grid-cols-1 md:grid-cols-[220px_1fr_auto] gap-5 sm:gap-8 p-5 sm:p-8 md:p-10 lg:p-12 items-start md:items-center">
 
           {/* Number */}
           <div className="flex items-center gap-5">
@@ -160,16 +151,16 @@ export default function ServicesSection() {
     <section id="services" style={{ background: '#f8f8f8' }}>
       {/* ── Header ── */}
       <Container>
-        <div className="pt-24 pb-16 md:pt-32 md:pb-20">
+        <div className="pt-16 pb-10 sm:pt-24 sm:pb-16 md:pt-32 md:pb-20">
           <SectionHeader
             eyebrow="Our Services"
-            title="We build the software that moves your business"
-            accentText="forward."
+            title="Software solutions designed around your"
+            accentText="business."
             accentStyle="gradient"
             align="left"
             size="xl"
             headingClassName="max-w-5xl"
-            description="From strategy to deployment — end-to-end engineering and digital solutions that deliver measurable results at every stage."
+            description="From CRM platforms to project management systems and custom business software — scalable, affordable, and easy-to-use solutions built for your requirements."
             constrainDescription={false}
           />
           <motion.div
@@ -193,8 +184,8 @@ export default function ServicesSection() {
       </Container>
 
       {/* ── Stacked service cards ── */}
-      <Container className="pb-40">
-        <div className="flex flex-col gap-0">
+      <Container className="pb-16 sm:pb-24 lg:pb-40">
+        <div className="flex flex-col gap-4 lg:gap-0">
           {services.map((service, index) => (
             <ServiceCard key={service.number} service={service} index={index} />
           ))}

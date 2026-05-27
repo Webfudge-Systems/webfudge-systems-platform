@@ -24,16 +24,53 @@ function NoiseSVG() {
   )
 }
 
+const CONTACT_EMAIL = 'webfudgesystems@gmail.com'
+
 export default function ContactSection() {
   const [form, setForm] = useState({ name: '', company: '', email: '' })
   const [agreed, setAgreed] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [focused, setFocused] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (!agreed) return
-    setSubmitted(true)
+    if (!agreed || isSubmitting) return
+
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    const websiteField = e.currentTarget.elements.namedItem('website') as HTMLInputElement | null
+    const website = websiteField?.value?.trim() ?? ''
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, website }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+
+      if (!response.ok) {
+        throw new Error(
+          typeof data.error === 'string'
+            ? data.error
+            : 'Unable to send your request. Please try again.',
+        )
+      }
+
+      setSubmitted(true)
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to send your request. Please try again.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const fields = [
@@ -45,7 +82,7 @@ export default function ContactSection() {
   return (
     <section
       id="contact"
-      className="relative py-28 md:py-36 overflow-hidden"
+      className="relative py-16 sm:py-28 md:py-36 overflow-hidden"
       style={{ background: '#E8E8E6' }}
     >
       {/* ── Noise layer ── */}
@@ -141,7 +178,7 @@ export default function ContactSection() {
               viewport={{ once: true }}
               transition={{ duration: 0.7, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
               className="font-bold leading-[1.0] tracking-tight text-[#111111]"
-              style={{ fontSize: 'clamp(52px, 7vw, 88px)' }}
+              style={{ fontSize: 'clamp(2.25rem, 10vw, 5.5rem)' }}
             >
               Let&apos;s get
               <br />
@@ -164,14 +201,14 @@ export default function ContactSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-              className="mt-6 text-base text-[#555555] leading-relaxed max-w-xs"
+              className="mt-6 text-sm sm:text-base text-[#555555] leading-relaxed max-w-sm"
             >
-              Tell us about your project and we&apos;ll get back to you within 24 hours.
+              Looking to build a custom software solution? Share your requirements and we&apos;ll get back to you within 24 hours.
             </motion.p>
 
             {/* Email */}
             <motion.a
-              href="mailto:hello@webfudgesystems.in"
+              href={`mailto:${CONTACT_EMAIL}`}
               initial={{ opacity: 0, y: 10 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -184,7 +221,7 @@ export default function ContactSection() {
               >
                 <ArrowRight size={13} className="text-[#F5630F]" />
               </span>
-              hello@webfudgesystems.in
+              {CONTACT_EMAIL}
             </motion.a>
           </div>
 
@@ -226,9 +263,34 @@ export default function ContactSection() {
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  className="hidden"
+                  aria-hidden="true"
+                />
+
                 <p className="text-xs font-semibold tracking-[0.14em] uppercase text-[#888888] mb-3">
-                  Learn how Webfudge can help your business
+                  Tell us about your business requirements
                 </p>
+
+                {submitError && (
+                  <p
+                    role="alert"
+                    className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-4 py-3"
+                  >
+                    {submitError}{' '}
+                    <a
+                      href={`mailto:${CONTACT_EMAIL}`}
+                      className="underline underline-offset-2 font-medium"
+                    >
+                      Email us directly
+                    </a>
+                    .
+                  </p>
+                )}
 
                 {fields.map(({ key, type, placeholder, required }, i) => (
                   <motion.div
@@ -265,9 +327,10 @@ export default function ContactSection() {
                 {/* CTA Button */}
                 <motion.button
                   type="submit"
-                  whileHover={{ scale: 1.015, boxShadow: '0 12px 32px rgba(17,17,17,0.22)' }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full mt-2 py-4 rounded-2xl font-semibold text-sm text-white relative overflow-hidden group"
+                  disabled={isSubmitting || !agreed}
+                  whileHover={isSubmitting || !agreed ? undefined : { scale: 1.015, boxShadow: '0 12px 32px rgba(17,17,17,0.22)' }}
+                  whileTap={isSubmitting || !agreed ? undefined : { scale: 0.98 }}
+                  className="w-full mt-2 py-4 rounded-2xl font-semibold text-sm text-white relative overflow-hidden group disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{
                     background: 'linear-gradient(135deg, #1a1a1a 0%, #111111 100%)',
                     boxShadow: '0 4px 20px rgba(17,17,17,0.15)',
@@ -282,8 +345,10 @@ export default function ContactSection() {
                     }}
                   />
                   <span className="relative flex items-center justify-center gap-2">
-                    Request a Call
-                    <ArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                    {isSubmitting ? 'Sending…' : 'Request a Call'}
+                    {!isSubmitting && (
+                      <ArrowRight size={14} className="transition-transform duration-300 group-hover:translate-x-0.5" />
+                    )}
                   </span>
                 </motion.button>
 

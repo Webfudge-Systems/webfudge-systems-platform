@@ -70,7 +70,7 @@ function StatCard({
       style={{
         background: 'linear-gradient(145deg, #161616 0%, #0f0f0f 100%)',
         border: '1px solid rgba(255,255,255,0.07)',
-        minHeight: 190,
+        minHeight: 160,
       }}
     >
       {/* Animated orange glow — bottom-right corner */}
@@ -108,7 +108,7 @@ function StatCard({
         <span className="text-4xl md:text-5xl">{suffix}</span>
       </div>
 
-      <p className="text-white/55 text-sm leading-relaxed mt-4 relative z-10 max-w-[180px]">
+      <p className="text-white/55 text-xs sm:text-sm leading-relaxed mt-4 relative z-10">
         {label}
       </p>
     </motion.div>
@@ -118,7 +118,7 @@ function StatCard({
 export default function StatsSection() {
   return (
     <section
-      className="py-24 md:py-32 relative overflow-hidden"
+      className="py-16 sm:py-24 md:py-32 relative overflow-hidden"
       style={{
         background: 'linear-gradient(160deg, #0c0a09 0%, #050505 50%, #0a0805 100%)',
       }}
@@ -153,7 +153,7 @@ export default function StatsSection() {
 
       <Container className="relative z-10">
         {/* Main 2-col layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-14 lg:gap-20 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-10 sm:gap-14 lg:gap-20 items-center">
           {/* ── Left: text ── */}
           <motion.div
             initial={{ opacity: 0, x: -28 }}
@@ -161,7 +161,7 @@ export default function StatsSection() {
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.08] tracking-tight mb-8">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.08] tracking-tight mb-6 sm:mb-8">
               Transformation
               <br />
               <span
@@ -177,7 +177,7 @@ export default function StatsSection() {
             </h2>
 
             <p className="text-white/50 text-base md:text-lg leading-relaxed mb-10 max-w-sm">
-              The world is changing faster than businesses can adapt.
+              Businesses that streamline operations grow faster and scale with confidence.
             </p>
 
             {/* Challenge block — card style */}
@@ -202,16 +202,16 @@ export default function StatsSection() {
               />
 
               <p className="text-[#F5630F] font-bold text-xs uppercase tracking-[0.25em] mb-3">
-                The challenge
+                The opportunity
               </p>
               <p className="text-white font-semibold text-xl md:text-2xl leading-snug">
-                Traditional models no longer support modern business needs.
+                Custom software that automates your workflows is your biggest competitive advantage.
               </p>
             </motion.div>
           </motion.div>
 
           {/* ── Right: 2×2 card grid ── */}
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 min-[480px]:grid-cols-2 gap-3 md:gap-4">
             {statCards.map((stat, i) => (
               <StatCard
                 key={stat.label}
@@ -256,7 +256,7 @@ export default function StatsSection() {
               />
 
               <p className="text-white font-bold text-base md:text-lg leading-snug relative z-10">
-                Market shifts require speed, flexibility, and data-driven decisions
+                Scalable software systems give businesses the edge to grow without limits
               </p>
             </motion.div>
           </div>

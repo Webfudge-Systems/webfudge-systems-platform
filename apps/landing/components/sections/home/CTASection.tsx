@@ -7,21 +7,21 @@ import Container from '../../ui/Container'
 
 const TRUST_ITEMS = [
   'Free Consultation',
-  'No Long-term Contracts',
+  'Affordable Pricing',
   'Dedicated Project Manager',
-  'On-time Delivery',
+  'Long-term Support',
 ]
 
 export default function CTASection() {
   return (
-    <section className="py-24 md:py-32 bg-[#fafafa]">
+    <section className="py-16 sm:py-24 md:py-32 bg-[#fafafa]">
       <Container>
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-50px' }}
           transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
-          className="relative rounded-[36px] overflow-hidden px-8 py-20 md:px-20 md:py-28 text-center"
+          className="relative rounded-2xl sm:rounded-[28px] md:rounded-[36px] overflow-hidden px-5 py-14 sm:px-8 sm:py-20 md:px-20 md:py-28 text-center"
           style={{
             background: 'linear-gradient(135deg, #F5630F 0%, #e84e00 40%, #ff8c42 100%)',
           }}
@@ -104,7 +104,7 @@ export default function CTASection() {
             >
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span className="text-white text-[11px] font-semibold tracking-[0.18em] uppercase">
-                Start Building Today
+                Get Started Today
               </span>
             </motion.div>
 
@@ -115,11 +115,11 @@ export default function CTASection() {
               viewport={{ once: true }}
               transition={{ delay: 0.25, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
               className="font-bold text-white leading-[1.05] tracking-tight mb-6 max-w-3xl"
-              style={{ fontSize: 'clamp(36px, 6vw, 72px)' }}
+              style={{ fontSize: 'clamp(1.75rem, 7vw, 4.5rem)' }}
             >
-              Ready to Build
+              Ready to Build Your
               <br />
-              <span className="font-playfair italic opacity-90">Something Exceptional?</span>
+              <span className="font-playfair italic opacity-90">Custom Software?</span>
             </motion.h2>
 
             {/* Sub-copy */}
@@ -130,8 +130,8 @@ export default function CTASection() {
               transition={{ delay: 0.38, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="text-white/70 text-base md:text-lg max-w-lg mx-auto mb-12 leading-relaxed"
             >
-              Turn your vision into a high-performance digital product.
-              Book a free consultation and explore the possibilities together.
+              Let&apos;s discuss your requirements and create a scalable system
+              tailored for your business workflow.
             </motion.p>
 
             {/* CTA buttons */}
@@ -140,12 +140,12 @@ export default function CTASection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.5, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-3"
+              className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full max-w-md sm:max-w-none mx-auto"
             >
               {/* Primary */}
               <motion.a
                 href="#contact"
-                className="relative inline-flex items-center gap-2.5 px-8 py-4 rounded-full font-bold text-[#F5630F] text-sm overflow-hidden group"
+                className="relative inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full font-bold text-[#F5630F] text-sm overflow-hidden group w-full sm:w-auto"
                 style={{
                   background: '#ffffff',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.9)',
@@ -160,7 +160,7 @@ export default function CTASection() {
                     background: 'linear-gradient(105deg, transparent 35%, rgba(245,99,15,0.08) 50%, transparent 65%)',
                   }}
                 />
-                <span className="relative">Start a Project</span>
+                <span className="relative">Get Started</span>
                 <motion.span
                   className="relative"
                   animate={{ x: [0, 3, 0] }}
@@ -173,7 +173,7 @@ export default function CTASection() {
               {/* Secondary */}
               <motion.a
                 href="#contact"
-                className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full font-semibold text-white text-sm transition-all duration-300"
+                className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full font-semibold text-white text-sm transition-all duration-300 w-full sm:w-auto"
                 style={{
                   background: 'rgba(255,255,255,0.12)',
                   border: '1.5px solid rgba(255,255,255,0.32)',
@@ -188,7 +188,7 @@ export default function CTASection() {
                 whileTap={{ scale: 0.97 }}
               >
                 <Calendar size={15} className="opacity-80" />
-                Schedule a Call
+                Book a Consultation
               </motion.a>
             </motion.div>
 

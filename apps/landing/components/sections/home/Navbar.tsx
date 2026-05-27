@@ -10,9 +10,8 @@ const navItems = [
   { label: 'Home', href: '#home' },
   { label: 'Services', href: '#services' },
   { label: 'Solutions', href: '#solutions' },
-  { label: 'Projects', href: '#projects' },
   { label: 'About', href: '#about' },
-  { label: 'Process', href: '#process' },
+  { label: 'Industries', href: '#industries' },
   { label: 'Contact', href: '#contact' },
 ]
 
@@ -28,6 +27,13 @@ export default function Navbar() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileOpen])
 
   return (
     <>
@@ -125,7 +131,7 @@ export default function Navbar() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-x-0 top-[60px] z-40 bg-white/95 backdrop-blur-xl border-b border-[rgba(0,0,0,0.08)] shadow-large md:hidden"
+            className="fixed inset-x-0 top-[72px] z-40 max-h-[calc(100dvh-72px)] overflow-y-auto bg-white/95 backdrop-blur-xl border-b border-[rgba(0,0,0,0.08)] shadow-large md:hidden"
           >
             <div className="px-4 py-6 flex flex-col gap-1">
               {navItems.map((item, i) => (
