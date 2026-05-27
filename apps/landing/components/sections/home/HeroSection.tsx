@@ -34,7 +34,8 @@ function AnimatedBlobs() {
           bottom: '-10%',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'radial-gradient(ellipse, rgba(245,99,15,0.55) 0%, rgba(245,99,15,0.2) 40%, transparent 70%)',
+          background:
+            'radial-gradient(ellipse, rgba(245,99,15,0.55) 0%, rgba(245,99,15,0.2) 40%, transparent 70%)',
           filter: 'blur(60px)',
         }}
         animate={{ scaleX: [1, 1.12, 0.92, 1], opacity: [0.8, 1, 0.8] }}
@@ -129,9 +130,7 @@ export default function HeroSection() {
           className="font-extrabold leading-[1.05] sm:leading-tight tracking-tight text-white mb-4 sm:mb-5 px-1"
           style={{ fontSize: 'clamp(1.75rem, 7vw, 6.5rem)' }}
         >
-          Custom Software
-          <br />
-          For Business
+          Automate. Scale. Grow Faster.
         </motion.h1>
 
         {/* Description */}
