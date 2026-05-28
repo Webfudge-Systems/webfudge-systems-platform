@@ -3,10 +3,9 @@
 import type { ChangeEvent } from 'react'
 import { useMemo, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Filter, MoreHorizontal, Search } from 'lucide-react'
+import { Filter, MoreHorizontal } from 'lucide-react'
 import { clsx } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-import { Button, Card, Input, TableRowActionMenuPortal, workspaceSearchInputClassName } from '@webfudge/ui'
+import { Button, Card, TableRowActionMenuPortal, WorkspaceSearchInput } from '@webfudge/ui'
 
 export type ActivityStatus = 'completed' | 'pending' | 'in_progress'
 
@@ -28,8 +27,11 @@ export type ActivityTableRow = {
 
 export type RecentActivitiesTableProps = {
   title?: string
+  subtitle?: string
   rows: ActivityTableRow[]
   searchPlaceholder?: string
+  /** `feed` = CRM-style list with row backgrounds; `table` = full data table */
+  variant?: 'feed' | 'table'
   onFilterClick?: () => void
   onViewActivity?: (row: ActivityTableRow) => void
   onEditActivity?: (row: ActivityTableRow) => void
@@ -46,17 +48,86 @@ type RowMenuAnchor = {
 
 const STATUS_STYLES: Record<
   ActivityStatus,
-  { dot: string; text: string; label: string }
+  { dot: string; text: string; label: string; feedBg: string }
 > = {
-  completed: { dot: 'bg-emerald-500', text: 'text-emerald-700', label: 'Completed' },
-  pending: { dot: 'bg-red-500', text: 'text-red-600', label: 'Pending' },
-  in_progress: { dot: 'bg-amber-400', text: 'text-amber-700', label: 'In Progress' },
+  completed: {
+    dot: 'bg-emerald-500',
+    text: 'text-emerald-700 dark:text-emerald-400',
+    label: 'Completed',
+    feedBg: 'bg-emerald-500/10',
+  },
+  pending: {
+    dot: 'bg-red-500',
+    text: 'text-red-600 dark:text-red-400',
+    label: 'Pending',
+    feedBg: 'bg-red-500/10',
+  },
+  in_progress: {
+    dot: 'bg-amber-400',
+    text: 'text-amber-700 dark:text-amber-400',
+    label: 'In Progress',
+    feedBg: 'bg-amber-400/15',
+  },
+}
+
+function FeedRow({
+  row,
+  onView,
+}: {
+  row: ActivityTableRow
+  onView?: (row: ActivityTableRow) => void
+}) {
+  const st = STATUS_STYLES[row.status]
+  const RowIcon = row.Icon
+  return (
+    <button
+      type="button"
+      onClick={() => onView?.(row)}
+      className={clsx(
+        'flex w-full gap-3 rounded-xl border border-[color:var(--books-border,rgba(0,0,0,0.06))] p-3 text-left transition-colors',
+        'bg-[var(--books-bg-elevated,#f9fafb)] hover:border-[color:var(--books-border-em,rgba(0,0,0,0.12))] hover:bg-[var(--books-surface-muted,#f3f4f6)]',
+        'dark:bg-[var(--books-bg-elevated,#252830)] dark:hover:bg-[var(--books-surface-muted,#2a2e38)]'
+      )}
+    >
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--books-orange-bg,rgba(234,88,12,0.12))] text-[var(--books-orange-text,#ea580c)]">
+        <RowIcon className="h-4 w-4" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-start justify-between gap-2">
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-[var(--books-text-primary,#111827)]">
+              {row.activityLabel}
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-[var(--books-text-secondary,#6b7280)]">
+              {row.orderId} · {row.customerLabel}
+            </span>
+          </span>
+          <span className="shrink-0 text-sm font-bold text-[var(--books-text-primary,#111827)]">{row.priceLabel}</span>
+        </span>
+        <span className="mt-2 flex flex-wrap items-center gap-2">
+          <span
+            className={clsx(
+              'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold',
+              st.feedBg,
+              st.text
+            )}
+          >
+            <span className={clsx('h-1.5 w-1.5 rounded-full', st.dot)} aria-hidden />
+            {st.label}
+          </span>
+          <span className="text-[11px] text-[var(--books-text-tertiary,#9ca3af)]">{row.dateLabel}</span>
+        </span>
+      </span>
+    </button>
+  )
 }
 
 export function RecentActivitiesTable({
   title = 'Recent Activities',
+  subtitle = 'Latest updates and actions',
   rows,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder = 'Search anything...',
+  variant = 'table',
   onFilterClick,
   onViewActivity,
   onEditActivity,
@@ -92,8 +163,67 @@ export function RecentActivitiesTable({
 
   const closeRowMenu = () => setRowMenuAnchor(null)
 
-  const booksSearchInputClassName =
-    'border border-[color:var(--books-input-border,rgba(0,0,0,0.1))] bg-[var(--books-input-bg,#ffffff)] text-[var(--books-input-text,#111827)] placeholder:text-[var(--books-input-placeholder,#6b7280)]'
+  const filterBtnClassName = clsx(
+    'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors',
+    'border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-elevated,#f9fafb)] text-[var(--books-text-secondary,#374151)]',
+    'hover:border-orange-300 hover:bg-[var(--books-orange-bg,rgba(234,88,12,0.1))] hover:text-[#ea580c]',
+    'dark:bg-[var(--books-bg-elevated,#252830)] dark:text-[var(--books-text-secondary,#9ca3af)]'
+  )
+
+  const headerToolbar = (
+    <div className="flex shrink-0 items-center gap-2">
+      <WorkspaceSearchInput
+        placeholder={searchPlaceholder}
+        value={query}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
+      />
+      <Button type="button" variant="muted" size="sm" rounded="pill" className={filterBtnClassName} onClick={onFilterClick}>
+        <Filter className="h-4 w-4 shrink-0" aria-hidden />
+        Filter
+      </Button>
+    </div>
+  )
+
+  if (variant === 'feed') {
+    return (
+      <Card
+        variant="elevated"
+        padding={false}
+        className={clsx(
+          'flex h-full min-h-0 flex-col overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
+          className
+        )}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--books-border,rgba(0,0,0,0.06))] p-5 md:p-6">
+          <div className="min-w-0 pr-2">
+            <h2 className="text-base font-semibold text-[var(--books-text-primary,#111827)]">{title}</h2>
+            {subtitle ? (
+              <p className="mt-0.5 text-xs text-[var(--books-text-secondary,#6b7280)]">{subtitle}</p>
+            ) : null}
+          </div>
+          {headerToolbar}
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 md:px-6">
+          {filtered.length === 0 ? (
+            <div className="flex h-full min-h-[120px] items-center justify-center rounded-xl bg-[var(--books-bg-elevated,#f9fafb)] px-4 py-8 text-center dark:bg-[var(--books-bg-elevated,#252830)]">
+              <p className="text-sm text-[var(--books-text-secondary,#6b7280)]">
+                {rows.length === 0
+                  ? 'No recent activity. Invoices and expenses will appear here.'
+                  : 'No activities match your search.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {filtered.map((row) => (
+                <FeedRow key={row.id} row={row} onView={onViewActivity} />
+              ))}
+            </div>
+          )}
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card
@@ -104,34 +234,11 @@ export function RecentActivitiesTable({
         className
       )}
     >
-      <div className="flex shrink-0 flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between md:px-7 md:pt-7">
-        <h2 className="text-base font-semibold tracking-tight text-[var(--books-text-primary,#1a1a1a)]">{title}</h2>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <Input
-            icon={Search}
-            type="search"
-            placeholder={searchPlaceholder}
-            value={query}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
-            containerClassName="w-full min-w-0 sm:min-w-[16rem] sm:w-64"
-            className={twMerge(
-              workspaceSearchInputClassName,
-              booksSearchInputClassName,
-              'w-full min-w-0 sm:min-w-[16rem] sm:w-64'
-            )}
-          />
-          <Button
-            type="button"
-            variant="muted"
-            size="sm"
-            rounded="pill"
-            className="shrink-0 border border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-elevated,#f9fafb)] px-4 font-semibold text-[var(--books-text-secondary,#374151)] hover:border-[#FF6B35]/35 hover:bg-[var(--books-orange-bg,rgba(234,88,12,0.1))]"
-            onClick={onFilterClick}
-          >
-            <Filter className="mr-2 h-4 w-4 text-[var(--books-text-secondary,#6b7280)]" aria-hidden />
-            Filter
-          </Button>
-        </div>
+      <div className="flex shrink-0 items-center justify-between gap-3 p-6 md:px-7 md:pt-7">
+        <h2 className="min-w-0 text-base font-semibold tracking-tight text-[var(--books-text-primary,#1a1a1a)]">
+          {title}
+        </h2>
+        {headerToolbar}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col px-6 pb-6 md:px-7 md:pb-7">

@@ -2,16 +2,32 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Briefcase, Coins, Cpu, Plane, ShoppingBag, Smartphone, Sparkles, TrendingUp, Wallet } from 'lucide-react'
+import { clsx } from 'clsx'
+import {
+  Briefcase,
+  Coins,
+  Cpu,
+  FileText,
+  Plane,
+  Receipt,
+  ShoppingBag,
+  Smartphone,
+  Sparkles,
+  TrendingUp,
+  Users,
+  Wallet,
+} from 'lucide-react'
 import { formatCurrency } from '@webfudge/utils'
 import {
   BooksChartViewSwitcher,
-  FintechMetricsQuad,
+  BooksKPICard,
+  BooksQuickAccessCard,
   MonthlySpendingLimitCard,
   RecentActivitiesTable,
   StackedBankCards,
   TotalBalanceCard,
 } from '@webfudge/ui/book-components'
+import type { BooksQuickAccessShortcut } from '@webfudge/ui/book-components'
 import type { ActivityTableRow, AnalyticsAreaPoint, ProfitLossMonth } from '@webfudge/ui/book-components'
 import { booksApi } from '@/lib/api'
 import type { Customer, Expense, Invoice, InvoiceStatus, TimeEntry } from '@/lib/types'
@@ -20,7 +36,13 @@ const DEFAULT_MONTHLY_SPEND_LIMIT = 0
 
 const ACTIVITY_ICONS = [Smartphone, Plane, ShoppingBag, Sparkles, Cpu] as const
 
-/** Map MoM trend to KPICard `change` / `changeType` (CRM-style footer). */
+/** Equal-height rows for wireframe-aligned dashboard grid */
+const HOME_ROW_INCOME = 'h-[320px] min-h-[320px]'
+const HOME_ROW_MID = 'h-[280px] min-h-[280px]'
+const HOME_ROW_BOTTOM = 'h-[340px] min-h-[340px]'
+const HOME_QUICK_ACCESS_HEIGHT = 'xl:h-[calc(320px+1.5rem+280px)] xl:min-h-[calc(320px+1.5rem+280px)]'
+
+/** Map MoM trend to BooksKPICard `change` / `changeType` (CRM-style footer). */
 function trendToKpiProps(
   trend: { text: string; up: boolean },
   /** Payables: higher spend → red (treat like "decrease" sentiment in UI). */
@@ -275,7 +297,7 @@ export default function HomePage() {
     })
   }, [customerNameById, invoices])
 
-  const booksHomeFintechMetrics = useMemo(() => {
+  const booksHomeKpis = useMemo(() => {
     const now = new Date()
     const y = now.getFullYear()
     const m = now.getMonth()
@@ -304,46 +326,115 @@ export default function HomePage() {
 
     return [
       {
-        title: 'Total receivables',
+        title: 'Total Receivables',
         value: formatCurrency(metrics.totalReceivables),
         icon: Wallet,
         ...a,
       },
       {
-        title: 'Total payables',
+        title: 'Total Payables',
         value: formatCurrency(metrics.totalPayables),
         icon: Briefcase,
         ...b,
       },
       {
-        title: 'This month billing',
+        title: 'This Month Billing',
         value: formatCurrency(invThis),
         icon: Coins,
         ...c,
       },
       {
-        title: 'Net position',
+        title: 'Net Position',
         value: formatCurrency(netPosition),
         icon: TrendingUp,
         ...d,
       },
-    ].map((row, index) => ({
-      title: row.title,
-      value: row.value,
-      icon: row.icon,
-      trendLabel: row.change ?? row.subtitle ?? '—',
-      trendDirection: (row.changeType === 'increase' ? 'up' : 'down') as 'up' | 'down',
-      highlight: false,
-    }))
+    ]
   }, [expenses, invoices, metrics.totalPayables, metrics.totalReceivables, netPosition])
 
+  const quickAccessShortcuts: BooksQuickAccessShortcut[] = useMemo(
+    () => [
+      {
+        id: 'invoices',
+        title: 'Invoices',
+        count: invoices.length,
+        icon: FileText,
+        onClick: () => router.push('/sales/invoices'),
+      },
+      {
+        id: 'customers',
+        title: 'Customers',
+        count: customers.length,
+        icon: Users,
+        onClick: () => router.push('/sales/customers'),
+      },
+      {
+        id: 'expenses',
+        title: 'Expenses',
+        count: expenses.length,
+        icon: Receipt,
+        onClick: () => router.push('/purchases/expenses'),
+      },
+      {
+        id: 'reports',
+        title: 'Reports',
+        count: 0,
+        icon: TrendingUp,
+        onClick: () => router.push('/reports'),
+      },
+    ],
+    [customers.length, expenses.length, invoices.length, router]
+  )
+
   return (
-    <div className="-mx-4 min-h-full space-y-6 px-4 pb-8 md:-mx-6 md:px-6">
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-12">
-        {/* Left rail */}
-        <div className="flex min-h-0 flex-col gap-6 xl:col-span-4">
+    <div className="-mx-4 min-h-full px-4 pb-8 md:-mx-6 md:px-6">
+      {/* KPI row — extra top spacing below header tabs */}
+      <div className="mb-6 grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2 sm:pt-5 lg:grid-cols-4 lg:pt-6">
+        {booksHomeKpis.map((kpi) => (
+          <BooksKPICard
+            key={kpi.title}
+            title={kpi.title}
+            value={kpi.value}
+            change={kpi.change}
+            changeType={kpi.changeType}
+            subtitle={kpi.subtitle}
+            icon={kpi.icon}
+            className="h-full"
+          />
+        ))}
+      </div>
+
+      {/* Wireframe: income + quick access | balance + limit | wallet + recent */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <div className={clsx('min-h-0 xl:col-span-8 xl:row-start-1', HOME_ROW_INCOME)}>
+          <BooksChartViewSwitcher
+            className="h-full w-full"
+            salesValue={formatCurrency(metrics.totalInvoiced)}
+            conversionValue={conversionDisplay}
+            analyticsData={analyticsAreaData}
+            profitLossData={chartData}
+            defaultView="pl"
+            lockView
+            plHeaderTitle="Total Income"
+            plSubtitle="View your income in a certain period of time"
+            incomeInvoices={invoices}
+            sectionTitle="Profit and Loss"
+          />
+        </div>
+
+        <div
+          className={clsx(
+            'min-h-0 xl:col-span-4 xl:row-span-2 xl:row-start-1',
+            HOME_ROW_INCOME,
+            HOME_QUICK_ACCESS_HEIGHT
+          )}
+        >
+          <BooksQuickAccessCard className="h-full min-h-[280px] xl:min-h-0" shortcuts={quickAccessShortcuts} />
+        </div>
+
+        <div className={clsx('min-h-0 xl:col-span-4 xl:row-start-2', HOME_ROW_MID)}>
           <TotalBalanceCard
-            className="h-[340px] w-full"
+            className="h-full w-full"
             balanceLabel={formatCurrency(netPosition)}
             trendLabel="+ 5% than last month"
             trendPositive
@@ -352,8 +443,11 @@ export default function HomePage() {
             onTransfer={() => router.push('/banking')}
             onRequest={() => router.push('/sales/invoices')}
           />
+        </div>
+
+        <div className={clsx('min-h-0 xl:col-span-4 xl:row-start-2', HOME_ROW_MID)}>
           <MonthlySpendingLimitCard
-            className="w-full"
+            className="h-full w-full"
             spent={spentThisMonth}
             limit={monthlySpendLimitDisplay}
             spentLabel={formatCurrency(spentThisMonth)}
@@ -363,36 +457,30 @@ export default function HomePage() {
                 : formatCurrency(0)
             }
           />
+        </div>
+
+        <div
+          className={clsx(
+            'grid min-h-0 grid-cols-1 gap-6 xl:col-span-12',
+            HOME_ROW_BOTTOM,
+            'xl:grid-cols-[minmax(0,34fr)_minmax(0,66fr)]'
+          )}
+        >
           <StackedBankCards
-            className="w-full"
+            className="h-full min-h-0 w-full"
+            title="My Wallet"
             showCardIcon
             onAddNew={() => router.push('/banking')}
             addNewLabel="Add new"
           />
-        </div>
 
-        {/* Main canvas: top metrics + analytics, bottom recent activities */}
-        <div className="grid min-h-0 min-w-0 grid-cols-1 gap-6 xl:col-span-8 xl:grid-cols-12">
-          <div className="min-h-0 min-w-0 xl:col-span-5">
-            <FintechMetricsQuad className="h-[340px]" items={booksHomeFintechMetrics} />
-          </div>
-          <div className="flex min-h-0 min-w-0 xl:col-span-7">
-            <BooksChartViewSwitcher
-              className="h-[340px] w-full"
-              salesValue={formatCurrency(metrics.totalInvoiced)}
-              conversionValue={conversionDisplay}
-              analyticsData={analyticsAreaData}
-              profitLossData={chartData}
-              defaultView="pl"
-              lockView
-              plHeaderTitle="Total Income"
-              plSubtitle="View your income in a certain period of time"
-              sectionTitle="Profit and Loss"
-            />
-          </div>
-          <div className="min-h-0 min-w-0 xl:col-span-12">
-            <RecentActivitiesTable className="min-h-[760px] w-full" rows={activityRows} searchPlaceholder="Search..." />
-          </div>
+          <RecentActivitiesTable
+            variant="feed"
+            className="h-full min-h-0 w-full"
+            rows={activityRows}
+            searchPlaceholder="Search anything..."
+            subtitle="Latest updates and actions"
+          />
         </div>
       </div>
     </div>

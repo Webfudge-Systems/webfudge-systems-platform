@@ -81,6 +81,8 @@ Your complete guide to the Webfudge Platform documentation.
 | **[BOOKS_CRM_STYLE_ADD_PAGES.md](./BOOKS_CRM_STYLE_ADD_PAGES.md)** | CRM-style “Add” pages for Sales/Purchases/Accountant, consistent create UI using `@webfudge/ui` |
 | **[BOOKS_TABLE_COLUMN_PICKER.md](./BOOKS_TABLE_COLUMN_PICKER.md)** | CRM-style column visibility dropdown (eye icon) on Books Sales/Purchases/Accountant list bars |
 | **[BOOKS_HOME_GETTING_STARTED_TABS.md](./BOOKS_HOME_GETTING_STARTED_TABS.md)** | Home page tabs: Getting Started onboarding UI + Announcements / Recent Updates empty states |
+| **[BOOKS_HOME_KPI_CRM_ALIGNMENT.md](./BOOKS_HOME_KPI_CRM_ALIGNMENT.md)** | Books home KPI row uses `@webfudge/ui` `KPICard` (CRM-style) instead of `FintechMetricsQuad` |
+| **[BOOKS_HOME_HUB_PAGES.md](./BOOKS_HOME_HUB_PAGES.md)** | Separate `/home/activity`, `/home/announcements`, `/home/recent-updates` hub pages (Zoho Books–style UI, frontend-only) |
 | **[BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md](./BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md)** | Added Books `/threads` (“Conversations”) page aligned with CRM latest conversations UI |
 | **[BOOKS_SHELL_TABS_HEADER_SIDEBAR_REFACTOR.md](./BOOKS_SHELL_TABS_HEADER_SIDEBAR_REFACTOR.md)** | Books shell refactor: floating sidebar groups, route-driven sub-page tabs, and grouped top header actions |
 | **[BOOKS_THEME_TOGGLE.md](./BOOKS_THEME_TOGGLE.md)** | Books light/dark theme: CSS variables, `BooksThemeProvider`, sidebar toggle, FOUC script; dashboard + list pages use `@webfudge/ui/book-components` and `TabsWithActions` `booksModern` for matching card surfaces |

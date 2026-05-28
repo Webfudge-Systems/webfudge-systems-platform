@@ -16,6 +16,24 @@ export const ROUTE_META: Record<string, RouteMeta> = {
     breadcrumbs: ['Dashboard'],
     actions: [],
   },
+  '/home/activity': {
+    title: 'Activity',
+    subtitle: 'Timeline of sales, purchases, banking, and accounting events.',
+    breadcrumbs: ['Dashboard', 'Activity'],
+    actions: [],
+  },
+  '/home/announcements': {
+    title: 'Announcements',
+    subtitle: 'Product news, webinars, and maintenance updates.',
+    breadcrumbs: ['Dashboard', 'Announcements'],
+    actions: [],
+  },
+  '/home/recent-updates': {
+    title: 'Recent Updates',
+    subtitle: 'Audit log of record creates, edits, emails, and payments.',
+    breadcrumbs: ['Dashboard', 'Recent Updates'],
+    actions: [],
+  },
   '/sales': {
     title: 'Sales',
     subtitle: 'Manage customers, invoices, and receivables.',

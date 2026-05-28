@@ -2,6 +2,7 @@ declare module '@webfudge/ui' {
   export const Button: any
   export const Input: any
   export const workspaceSearchInputClassName: string
+  export const WorkspaceSearchInput: React.ComponentType<Record<string, unknown>>
   export const Select: any
   export const Checkbox: any
   export const Textarea: any

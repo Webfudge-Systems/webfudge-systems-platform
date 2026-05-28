@@ -8,6 +8,8 @@ export type BooksKPICardProps = {
   title: string
   value: number | string
   subtitle?: string
+  change?: string
+  changeType?: 'increase' | 'decrease'
   icon?: LucideIcon
   className?: string
   onClick?: () => void
@@ -16,7 +18,18 @@ export type BooksKPICardProps = {
 /**
  * KPI tile aligned with Books dashboard metrics: `--books-bg-card` surface, light text in dark mode.
  */
-export function BooksKPICard({ title, value, subtitle, icon: Icon, className, onClick }: BooksKPICardProps) {
+export function BooksKPICard({
+  title,
+  value,
+  subtitle,
+  change,
+  changeType = 'increase',
+  icon: Icon,
+  className,
+  onClick,
+}: BooksKPICardProps) {
+  const showFooter = change || (!change && subtitle)
+
   return (
     <Card
       variant="elevated"
@@ -31,9 +44,31 @@ export function BooksKPICard({ title, value, subtitle, icon: Icon, className, on
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1 pr-2">
           <p className="mb-2 text-sm font-medium text-[var(--books-text-secondary,#6b7280)]">{title}</p>
-          <p className="text-4xl font-bold tracking-tight text-[var(--books-text-primary,#111827)]">{value}</p>
-          {subtitle ? (
-            <div className="mt-2 flex items-center gap-1.5 text-sm text-[var(--books-text-secondary,#6b7280)]">
+          <p
+            className={clsx(
+              'text-4xl font-bold tracking-tight text-[var(--books-text-primary,#111827)]',
+              showFooter && 'mb-2'
+            )}
+          >
+            {value}
+          </p>
+          {showFooter && change ? (
+            <div className="flex items-center gap-1.5 text-sm text-[var(--books-text-secondary,#6b7280)]">
+              <span className="h-2 w-2 rounded-full bg-[var(--books-orange-text,#ea580c)]" aria-hidden />
+              <span
+                className={
+                  changeType === 'increase'
+                    ? 'font-medium text-[var(--books-green,#059669)]'
+                    : 'font-medium text-red-600 dark:text-red-400'
+                }
+              >
+                {change}
+              </span>
+              {change !== '0' ? <span className="ml-0.5">this period</span> : null}
+            </div>
+          ) : null}
+          {showFooter && !change && subtitle ? (
+            <div className="flex items-center gap-1.5 text-sm text-[var(--books-text-secondary,#6b7280)]">
               <span className="h-2 w-2 rounded-full bg-[var(--books-orange-text,#ea580c)]" aria-hidden />
               <span>{subtitle}</span>
             </div>

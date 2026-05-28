@@ -9,6 +9,7 @@ export {
   Button,
   Input,
   workspaceSearchInputClassName,
+  WorkspaceSearchInput,
   Select,
   Checkbox,
   Textarea,

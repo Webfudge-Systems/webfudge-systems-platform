@@ -3,49 +3,41 @@
 import { useId } from 'react'
 import { clsx } from 'clsx'
 import { Card } from '@webfudge/ui'
-import { Gauge } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 
 export type MonthlySpendingLimitCardProps = {
   title?: string
-  /** Amount spent (same currency unit as labels) */
+  subtitle?: string
   spent: number
-  /** Monthly limit */
   limit: number
   spentLabel: string
   limitLabel: string
   className?: string
 }
 
-/** Semicircle opens upward; geometry tuned for a smooth “speedometer” arc. */
-const CX = 120
-const CY = 112
-const R = 86
-const STROKE = 14
+const SEGMENT_COUNT = 24
+const CX = 100
+const CY = 90
+const INNER_R = 46
+const OUTER_R = 84
 
-const SCALE_MARKS = [
-  { pct: 0, label: '0' },
-  { pct: 25, label: '25' },
-  { pct: 50, label: '50' },
-  { pct: 75, label: '75' },
-  { pct: 100, label: '100' },
-] as const
-
-/** Upper semicircle from left to right (bulge upward). */
-const ARC_D = `M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`
-
-function labelPosition(markPct: number) {
-  const t = markPct / 100
-  const theta = Math.PI * (1 - t)
-  const lr = R + 16
-  return {
-    x: CX + lr * Math.cos(theta),
-    y: CY - lr * Math.sin(theta),
-    anchor: (markPct <= 8 ? 'end' : markPct >= 92 ? 'start' : 'middle') as 'start' | 'middle' | 'end',
-  }
+function segmentPath(index: number, total: number) {
+  const startAngle = Math.PI * (1 - index / total)
+  const endAngle = Math.PI * (1 - (index + 1) / total)
+  const x1o = CX + OUTER_R * Math.cos(startAngle)
+  const y1o = CY - OUTER_R * Math.sin(startAngle)
+  const x2o = CX + OUTER_R * Math.cos(endAngle)
+  const y2o = CY - OUTER_R * Math.sin(endAngle)
+  const x1i = CX + INNER_R * Math.cos(endAngle)
+  const y1i = CY - INNER_R * Math.sin(endAngle)
+  const x2i = CX + INNER_R * Math.cos(startAngle)
+  const y2i = CY - INNER_R * Math.sin(startAngle)
+  return `M ${x1o} ${y1o} A ${OUTER_R} ${OUTER_R} 0 0 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${INNER_R} ${INNER_R} 0 0 0 ${x2i} ${y2i} Z`
 }
 
 export function MonthlySpendingLimitCard({
-  title = 'Monthly Spending Limit',
+  title = 'Spending Overview',
+  subtitle = 'Track spend against your monthly cap',
   spent,
   limit,
   spentLabel,
@@ -56,117 +48,119 @@ export function MonthlySpendingLimitCard({
   const pctRaw = limit > 0 ? (spent / limit) * 100 : 0
   const pct = Math.min(100, Math.max(0, pctRaw))
   const overBudget = limit > 0 && spent > limit
-  const arcLength = Math.PI * R
-  const dashOffset = arcLength * (1 - pct / 100)
+  const filledSegments = Math.round((pct / 100) * SEGMENT_COUNT)
+  const pctDisplay = limit > 0 ? `${pct.toFixed(1)}%` : '—'
+  const remaining = Math.max(0, limit - spent)
+  const remainingLabel =
+    limit > 0
+      ? new Intl.NumberFormat('en-IN', {
+          style: 'currency',
+          currency: 'INR',
+          maximumFractionDigits: 0,
+        }).format(remaining)
+      : '—'
 
   return (
     <Card
       variant="elevated"
       padding={false}
       className={clsx(
-        'relative flex min-h-0 flex-col overflow-hidden rounded-2xl !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
+        'relative flex min-h-0 flex-col overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
         className
       )}
     >
-      <div className="relative z-[1] flex min-h-0 flex-1 flex-col px-6 pb-6 pt-6 md:px-7 md:pb-7 md:pt-7">
-        <div className="shrink-0">
-          <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--books-orange-bg,rgba(234,88,12,0.1))] text-[var(--books-orange-text,#ea580c)]">
-            <Gauge className="h-4 w-4" aria-hidden />
+      <div className="flex min-h-0 flex-1 flex-col p-5 md:p-6">
+        <div className="mb-3 flex shrink-0 items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold tracking-tight text-[var(--books-text-primary,#111827)]">
+              {title}
+            </h2>
+            {subtitle ? (
+              <p className="mt-0.5 text-xs font-medium text-[var(--books-text-secondary,#6b7280)]">{subtitle}</p>
+            ) : null}
           </div>
-          <h2 className="text-base font-semibold tracking-tight text-[var(--books-text-primary,#1a1a1a)]">{title}</h2>
-          <p className="mt-1 text-[13px] font-medium text-[var(--books-text-secondary,#6b7280)]">
-            Track spend against your monthly cap
-          </p>
+          <button
+            type="button"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-elevated,#f9fafb)] text-[var(--books-text-tertiary,#9ca3af)] transition-colors hover:bg-[var(--books-surface-muted,#f3f4f6)] hover:text-[var(--books-text-secondary,#6b7280)]"
+            aria-label="Spending options"
+          >
+            <MoreHorizontal className="h-4 w-4" aria-hidden />
+          </button>
         </div>
 
-        <div className="relative mt-2 flex min-h-0 flex-1 flex-col items-center">
-        <svg
-          viewBox="0 0 240 138"
-          className="mx-auto w-full max-w-[304px] overflow-visible"
-          aria-hidden
-          role="presentation"
-        >
-          <defs>
-            <linearGradient id={`msl-grad-${uid}`} x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#fb923c" />
-              <stop offset="52%" stopColor="#f97316" />
-              <stop offset="100%" stopColor="#ea580c" />
-            </linearGradient>
-          </defs>
+        <div className="relative mx-auto flex min-h-0 w-full max-w-[280px] flex-1 flex-col items-center justify-center py-1">
+          <svg viewBox="0 0 200 100" className="h-auto w-full max-h-[152px] min-h-[130px]" aria-hidden role="presentation">
+            <defs>
+              <linearGradient id={`msl-seg-grad-${uid}`} x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#fb923c" />
+                <stop offset="50%" stopColor="#f97316" />
+                <stop offset="100%" stopColor="#ea580c" />
+              </linearGradient>
+            </defs>
+            {Array.from({ length: SEGMENT_COUNT }, (_, i) => {
+              const filled = i < filledSegments
+              const isEdge = filled && (i === filledSegments - 1 || i === 0)
+              return (
+                <path
+                  key={i}
+                  d={segmentPath(i, SEGMENT_COUNT)}
+                  fill={
+                    overBudget && filled
+                      ? '#ef4444'
+                      : filled
+                        ? `url(#msl-seg-grad-${uid})`
+                        : 'var(--books-border, rgba(148,163,184,0.25))'
+                  }
+                  opacity={filled ? (isEdge ? 1 : 0.92 - (i / SEGMENT_COUNT) * 0.35) : 1}
+                  className="transition-all duration-500"
+                />
+              )
+            })}
+          </svg>
 
-          {/* Track */}
-          <path
-            d={ARC_D}
-            fill="none"
-            stroke="var(--books-border,rgba(148,163,184,0.35))"
-            strokeWidth={STROKE}
-            strokeLinecap="round"
-          />
-
-          {/* Progress */}
-          <path
-            d={ARC_D}
-            fill="none"
-            stroke={overBudget ? '#ef4444' : `url(#msl-grad-${uid})`}
-            strokeWidth={STROKE}
-            strokeLinecap="round"
-            strokeDasharray={arcLength}
-            strokeDashoffset={dashOffset}
-            className="drop-shadow-[0_2px_6px_rgba(249,115,22,0.35)] transition-[stroke-dashoffset] duration-700 ease-out"
-          />
-
-          {SCALE_MARKS.map(({ pct: markPct, label }) => {
-            const p = labelPosition(markPct)
-            return (
-              <text
-                key={markPct}
-                x={p.x}
-                y={p.y}
-                textAnchor={p.anchor}
-                dominantBaseline="middle"
-                fill="var(--books-text-tertiary, #9ca3af)"
-                style={{ fontSize: '11px', fontWeight: 600 }}
-              >
-                {label}
-              </text>
-            )
-          })}
-        </svg>
-
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-3 flex flex-col items-center justify-end text-center"
-          style={{ top: '46%' }}
-        >
-          <p className="text-[2.1rem] leading-none font-bold tracking-tight text-[var(--books-text-primary,#1a1a1a)] sm:text-[2.35rem]">
-            {spentLabel}
-          </p>
-          <p className="mt-1 text-sm text-[var(--books-text-secondary,#6b7280)]">
-            spent out of{' '}
-            <span className="font-bold text-[var(--books-text-primary,#374151)]">{limitLabel}</span>
-          </p>
-          {overBudget ? (
-            <p className="mt-2 rounded-full bg-red-500/15 px-2.5 py-1 text-xs font-semibold text-red-600 dark:text-red-400">
-              Over monthly limit
+          <div className="pointer-events-none absolute inset-x-0 top-[36%] flex flex-col items-center text-center">
+            <p className="text-[1.9rem] font-bold leading-none tracking-tight text-[var(--books-text-primary,#111827)] sm:text-[2.15rem]">
+              {pctDisplay}
             </p>
-          ) : limit > 0 ? (
-            <p className="mt-2 rounded-full bg-[color:var(--books-orange-bg,rgba(234,88,12,0.1))] px-2.5 py-1 text-xs font-semibold text-[var(--books-text-secondary,#6b7280)]">
-              {Math.round(pct)}% used
+            <p className="mt-1 text-xs font-medium text-[var(--books-text-secondary,#6b7280)]">
+              {overBudget ? 'Over budget' : limit > 0 ? 'Budget used' : 'No limit set'}
             </p>
-          ) : (
-            <p className="mt-2 text-xs font-medium text-[var(--books-text-secondary,#6b7280)]">
-              Set a limit to track usage
-            </p>
-          )}
-        </div>
+          </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-[var(--books-bg-elevated,#f8fafc)] px-3 py-2 text-xs">
-          <span className="text-[var(--books-text-secondary,#6b7280)]">
-            Spent: <span className="font-semibold text-[var(--books-text-primary,#111827)]">{spentLabel}</span>
-          </span>
-          <span className="text-[var(--books-text-secondary,#6b7280)]">
-            Limit: <span className="font-semibold text-[var(--books-text-primary,#111827)]">{limitLabel}</span>
-          </span>
+        <div className="mt-3 grid shrink-0 grid-cols-2 gap-3">
+          <div className="rounded-xl bg-[var(--books-bg-elevated,#f8fafc)] px-3 py-3 dark:bg-[var(--books-bg-elevated,#252830)]">
+            <p className="text-[11px] font-medium text-[var(--books-text-secondary,#6b7280)]">Amount spent</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <p className="text-lg font-bold tracking-tight text-[var(--books-text-primary,#111827)]">{spentLabel}</p>
+              {limit > 0 ? (
+                <span
+                  className={clsx(
+                    'rounded-full px-2 py-0.5 text-[10px] font-semibold text-white',
+                    overBudget ? 'bg-red-500' : 'bg-[#ea580c]'
+                  )}
+                >
+                  {overBudget ? '↑ Over' : `${Math.round(pct)}%`}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-[var(--books-bg-elevated,#f8fafc)] px-3 py-3 dark:bg-[var(--books-bg-elevated,#252830)]">
+            <p className="text-[11px] font-medium text-[var(--books-text-secondary,#6b7280)]">Monthly limit</p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <p className="text-lg font-bold tracking-tight text-[var(--books-text-primary,#111827)]">{limitLabel}</p>
+              {limit > 0 ? (
+                <span className="rounded-full bg-[var(--books-text-primary,#374151)] px-2 py-0.5 text-[10px] font-semibold text-white dark:bg-[var(--books-surface-muted,#3a3d45)]">
+                  {remainingLabel} left
+                </span>
+              ) : (
+                <span className="rounded-full bg-[var(--books-surface-muted,#e5e7eb)] px-2 py-0.5 text-[10px] font-semibold text-[var(--books-text-secondary,#6b7280)] dark:bg-[var(--books-bg-elevated,#252830)]">
+                  Set limit
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </Card>

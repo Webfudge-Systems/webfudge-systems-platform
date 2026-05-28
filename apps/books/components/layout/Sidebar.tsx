@@ -230,8 +230,8 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
         </div>
       </div>
 
-      {/* Nav + utility pills: natural height; <aside> scrolls if viewport is short (scrollbar hidden). */}
-      <div className="mt-4 flex w-full shrink-0 flex-col gap-3 sm:mt-5">
+      {/* Nav pill — vertically centered in the rail */}
+      <div className="flex min-h-0 w-full flex-1 items-center justify-center py-3">
         <div
           className={clsx(
             railPillBaseClass,
@@ -268,34 +268,34 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
             })}
           </nav>
         </div>
+      </div>
 
-        {/* Utilities: help + avatar */}
-        <div className="w-full shrink-0">
+      {/* Help + profile — bottom of sidebar */}
+      <div className="w-full shrink-0 pb-1 pt-2">
+        <div
+          className={clsx(
+            railPillBaseClass,
+            'flex w-full flex-col items-center overflow-hidden px-2 py-2 sm:py-2',
+            collapsed ? 'gap-1.5' : 'gap-2'
+          )}
+        >
+          <button type="button" title="Help" className={railTopIconBtnClass(false)}>
+            <HelpCircle className="h-4 w-4" aria-hidden />
+          </button>
           <div
-            className={clsx(
-              railPillBaseClass,
-              'flex flex-col items-center overflow-hidden px-2 py-2 sm:py-2',
-              collapsed ? 'gap-1.5' : 'gap-2'
-            )}
+            className="flex items-center gap-2"
+            title={`${resolveUserDisplayName(user)} · ${resolveUserRole(user)}`}
           >
-            <button type="button" title="Help" className={railTopIconBtnClass(false)}>
-              <HelpCircle className="h-4 w-4" aria-hidden />
-            </button>
-            <div
-              className="flex items-center gap-2"
-              title={`${resolveUserDisplayName(user)} · ${resolveUserRole(user)}`}
-            >
-              <Avatar
-                shape="circle"
-                fallback={resolveUserInitials(user)}
-                alt={resolveUserDisplayName(user)}
-                size="sm"
-                className="h-8 w-8 border-0 bg-[#EA580C] font-semibold text-white"
-              />
-              {!collapsed ? (
-                <span className="text-sm font-medium text-[var(--books-text-primary)]">{resolveUserInitials(user)}</span>
-              ) : null}
-            </div>
+            <Avatar
+              shape="circle"
+              fallback={resolveUserInitials(user)}
+              alt={resolveUserDisplayName(user)}
+              size="sm"
+              className="h-8 w-8 border-0 bg-[#EA580C] font-semibold text-white"
+            />
+            {!collapsed ? (
+              <span className="text-sm font-medium text-[var(--books-text-primary)]">{resolveUserInitials(user)}</span>
+            ) : null}
           </div>
         </div>
       </div>

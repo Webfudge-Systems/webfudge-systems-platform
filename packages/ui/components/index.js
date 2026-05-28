@@ -5,7 +5,7 @@
 
 // FORM COMPONENTS
 export { Button } from './Button';
-export { Input, workspaceSearchInputClassName } from './Input';
+export { Input, workspaceSearchInputClassName, WorkspaceSearchInput } from './Input';
 export { Select } from './Select';
 export { Checkbox } from './Checkbox';
 export { Textarea } from './Textarea';

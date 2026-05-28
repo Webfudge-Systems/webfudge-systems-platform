@@ -26,12 +26,12 @@ export default function SubPageTabs({ trailing }: SubPageTabsProps) {
   }, [pathname])
 
   const tabs = useMemo(() => {
-    if (pathname === '/home' || pathname === '/') {
+    if (pathname === '/home' || pathname === '/' || pathname.startsWith('/home/')) {
       return [
         { label: 'Dashboard', href: '/home' },
-        { label: 'Activity', href: '/home?tab=activity' },
-        { label: 'Announcements', href: '/home?tab=announcements' },
-        { label: 'Recent Updates', href: '/home?tab=recent-updates' },
+        { label: 'Activity', href: '/home/activity' },
+        { label: 'Announcements', href: '/home/announcements' },
+        { label: 'Recent Updates', href: '/home/recent-updates' },
       ]
     }
     return getTabsForRoute(pathname)
@@ -50,7 +50,10 @@ export default function SubPageTabs({ trailing }: SubPageTabsProps) {
 
   const activeFor = (href: string) => {
     const [pathOnly, queryPart] = href.split('?')
-    if (!queryPart) return pathname === pathOnly || pathname.startsWith(`${pathOnly}/`)
+    if (!queryPart) {
+      if (pathOnly === '/home') return pathname === '/home' || pathname === '/'
+      return pathname === pathOnly || pathname.startsWith(`${pathOnly}/`)
+    }
     if (pathname !== pathOnly) return false
     const q = new URLSearchParams(queryPart)
     return Array.from(q.entries()).every(([k, v]) => searchParams.get(k) === v)

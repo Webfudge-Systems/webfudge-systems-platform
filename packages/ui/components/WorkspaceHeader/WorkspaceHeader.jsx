@@ -13,7 +13,6 @@ import {
   Filter,
   Image,
   Plus,
-  Search,
   Settings,
   Share,
   Upload,
@@ -21,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useAuth, resolveUserDisplayName, resolveUserInitials, resolveUserRole } from '@webfudge/auth'
 import { Avatar, Card } from '../index'
-import { Input, workspaceSearchInputClassName } from '../Input'
+import { WorkspaceSearchInput, workspaceSearchInputClassName } from '../Input'
 import LoadingSpinner from '../../feedback/LoadingSpinner'
 
 export function WorkspaceHeader({
@@ -202,10 +201,8 @@ export function WorkspaceHeader({
         {(children || showSearch || showActions || actions) && (
           <div className="flex items-center gap-4 ml-4">
             {showSearch && (
-              <div className="hidden md:block shrink-0">
-                <Input
-                  icon={Search}
-                  type="text"
+              <div className="hidden shrink-0 md:block">
+                <WorkspaceSearchInput
                   placeholder={searchPlaceholder || 'Search... (⌘K)'}
                   value={searchInputValue}
                   onChange={(e) => {
@@ -219,7 +216,6 @@ export function WorkspaceHeader({
                       setShowGlobalSearch(true)
                     }
                   }}
-                  containerClassName="w-64 min-w-[16rem]"
                   className={resolvedSearchClass}
                 />
               </div>
