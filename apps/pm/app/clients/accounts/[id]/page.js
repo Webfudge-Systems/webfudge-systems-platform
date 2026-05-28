@@ -57,6 +57,7 @@ import {
 import PMPageHeader from '../../../../components/PMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import contactService from '../../../../lib/api/contactService';
+import { usePmTableSort } from '../../../../hooks/usePmTableSort';
 import dealService from '../../../../lib/api/dealService';
 import invoiceService from '../../../../lib/api/invoiceService';
 import projectService from '../../../../lib/api/projectServiceCrm';
@@ -1411,6 +1412,46 @@ export default function ClientAccountDetailPage() {
     [router]
   );
 
+  const accountId = id != null ? String(id) : '';
+
+  const contactsTableSort = usePmTableSort({
+    entity: 'contact',
+    storageKey: accountId ? `pm.accountDetail.${accountId}.contacts.sort` : undefined,
+    data: linkedContacts,
+  });
+  const dealsTableSort = usePmTableSort({
+    entity: 'deal',
+    storageKey: accountId ? `pm.accountDetail.${accountId}.deals.sort` : undefined,
+    data: linkedDeals,
+  });
+  const projectsTableSort = usePmTableSort({
+    entity: 'accountProject',
+    storageKey: accountId ? `pm.accountDetail.${accountId}.projects.sort` : undefined,
+    data: linkedProjects,
+  });
+  const invoicesTableSort = usePmTableSort({
+    entity: 'invoice',
+    storageKey: accountId ? `pm.accountDetail.${accountId}.invoices.sort` : undefined,
+    data: linkedInvoices,
+  });
+
+  const sortableLeadContactsColumns = useMemo(
+    () => contactsTableSort.bindSortableColumns(leadContactsColumns),
+    [leadContactsColumns, contactsTableSort.bindSortableColumns]
+  );
+  const sortableDealsColumns = useMemo(
+    () => dealsTableSort.bindSortableColumns(clientAccountDealsColumns),
+    [clientAccountDealsColumns, dealsTableSort.bindSortableColumns]
+  );
+  const sortableProjectsColumns = useMemo(
+    () => projectsTableSort.bindSortableColumns(clientAccountProjectsColumns),
+    [clientAccountProjectsColumns, projectsTableSort.bindSortableColumns]
+  );
+  const sortableInvoicesColumns = useMemo(
+    () => invoicesTableSort.bindSortableColumns(clientAccountInvoicesColumns),
+    [clientAccountInvoicesColumns, invoicesTableSort.bindSortableColumns]
+  );
+
   const activeDealsCount = useMemo(
     () =>
       linkedDeals.filter((d) => {
@@ -2046,8 +2087,8 @@ export default function ClientAccountDetailPage() {
                   </div>
                 ) : (
                   <Table
-                    columns={leadContactsColumns}
-                    data={linkedContacts}
+                    columns={sortableLeadContactsColumns}
+                    data={contactsTableSort.sortedData}
                     keyField="id"
                     variant="modern"
                     onRowClick={(row) => router.push(crmContactUrl(row.id))}
@@ -2181,8 +2222,8 @@ export default function ClientAccountDetailPage() {
                   </div>
                 ) : (
                   <Table
-                    columns={clientAccountDealsColumns}
-                    data={linkedDeals}
+                    columns={sortableDealsColumns}
+                    data={dealsTableSort.sortedData}
                     keyField="id"
                     variant="modern"
                     onRowClick={(row) => router.push(crmDealUrl(row.id))}
@@ -2251,8 +2292,8 @@ export default function ClientAccountDetailPage() {
                   </div>
                 ) : (
                   <Table
-                    columns={clientAccountProjectsColumns}
-                    data={linkedProjects}
+                    columns={sortableProjectsColumns}
+                    data={projectsTableSort.sortedData}
                     keyField="id"
                     variant="modern"
                     onRowClick={(row) => openPmProject(row)}
@@ -2321,8 +2362,8 @@ export default function ClientAccountDetailPage() {
                   </div>
                 ) : (
                   <Table
-                    columns={clientAccountInvoicesColumns}
-                    data={linkedInvoices}
+                    columns={sortableInvoicesColumns}
+                    data={invoicesTableSort.sortedData}
                     keyField="id"
                     variant="modern"
                     onRowClick={(row) => router.push(crmInvoiceUrl(row.id))}

@@ -7,6 +7,7 @@ A modern, flexible table component with multiple style variants for displaying t
 - Multiple style variants (default, modern, compact)
 - Responsive design with horizontal scrolling
 - Customizable columns with render functions
+- Optional drag-to-resize column widths (`resizableColumns`)
 - Row click handlers
 - Hover states and transitions
 - Clean, professional appearance
@@ -65,6 +66,10 @@ function MyComponent() {
 | `headerClassName` | `string`   | `''`        | Additional CSS classes for header                |
 | `bodyClassName`   | `string`   | `''`        | Additional CSS classes for body                  |
 | `rowClassName`    | `string`   | `''`        | Additional CSS classes for rows                  |
+| `resizableColumns` | `boolean` | `false`     | Show resize handles on column header edges       |
+| `columnWidths`    | `object`   | `{}`        | Pixel widths keyed by column `key`               |
+| `onColumnWidthsChange` | `function` | `undefined` | Called when a column is resized              |
+| `minColumnWidth`  | `number`   | `72`        | Minimum width in pixels when resizing            |
 
 ## Column Definition
 
@@ -76,6 +81,9 @@ Each column object supports the following properties:
   label: string;            // Column header text
   title?: string;           // Alternative to label
   width?: string;           // Fixed column width (e.g., '200px')
+  defaultWidth?: string;    // Reset target on header resize-handle double-click
+  minWidth?: number;        // Per-column minimum when resizing (pixels)
+  resizable?: boolean;      // Set false to disable resize for this column
   render?: (value, row, rowIndex) => ReactNode;  // Custom render function
   className?: string;       // Cell CSS classes
   headerClassName?: string; // Header cell CSS classes

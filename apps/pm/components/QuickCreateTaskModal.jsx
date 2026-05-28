@@ -271,6 +271,8 @@ export default function QuickCreateTaskModal({
               options={projects.map((project) => ({ value: String(project.id), label: project.name }))}
               onChange={(value) => update('projectId', value)}
               placeholder="No project"
+              searchable
+              searchPlaceholder="Search projects…"
             />
           )}
           <Select

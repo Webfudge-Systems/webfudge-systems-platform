@@ -248,7 +248,7 @@ class TaskService {
       const params = {
         'pagination[page]': 1,
         'pagination[pageSize]': options.pageSize || 50,
-        'sort': 'createdAt:desc',
+        'sort': options.sort || 'updatedAt:desc',
         'filters[collaborators][id][$eq]': userId,
         'populate[assignee]': '*',
         'populate[assigner]': '*',
@@ -261,6 +261,10 @@ class TaskService {
         'populate[projects][fields][1]': 'name',
         'populate[projects][fields][2]': 'slug',
       };
+      if (options.openOnly) {
+        params['filters[status][$notIn][0]'] = 'COMPLETED';
+        params['filters[status][$notIn][1]'] = 'CANCELLED';
+      }
       return await strapiClient.get('/tasks', params);
     } catch (error) {
       console.error('Error fetching collaborator tasks:', error);

@@ -125,7 +125,11 @@ export default function DashboardPage() {
 
         if (userId) {
           try {
-            const collabRes = await taskService.getCollaboratorTasks(userId, { pageSize: 20 })
+            const collabRes = await taskService.getCollaboratorTasks(userId, {
+              pageSize: 100,
+              sort: 'updatedAt:desc',
+              openOnly: true,
+            })
             setCollaboratorTasks((collabRes?.data || []).map(transformTask).filter(Boolean))
           } catch { }
         }

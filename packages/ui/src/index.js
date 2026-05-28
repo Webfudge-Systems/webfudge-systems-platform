@@ -17,6 +17,7 @@ export {
   Badge,
   Avatar,
   Table,
+  TableSortPanel,
   Pagination,
   EmptyState,
   TableResultsCount,
@@ -81,6 +82,19 @@ export {
   WidgetCardSkeleton,
   DashboardContentLoader,
 } from '../feedback';
+
+// HOOKS
+export { useTableSort } from '../hooks/useTableSort';
+
+// UTILS
+export {
+  sortTableData,
+  compareSortValues,
+  enrichColumnsWithSort,
+  toggleSortRule,
+  readStoredSortRules,
+  writeStoredSortRules,
+} from '../utils/tableSort';
 
 // THEME - Design tokens and configuration
 export { theme, colors, spacing, borderRadius, shadows, typography } from '../themes';

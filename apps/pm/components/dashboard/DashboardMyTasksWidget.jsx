@@ -14,8 +14,32 @@ import {
 } from '@webfudge/ui'
 import { CheckSquare, ChevronRight, FolderKanban } from 'lucide-react'
 import { PMStatusBadge } from '../PMStatusBadge'
+import { usePmTableSort } from '../../hooks/usePmTableSort'
 
-export const DASHBOARD_MY_TASKS_LIMIT = 10
+const DASHBOARD_TASK_SORT_STORAGE_KEY = 'pm.dashboard.myTasks.sort'
+
+const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED'])
+
+export function isOpenDashboardTask(task) {
+  return task && !TERMINAL_STATUSES.has(task.strapiStatus)
+}
+
+/** Open collaborator tasks only — overdue first, then due date, then recently updated. */
+export function sortDashboardMyTasks(tasks) {
+  const list = (tasks || []).filter(isOpenDashboardTask)
+  list.sort((a, b) => {
+    const aOver = isTaskOverdue(a)
+    const bOver = isTaskOverdue(b)
+    if (aOver !== bOver) return aOver ? -1 : 1
+    const aDue = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY
+    const bDue = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY
+    if (aDue !== bDue) return aDue - bDue
+    const aUpd = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
+    const bUpd = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
+    return bUpd - aUpd
+  })
+  return list
+}
 
 function isTaskOverdue(task) {
   if (!task?.dueDate) return false
@@ -133,7 +157,17 @@ export default function DashboardMyTasksWidget({
   className = '',
 }) {
   const router = useRouter()
-  const visible = useMemo(() => (tasks || []).slice(0, DASHBOARD_MY_TASKS_LIMIT), [tasks])
+  const defaultOrdered = useMemo(() => sortDashboardMyTasks(tasks), [tasks])
+  const {
+    sortedData: userSorted,
+    bindSortableColumns,
+    hasActiveSort,
+  } = usePmTableSort({
+    entity: 'task',
+    storageKey: DASHBOARD_TASK_SORT_STORAGE_KEY,
+    data: defaultOrdered,
+  })
+  const visible = hasActiveSort ? userSorted : defaultOrdered
   const total = typeof totalCount === 'number' ? totalCount : (tasks?.length ?? 0)
   const showing = visible.length
 
@@ -181,6 +215,11 @@ export default function DashboardMyTasksWidget({
     [router]
   )
 
+  const sortableColumns = useMemo(
+    () => bindSortableColumns(columns),
+    [columns, bindSortableColumns]
+  )
+
   return (
     <Card glass className={`flex h-full min-h-0 flex-col ${className}`}>
       <div className="mb-3 flex shrink-0 items-start justify-between gap-3">
@@ -193,7 +232,7 @@ export default function DashboardMyTasksWidget({
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 text-xs text-gray-500">Tasks where you are a collaborator</p>
+          <p className="mt-0.5 text-xs text-gray-500">Open tasks where you are a collaborator</p>
         </div>
         <Button
           variant="ghost"
@@ -212,8 +251,8 @@ export default function DashboardMyTasksWidget({
       ) : showing === 0 ? (
         <EmptyState
           icon={CheckSquare}
-          title="No tasks yet"
-          description="Tasks where you are a collaborator will appear here."
+          title="No open tasks"
+          description="Completed and cancelled tasks are hidden here. View all tasks on My Tasks."
           className="flex flex-1 flex-col justify-center py-12"
           action={
             <Button variant="primary" size="sm" onClick={() => router.push('/my-tasks')}>
@@ -225,7 +264,7 @@ export default function DashboardMyTasksWidget({
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [&_thead]:sticky [&_thead]:top-0 [&_thead]:z-[2] [&_thead_th]:bg-gray-50/95 [&_thead_th]:backdrop-blur-sm">
             <Table
-              columns={columns}
+              columns={sortableColumns}
               data={visible}
               keyField="id"
               variant="modernEmbedded"

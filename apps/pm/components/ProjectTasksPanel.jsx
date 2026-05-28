@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Avatar,
@@ -40,6 +40,10 @@ import {
 } from './PMStatusBadge';
 import taskService from '../lib/api/taskService';
 import taskCommentService from '../lib/api/taskCommentService';
+import { usePmTableSort } from '../hooks/usePmTableSort';
+import PmTableSortDropdown from './PmTableSortDropdown';
+
+const TABLE_SORT_STORAGE_KEY = 'pm.projectTasks.tableSort';
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Tasks' },
@@ -162,6 +166,8 @@ export default function ProjectTasksPanel({
   const [commentLoadingTaskId, setCommentLoadingTaskId] = useState(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
+  const [sortPickerOpen, setSortPickerOpen] = useState(false);
+  const toolbarRef = useRef(null);
 
   const handleApproveAssignment = useCallback(
     async (task) => {
@@ -292,6 +298,35 @@ export default function ProjectTasksPanel({
     const idSet = new Set(tasks.map((t) => t.id).filter((x) => x != null));
     return filteredTasks.filter((t) => !t.parentId || !idSet.has(t.parentId));
   }, [tasks, filteredTasks]);
+
+  const {
+    sortedData: sortedTableRootTasks,
+    bindSortableColumns,
+    hasActiveSort,
+    sortRules,
+    columnOptions: sortColumnOptions,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    maxRules: sortMaxRules,
+  } = usePmTableSort({
+    entity: 'task',
+    storageKey: TABLE_SORT_STORAGE_KEY,
+    data: tableRootTasks,
+  });
+
+  useEffect(() => {
+    if (!sortPickerOpen) return;
+    const onDocMouseDown = (event) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(event.target)) {
+        setSortPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [sortPickerOpen]);
 
   const toggleSubtaskExpand = useCallback((taskId) => {
     setExpandedSubtaskParents((prev) => {
@@ -603,6 +638,11 @@ export default function ProjectTasksPanel({
     ]
   );
 
+  const sortableTaskColumns = useMemo(
+    () => bindSortableColumns(taskColumns),
+    [taskColumns, bindSortableColumns]
+  );
+
   const activeCommentTask = commentComposerMenu?.id
     ? tableRootTasks.find((t) => t.id === commentComposerMenu.id) || tasks.find((t) => t.id === commentComposerMenu.id)
     : null;
@@ -610,27 +650,44 @@ export default function ProjectTasksPanel({
 
   return (
     <div className="space-y-3">
-      <TabsWithActions
-        tabs={tabsWithBadges}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        showSearch
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search tasks..."
-        showAdd={canCreateProjectTasks}
-        onAddClick={onAddTask}
-        addTitle="Add Task"
-        variant="glass"
-      />
+      <div className="relative" ref={toolbarRef}>
+        <TabsWithActions
+          tabs={tabsWithBadges}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          showSearch
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search tasks..."
+          showAdd={canCreateProjectTasks}
+          onAddClick={onAddTask}
+          addTitle="Add Task"
+          showSort
+          onSortClick={() => setSortPickerOpen((open) => !open)}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort tasks (Shift+click headers for multi-sort)"
+          variant="glass"
+        />
+        <PmTableSortDropdown
+          open={sortPickerOpen}
+          sortRules={sortRules}
+          columnOptions={sortColumnOptions}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
+          maxRules={sortMaxRules}
+        />
+      </div>
 
       <div className="text-sm text-gray-600">
         {tasksLoading ? (
           <span className="text-gray-400">Loading tasks…</span>
         ) : (
           <>
-            Showing <span className="font-semibold text-gray-900">{tableRootTasks.length}</span> result
-            {tableRootTasks.length !== 1 ? 's' : ''}
+            Showing <span className="font-semibold text-gray-900">{sortedTableRootTasks.length}</span> result
+            {sortedTableRootTasks.length !== 1 ? 's' : ''}
           </>
         )}
       </div>
@@ -643,8 +700,8 @@ export default function ProjectTasksPanel({
         ) : (
           <>
             <Table
-              columns={taskColumns}
-              data={tableRootTasks}
+              columns={sortableTaskColumns}
+              data={sortedTableRootTasks}
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/tasks/${row.id}`)}
@@ -652,7 +709,7 @@ export default function ProjectTasksPanel({
                 <TaskSubtasksAfterRow
                   row={row}
                   expanded={expandedSubtaskParents.has(row.id)}
-                  colSpan={taskColumns.length}
+                  colSpan={sortableTaskColumns.length}
                   users={users}
                   savingId={savingId}
                   memberScopedTasks={memberScopedTasks}

@@ -62,6 +62,10 @@ import projectService from '../../lib/api/projectService';
 import { transformProject, transformUser } from '../../lib/api/dataTransformers';
 import { canWritePM } from '../../lib/rbac';
 import { canCreateProjectsInPm, canEditProjectInPm } from '../../lib/pmOrgRoles';
+import { usePmTableSort } from '../../hooks/usePmTableSort';
+import PmTableSortDropdown from '../../components/PmTableSortDropdown';
+
+const TABLE_SORT_STORAGE_KEY = 'pm.projects.tableSort';
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Projects' },
@@ -313,6 +317,7 @@ export default function ProjectsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProjects, setTotalProjects] = useState(0);
   const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [sortPickerOpen, setSortPickerOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
@@ -331,6 +336,24 @@ export default function ProjectsPage() {
   const pageSize = 12;
 
   const canShowAddProject = useMemo(() => canWritePM('projects') && canCreateProjectsInPm(), []);
+
+  const {
+    sortedData: sortedProjects,
+    bindSortableColumns,
+    hasActiveSort,
+    sortRules,
+    columnOptions: sortColumnOptions,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    maxRules: sortMaxRules,
+  } = usePmTableSort({
+    entity: 'project',
+    storageKey: TABLE_SORT_STORAGE_KEY,
+    data: projects,
+  });
 
   const loadUsers = useCallback(async () => {
     try {
@@ -426,15 +449,16 @@ export default function ProjectsPage() {
   }, []);
 
   useEffect(() => {
-    if (!columnPickerOpen) return;
+    if (!columnPickerOpen && !sortPickerOpen) return;
     const onDocMouseDown = (event) => {
       if (toolbarRef.current && !toolbarRef.current.contains(event.target)) {
         setColumnPickerOpen(false);
+        setSortPickerOpen(false);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [columnPickerOpen]);
+  }, [columnPickerOpen, sortPickerOpen]);
 
   const setColumnVisible = useCallback((key, visible) => {
     setColumnVisibility((prev) => {
@@ -1033,8 +1057,8 @@ export default function ProjectsPage() {
       out.push(col);
     }
     if (byKey.actions) out.push(byKey.actions);
-    return out;
-  }, [columnOrder, columnVisibility, taskTableDataColumns]);
+    return activeView === 'list' ? bindSortableColumns(out) : out;
+  }, [columnOrder, columnVisibility, taskTableDataColumns, activeView, bindSortableColumns]);
 
   const projectViewSwitcher = (
     <ViewToggleGroup aria-label="Project layout">
@@ -1141,9 +1165,30 @@ export default function ProjectsPage() {
           filterTitle={hasActiveFilters ? 'Filters active' : 'Filter projects'}
           afterTabs={projectViewSwitcher}
           showColumnVisibility={activeView === 'list'}
-          onColumnVisibilityClick={() => setColumnPickerOpen((open) => !open)}
+          onColumnVisibilityClick={() => {
+            setSortPickerOpen(false);
+            setColumnPickerOpen((open) => !open);
+          }}
           columnVisibilityTitle="Show or hide columns"
+          showSort={activeView === 'list'}
+          onSortClick={() => {
+            setColumnPickerOpen(false);
+            setSortPickerOpen((open) => !open);
+          }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort projects (Shift+click headers for multi-sort)"
           variant="glass"
+        />
+        <PmTableSortDropdown
+          open={sortPickerOpen && activeView === 'list'}
+          sortRules={sortRules}
+          columnOptions={sortColumnOptions}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
+          maxRules={sortMaxRules}
         />
         {columnPickerOpen && activeView === 'list' ? (
           <div
@@ -1270,7 +1315,7 @@ export default function ProjectsPage() {
           <>
             <Table
               columns={visibleTableColumns}
-              data={projects}
+              data={sortedProjects}
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/projects/${row.slug || row.id}`)}

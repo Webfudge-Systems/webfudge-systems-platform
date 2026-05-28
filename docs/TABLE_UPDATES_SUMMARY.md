@@ -288,10 +288,11 @@ Tested and working on:
    - Multi-column sorting
    - Sort indicators
 
-2. **Column Resizing**
-   - Drag to resize columns
-   - Save column widths
-   - Reset to defaults
+2. **Column Resizing** *(implemented)*
+   - Drag header edges to resize (`resizableColumns` on `Table`)
+   - Optional `columnWidths` + `onColumnWidthsChange` for persistence
+   - Double-click resize handle to reset a column when `defaultWidth` is set
+   - My Tasks table persists widths in `localStorage` (`pm.myTasks.tableColumnWidths`)
 
 3. **Column Reordering**
    - Drag and drop columns

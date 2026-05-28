@@ -6,6 +6,16 @@ import { ChevronDown, ChevronRight, Copy, Edit3, Eye, Link2, ListTree, Pencil, P
 import PMRowActions from './PMRowActions';
 import TaskAssigneesPicker from './TaskAssigneesPicker';
 import { getTaskStatusMeta, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge';
+import { usePmTableSort } from '../hooks/usePmTableSort';
+
+function SortableSubtasksTable({ columns, data, ...tableProps }) {
+  const sort = usePmTableSort({ entity: 'task', data });
+  const sortableColumns = useMemo(
+    () => sort.bindSortableColumns(columns),
+    [columns, sort.bindSortableColumns]
+  );
+  return <Table columns={sortableColumns} data={sort.sortedData} {...tableProps} />;
+}
 
 /** Chevron-style control next to task title to expand inline subtasks */
 export function TaskSubtasksToggleButton({
@@ -329,7 +339,7 @@ export function TaskSubtasksAfterRow({
           onClick={(e) => e.stopPropagation()}
         >
           <div className="ml-5 rounded-lg border border-gray-200 bg-gray-50/70 p-2.5">
-            <Table
+            <SortableSubtasksTable
               columns={subtaskColumns}
               data={nestedChildren}
               keyField="id"
@@ -354,7 +364,7 @@ export function TaskSubtasksAfterRow({
             </p>
           ) : (
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-              <Table
+              <SortableSubtasksTable
                 columns={subtaskColumns}
                 data={list}
                 keyField="id"

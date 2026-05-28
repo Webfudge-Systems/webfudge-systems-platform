@@ -299,6 +299,8 @@ export default function AddProjectPage() {
               onChange={(val) => setForm((p) => ({ ...p, clientId: val }))}
               placeholder={clientsLoading ? 'Loading clients…' : 'Select a client (optional)'}
               disabled={clientsLoading}
+              searchable
+              searchPlaceholder="Search clients…"
             />
             {!clientsLoading && clientOptions.length === 0 ? (
               <p className="text-xs text-gray-500">

@@ -16,6 +16,7 @@ export { Card } from './Card';
 export { Badge } from './Badge';
 export { Avatar } from './Avatar';
 export { Table } from './Table';
+export { TableSortPanel } from './TableSortPanel';
 export { Pagination } from './Pagination';
 export { EmptyState } from './EmptyState';
 export { TableResultsCount, TableEmptyBelow } from './TableEmptyBelow';

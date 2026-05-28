@@ -68,6 +68,10 @@ import { fetchPmAssignableUsers } from '../../lib/api/messageService';
 import taskService from '../../lib/api/taskService';
 import taskCommentService from '../../lib/api/taskCommentService';
 import { transformProject, transformTask, transformUser } from '../../lib/api/dataTransformers';
+import { usePmTableSort } from '../../hooks/usePmTableSort';
+import PmTableSortDropdown from '../../components/PmTableSortDropdown';
+
+const TABLE_SORT_STORAGE_KEY = 'pm.myTasks.tableSort';
 
 const STATUS_TABS = [
   { id: 'MY_TASKS', label: 'My Tasks' },
@@ -76,9 +80,36 @@ const STATUS_TABS = [
   { id: 'all', label: 'All Tasks' },
 ];
 
+/** Completed/cancelled tasks stay on All Tasks but are hidden from My Tasks. */
+const MY_TASKS_EXCLUDED_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
+
 const COLUMN_VISIBILITY_STORAGE_KEY = 'pm.myTasks.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'pm.myTasks.tableColumnOrder';
+const COLUMN_WIDTHS_STORAGE_KEY = 'pm.myTasks.tableColumnWidths';
 const TASK_VIEW_STORAGE_KEY = 'pm.myTasks.taskView';
+
+/** Default pixel widths for resizable table columns (keyed by column `key`). */
+const DEFAULT_COLUMN_WIDTHS = {
+  name: 300,
+  project: 168,
+  status: 170,
+  priority: 140,
+  assigner: 140,
+  assignees: 130,
+  startDate: 120,
+  dueDate: 120,
+  tags: 140,
+  description: 200,
+  createdAt: 120,
+  updatedAt: 120,
+  recurrence: 120,
+  actions: 220,
+};
+
+/** Enforced minimums when loading saved widths (e.g. after older defaults). */
+const MIN_COLUMN_WIDTHS = {
+  actions: 220,
+};
 
 const TASK_VIEW_MODES = ['list', 'table', 'kanban', 'timeline'];
 
@@ -157,6 +188,33 @@ function loadColumnOrder() {
 function persistColumnOrder(order) {
   try {
     window.localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(order));
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadColumnWidths() {
+  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_WIDTHS };
+  try {
+    const raw = window.localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_COLUMN_WIDTHS };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_COLUMN_WIDTHS };
+    const merged = { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
+    for (const [key, min] of Object.entries(MIN_COLUMN_WIDTHS)) {
+      if (typeof merged[key] === 'number' && merged[key] < min) {
+        merged[key] = min;
+      }
+    }
+    return merged;
+  } catch {
+    return { ...DEFAULT_COLUMN_WIDTHS };
+  }
+}
+
+function persistColumnWidths(widths) {
+  try {
+    window.localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(widths));
   } catch {
     /* ignore */
   }
@@ -259,8 +317,10 @@ export default function MyTasksPage() {
   const [expandedSubtaskParents, setExpandedSubtaskParents] = useState(() => new Set());
   const [deleteModal, setDeleteModal] = useState({ open: false, task: null });
   const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [sortPickerOpen, setSortPickerOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
+  const [columnWidths, setColumnWidths] = useState(() => ({ ...DEFAULT_COLUMN_WIDTHS }));
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const [commentComposerMenu, setCommentComposerMenu] = useState(null);
   const [commentDraft, setCommentDraft] = useState('');
@@ -315,10 +375,15 @@ export default function MyTasksPage() {
     [currentUserId]
   );
 
+  const isActiveMyTask = useCallback(
+    (task) => isMyTask(task) && !MY_TASKS_EXCLUDED_STATUSES.has(task.strapiStatus),
+    [isMyTask]
+  );
+
   const filteredTasks = useMemo(() => {
     let list = [...allTasks];
     if (activeTab !== 'all') {
-      if (activeTab === 'MY_TASKS') list = list.filter(isMyTask);
+      if (activeTab === 'MY_TASKS') list = list.filter(isActiveMyTask);
       else if (activeTab === 'OVERDUE') list = list.filter(isTaskOverdue);
       else if (activeTab === 'IN_PROGRESS') list = list.filter((task) => task.strapiStatus === 'IN_PROGRESS');
     }
@@ -332,12 +397,30 @@ export default function MyTasksPage() {
       });
     }
     return list;
-  }, [allTasks, activeTab, searchQuery, isMyTask]);
+  }, [allTasks, activeTab, searchQuery, isActiveMyTask]);
 
   const tableRootTasks = useMemo(() => {
     const idSet = new Set(allTasks.map((t) => t.id).filter((x) => x != null));
     return filteredTasks.filter((t) => !t.parentId || !idSet.has(t.parentId));
   }, [allTasks, filteredTasks]);
+
+  const {
+    sortedData: sortedTableRootTasks,
+    bindSortableColumns,
+    hasActiveSort,
+    sortRules,
+    columnOptions: sortColumnOptions,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    maxRules: sortMaxRules,
+  } = usePmTableSort({
+    entity: 'task',
+    storageKey: TABLE_SORT_STORAGE_KEY,
+    data: tableRootTasks,
+  });
 
   const childrenByParentId = useMemo(() => {
     const map = {};
@@ -409,6 +492,17 @@ export default function MyTasksPage() {
   useEffect(() => {
     setColumnVisibility(loadColumnVisibility());
     setColumnOrder(loadColumnOrder());
+    const widths = loadColumnWidths();
+    setColumnWidths(widths);
+    persistColumnWidths(widths);
+  }, []);
+
+  const handleColumnWidthsChange = useCallback((next) => {
+    setColumnWidths(next);
+  }, []);
+
+  const handleColumnResizeEnd = useCallback((next) => {
+    persistColumnWidths(next);
   }, []);
 
   const persistTaskView = useCallback((mode) => {
@@ -424,19 +518,21 @@ export default function MyTasksPage() {
     persistTaskView(mode);
     if (mode !== 'table') {
       setColumnPickerOpen(false);
+      setSortPickerOpen(false);
     }
   }, [persistTaskView]);
 
   useEffect(() => {
-    if (!columnPickerOpen) return;
+    if (!columnPickerOpen && !sortPickerOpen) return;
     const onDocMouseDown = (event) => {
       if (toolbarRef.current && !toolbarRef.current.contains(event.target)) {
         setColumnPickerOpen(false);
+        setSortPickerOpen(false);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [columnPickerOpen]);
+  }, [columnPickerOpen, sortPickerOpen]);
 
   const setColumnVisible = useCallback((key, visible) => {
     setColumnVisibility((prev) => {
@@ -514,13 +610,16 @@ export default function MyTasksPage() {
   const resetColumnTablePreferences = useCallback(() => {
     const vis = { ...DEFAULT_COLUMN_VISIBILITY };
     const order = [...REORDERABLE_COLUMN_KEYS];
+    const widths = { ...DEFAULT_COLUMN_WIDTHS };
     setColumnVisibility(vis);
     setColumnOrder(order);
+    setColumnWidths(widths);
     columnDropIndicatorRef.current = null;
     setColumnDropIndicator(null);
     try {
       window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(vis));
       persistColumnOrder(order);
+      persistColumnWidths(widths);
     } catch {
       /* ignore */
     }
@@ -541,12 +640,12 @@ export default function MyTasksPage() {
   const tabsWithBadges = useMemo(() => {
     const counts = { all: allTasks.length, MY_TASKS: 0, IN_PROGRESS: 0, OVERDUE: 0 };
     for (const task of allTasks) {
-      if (isMyTask(task)) counts.MY_TASKS += 1;
+      if (isActiveMyTask(task)) counts.MY_TASKS += 1;
       if (task.strapiStatus === 'IN_PROGRESS') counts.IN_PROGRESS += 1;
       if (isTaskOverdue(task)) counts.OVERDUE = (counts.OVERDUE || 0) + 1;
     }
     return STATUS_TABS.map((tab) => ({ ...tab, badge: counts[tab.id] || 0 }));
-  }, [allTasks, isMyTask]);
+  }, [allTasks, isActiveMyTask]);
 
   const updateTask = useCallback(
     async (task, patch) => {
@@ -655,8 +754,8 @@ export default function MyTasksPage() {
       {
         key: 'name',
         label: 'TASK NAME',
-        headerClassName: 'max-w-[14rem] sm:max-w-[17rem] lg:max-w-[20rem]',
-        className: 'max-w-[14rem] sm:max-w-[17rem] lg:max-w-[20rem] align-top',
+        defaultWidth: '300px',
+        className: 'align-top',
         render: (_, row) => {
           const initial = (row.name || 'T').trim().charAt(0).toUpperCase() || 'T';
           const commentCount = Number(commentCountsByTaskId[String(row.id)] || 0);
@@ -912,9 +1011,12 @@ export default function MyTasksPage() {
     {
       key: 'actions',
       label: 'ACTIONS',
-      className: 'w-[220px]',
+      resizable: false,
+      defaultWidth: '220px',
+      headerClassName: 'whitespace-nowrap',
+      className: 'whitespace-nowrap align-middle',
       render: (_, row) => (
-        <div className="flex min-w-[220px] items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-end gap-0.5" onClick={(event) => event.stopPropagation()}>
           <PMRowActions
             wrapperClassName="flex shrink-0 items-center"
             triggerClassName="inline-flex h-9 w-9 items-center justify-center rounded-md p-2 text-teal-600 transition hover:bg-teal-50"
@@ -992,8 +1094,8 @@ export default function MyTasksPage() {
       out.push(col);
     }
     if (byKey.actions) out.push(byKey.actions);
-    return out;
-  }, [columnOrder, columnVisibility, taskTableDataColumns]);
+    return taskViewMode === 'table' ? bindSortableColumns(out) : out;
+  }, [columnOrder, columnVisibility, taskTableDataColumns, taskViewMode, bindSortableColumns]);
 
   const taskViewSwitcher = (
     <ViewToggleGroup aria-label="Task layout">
@@ -1082,9 +1184,30 @@ export default function MyTasksPage() {
           showFilter
           onFilterClick={() => setFilterOpen(true)}
           showColumnVisibility={taskViewMode === 'table'}
-          onColumnVisibilityClick={() => setColumnPickerOpen((open) => !open)}
+          onColumnVisibilityClick={() => {
+            setSortPickerOpen(false);
+            setColumnPickerOpen((open) => !open);
+          }}
           columnVisibilityTitle="Show or hide columns"
+          showSort={taskViewMode === 'table'}
+          onSortClick={() => {
+            setColumnPickerOpen(false);
+            setSortPickerOpen((open) => !open);
+          }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort tasks (Shift+click headers for multi-sort)"
           variant="glass"
+        />
+        <PmTableSortDropdown
+          open={sortPickerOpen && taskViewMode === 'table'}
+          sortRules={sortRules}
+          columnOptions={sortColumnOptions}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
+          maxRules={sortMaxRules}
         />
         {columnPickerOpen ? (
           <div
@@ -1174,11 +1297,11 @@ export default function MyTasksPage() {
       </div>
 
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{tableRootTasks.length}</span> result
-        {tableRootTasks.length !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{sortedTableRootTasks.length}</span> result
+        {sortedTableRootTasks.length !== 1 ? 's' : ''}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
           <div className="flex flex-col items-center justify-center p-12">
             <LoadingSpinner size="lg" message="Loading tasks..." />
@@ -1187,9 +1310,13 @@ export default function MyTasksPage() {
           <>
             <Table
               columns={visibleTableColumns}
-              data={tableRootTasks}
+              data={sortedTableRootTasks}
               keyField="id"
-              variant="modern"
+              variant="modernEmbedded"
+              resizableColumns
+              columnWidths={columnWidths}
+              onColumnWidthsChange={handleColumnWidthsChange}
+              onColumnResizeEnd={handleColumnResizeEnd}
               onRowClick={(row) => router.push(`/tasks/${row.id}`)}
               renderAfterRow={(row) => (
                 <TaskSubtasksAfterRow

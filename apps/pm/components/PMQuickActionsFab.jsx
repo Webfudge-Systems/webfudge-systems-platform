@@ -6,10 +6,11 @@ import {
   Plus,
   CheckSquare,
   FolderOpen,
+  Building2,
   ChevronRight,
   X,
 } from 'lucide-react'
-import { canWritePM } from '../lib/rbac'
+import { canWritePM, canWriteClientAccounts } from '../lib/rbac'
 import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 
 const quickActionItems = [
@@ -31,6 +32,15 @@ const quickActionItems = [
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
   },
+  {
+    label: 'New Client',
+    module: 'client_accounts',
+    icon: Building2,
+    href: '/clients/accounts/new',
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    borderColor: 'border-emerald-200',
+  },
 ]
 
 export default function PMQuickActionsFab() {
@@ -39,7 +49,11 @@ export default function PMQuickActionsFab() {
   const rootRef = useRef(null)
 
   const visibleQuickActions = quickActionItems.filter((item) => {
-    if (!canWritePM(item.module)) return false
+    if (item.module === 'client_accounts') {
+      if (!canWriteClientAccounts()) return false
+    } else if (!canWritePM(item.module)) {
+      return false
+    }
     if (item.href === '/projects/add' && !canCreateProjectsInPm()) return false
     return true
   })

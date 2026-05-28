@@ -48,6 +48,7 @@ import TaskDetailMetaBar from '../../../components/TaskDetailMetaBar';
 import TaskDetailsCard from '../../../components/TaskDetailsCard';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
+import { usePmTableSort } from '../../../hooks/usePmTableSort';
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker';
 import { recurrencePayloadFromForm } from '../../../components/TaskRecurrenceFormFields';
 import { SidebarCardTitle } from '../../../components/pmEntityDetailInfo';
@@ -572,6 +573,12 @@ export default function TaskDetailPage() {
     return [...base, ...parentCrumbs, { label: task.name || `Task ${task.id}`, href: `/tasks/${task.id}` }];
   }, [ancestorTasks, task?.id, task?.name]);
 
+  const subtasksTableSort = usePmTableSort({
+    entity: 'task',
+    storageKey: task?.id ? `pm.taskDetail.${task.id}.subtasks.sort` : undefined,
+    data: Array.isArray(task?.subtasks) ? task.subtasks : [],
+  });
+
   if (loading) {
     return (
       <div className="space-y-6 p-4 md:p-6">
@@ -1020,8 +1027,8 @@ export default function TaskDetailPage() {
             ) : (
               <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
                 <Table
-                  columns={subtasksTableColumns}
-                  data={task.subtasks}
+                  columns={subtasksTableSort.bindSortableColumns(subtasksTableColumns)}
+                  data={subtasksTableSort.sortedData}
                   keyField="id"
                   variant="modernEmbedded"
                   onRowClick={(row) => router.push(`/tasks/${row.id}`)}

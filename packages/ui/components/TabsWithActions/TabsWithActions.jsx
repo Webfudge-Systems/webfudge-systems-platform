@@ -1,7 +1,7 @@
 'use client'
 
 import { clsx } from 'clsx'
-import { Search, Plus, List, LayoutGrid, CalendarDays, Eye, Filter, ListChecks } from 'lucide-react'
+import { Search, Plus, List, LayoutGrid, CalendarDays, Eye, Filter, ListChecks, ArrowUpDown } from 'lucide-react'
 
 /**
  * Advanced Tabs component with integrated actions, search, and view toggles
@@ -40,6 +40,11 @@ export function TabsWithActions({
   onColumnVisibilityClick,
   columnVisibilityTitle = 'Column Visibility',
 
+  showSort = false,
+  onSortClick,
+  sortTitle = 'Sort',
+  hasActiveSort = false,
+
   // View toggle props
   showViewToggle = false,
   activeView = 'list',
@@ -69,6 +74,7 @@ export function TabsWithActions({
     (showFilter && onFilterClick) ||
     (showBulkEdit && onBulkEditClick) ||
     (showColumnVisibility && onColumnVisibilityClick) ||
+    (showSort && onSortClick) ||
     showViewToggle
 
   const hasAfterTabs = Boolean(afterTabs)
@@ -263,6 +269,23 @@ export function TabsWithActions({
           title={columnVisibilityTitle}
         >
           <Eye className="h-5 w-5" />
+        </button>
+      )}
+
+      {showSort && onSortClick && (
+        <button
+          type="button"
+          onClick={onSortClick}
+          className={clsx(
+            'flex h-10 w-10 items-center justify-center rounded-full border shadow-md transition-colors duration-200',
+            hasActiveSort
+              ? 'border-orange-300 bg-orange-500 text-white hover:bg-orange-600'
+              : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+          )}
+          title={sortTitle}
+          aria-pressed={hasActiveSort}
+        >
+          <ArrowUpDown className="h-5 w-5" />
         </button>
       )}
     </div>

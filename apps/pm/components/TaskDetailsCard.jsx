@@ -258,6 +258,8 @@ export default function TaskDetailsCard({
                 onChange={(v) => onTaskInfoFieldChange('projectId', v)}
                 disabled={saving}
                 placeholder="No project"
+                searchable
+                searchPlaceholder="Search projects…"
               />
             </DetailCell>
           </GridRow>

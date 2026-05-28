@@ -717,6 +717,8 @@ export default function ProjectDetailPage() {
                           onChange={(v) => setProjectInfoField('clientId', v)}
                           disabled={saving}
                           placeholder="Link client"
+                          searchable
+                          searchPlaceholder="Search clients…"
                         />
                         <Select
                           label="Status"

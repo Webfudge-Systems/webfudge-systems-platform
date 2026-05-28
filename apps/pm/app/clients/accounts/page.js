@@ -44,6 +44,10 @@ import PMPageHeader from '../../../components/PMPageHeader';
 import clientAccountService from '../../../lib/api/clientAccountService';
 import contactService from '../../../lib/api/contactService';
 import { canManageClientAccounts, canWriteClientAccounts } from '../../../lib/rbac';
+import { usePmTableSort } from '../../../hooks/usePmTableSort';
+import PmTableSortDropdown from '../../../components/PmTableSortDropdown';
+
+const TABLE_SORT_STORAGE_KEY = 'pm.clientAccounts.tableSort';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'pm.clientAccounts.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'pm.clientAccounts.tableColumnOrder';
@@ -185,6 +189,7 @@ export default function ClientAccountsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [sortPickerOpen, setSortPickerOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
@@ -208,15 +213,16 @@ export default function ClientAccountsPage() {
   }, []);
 
   useEffect(() => {
-    if (!columnPickerOpen) return;
+    if (!columnPickerOpen && !sortPickerOpen) return;
     const onDocMouseDown = (e) => {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target)) {
         setColumnPickerOpen(false);
+        setSortPickerOpen(false);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [columnPickerOpen]);
+  }, [columnPickerOpen, sortPickerOpen]);
 
   const setColumnVisible = useCallback((key, visible) => {
     setColumnVisibility((prev) => {
@@ -509,9 +515,27 @@ export default function ClientAccountsPage() {
     return matchesSearch && matchesTab && matchesAdvanced;
   });
 
+  const {
+    sortedData: sortedFilteredAccounts,
+    bindSortableColumns,
+    hasActiveSort,
+    sortRules,
+    columnOptions: sortColumnOptions,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    maxRules: sortMaxRules,
+  } = usePmTableSort({
+    entity: 'clientAccount',
+    storageKey: TABLE_SORT_STORAGE_KEY,
+    data: filteredAccounts,
+  });
+
   // Pagination
-  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
-  const paginatedAccounts = filteredAccounts.slice(
+  const totalPages = Math.ceil(sortedFilteredAccounts.length / itemsPerPage);
+  const paginatedAccounts = sortedFilteredAccounts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -916,8 +940,8 @@ export default function ClientAccountsPage() {
       if (columnVisibility[key] && byKey[key]) out.push(byKey[key]);
     }
     if (byKey.actions) out.push(byKey.actions);
-    return out;
-  }, [allTableColumns, columnVisibility, columnOrder]);
+    return bindSortableColumns(out);
+  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -981,11 +1005,32 @@ export default function ClientAccountsPage() {
           showFilter={true}
           onFilterClick={openFilterModal}
           showColumnVisibility={true}
-          onColumnVisibilityClick={() => setColumnPickerOpen((o) => !o)}
+          onColumnVisibilityClick={() => {
+            setSortPickerOpen(false);
+            setColumnPickerOpen((o) => !o);
+          }}
           columnVisibilityTitle="Show or hide columns"
+          showSort={true}
+          onSortClick={() => {
+            setColumnPickerOpen(false);
+            setSortPickerOpen((o) => !o);
+          }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort accounts (Shift+click headers for multi-sort)"
           showExport={true}
           onExportClick={() => console.log('Export clicked')}
           exportTitle="Export"
+        />
+        <PmTableSortDropdown
+          open={sortPickerOpen}
+          sortRules={sortRules}
+          columnOptions={sortColumnOptions}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
+          maxRules={sortMaxRules}
         />
         {columnPickerOpen && (
           <div
@@ -1068,8 +1113,8 @@ export default function ClientAccountsPage() {
 
       {/* Results Count */}
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredAccounts.length}</span> result
-        {filteredAccounts.length !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{sortedFilteredAccounts.length}</span> result
+        {sortedFilteredAccounts.length !== 1 ? 's' : ''}
       </div>
 
       {/* Table */}
@@ -1113,7 +1158,7 @@ export default function ClientAccountsPage() {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={filteredAccounts.length}
+                  totalItems={sortedFilteredAccounts.length}
                   itemsPerPage={itemsPerPage}
                   onPageChange={setCurrentPage}
                 />
