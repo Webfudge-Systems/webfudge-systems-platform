@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { SidebarTrialUpsell, LoadingSpinner } from '@webfudge/ui'
+import { LoadingSpinner } from '@webfudge/ui'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -13,15 +14,12 @@ import {
   UserCheck,
   FileText,
   Receipt,
-  Phone,
   CheckSquare,
   BarChart3,
-  Calendar,
   GitBranch,
   MessageSquare,
   FolderOpen,
   FileStack,
-  ChevronDown,
   ChevronRight,
   ChevronLeft,
   Plus,
@@ -29,12 +27,11 @@ import {
   Pencil,
   Trash2,
   Activity,
-  MessageCircle,
   CalendarDays,
 } from 'lucide-react'
 import SubSidebar from './SubSidebar'
 import { fetchGlobalActivityFeed } from '../lib/api/crmActivityService'
-import { canReadCRM, canWriteCRM } from '../lib/rbac'
+import { canReadCRM } from '../lib/rbac'
 
 function formatRelativeTime(dateString) {
   if (!dateString) return ''
@@ -78,17 +75,10 @@ const SIDEBAR_ACTIVITY_LIMIT = 10
 export default function CRMSidebar({ collapsed = false, onToggle }) {
   const [subSidebarOpen, setSubSidebarOpen] = useState(false)
   const [currentSection, setCurrentSection] = useState(null)
-  const [quickActionsOpen, setQuickActionsOpen] = useState(false)
   const [feedItems, setFeedItems] = useState([])
   const [loadingFeed, setLoadingFeed] = useState(true)
   const pathname = usePathname()
   const router = useRouter()
-  const quickActionsRef = useRef(null)
-
-  const trialDaysRemaining = (() => {
-    const n = Number(process.env.NEXT_PUBLIC_TRIAL_DAYS_REMAINING)
-    return Number.isFinite(n) ? n : 12
-  })()
 
   const isActive = (href) => {
     if (!href || href === '/') return pathname === '/'
@@ -122,82 +112,6 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
   const handleNavigate = () => {
     closeSubSidebar()
   }
-
-  const toggleQuickActions = () => setQuickActionsOpen((o) => !o)
-
-  const quickActionItems = [
-    {
-      label: 'Add Lead',
-      module: 'leads',
-      icon: Users,
-      href: '/sales/lead-companies/new',
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      borderColor: 'border-orange-200',
-    },
-    {
-      label: 'Log Call',
-      module: 'leads',
-      icon: Phone,
-      href: comingSoonHref('Log Call'),
-      color: 'text-sky-600',
-      bgColor: 'bg-sky-50',
-      borderColor: 'border-sky-200',
-    },
-    {
-      label: 'Send WhatsApp',
-      module: 'leads',
-      icon: MessageCircle,
-      href: comingSoonHref('Send WhatsApp'),
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-      borderColor: 'border-emerald-200',
-    },
-    {
-      label: 'Create Proposal',
-      module: 'proposals',
-      icon: FileText,
-      href: '/clients/proposals',
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200',
-    },
-    {
-      label: 'Schedule Meeting',
-      module: 'meetings',
-      icon: Calendar,
-      href: '/meetings/new',
-      color: 'text-violet-600',
-      bgColor: 'bg-violet-50',
-      borderColor: 'border-violet-200',
-    },
-    {
-      label: 'Add Task',
-      module: 'client_projects',
-      icon: CheckSquare,
-      href: '/clients/tasks',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-    },
-  ]
-
-  const handleQuickActionClick = (href) => {
-    setQuickActionsOpen(false)
-    router.push(href)
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (quickActionsRef.current && !quickActionsRef.current.contains(event.target)) {
-        setQuickActionsOpen(false)
-      }
-    }
-    if (quickActionsOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [quickActionsOpen])
 
   const loadFeed = useCallback(async () => {
     try {
@@ -401,7 +315,6 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
       </div>
     )
 
-  const visibleQuickActions = quickActionItems.filter((item) => canWriteCRM(item.module))
   const visibleNavigationData = navigationData
     .map((section) => ({
       ...section,
@@ -422,15 +335,46 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
           collapsed ? 'w-16' : 'w-64'
         } h-full min-h-0 bg-white backdrop-blur-xl border-r border-white/30 flex flex-col shadow-xl overflow-hidden transition-[width] duration-300 flex-shrink-0`}
       >
-        <div className="shrink-0 p-4 border-b border-white/20">
-          <div className="flex items-center justify-between">
-            {!collapsed && (
-              <span className="font-bold text-xl text-brand-foreground">Webfudge CRM</span>
+        <div className="shrink-0 px-4 pt-4 pb-3">
+          <div
+            className={`flex gap-2 ${
+              collapsed ? 'flex-col items-center' : 'items-center justify-between'
+            }`}
+          >
+            {collapsed ? (
+              <Link href="/" className="flex shrink-0" aria-label="Webfudge CRM home">
+                <Image
+                  src="/logo/Vertical logo 1 bg removed.png"
+                  alt="Webfudge"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-contain"
+                  priority
+                />
+              </Link>
+            ) : (
+              <Link
+                href="/"
+                className="flex min-w-0 flex-1 items-center gap-2.5"
+                aria-label="Webfudge CRM home"
+              >
+                <Image
+                  src="/logo/Vertical logo 1 bg removed.png"
+                  alt=""
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 shrink-0 object-contain"
+                  priority
+                />
+                <span className="min-w-0 font-bold text-xl tracking-tight bg-gradient-to-r from-orange-700 via-orange-500 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)]">
+                  Webfudge CRM
+                </span>
+              </Link>
             )}
             <button
               type="button"
               onClick={onToggle}
-              className="p-2 rounded-lg hover:bg-gray-50 transition-colors"
+              className="shrink-0 p-2 rounded-lg hover:bg-gray-50 transition-colors"
               aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {collapsed ? (
@@ -440,69 +384,12 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
               )}
             </button>
           </div>
-
-          {/* Quick Actions — directly under header */}
-          <div className="relative mt-3" ref={quickActionsRef}>
-            <button
-              type="button"
-              onClick={toggleQuickActions}
-              disabled={visibleQuickActions.length === 0}
-              className={`w-full bg-gradient-to-r from-orange-500/20 to-orange-600/10 backdrop-blur-md border ${
-                quickActionsOpen
-                  ? 'border-orange-300/60'
-                  : 'border-white/30 hover:border-orange-200/50'
-              } text-brand-foreground rounded-xl py-2.5 px-3 flex items-center ${
-                collapsed ? 'justify-center' : 'justify-between gap-2'
-              } shadow-lg transition-all`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
-                  <Plus className="w-4 h-4 text-white" />
-                </div>
-                {!collapsed && (
-                  <span className="text-sm font-semibold text-gray-800 truncate">
-                    Quick Actions
-                  </span>
-                )}
-              </div>
-              {!collapsed && (
-                <ChevronDown
-                  className={`w-4 h-4 text-gray-600 flex-shrink-0 transition-transform ${
-                    quickActionsOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              )}
-            </button>
-
-            {quickActionsOpen && !collapsed && (
-              <div className="absolute left-0 right-0 top-full mt-2 z-[100] bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[min(70vh,24rem)] overflow-y-auto">
-                <div className="p-2">
-                  <p className="px-3 py-2 text-[10px] font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                    Quick actions
-                  </p>
-                  {visibleQuickActions.map((item, index) => {
-                    const QIcon = item.icon
-                    return (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => handleQuickActionClick(item.href)}
-                        className="w-full flex items-center gap-3 p-3 text-sm text-gray-800 rounded-xl hover:bg-gray-50 transition-colors group/item text-left"
-                      >
-                        <div
-                          className={`w-9 h-9 ${item.bgColor} ${item.borderColor} border rounded-lg flex items-center justify-center flex-shrink-0`}
-                        >
-                          <QIcon className={`w-4 h-4 ${item.color}`} />
-                        </div>
-                        <span className="font-medium flex-1">{item.label}</span>
-                        <ChevronRight className="w-4 h-4 text-gray-400 opacity-0 group-hover/item:opacity-100" />
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          {!collapsed ? (
+            <div
+              className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-orange-400/50 to-transparent"
+              aria-hidden
+            />
+          ) : null}
         </div>
 
         {/* Scrollable main column */}
@@ -510,7 +397,11 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
           {/* Navigation */}
           <div className="px-3 pt-3 pb-2">
             {sectionRule('Navigate')}
-            <div className={`grid gap-3 ${collapsed ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            <div
+              className={`grid gap-2.5 ${
+                collapsed ? 'grid-cols-1' : 'grid-cols-2'
+              }`}
+            >
               {visibleMainNavigationItems.map((item) => {
                 const Icon = item.icon
                 const sectionActive =
@@ -518,6 +409,12 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
                   (item.id === 'workspace' && isWorkspaceActive()) ||
                   (item.id === 'clients' && isClientsActive())
                 const linkActive = item.href ? isActive(item.href) : false
+                const active = item.hasSubNav ? sectionActive : linkActive
+                const tileClass = `relative rounded-xl px-2 py-3.5 flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] transition-all border shadow-md ${
+                  active
+                    ? 'bg-brand-primary text-white border-brand-primary/40 shadow-lg shadow-orange-500/25'
+                    : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/35 hover:shadow-lg'
+                }`
 
                 if (item.hasSubNav) {
                   return (
@@ -525,16 +422,12 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
                       key={item.id}
                       type="button"
                       onClick={() => handleTopLevelClick(item.id)}
-                      className={`rounded-2xl px-2 py-4 sm:py-5 flex flex-col items-center justify-center gap-2 min-h-[5.25rem] transition-all shadow-md border ${
-                        sectionActive
-                          ? 'bg-gradient-to-br from-amber-400/35 to-amber-500/20 border-amber-300/50 text-amber-950'
-                          : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/30'
-                      }`}
+                      className={tileClass}
                       title={collapsed ? item.label : undefined}
                     >
-                      <Icon className="w-7 h-7 shrink-0" strokeWidth={2} />
+                      <Icon className="w-6 h-6 shrink-0" strokeWidth={2} />
                       {!collapsed && (
-                        <span className="text-xs font-semibold text-center leading-snug px-0.5">
+                        <span className="text-xs font-semibold text-center leading-snug px-0.5 line-clamp-2">
                           {item.label}
                         </span>
                       )}
@@ -546,16 +439,12 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
                   <Link
                     key={item.id}
                     href={item.href}
-                    className={`rounded-2xl px-2 py-4 sm:py-5 flex flex-col items-center justify-center gap-2 min-h-[5.25rem] transition-all shadow-md border ${
-                      linkActive
-                        ? 'bg-brand-primary text-white border-brand-primary/40'
-                        : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/30'
-                    }`}
+                    className={tileClass}
                     title={collapsed ? item.label : undefined}
                   >
-                    <Icon className="w-7 h-7 shrink-0" strokeWidth={2} />
+                    <Icon className="w-6 h-6 shrink-0" strokeWidth={2} />
                     {!collapsed && (
-                      <span className="text-xs font-semibold text-center leading-snug px-0.5">
+                      <span className="text-xs font-semibold text-center leading-snug px-0.5 line-clamp-2">
                         {item.label}
                       </span>
                     )}
@@ -569,13 +458,13 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
             <div className="px-3 pt-2 pb-2">
               <Link
                 href="/automations"
-                className={`w-full rounded-2xl px-4 py-4 flex items-center justify-center gap-2.5 text-base font-semibold shadow-md border transition-colors ${
+                className={`w-full rounded-xl px-3 py-3 flex items-center justify-center gap-2 text-sm font-semibold shadow-md border transition-all ${
                   pathname.startsWith('/automations')
-                    ? 'bg-gradient-to-br from-amber-400/35 to-amber-500/20 border-amber-300/50 text-amber-950'
-                    : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/30'
+                    ? 'bg-brand-primary text-white border-brand-primary/40 shadow-lg shadow-orange-500/25'
+                    : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/35 hover:shadow-lg'
                 }`}
               >
-                <GitBranch className="w-5 h-5" />
+                <GitBranch className="w-5 h-5 shrink-0" strokeWidth={2} />
                 Automation
               </Link>
             </div>
@@ -665,14 +554,14 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
               <button
                 type="button"
                 onClick={() => handleTopLevelClick('analytics')}
-                className={`w-full rounded-xl p-3 flex flex-col items-center gap-2 shadow-md border transition-colors ${
+                className={`w-full rounded-xl px-3 py-3 flex flex-col items-center gap-1.5 shadow-md border transition-all ${
                   isAnalyticsActive()
-                    ? 'bg-gradient-to-br from-amber-400/35 to-amber-500/20 border-amber-300/50 text-amber-950'
-                    : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-text-light hover:bg-white/30'
+                    ? 'bg-brand-primary text-white border-brand-primary/40 shadow-lg shadow-orange-500/25'
+                    : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/35 hover:shadow-lg'
                 }`}
               >
-                <BarChart3 className="w-5 h-5" />
-                <span className="text-xs font-medium text-center">Analytics</span>
+                <BarChart3 className="w-5 h-5 shrink-0" strokeWidth={2} />
+                <span className="text-xs font-semibold text-center">Analytics</span>
               </button>
             </div>
           )}
@@ -682,25 +571,18 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
               <button
                 type="button"
                 onClick={() => handleTopLevelClick('analytics')}
-                className={`p-3 rounded-xl border shadow-md ${
+                className={`p-3 rounded-xl border shadow-md transition-all ${
                   isAnalyticsActive()
-                    ? 'bg-amber-400/30 border-amber-300/50'
-                    : 'bg-white/20 border-white/30'
+                    ? 'bg-brand-primary text-white border-brand-primary/40 shadow-lg shadow-orange-500/25'
+                    : 'bg-white/20 border-white/30 text-brand-foreground hover:bg-white/35'
                 }`}
                 title="Analytics"
               >
-                <BarChart3 className="w-5 h-5 text-brand-foreground" />
+                <BarChart3 className="w-5 h-5" strokeWidth={2} />
               </button>
             </div>
           )}
 
-        </div>
-        <div className="shrink-0 border-t border-white/20 bg-white/90 backdrop-blur-sm">
-          <SidebarTrialUpsell
-            collapsed={collapsed}
-            daysRemaining={trialDaysRemaining}
-            upgradeHref="/coming-soon?feature=upgrade"
-          />
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { LoadingSpinner, SidebarTrialUpsell } from '@webfudge/ui'
+import { LoadingSpinner } from '@webfudge/ui'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -510,15 +510,6 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           </div>
         )}
 
-      </div>
-
-      {/* Trial upsell — pinned to sidebar bottom */}
-      <div className="shrink-0 border-t border-white/20 bg-white/90 backdrop-blur-sm">
-        <SidebarTrialUpsell
-          collapsed={collapsed}
-          daysRemaining={Number(process.env.NEXT_PUBLIC_TRIAL_DAYS_REMAINING) || 12}
-          upgradeHref="/coming-soon?feature=upgrade"
-        />
       </div>
     </div>
   )

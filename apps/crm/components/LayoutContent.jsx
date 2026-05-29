@@ -3,6 +3,7 @@
 import { WorkspaceLayoutContent } from '@webfudge/ui'
 import { usePathname } from 'next/navigation'
 import CRMSidebar from './CRMSidebar'
+import CRMQuickActionsFab from './CRMQuickActionsFab'
 import { canReadCurrentCRMPath, crmModuleForPath } from '../lib/rbac'
 
 const PUBLIC_PATHS = ['/login', '/unauthorized', '/coming-soon']
@@ -31,6 +32,7 @@ export default function LayoutContent({ children }) {
       deniedTitle={`${moduleLabel} is not available for your role.`}
       deniedDescription="Your current permissions do not include read access for this area. Contact an admin or manager if you need this module enabled."
       deniedVariant="card"
+      extras={<CRMQuickActionsFab />}
     >
       {children}
     </WorkspaceLayoutContent>

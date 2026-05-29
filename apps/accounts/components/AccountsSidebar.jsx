@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { SidebarTrialUpsell } from '@webfudge/ui'
 import {
   LayoutDashboard,
   Users,
@@ -73,14 +72,6 @@ export default function AccountsSidebar({ collapsed = false, onToggle }) {
             </Link>
           )
         })}
-      </div>
-
-      <div className="shrink-0 border-t border-white/20 bg-white/90">
-        <SidebarTrialUpsell
-          collapsed={collapsed}
-          daysRemaining={Number(process.env.NEXT_PUBLIC_TRIAL_DAYS_REMAINING) || 12}
-          upgradeHref="/billing"
-        />
       </div>
     </div>
   )
