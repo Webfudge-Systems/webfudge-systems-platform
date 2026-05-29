@@ -8,16 +8,16 @@ import {
   Home,
   Landmark,
   ShoppingBag,
-} from 'lucide-react';
-import { canonicalIndustryValue, industryOptions } from './leadCompanyProfileOptions';
+} from 'lucide-react'
+import { canonicalIndustryValue, industryOptions } from '@webfudge/utils'
 
 function humanizeIndustryLabel(stored) {
-  if (!stored) return 'Other';
+  if (!stored) return 'Other'
   return String(stored)
     .replace(/_/g, ' ')
     .replace(/-/g, ' ')
     .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 const INDUSTRY_VISUALS = {
@@ -102,16 +102,17 @@ const INDUSTRY_VISUALS = {
     cardBorderClass: 'border-emerald-50',
     cardGradientClass: 'from-emerald-50/80 via-white to-white',
   },
-};
+}
 
 /**
- * Icon, label, and theme tokens for a client industry value.
+ * Icon, label, and Tailwind theme tokens for a stored industry value.
+ * Used on lead-company and client-account detail/form pages in CRM and PM.
  */
 export function getIndustryVisual(storedIndustry) {
-  const key = canonicalIndustryValue(storedIndustry) || 'other';
-  const normalized = String(key).toLowerCase();
-  const visual = INDUSTRY_VISUALS[normalized] || INDUSTRY_VISUALS.other;
-  const fromOptions = industryOptions.find((o) => o.value === normalized);
-  const label = fromOptions?.label || humanizeIndustryLabel(storedIndustry);
-  return { ...visual, label, key: normalized };
+  const key = canonicalIndustryValue(storedIndustry) || 'other'
+  const normalized = String(key).toLowerCase()
+  const visual = INDUSTRY_VISUALS[normalized] || INDUSTRY_VISUALS.other
+  const fromOptions = industryOptions.find((o) => o.value === normalized)
+  const label = fromOptions?.label || humanizeIndustryLabel(storedIndustry)
+  return { ...visual, label, key: normalized }
 }

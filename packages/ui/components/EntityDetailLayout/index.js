@@ -1,14 +1,20 @@
 'use client';
 
 /**
- * Shared detail-page typography and field layout (aligned with
- * `app/sales/lead-companies/[id]/page.js` — Company information, sidebar blocks).
+ * EntityDetailLayout — shared typography and field layout helpers used on
+ * entity detail pages across PM and CRM.
+ *
+ * Exports:
+ *   entityInfoLabelClass  – Tailwind class string for label rows
+ *   InfoSection           – Vertical section with orange icon + uppercase title
+ *   DetailColumnHeading   – Column title inside a multi-column card (no top divider)
+ *   InfoRow               – Stacked label + value; optional children replace the value block
+ *   SidebarCardTitle      – Sidebar card title (e.g. "Activity summary" style)
  */
 
 export const entityInfoLabelClass =
   'flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-gray-500 sm:text-sm';
 
-/** Vertical section with orange icon + uppercase title (lead “Company profile” / “Location”). */
 export function InfoSection({ title, icon: Icon, children, isFirst = false }) {
   return (
     <section className={isFirst ? 'pt-0' : 'border-t border-gray-100 pt-4'}>
@@ -21,7 +27,6 @@ export function InfoSection({ title, icon: Icon, children, isFirst = false }) {
   );
 }
 
-/** Column title inside a multi-column card (no top divider). */
 export function DetailColumnHeading({ title, icon: Icon }) {
   return (
     <div className="mb-2 flex items-center gap-2">
@@ -31,10 +36,6 @@ export function DetailColumnHeading({ title, icon: Icon }) {
   );
 }
 
-/**
- * Stacked label + value; optional `children` replace the value block.
- * Empty values render as em dash (lead detail behavior).
- */
 export function InfoRow({ label, value, icon: RowIcon, className = '', emphasize = false, children }) {
   const hasCustom = children != null;
 
@@ -55,11 +56,7 @@ export function InfoRow({ label, value, icon: RowIcon, className = '', emphasize
   const display = empty ? '—' : raw;
 
   return (
-    <div
-      className={`min-w-0 ${className}`}
-      role="group"
-      aria-label={`${label}: ${empty ? 'empty' : display}`}
-    >
+    <div className={`min-w-0 ${className}`} role="group" aria-label={`${label}: ${empty ? 'empty' : display}`}>
       <div className={entityInfoLabelClass}>
         {RowIcon ? <RowIcon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden /> : null}
         <span>{label}</span>
@@ -70,9 +67,7 @@ export function InfoRow({ label, value, icon: RowIcon, className = '', emphasize
             {display}
           </span>
         ) : (
-          <p
-            className={`text-base leading-snug ${empty ? 'font-normal text-gray-400' : 'font-semibold text-gray-900'}`}
-          >
+          <p className={`text-base leading-snug ${empty ? 'font-normal text-gray-400' : 'font-semibold text-gray-900'}`}>
             {display}
           </p>
         )}
@@ -81,7 +76,6 @@ export function InfoRow({ label, value, icon: RowIcon, className = '', emphasize
   );
 }
 
-/** Sidebar card title (lead “Activity summary” style). */
 export function SidebarCardTitle({ title, icon: Icon }) {
   return (
     <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500">

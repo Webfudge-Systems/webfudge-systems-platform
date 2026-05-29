@@ -56,10 +56,13 @@ import { shouldPromptDeliveryProjectOnWon } from '../../../lib/wonDealProjectPro
 import crmActivityService from '../../../lib/api/crmActivityService';
 import { DEAL_STAGE_OPTIONS, contactDisplayName } from '../../../lib/dealFormOptions';
 import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../lib/rbac';
+import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
+import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.deals.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.deals.tableColumnOrder';
 const DEAL_VIEW_STORAGE_KEY = 'crm.deals.viewMode';
+const TABLE_SORT_STORAGE_KEY = 'crm.deals.tableSort';
 
 function readStoredDealView() {
   if (typeof window === 'undefined') return 'table';
@@ -236,8 +239,10 @@ export default function DealsPage() {
   const itemsPerPage = 15;
 
   const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
+  const [columnWidths, setColumnWidths] = useState({});
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const columnDragKeyRef = useRef(null);
   const columnDropIndicatorRef = useRef(null);
@@ -275,7 +280,7 @@ export default function DealsPage() {
   const handleDealViewChange = useCallback((mode) => {
     setDealViewMode(mode);
     persistDealView(mode);
-    if (mode === 'kanban') setColumnPickerOpen(false);
+    if (mode === 'kanban') { setColumnPickerOpen(false); setSortOpen(false); }
   }, [persistDealView]);
 
   useEffect(() => {
@@ -284,15 +289,16 @@ export default function DealsPage() {
   }, []);
 
   useEffect(() => {
-    if (!columnPickerOpen) return;
+    if (!columnPickerOpen && !sortOpen) return;
     const onDocMouseDown = (e) => {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target)) {
         setColumnPickerOpen(false);
+        setSortOpen(false);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [columnPickerOpen]);
+  }, [columnPickerOpen, sortOpen]);
 
   const setColumnVisible = useCallback((key, visible) => {
     setColumnVisibility((prev) => {
@@ -428,8 +434,22 @@ export default function DealsPage() {
     return matchesSearch && matchesTab;
   });
 
-  const totalPages = Math.ceil(filteredDeals.length / itemsPerPage);
-  const paginatedDeals = filteredDeals.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  // Multi-column sort (only applied in table view)
+  const {
+    sortRules,
+    columnOptions: sortColumnOptions,
+    sortedData: sortedDeals,
+    hasActiveSort,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    bindSortableColumns,
+  } = useCrmTableSort({ entity: 'deal', storageKey: TABLE_SORT_STORAGE_KEY, data: filteredDeals });
+
+  const totalPages = Math.ceil(sortedDeals.length / itemsPerPage);
+  const paginatedDeals = sortedDeals.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -928,8 +948,8 @@ export default function DealsPage() {
       if (columnVisibility[key] && byKey[key]) out.push(byKey[key]);
     }
     if (byKey.actions) out.push(byKey.actions);
-    return out;
-  }, [allTableColumns, columnVisibility, columnOrder]);
+    return bindSortableColumns(out);
+  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -1001,9 +1021,25 @@ export default function DealsPage() {
           showFilter
           onFilterClick={() => {}}
           showColumnVisibility={dealViewMode === 'table'}
-          onColumnVisibilityClick={() => setColumnPickerOpen((o) => !o)}
+          onColumnVisibilityClick={() => { setColumnPickerOpen((o) => !o); setSortOpen(false); }}
           columnVisibilityTitle="Show or hide columns"
+          showSort={dealViewMode === 'table'}
+          onSortClick={() => { setSortOpen((o) => !o); setColumnPickerOpen(false); }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort columns"
         />
+        {dealViewMode === 'table' && (
+          <CrmTableSortDropdown
+            open={sortOpen}
+            sortRules={sortRules}
+            columnOptions={sortColumnOptions}
+            onAddRule={addSortRule}
+            onRemoveRule={removeSortRule}
+            onSetDirection={setRuleDirection}
+            onMoveRule={moveSortRule}
+            onClear={clearSort}
+          />
+        )}
         {dealViewMode === 'table' && columnPickerOpen && (
           <div
             className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl"
@@ -1098,8 +1134,8 @@ export default function DealsPage() {
       </div>
 
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredDeals.length}</span> result
-        {filteredDeals.length !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{sortedDeals.length}</span> result
+        {sortedDeals.length !== 1 ? 's' : ''}
       </div>
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -1116,6 +1152,9 @@ export default function DealsPage() {
               variant="modern"
               getRowClassName={() => 'group'}
               onRowClick={(row) => router.push(`/sales/deals/${row.id}`)}
+              resizableColumns
+              columnWidths={columnWidths}
+              onColumnWidthsChange={setColumnWidths}
             />
             {paginatedDeals.length === 0 && (
               <div className="border-t border-gray-200 p-12 text-center">
@@ -1151,14 +1190,14 @@ export default function DealsPage() {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={filteredDeals.length}
+                  totalItems={sortedDeals.length}
                   itemsPerPage={itemsPerPage}
                   onPageChange={setCurrentPage}
                 />
               </div>
             )}
           </>
-        ) : filteredDeals.length === 0 ? (
+        ) : sortedDeals.length === 0 ? (
           <div className="p-12 text-center">
             <Briefcase className="mx-auto mb-3 h-12 w-12 text-gray-400 opacity-50" />
             <h3 className="mb-2 text-lg font-semibold text-gray-700">No deals found</h3>

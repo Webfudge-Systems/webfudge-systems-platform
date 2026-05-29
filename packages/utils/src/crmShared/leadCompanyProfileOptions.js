@@ -1,44 +1,46 @@
 /**
- * Industry, company type, and sub-type options for lead company forms (new + detail).
- * Keep in sync with backend free-text fields; values are stored as-is on lead-company.
- * Client accounts use industry only (no sub-type).
+ * Industry, company type, and sub-type options for lead company and client
+ * account forms across PM and CRM.
+ *
+ * Values are stored as-is on the backend; client accounts use industry only
+ * (no sub-type).
  */
 
 export const INDUSTRY_OTHER_VALUE = 'other';
 
 export const industryOptions = [
-  { value: 'technology', label: 'Technology' },
-  { value: 'software-saas', label: 'Software & SaaS' },
-  { value: 'healthcare', label: 'Healthcare' },
-  { value: 'pharmaceuticals', label: 'Pharmaceuticals' },
-  { value: 'finance', label: 'Finance' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'manufacturing', label: 'Manufacturing' },
-  { value: 'automotive', label: 'Automotive' },
-  { value: 'aerospace', label: 'Aerospace & Defense' },
-  { value: 'retail', label: 'Retail' },
-  { value: 'e-commerce', label: 'E-commerce' },
-  { value: 'education', label: 'Education' },
-  { value: 'real-estate', label: 'Real Estate' },
-  { value: 'construction', label: 'Construction' },
-  { value: 'consulting', label: 'Consulting' },
-  { value: 'legal', label: 'Legal' },
-  { value: 'media-entertainment', label: 'Media & Entertainment' },
-  { value: 'hospitality', label: 'Hospitality & Travel' },
-  { value: 'food-beverage', label: 'Food & Beverage' },
-  { value: 'agriculture', label: 'Agriculture' },
-  { value: 'energy', label: 'Energy & Utilities' },
-  { value: 'telecommunications', label: 'Telecommunications' },
-  { value: 'logistics-transportation', label: 'Logistics & Transportation' },
-  { value: 'nonprofit', label: 'Nonprofit' },
-  { value: 'government', label: 'Government' },
-  { value: 'other', label: 'Other' },
+  { value: 'technology',              label: 'Technology' },
+  { value: 'software-saas',           label: 'Software & SaaS' },
+  { value: 'healthcare',              label: 'Healthcare' },
+  { value: 'pharmaceuticals',         label: 'Pharmaceuticals' },
+  { value: 'finance',                 label: 'Finance' },
+  { value: 'insurance',               label: 'Insurance' },
+  { value: 'manufacturing',           label: 'Manufacturing' },
+  { value: 'automotive',              label: 'Automotive' },
+  { value: 'aerospace',               label: 'Aerospace & Defense' },
+  { value: 'retail',                  label: 'Retail' },
+  { value: 'e-commerce',              label: 'E-commerce' },
+  { value: 'education',               label: 'Education' },
+  { value: 'real-estate',             label: 'Real Estate' },
+  { value: 'construction',            label: 'Construction' },
+  { value: 'consulting',              label: 'Consulting' },
+  { value: 'legal',                   label: 'Legal' },
+  { value: 'media-entertainment',     label: 'Media & Entertainment' },
+  { value: 'hospitality',             label: 'Hospitality & Travel' },
+  { value: 'food-beverage',           label: 'Food & Beverage' },
+  { value: 'agriculture',             label: 'Agriculture' },
+  { value: 'energy',                  label: 'Energy & Utilities' },
+  { value: 'telecommunications',      label: 'Telecommunications' },
+  { value: 'logistics-transportation',label: 'Logistics & Transportation' },
+  { value: 'nonprofit',               label: 'Nonprofit' },
+  { value: 'government',              label: 'Government' },
+  { value: 'other',                   label: 'Other' },
 ];
 
 export const companyTypes = [
-  { id: 'startup-corporate', name: 'Startup and Corporates' },
-  { id: 'investor', name: 'Investors' },
-  { id: 'enablers-academia', name: 'Enablers & Academia' },
+  { id: 'startup-corporate',  name: 'Startup and Corporates' },
+  { id: 'investor',           name: 'Investors' },
+  { id: 'enablers-academia',  name: 'Enablers & Academia' },
 ];
 
 export const subTypeOptionsByCompanyType = {

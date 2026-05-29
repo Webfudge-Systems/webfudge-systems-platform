@@ -69,7 +69,7 @@ import taskService from '../../lib/api/taskService';
 import taskCommentService from '../../lib/api/taskCommentService';
 import { transformProject, transformTask, transformUser } from '../../lib/api/dataTransformers';
 import { usePmTableSort } from '../../hooks/usePmTableSort';
-import PmTableSortDropdown from '../../components/PmTableSortDropdown';
+import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.myTasks.tableSort';
 

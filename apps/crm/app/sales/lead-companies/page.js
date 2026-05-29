@@ -47,12 +47,15 @@ import {
   TableRowActionMenuPortal,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
+import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
+import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import leadCompanyService from '../../../lib/api/leadCompanyService';
 import crmActivityService from '../../../lib/api/crmActivityService';
 import { canEditCRMRecord, canManageCRM } from '../../../lib/rbac';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.leadCompanies.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.leadCompanies.tableColumnOrder';
+const TABLE_SORT_STORAGE_KEY = 'crm.leadCompanies.tableSort';
 
 /** Toggleable column keys and default visibility (extra fields off until user enables them). */
 const TOGGLEABLE_COLUMNS = [
@@ -224,8 +227,10 @@ export default function LeadCompaniesPage() {
   const [convertError, setConvertError] = useState('');
   const [loadingActions, setLoadingActions] = useState({});
   const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
+  const [columnWidths, setColumnWidths] = useState({});
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const [moreActionMenu, setMoreActionMenu] = useState(null);
   const [statusActionMenu, setStatusActionMenu] = useState(null);
@@ -250,15 +255,16 @@ export default function LeadCompaniesPage() {
   }, []);
 
   useEffect(() => {
-    if (!columnPickerOpen) return;
+    if (!columnPickerOpen && !sortOpen) return;
     const onDocMouseDown = (e) => {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target)) {
         setColumnPickerOpen(false);
+        setSortOpen(false);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [columnPickerOpen]);
+  }, [columnPickerOpen, sortOpen]);
 
   const setColumnVisible = useCallback((key, visible) => {
     setColumnVisibility((prev) => {
@@ -527,11 +533,25 @@ export default function LeadCompaniesPage() {
     return matchesSearch && matchesTab && matchesAdvanced;
   });
 
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
+  // Multi-column sort (client-side, applied after filter)
+  const {
+    sortRules,
+    columnOptions: sortColumnOptions,
+    sortedData: sortedCompanies,
+    hasActiveSort,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    bindSortableColumns,
+  } = useCrmTableSort({ entity: 'leadCompany', storageKey: TABLE_SORT_STORAGE_KEY, data: filteredCompanies });
+
+  // Calculate pagination (after sort)
+  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedCompanies = filteredCompanies.slice(startIndex, endIndex);
+  const paginatedCompanies = sortedCompanies.slice(startIndex, endIndex);
 
   useEffect(() => {
     if (!paginatedCompanies?.length) return;
@@ -1176,8 +1196,8 @@ export default function LeadCompaniesPage() {
       if (columnVisibility[key] && byKey[key]) out.push(byKey[key]);
     }
     if (byKey.actions) out.push(byKey.actions);
-    return out;
-  }, [allTableColumns, columnVisibility, columnOrder]);
+    return bindSortableColumns(out);
+  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -1249,11 +1269,25 @@ export default function LeadCompaniesPage() {
           showFilter={true}
           onFilterClick={openFilterModal}
           showColumnVisibility={true}
-          onColumnVisibilityClick={() => setColumnPickerOpen((o) => !o)}
+          onColumnVisibilityClick={() => { setColumnPickerOpen((o) => !o); setSortOpen(false); }}
           columnVisibilityTitle="Show or hide columns"
+          showSort={true}
+          onSortClick={() => { setSortOpen((o) => !o); setColumnPickerOpen(false); }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort columns"
           showExport={true}
           onExportClick={() => console.log('Export clicked')}
           exportTitle="Export"
+        />
+        <CrmTableSortDropdown
+          open={sortOpen}
+          sortRules={sortRules}
+          columnOptions={sortColumnOptions}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
         />
         {columnPickerOpen && (
           <div
@@ -1358,8 +1392,8 @@ export default function LeadCompaniesPage() {
 
       {/* Results Count */}
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredCompanies.length}</span> result
-        {filteredCompanies.length !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{sortedCompanies.length}</span> result
+        {sortedCompanies.length !== 1 ? 's' : ''}
       </div>
 
       {/* Table */}
@@ -1376,6 +1410,9 @@ export default function LeadCompaniesPage() {
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/sales/lead-companies/${row.id}`)}
+              resizableColumns
+              columnWidths={columnWidths}
+              onColumnWidthsChange={setColumnWidths}
             />
             {paginatedCompanies.length === 0 && (
               <div className="p-12 text-center border-t border-gray-200">
@@ -1399,7 +1436,7 @@ export default function LeadCompaniesPage() {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={filteredCompanies.length}
+                  totalItems={sortedCompanies.length}
                   itemsPerPage={itemsPerPage}
                   onPageChange={setCurrentPage}
                 />

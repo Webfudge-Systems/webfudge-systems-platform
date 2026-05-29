@@ -46,7 +46,7 @@ import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
 import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
-import { InfoRow, InfoSection, SidebarCardTitle } from '../../../components/pmEntityDetailInfo';
+import { InfoRow, InfoSection, SidebarCardTitle } from '@webfudge/ui';
 import { getProjectStatusMeta, PROJECT_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
 import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions';

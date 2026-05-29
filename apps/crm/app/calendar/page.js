@@ -11,7 +11,7 @@ import meetingService from '../../lib/api/meetingService';
 import { loadWorkspaceCalendarData } from '../../lib/loadWorkspaceCalendar';
 import { pmProjectDetailUrl } from '../../lib/pmAppUrl';
 
-const UnifiedWorkspaceCalendar = dynamic(() => import('../../components/WorkspaceCalendarClient'), {
+const UnifiedWorkspaceCalendar = dynamic(() => import('@webfudge/ui').then(m => ({ default: m.UnifiedWorkspaceCalendar })), {
   ssr: false,
   loading: () => (
     <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-500">

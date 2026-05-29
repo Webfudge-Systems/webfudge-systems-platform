@@ -41,7 +41,7 @@ import {
 import taskService from '../lib/api/taskService';
 import taskCommentService from '../lib/api/taskCommentService';
 import { usePmTableSort } from '../hooks/usePmTableSort';
-import PmTableSortDropdown from './PmTableSortDropdown';
+import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.projectTasks.tableSort';
 

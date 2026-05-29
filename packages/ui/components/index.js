@@ -56,6 +56,21 @@ export { WorkspaceSearchModal } from './WorkspaceSearchModal';
 export { NodeHandle } from './NodeHandle';
 export { WorkflowStatusBadge } from './WorkflowStatusBadge';
 
+// CROSS-APP SHARED COMPONENTS
+export { AppPageHeader } from './AppPageHeader';
+export { ProgressBar } from './ProgressBar';
+export { MeetingsEmbedList } from './MeetingsEmbedList';
+export { TableSortDropdown } from './TableSortDropdown';
+export { AccessDeniedPanel } from './AccessDeniedPanel';
+export { WorkspaceLayoutContent } from './WorkspaceLayoutContent';
+export {
+  entityInfoLabelClass,
+  InfoSection,
+  DetailColumnHeading,
+  InfoRow,
+  SidebarCardTitle,
+} from './EntityDetailLayout';
+
 // CRM / entity activity (timeline + chats panel)
 export { ActivitiesTimeline } from './ActivitiesTimeline';
 export { EntityActivityPanel } from './EntityActivityPanel';

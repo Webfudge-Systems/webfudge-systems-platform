@@ -6,7 +6,8 @@
   "types": "./src/index.d.ts",
   "exports": {
     ".": "./src/index.js",
-    "./formatters": "./src/formatters/index.js"
+    "./formatters": "./src/formatters/index.js",
+    "./crmShared": "./src/crmShared/index.js"
   },
   "scripts": {
     "lint": "eslint src",

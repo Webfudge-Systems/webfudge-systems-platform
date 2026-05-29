@@ -58,7 +58,7 @@ import dealService from '../../../../lib/api/dealService';
 import proposalService from '../../../../lib/api/proposalService';
 import { fetchActivityTimeline, fetchLeadCompanyComments, addLeadCompanyComment } from '../../../../lib/api/crmActivityService';
 import strapiClient from '../../../../lib/strapiClient';
-import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
+import { MeetingsEmbedList } from '@webfudge/ui';
 import meetingService from '../../../../lib/api/meetingService';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
 import {
@@ -67,7 +67,7 @@ import {
   getSubTypeOptionsForType,
   canonicalIndustryValue,
   canonicalCompanyTypeValue,
-} from '../../../../lib/leadCompanyProfileOptions';
+} from '@webfudge/utils';
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 
 function formatCurrency(value) {

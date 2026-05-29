@@ -6,7 +6,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Button, Card, LoadingSpinner, Modal } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
-import { InfoRow, DetailColumnHeading, SidebarCardTitle } from '../../../../components/entityDetailInfo';
+import { InfoRow, DetailColumnHeading, SidebarCardTitle } from '@webfudge/ui';
 import invoiceService from '../../../../lib/api/invoiceService';
 import {
   Receipt, Eye, Pencil, Trash2, Download, ArrowLeft,

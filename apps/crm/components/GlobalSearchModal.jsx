@@ -1,478 +1,320 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Search,
-  X,
   Building2,
   Briefcase,
   User,
   Users,
-  Loader2,
   ArrowRight,
   FileText,
-} from 'lucide-react'
-import BaseModal from './ui/BaseModal'
-import globalSearchService from '../lib/api/globalSearchService'
+} from 'lucide-react';
+import { LoadingSpinner, WorkspaceSearchModal } from '@webfudge/ui';
+import globalSearchService from '../lib/api/globalSearchService';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getIcon(type) {
+  switch (type) {
+    case 'lead':    return Building2;
+    case 'deal':    return Briefcase;
+    case 'contact': return User;
+    case 'client':  return Users;
+    default:        return FileText;
+  }
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function SearchEmpty({ icon: Icon, title, description }) {
+  return (
+    <div className="px-6 py-12 text-center">
+      <Icon className="mx-auto mb-4 h-10 w-10 text-gray-300" strokeWidth={1.25} aria-hidden />
+      <p className="text-base font-semibold text-slate-900">{title}</p>
+      {description ? <p className="mt-1.5 text-sm text-gray-500">{description}</p> : null}
+    </div>
+  );
+}
+
+function SearchSection({ title, icon: Icon, children, hasBorder = false }) {
+  return (
+    <section className={`py-2 ${hasBorder ? 'border-t border-gray-200/80' : ''}`.trim()}>
+      <div className="flex items-center gap-2 px-5 py-2">
+        {Icon && <Icon className="h-4 w-4 text-orange-500" aria-hidden />}
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{title}</p>
+      </div>
+      <div className="space-y-0.5 px-2">{children}</div>
+    </section>
+  );
+}
+
+function SearchResultButton({ icon: Icon, title, subtitle, description, isSelected, onClick, dataIndex }) {
+  return (
+    <button
+      type="button"
+      data-index={dataIndex}
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
+        isSelected ? 'bg-orange-50 ring-1 ring-orange-200/80' : 'hover:bg-white/80'
+      }`}
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-gray-500 shadow-sm ring-1 ring-gray-200/80">
+        <Icon className="h-4 w-4" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-slate-900">{title}</p>
+        {subtitle ? <p className="truncate text-xs text-gray-500">{subtitle}</p> : null}
+        {description ? <p className="truncate text-xs text-gray-400">{description}</p> : null}
+      </div>
+      <ArrowRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
+    </button>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+const EMPTY_RESULTS = {
+  leads:    { data: [], total: 0 },
+  deals:    { data: [], total: 0 },
+  contacts: { data: [], total: 0 },
+  clients:  { data: [], total: 0 },
+};
 
 export default function GlobalSearchModal({ isOpen, onClose, initialQuery = '' }) {
-  const router = useRouter()
-  const [searchQuery, setSearchQuery] = useState(initialQuery)
-  const [searchResults, setSearchResults] = useState({
-    leads: { data: [], total: 0 },
-    deals: { data: [], total: 0 },
-    contacts: { data: [], total: 0 },
-    clients: { data: [], total: 0 },
-  })
-  const [loading, setLoading] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState(-1)
-  const searchInputRef = useRef(null)
-  const searchTimeoutRef = useRef(null)
-  const resultsRef = useRef(null)
+  const router = useRouter();
+  const [query, setQuery] = useState(initialQuery);
+  const [results, setResults] = useState(EMPTY_RESULTS);
+  const [loading, setLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const inputRef = useRef(null);
 
-  // Focus input when modal opens
+  // Sync initial query when modal opens
   useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus()
-      }, 100)
+    if (isOpen) {
+      setQuery(initialQuery);
+      const t = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
     }
-  }, [isOpen])
+    return undefined;
+  }, [isOpen, initialQuery]);
 
-  // Update search query when initialQuery prop changes or modal opens
-  useEffect(() => {
-    if (isOpen && initialQuery) {
-      setSearchQuery(initialQuery)
-    }
-  }, [isOpen, initialQuery])
-
-  // Reset state when modal closes
+  // Reset on close
   useEffect(() => {
     if (!isOpen) {
-      setSearchQuery('')
-      setSearchResults({
-        leads: { data: [], total: 0 },
-        deals: { data: [], total: 0 },
-        contacts: { data: [], total: 0 },
-        clients: { data: [], total: 0 },
-      })
-      setSelectedIndex(-1)
+      setQuery('');
+      setResults(EMPTY_RESULTS);
+      setSelectedIndex(-1);
     }
-  }, [isOpen])
+  }, [isOpen]);
 
-  // Perform search with debounce
+  // Debounced search
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current)
+    if (!query.trim() || !isOpen) {
+      setResults(EMPTY_RESULTS);
+      setLoading(false);
+      return undefined;
     }
-
-    if (!searchQuery.trim()) {
-      setSearchResults({
-        leads: { data: [], total: 0 },
-        deals: { data: [], total: 0 },
-        contacts: { data: [], total: 0 },
-        clients: { data: [], total: 0 },
-      })
-      setLoading(false)
-      return
-    }
-
-    setLoading(true)
-    searchTimeoutRef.current = setTimeout(async () => {
+    setLoading(true);
+    const timer = setTimeout(async () => {
       try {
-        const results = await globalSearchService.search(searchQuery, {
-          maxResults: 5,
-        })
-        setSearchResults(results)
-      } catch (error) {
-        console.error('Error performing global search:', error)
-        setSearchResults({
-          leads: { data: [], total: 0 },
-          deals: { data: [], total: 0 },
-          contacts: { data: [], total: 0 },
-          clients: { data: [], total: 0 },
-        })
+        const data = await globalSearchService.search(query, { maxResults: 5 });
+        setResults(data ?? EMPTY_RESULTS);
+      } catch {
+        setResults(EMPTY_RESULTS);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }, 300)
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query, isOpen]);
 
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current)
-      }
-    }
-  }, [searchQuery])
+  // Flatten results for keyboard nav
+  const allResults = [
+    ...results.leads.data,
+    ...results.deals.data,
+    ...results.contacts.data,
+    ...results.clients.data,
+  ];
 
-  // Handle keyboard navigation
+  // Keyboard navigation
   useEffect(() => {
-    if (!isOpen) return
-
-    const handleKeyDown = (e) => {
+    if (!isOpen) return undefined;
+    const onKey = (e) => {
       if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        const allResults = getAllResults()
-        setSelectedIndex((prev) => (prev < allResults.length - 1 ? prev + 1 : prev))
+        e.preventDefault();
+        setSelectedIndex((i) => Math.min(i + 1, allResults.length - 1));
       } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1))
-      } else if (e.key === 'Enter' && selectedIndex >= 0) {
-        e.preventDefault()
-        const allResults = getAllResults()
-        if (allResults[selectedIndex]) {
-          handleResultClick(allResults[selectedIndex])
-        }
+        e.preventDefault();
+        setSelectedIndex((i) => Math.max(i - 1, -1));
+      } else if (e.key === 'Enter' && selectedIndex >= 0 && allResults[selectedIndex]) {
+        e.preventDefault();
+        router.push(allResults[selectedIndex].href);
+        onClose();
       }
-    }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, selectedIndex, allResults, router, onClose]);
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, selectedIndex])
-
-  // Scroll selected item into view
-  useEffect(() => {
-    if (selectedIndex >= 0 && resultsRef.current) {
-      const selectedElement = resultsRef.current.querySelector(`[data-index="${selectedIndex}"]`)
-      if (selectedElement) {
-        selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-      }
-    }
-  }, [selectedIndex])
-
-  // Get all results in a flat array for keyboard navigation
-  const getAllResults = () => {
-    const all = []
-    searchResults.leads.data.forEach((item) => all.push(item))
-    searchResults.deals.data.forEach((item) => all.push(item))
-    searchResults.contacts.data.forEach((item) => all.push(item))
-    searchResults.clients.data.forEach((item) => all.push(item))
-    return all
-  }
-
-  // Handle result click
   const handleResultClick = (result) => {
-    router.push(result.href)
-    onClose()
-  }
+    router.push(result.href);
+    onClose();
+  };
 
-  // Get icon for result type
-  const getIcon = (type) => {
-    switch (type) {
-      case 'lead':
-        return Building2
-      case 'deal':
-        return Briefcase
-      case 'contact':
-        return User
-      case 'client':
-        return Users
-      default:
-        return FileText
-    }
-  }
-
-  // Get label for result type
-  const getTypeLabel = (type) => {
-    switch (type) {
-      case 'lead':
-        return 'Lead'
-      case 'deal':
-        return 'Deal'
-      case 'contact':
-        return 'Contact'
-      case 'client':
-        return 'Client'
-      default:
-        return 'Item'
-    }
-  }
-
+  const trimmed = query.trim();
+  const hasResults = allResults.length > 0;
   const totalResults =
-    searchResults.leads.total +
-    searchResults.deals.total +
-    searchResults.contacts.total +
-    searchResults.clients.total
+    results.leads.total + results.deals.total + results.contacts.total + results.clients.total;
 
-  const hasResults =
-    searchResults.leads.data.length > 0 ||
-    searchResults.deals.data.length > 0 ||
-    searchResults.contacts.data.length > 0 ||
-    searchResults.clients.data.length > 0
+  // Build section offset map for global keyboard index
+  const leadsOffset = 0;
+  const dealsOffset = results.leads.data.length;
+  const contactsOffset = dealsOffset + results.deals.data.length;
+  const clientsOffset = contactsOffset + results.contacts.data.length;
+
+  let body = null;
+  if (loading) {
+    body = (
+      <div className="flex items-center justify-center gap-3 px-6 py-12">
+        <LoadingSpinner size="sm" />
+        <span className="text-sm text-gray-500">Searching…</span>
+      </div>
+    );
+  } else if (!trimmed) {
+    body = (
+      <SearchEmpty
+        icon={Search}
+        title="Search across your CRM"
+        description="Find leads, deals, contacts, and clients."
+      />
+    );
+  } else if (!hasResults) {
+    body = (
+      <SearchEmpty
+        icon={Search}
+        title="No results found"
+        description={`Nothing matched "${trimmed}". Try different keywords.`}
+      />
+    );
+  } else {
+    body = (
+      <>
+        {results.leads.data.length > 0 && (
+          <SearchSection title={`Leads (${results.leads.total})`} icon={Building2}>
+            {results.leads.data.map((r, idx) => (
+              <SearchResultButton
+                key={r.id}
+                icon={getIcon(r.type)}
+                title={r.title}
+                subtitle={r.subtitle}
+                description={r.description}
+                isSelected={selectedIndex === leadsOffset + idx}
+                dataIndex={leadsOffset + idx}
+                onClick={() => handleResultClick(r)}
+              />
+            ))}
+          </SearchSection>
+        )}
+
+        {results.deals.data.length > 0 && (
+          <SearchSection
+            title={`Deals (${results.deals.total})`}
+            icon={Briefcase}
+            hasBorder={results.leads.data.length > 0}
+          >
+            {results.deals.data.map((r, idx) => (
+              <SearchResultButton
+                key={r.id}
+                icon={getIcon(r.type)}
+                title={r.title}
+                subtitle={r.subtitle}
+                description={r.metadata?.value ? `Value: ${r.metadata.value}` : undefined}
+                isSelected={selectedIndex === dealsOffset + idx}
+                dataIndex={dealsOffset + idx}
+                onClick={() => handleResultClick(r)}
+              />
+            ))}
+          </SearchSection>
+        )}
+
+        {results.contacts.data.length > 0 && (
+          <SearchSection
+            title={`Contacts (${results.contacts.total})`}
+            icon={User}
+            hasBorder={results.leads.data.length + results.deals.data.length > 0}
+          >
+            {results.contacts.data.map((r, idx) => (
+              <SearchResultButton
+                key={r.id}
+                icon={getIcon(r.type)}
+                title={r.title}
+                subtitle={r.subtitle}
+                description={r.description}
+                isSelected={selectedIndex === contactsOffset + idx}
+                dataIndex={contactsOffset + idx}
+                onClick={() => handleResultClick(r)}
+              />
+            ))}
+          </SearchSection>
+        )}
+
+        {results.clients.data.length > 0 && (
+          <SearchSection
+            title={`Clients (${results.clients.total})`}
+            icon={Users}
+            hasBorder={contactsOffset > 0}
+          >
+            {results.clients.data.map((r, idx) => (
+              <SearchResultButton
+                key={r.id}
+                icon={getIcon(r.type)}
+                title={r.title}
+                subtitle={r.subtitle}
+                description={r.description}
+                isSelected={selectedIndex === clientsOffset + idx}
+                dataIndex={clientsOffset + idx}
+                onClick={() => handleResultClick(r)}
+              />
+            ))}
+          </SearchSection>
+        )}
+      </>
+    );
+  }
 
   return (
-    <BaseModal isOpen={isOpen} onClose={onClose} size="big" className="max-w-3xl">
-      <div className="flex flex-col h-full max-h-[80vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/20">
-          <div className="flex items-center gap-3 flex-1">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-brand-text-light" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Search leads, deals, contacts, clients..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary/30 focus:border-brand-primary focus:bg-white/15 transition-all duration-300 placeholder:text-brand-text-light"
-              />
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="ml-3 p-2 hover:bg-white/10 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5 text-brand-text-light" />
-          </button>
-        </div>
-
-        {/* Results */}
-        <div ref={resultsRef} className="flex-1 overflow-y-auto p-6 space-y-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-              <span className="ml-3 text-brand-text-light">Searching...</span>
-            </div>
-          ) : !searchQuery.trim() ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Search className="w-12 h-12 text-brand-text-light mb-4 opacity-50" />
-              <p className="text-brand-text-light">Start typing to search across all entities</p>
-              <p className="text-sm text-brand-text-light mt-2 opacity-75">
-                Search for leads, deals, contacts, and clients
-              </p>
-            </div>
-          ) : !hasResults ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <FileText className="w-12 h-12 text-brand-text-light mb-4 opacity-50" />
-              <p className="text-brand-text-light">No results found</p>
-              <p className="text-sm text-brand-text-light mt-2 opacity-75">
-                Try a different search term
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Leads */}
-              {searchResults.leads.data.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Building2 className="w-4 h-4 text-brand-primary" />
-                    <h3 className="text-sm font-semibold text-brand-foreground">
-                      Leads ({searchResults.leads.total})
-                    </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {searchResults.leads.data.map((result, idx) => {
-                      const globalIndex = idx
-                      const Icon = getIcon(result.type)
-                      return (
-                        <button
-                          key={result.id}
-                          data-index={globalIndex}
-                          onClick={() => handleResultClick(result)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 text-left ${
-                            selectedIndex === globalIndex
-                              ? 'bg-brand-primary/10 border-brand-primary/30'
-                              : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                        >
-                          <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
-                            <Icon className="w-5 h-5 text-brand-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-brand-foreground truncate">
-                              {result.title}
-                            </p>
-                            {result.subtitle && (
-                              <p className="text-xs text-brand-text-light truncate">
-                                {result.subtitle}
-                              </p>
-                            )}
-                            {result.description && (
-                              <p className="text-xs text-brand-text-light mt-1 truncate">
-                                {result.description}
-                              </p>
-                            )}
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-brand-text-light flex-shrink-0" />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Deals */}
-              {searchResults.deals.data.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Briefcase className="w-4 h-4 text-brand-primary" />
-                    <h3 className="text-sm font-semibold text-brand-foreground">
-                      Deals ({searchResults.deals.total})
-                    </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {searchResults.deals.data.map((result, idx) => {
-                      const globalIndex = searchResults.leads.data.length + idx
-                      const Icon = getIcon(result.type)
-                      return (
-                        <button
-                          key={result.id}
-                          data-index={globalIndex}
-                          onClick={() => handleResultClick(result)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 text-left ${
-                            selectedIndex === globalIndex
-                              ? 'bg-brand-primary/10 border-brand-primary/30'
-                              : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                        >
-                          <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
-                            <Icon className="w-5 h-5 text-brand-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-brand-foreground truncate">
-                              {result.title}
-                            </p>
-                            {result.subtitle && (
-                              <p className="text-xs text-brand-text-light truncate">
-                                {result.subtitle}
-                              </p>
-                            )}
-                            {result.metadata?.value && (
-                              <p className="text-xs text-brand-text-light mt-1">
-                                Value: {result.metadata.value}
-                              </p>
-                            )}
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-brand-text-light flex-shrink-0" />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Contacts */}
-              {searchResults.contacts.data.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <User className="w-4 h-4 text-brand-primary" />
-                    <h3 className="text-sm font-semibold text-brand-foreground">
-                      Contacts ({searchResults.contacts.total})
-                    </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {searchResults.contacts.data.map((result, idx) => {
-                      const globalIndex =
-                        searchResults.leads.data.length + searchResults.deals.data.length + idx
-                      const Icon = getIcon(result.type)
-                      return (
-                        <button
-                          key={result.id}
-                          data-index={globalIndex}
-                          onClick={() => handleResultClick(result)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 text-left ${
-                            selectedIndex === globalIndex
-                              ? 'bg-brand-primary/10 border-brand-primary/30'
-                              : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                        >
-                          <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
-                            <Icon className="w-5 h-5 text-brand-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-brand-foreground truncate">
-                              {result.title}
-                            </p>
-                            {result.subtitle && (
-                              <p className="text-xs text-brand-text-light truncate">
-                                {result.subtitle}
-                              </p>
-                            )}
-                            {result.description && (
-                              <p className="text-xs text-brand-text-light mt-1 truncate">
-                                {result.description}
-                              </p>
-                            )}
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-brand-text-light flex-shrink-0" />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Clients */}
-              {searchResults.clients.data.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users className="w-4 h-4 text-brand-primary" />
-                    <h3 className="text-sm font-semibold text-brand-foreground">
-                      Clients ({searchResults.clients.total})
-                    </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {searchResults.clients.data.map((result, idx) => {
-                      const globalIndex =
-                        searchResults.leads.data.length +
-                        searchResults.deals.data.length +
-                        searchResults.contacts.data.length +
-                        idx
-                      const Icon = getIcon(result.type)
-                      return (
-                        <button
-                          key={result.id}
-                          data-index={globalIndex}
-                          onClick={() => handleResultClick(result)}
-                          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 text-left ${
-                            selectedIndex === globalIndex
-                              ? 'bg-brand-primary/10 border-brand-primary/30'
-                              : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
-                          }`}
-                        >
-                          <div className="w-10 h-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
-                            <Icon className="w-5 h-5 text-brand-primary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-brand-foreground truncate">
-                              {result.title}
-                            </p>
-                            {result.subtitle && (
-                              <p className="text-xs text-brand-text-light truncate">
-                                {result.subtitle}
-                              </p>
-                            )}
-                            {result.description && (
-                              <p className="text-xs text-brand-text-light mt-1 truncate">
-                                {result.description}
-                              </p>
-                            )}
-                          </div>
-                          <ArrowRight className="w-4 h-4 text-brand-text-light flex-shrink-0" />
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
+    <WorkspaceSearchModal
+      isOpen={isOpen}
+      onClose={onClose}
+      query={query}
+      onQueryChange={(v) => { setQuery(v); setSelectedIndex(-1); }}
+      placeholder="Search leads, deals, contacts, clients…"
+      inputRef={inputRef}
+      footer={
+        <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500">
+          {hasResults && (
+            <span className="font-medium text-gray-700">{totalResults} result{totalResults !== 1 ? 's' : ''}</span>
           )}
-        </div>
-
-        {/* Footer */}
-        {hasResults && (
-          <div className="border-t border-white/20 p-4 flex items-center justify-between text-xs text-brand-text-light">
-            <div className="flex items-center gap-4">
-              <span>Total: {totalResults} results</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span>↑↓ Navigate</span>
-              <span>Enter Select</span>
-              <span>Esc Close</span>
-            </div>
+          <div className="flex items-center gap-4 ml-auto">
+            <span>
+              <kbd className="rounded-md border border-gray-300 bg-white px-1.5 py-0.5 font-sans text-[11px]">↑↓</kbd>{' '}
+              navigate
+            </span>
+            <span>
+              <kbd className="rounded-md border border-gray-300 bg-white px-1.5 py-0.5 font-sans text-[11px]">↵</kbd>{' '}
+              open
+            </span>
+            <span>
+              <kbd className="rounded-md border border-gray-300 bg-white px-1.5 py-0.5 font-sans text-[11px]">Esc</kbd>{' '}
+              close
+            </span>
           </div>
-        )}
-      </div>
-    </BaseModal>
-  )
+        </div>
+      }
+    >
+      {body}
+    </WorkspaceSearchModal>
+  );
 }

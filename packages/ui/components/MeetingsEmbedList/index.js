@@ -1,17 +1,20 @@
-'use client'
+'use client';
 
 /**
- * MeetingsEmbedList — compact, reusable meetings table for entity detail pages.
+ * MeetingsEmbedList — compact, reusable meetings list for entity detail pages.
+ *
+ * Used by both PM (project / task detail) and CRM (deal / account / contact detail).
  *
  * Props:
- *  - fetchFn:     () => Promise<{ data: Meeting[] }>   e.g. () => meetingService.getByDeal(id)
- *  - scheduleHref: string   href for "Schedule Meeting" CTA (pre-fills context)
- *  - emptyTitle:  string   (optional) empty-state title override
- *  - entityLabel: string   (optional) e.g. "deal", "account" — used in empty state copy
+ *   fetchFn       – () => Promise<{ data: Meeting[] }>
+ *   scheduleHref  – string  href for the "Add meeting" CTA
+ *   emptyTitle    – string  (optional) override for the empty-state heading
+ *   entityLabel   – string  (optional) e.g. "deal", "account" — used in empty-state copy
+ *   meetingBasePath – string  (optional) base path for meeting detail links (default "/meetings")
  */
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CalendarDays,
   Clock,
@@ -21,24 +24,23 @@ import {
   AlertCircle,
   RefreshCw,
   ChevronRight,
-} from 'lucide-react'
-import { Badge, Button } from '@webfudge/ui'
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+} from 'lucide-react';
+import { Badge } from '../Badge';
+import { Button } from '../Button';
 
 const STATUS_LABELS = {
   scheduled: 'Scheduled',
   completed: 'Completed',
   cancelled: 'Cancelled',
   no_show: 'No-show',
-}
+};
 
 const STATUS_VARIANTS = {
   scheduled: 'info',
   completed: 'success',
   cancelled: 'default',
   no_show: 'warning',
-}
+};
 
 const TYPE_LABELS = {
   discovery: 'Discovery',
@@ -48,7 +50,7 @@ const TYPE_LABELS = {
   review: 'Review',
   internal: 'Internal',
   other: 'Other',
-}
+};
 
 const TYPE_COLORS = {
   discovery: 'bg-violet-100 text-violet-700',
@@ -58,66 +60,63 @@ const TYPE_COLORS = {
   review: 'bg-indigo-100 text-indigo-700',
   internal: 'bg-gray-100 text-gray-600',
   other: 'bg-orange-100 text-orange-700',
-}
+};
 
 function formatTime(iso) {
-  if (!iso) return ''
+  if (!iso) return '';
   return new Date(iso).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
     meridiem: 'short',
-  })
+  });
 }
 
 function computeDuration(start, end) {
-  if (!start || !end) return null
-  const mins = Math.round((new Date(end) - new Date(start)) / 60000)
-  if (mins <= 0) return null
-  if (mins < 60) return `${mins}m`
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return m === 0 ? `${h}h` : `${h}h ${m}m`
+  if (!start || !end) return null;
+  const mins = Math.round((new Date(end) - new Date(start)) / 60000);
+  if (mins <= 0) return null;
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
 function isPast(iso) {
-  if (!iso) return false
-  return new Date(iso) < new Date()
+  if (!iso) return false;
+  return new Date(iso) < new Date();
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
-export default function MeetingsEmbedList({
+export function MeetingsEmbedList({
   fetchFn,
   scheduleHref,
   emptyTitle = 'No meetings yet',
   entityLabel = 'this record',
+  meetingBasePath = '/meetings',
 }) {
-  const router = useRouter()
-  const [meetings, setMeetings] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const router = useRouter();
+  const [meetings, setMeetings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!fetchFn) return
-    setLoading(true)
-    setError(null)
+    if (!fetchFn) return;
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetchFn()
-      const raw = res?.data
-      setMeetings(Array.isArray(raw) ? raw : [])
+      const res = await fetchFn();
+      const raw = res?.data;
+      setMeetings(Array.isArray(raw) ? raw : []);
     } catch (e) {
-      setError('Failed to load meetings.')
-      console.error(e)
+      setError('Failed to load meetings.');
+      console.error(e);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [fetchFn])
+  }, [fetchFn]);
 
   useEffect(() => {
-    load()
-  }, [load])
-
-  // ── Skeleton ─────────────────────────────────────────────────────────────
+    load();
+  }, [load]);
 
   if (loading) {
     return (
@@ -136,10 +135,8 @@ export default function MeetingsEmbedList({
           </div>
         ))}
       </div>
-    )
+    );
   }
-
-  // ── Error ─────────────────────────────────────────────────────────────────
 
   if (error) {
     return (
@@ -153,10 +150,8 @@ export default function MeetingsEmbedList({
           <RefreshCw className="h-3.5 w-3.5" /> Retry
         </button>
       </div>
-    )
+    );
   }
-
-  // ── Empty ─────────────────────────────────────────────────────────────────
 
   if (meetings.length === 0) {
     return (
@@ -182,10 +177,8 @@ export default function MeetingsEmbedList({
           </Button>
         )}
       </div>
-    )
+    );
   }
-
-  // ── List ──────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-3">
@@ -210,11 +203,11 @@ export default function MeetingsEmbedList({
 
       <div className="space-y-2">
         {meetings.map((m) => {
-          const rowId = m.id ?? m.documentId
-          const past = isPast(m.startTime) && m.status === 'scheduled'
-          const duration = computeDuration(m.startTime, m.endTime)
-          const typeLabel = TYPE_LABELS[m.meetingType] || m.meetingType || 'Other'
-          const typeCls = TYPE_COLORS[m.meetingType] || TYPE_COLORS.other
+          const rowId = m.id ?? m.documentId;
+          const past = isPast(m.startTime) && m.status === 'scheduled';
+          const duration = computeDuration(m.startTime, m.endTime);
+          const typeLabel = TYPE_LABELS[m.meetingType] || m.meetingType || 'Other';
+          const typeCls = TYPE_COLORS[m.meetingType] || TYPE_COLORS.other;
 
           return (
             <div
@@ -223,12 +216,12 @@ export default function MeetingsEmbedList({
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  router.push(`/meetings/${rowId}`)
+                  e.preventDefault();
+                  router.push(`${meetingBasePath}/${rowId}`);
                 }
               }}
               className="group flex cursor-pointer items-center gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm ring-1 ring-gray-100/80 transition-all hover:border-orange-200 hover:shadow-md hover:ring-orange-100"
-              onClick={() => router.push(`/meetings/${rowId}`)}
+              onClick={() => router.push(`${meetingBasePath}/${rowId}`)}
             >
               <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-b from-orange-50 to-orange-100/90 text-center ring-1 ring-orange-200/60">
                 <span className="text-[10px] font-bold uppercase leading-none text-orange-600">
@@ -290,9 +283,11 @@ export default function MeetingsEmbedList({
                 aria-hidden
               />
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
+
+export default MeetingsEmbedList;

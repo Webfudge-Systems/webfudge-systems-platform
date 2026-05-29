@@ -9,7 +9,7 @@ import { CalendarRange, Loader2 } from 'lucide-react';
 import PMPageHeader from '../../components/PMPageHeader';
 import { loadWorkspaceCalendarData } from '../../lib/loadWorkspaceCalendar';
 
-const UnifiedWorkspaceCalendar = dynamic(() => import('../../components/WorkspaceCalendarClient'), {
+const UnifiedWorkspaceCalendar = dynamic(() => import('@webfudge/ui').then(m => ({ default: m.UnifiedWorkspaceCalendar })), {
   ssr: false,
   loading: () => (
     <div className="flex min-h-[420px] items-center justify-center rounded-2xl border border-gray-200 bg-white text-gray-500">

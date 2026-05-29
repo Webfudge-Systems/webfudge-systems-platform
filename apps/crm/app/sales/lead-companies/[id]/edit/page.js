@@ -25,7 +25,7 @@ import {
   companyTypeSelectOptions,
   getSubTypeOptionsForType,
   industryOptions,
-} from '../../../../../lib/leadCompanyProfileOptions';
+} from '@webfudge/utils';
 import { canEditCRMRecord } from '../../../../../lib/rbac';
 import {
   AlignLeft,

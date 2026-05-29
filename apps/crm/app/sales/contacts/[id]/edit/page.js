@@ -19,7 +19,7 @@ import { isLeadCompanyConverted } from '../../../../../lib/meetingCrmLink';
 import {
   contactFieldsFromClientAccount,
   contactFieldsFromLeadCompany,
-} from '../../../../../lib/contactCompanyFields';
+} from '@webfudge/utils';
 import { canEditCRMRecord } from '../../../../../lib/rbac';
 import {
   ArrowLeft,

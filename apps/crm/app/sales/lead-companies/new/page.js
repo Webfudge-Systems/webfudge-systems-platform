@@ -38,7 +38,7 @@ import {
   industryOptions,
   companyTypes,
   subTypeOptionsByCompanyType,
-} from '../../../../lib/leadCompanyProfileOptions';
+} from '@webfudge/utils';
 
 export default function AddLeadCompanyPage() {
   const router = useRouter();

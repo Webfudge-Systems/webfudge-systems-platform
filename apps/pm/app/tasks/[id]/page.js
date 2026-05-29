@@ -51,7 +51,7 @@ import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import { usePmTableSort } from '../../../hooks/usePmTableSort';
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker';
 import { recurrencePayloadFromForm } from '../../../components/TaskRecurrenceFormFields';
-import { SidebarCardTitle } from '../../../components/pmEntityDetailInfo';
+import { SidebarCardTitle } from '@webfudge/ui';
 import { getTaskStatusMeta, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
 import {

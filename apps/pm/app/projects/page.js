@@ -45,7 +45,7 @@ import {
   Kanban,
 } from 'lucide-react';
 import PMPageHeader from '../../components/PMPageHeader';
-import PMProgress from '../../components/PMProgress';
+import { ProgressBar as PMProgress } from '@webfudge/ui';
 import PMRowActions from '../../components/PMRowActions';
 import ProjectsKanbanBoard from '../../components/ProjectsKanbanBoard';
 import {
@@ -63,7 +63,7 @@ import { transformProject, transformUser } from '../../lib/api/dataTransformers'
 import { canWritePM } from '../../lib/rbac';
 import { canCreateProjectsInPm, canEditProjectInPm } from '../../lib/pmOrgRoles';
 import { usePmTableSort } from '../../hooks/usePmTableSort';
-import PmTableSortDropdown from '../../components/PmTableSortDropdown';
+import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.projects.tableSort';
 

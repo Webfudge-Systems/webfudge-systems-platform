@@ -23,7 +23,7 @@ import {
   industryFormFromStored,
   resolveIndustryForSave,
   canonicalCompanyTypeValue,
-} from '../../../../../lib/leadCompanyProfileOptions';
+} from '@webfudge/utils';
 import {
   ArrowLeft,
   AtSign,

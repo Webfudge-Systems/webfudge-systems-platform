@@ -33,6 +33,8 @@ import {
   Modal,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
+import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
+import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import contactService from '../../../lib/api/contactService';
 import { canEditCRMRecord, canManageCRM } from '../../../lib/rbac';
 
@@ -91,6 +93,7 @@ function truncateText(text, max = 100) {
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.contacts.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.contacts.tableColumnOrder';
+const TABLE_SORT_STORAGE_KEY = 'crm.contacts.tableSort';
 
 const TOGGLEABLE_COLUMNS = [
   { key: 'contactInfo', label: 'Contact info' },
@@ -187,8 +190,10 @@ export default function ContactsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
+  const [columnWidths, setColumnWidths] = useState({});
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   /** More-options menu; portal anchor so dropdown is not clipped by table overflow */
   const [actionMenu, setActionMenu] = useState(null);
@@ -210,15 +215,16 @@ export default function ContactsPage() {
   }, []);
 
   useEffect(() => {
-    if (!columnPickerOpen) return;
+    if (!columnPickerOpen && !sortOpen) return;
     const onDocMouseDown = (e) => {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target)) {
         setColumnPickerOpen(false);
+        setSortOpen(false);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [columnPickerOpen]);
+  }, [columnPickerOpen, sortOpen]);
 
   const setColumnVisible = useCallback((key, visible) => {
     setColumnVisibility((prev) => {
@@ -445,9 +451,23 @@ export default function ContactsPage() {
     return matchesSearch && matchesTab && matchesAdvanced;
   });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
-  const paginatedContacts = filteredContacts.slice(
+  // Multi-column sort
+  const {
+    sortRules,
+    columnOptions: sortColumnOptions,
+    sortedData: sortedContacts,
+    hasActiveSort,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    bindSortableColumns,
+  } = useCrmTableSort({ entity: 'contact', storageKey: TABLE_SORT_STORAGE_KEY, data: filteredContacts });
+
+  // Pagination (after sort)
+  const totalPages = Math.ceil(sortedContacts.length / itemsPerPage);
+  const paginatedContacts = sortedContacts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -778,8 +798,8 @@ export default function ContactsPage() {
       if (columnVisibility[key] && byKey[key]) out.push(byKey[key]);
     }
     if (byKey.actions) out.push(byKey.actions);
-    return out;
-  }, [allTableColumns, columnVisibility, columnOrder]);
+    return bindSortableColumns(out);
+  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -850,11 +870,25 @@ export default function ContactsPage() {
           showFilter={true}
           onFilterClick={openFilterModal}
           showColumnVisibility={true}
-          onColumnVisibilityClick={() => setColumnPickerOpen((o) => !o)}
+          onColumnVisibilityClick={() => { setColumnPickerOpen((o) => !o); setSortOpen(false); }}
           columnVisibilityTitle="Show or hide columns"
+          showSort={true}
+          onSortClick={() => { setSortOpen((o) => !o); setColumnPickerOpen(false); }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort columns"
           showExport={true}
           onExportClick={() => console.log('Export clicked')}
           exportTitle="Export"
+        />
+        <CrmTableSortDropdown
+          open={sortOpen}
+          sortRules={sortRules}
+          columnOptions={sortColumnOptions}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
         />
         {columnPickerOpen && (
           <div
@@ -955,6 +989,9 @@ export default function ContactsPage() {
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/sales/contacts/${row.id}`)}
+              resizableColumns
+              columnWidths={columnWidths}
+              onColumnWidthsChange={setColumnWidths}
             />
             {paginatedContacts.length === 0 && (
               <div className="p-12 text-center border-t border-gray-200">

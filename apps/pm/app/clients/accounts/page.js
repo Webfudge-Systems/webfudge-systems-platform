@@ -45,7 +45,7 @@ import clientAccountService from '../../../lib/api/clientAccountService';
 import contactService from '../../../lib/api/contactService';
 import { canManageClientAccounts, canWriteClientAccounts } from '../../../lib/rbac';
 import { usePmTableSort } from '../../../hooks/usePmTableSort';
-import PmTableSortDropdown from '../../../components/PmTableSortDropdown';
+import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.clientAccounts.tableSort';
 

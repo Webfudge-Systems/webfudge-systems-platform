@@ -60,6 +60,18 @@ export {
   ChatMessageText,
   MentionComposer,
   UnifiedWorkspaceCalendar,
+  // Cross-app shared components
+  AppPageHeader,
+  ProgressBar,
+  MeetingsEmbedList,
+  TableSortDropdown,
+  AccessDeniedPanel,
+  WorkspaceLayoutContent,
+  entityInfoLabelClass,
+  InfoSection,
+  DetailColumnHeading,
+  InfoRow,
+  SidebarCardTitle,
 } from '../components';
 
 // LAYOUTS - Page structure and containers

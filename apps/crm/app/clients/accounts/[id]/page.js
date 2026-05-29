@@ -62,7 +62,7 @@ import invoiceService from '../../../../lib/api/invoiceService';
 import projectService from '../../../../lib/api/projectService';
 import { fetchActivityTimeline, fetchClientAccountComments, addClientAccountComment } from '../../../../lib/api/crmActivityService';
 import strapiClient from '../../../../lib/strapiClient';
-import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
+import { MeetingsEmbedList } from '@webfudge/ui';
 import meetingService from '../../../../lib/api/meetingService';
 import { canWriteCRM } from '../../../../lib/rbac';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
@@ -74,8 +74,8 @@ import {
   industryFormFromStored,
   resolveIndustryForSave,
   canonicalCompanyTypeValue,
-} from '../../../../lib/leadCompanyProfileOptions';
-import { getIndustryVisual } from '../../../../lib/industryVisuals';
+} from '@webfudge/utils';
+import { getIndustryVisual } from '@webfudge/ui/utils/industryVisuals';
 
 function formatCurrency(value) {
   if (value == null || value === '') return '₹0';

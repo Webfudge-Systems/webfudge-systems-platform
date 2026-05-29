@@ -15,7 +15,7 @@ import {
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import contactService from '../../../../lib/api/contactService';
-import { contactFieldsFromClientAccount } from '../../../../lib/contactCompanyFields';
+import { contactFieldsFromClientAccount } from '@webfudge/utils';
 import strapiClient from '../../../../lib/strapiClient';
 import { canWriteCRM } from '../../../../lib/rbac';
 import { useAuth } from '@webfudge/auth';
@@ -24,7 +24,7 @@ import {
   companyTypes,
   INDUSTRY_OTHER_VALUE,
   resolveIndustryForSave,
-} from '../../../../lib/leadCompanyProfileOptions';
+} from '@webfudge/utils';
 import {
   Building2,
   Globe,

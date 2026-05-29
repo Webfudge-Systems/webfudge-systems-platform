@@ -12,7 +12,7 @@ import { isLeadCompanyConverted } from '../../../../lib/meetingCrmLink';
 import {
   contactFieldsFromClientAccount,
   contactFieldsFromLeadCompany,
-} from '../../../../lib/contactCompanyFields';
+} from '@webfudge/utils';
 import { useAuth } from '@webfudge/auth';
 import {
   User,

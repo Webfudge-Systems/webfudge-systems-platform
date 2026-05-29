@@ -13,7 +13,7 @@ import {
   InfoRow,
   DetailColumnHeading,
   SidebarCardTitle,
-} from '../../../../components/entityDetailInfo';
+} from '@webfudge/ui';
 import proposalService from '../../../../lib/api/proposalService';
 import {
   FileText, Eye, Pencil, Trash2, Download, ArrowLeft,

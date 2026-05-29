@@ -56,7 +56,7 @@ import dealService from '../../../../lib/api/dealService';
 import contactService from '../../../../lib/api/contactService';
 import taskService from '../../../../lib/api/taskService';
 import { fetchActivityTimeline, fetchDealComments, addDealComment } from '../../../../lib/api/crmActivityService';
-import MeetingsEmbedList from '../../../../components/MeetingsEmbedList';
+import { MeetingsEmbedList } from '@webfudge/ui';
 import meetingService from '../../../../lib/api/meetingService';
 import {
   stageLabel,

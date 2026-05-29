@@ -15,7 +15,7 @@ import {
 import { Avatar, ownerDisplayFromUser } from '@webfudge/ui';
 import { clsx } from 'clsx';
 import { FolderOpen, GripVertical } from 'lucide-react';
-import PMProgress from './PMProgress';
+import { ProgressBar as PMProgress } from '@webfudge/ui';
 import { PROJECT_STATUS_OPTIONS } from './PMStatusBadge';
 import { canEditProjectInPm } from '../lib/pmOrgRoles';
 
