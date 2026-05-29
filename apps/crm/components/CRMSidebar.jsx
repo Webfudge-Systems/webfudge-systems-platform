@@ -16,6 +16,7 @@ import {
   Receipt,
   CheckSquare,
   BarChart3,
+  Calendar,
   GitBranch,
   MessageSquare,
   FolderOpen,
