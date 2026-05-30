@@ -7,6 +7,15 @@ import { ChevronDown, Search } from 'lucide-react'
 
 const SEARCHABLE_OPTION_THRESHOLD = 8
 const DEFAULT_LIST_MAX_HEIGHT = 'max-h-52'
+const MENU_GAP_PX = 4
+const VIEWPORT_PADDING_PX = 8
+const SEARCH_HEADER_HEIGHT_PX = 56
+const MIN_LIST_HEIGHT_PX = 96
+const PREFERRED_LIST_MAX_PX = 208 // matches max-h-52
+
+/** Visible scrollbar for searchable dropdown lists (Windows overlay scrollbars, portaled menus). */
+const SCROLLABLE_OPTIONS_LIST_CLASS =
+  'min-h-0 overflow-y-scroll overscroll-contain [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgb(156_163_175)_rgb(243_244_246)] [&::-webkit-scrollbar]:w-2.5 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-400 hover:[&::-webkit-scrollbar-thumb]:bg-gray-500'
 
 function normalizeValue(value) {
   if (value == null) return ''
@@ -42,7 +51,15 @@ function SearchableSelect({
   const searchRef = useRef(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0, width: 0 })
+  const [menuCoords, setMenuCoords] = useState({
+    top: undefined,
+    bottom: undefined,
+    left: 0,
+    width: 0,
+    placement: 'below',
+    maxHeight: undefined,
+    listMaxHeight: undefined,
+  })
 
   const normalizedValue = normalizeValue(value)
 
@@ -72,23 +89,68 @@ function SearchableSelect({
   const displayLabel = selectedOption?.label || placeholder
 
   useLayoutEffect(() => {
-    if (!open || !menuPortal || !triggerRef.current) return
+    if (!open || !triggerRef.current) return undefined
+
     const updatePosition = () => {
       const trigger = triggerRef.current
       if (!trigger) return
+
       const rect = trigger.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PADDING_PX
+      const spaceAbove = rect.top - VIEWPORT_PADDING_PX
+      const menuHeight = menuRef.current?.offsetHeight ?? 0
+      const preferredHeight = Math.min(
+        PREFERRED_LIST_MAX_PX + SEARCH_HEADER_HEIGHT_PX,
+        menuHeight || PREFERRED_LIST_MAX_PX + SEARCH_HEADER_HEIGHT_PX
+      )
+
+      const openAbove =
+        spaceBelow < preferredHeight + MENU_GAP_PX && spaceAbove > spaceBelow
+
+      const availableSpace = (openAbove ? spaceAbove : spaceBelow) - MENU_GAP_PX
+      const panelMaxHeight = Math.max(
+        SEARCH_HEADER_HEIGHT_PX + MIN_LIST_HEIGHT_PX,
+        availableSpace
+      )
+      const listMaxHeight = Math.max(
+        MIN_LIST_HEIGHT_PX,
+        Math.min(PREFERRED_LIST_MAX_PX, panelMaxHeight - SEARCH_HEADER_HEIGHT_PX)
+      )
+
       setMenuCoords({
-        top: rect.bottom + 4,
+        placement: openAbove ? 'above' : 'below',
+        top: menuPortal && !openAbove ? rect.bottom + MENU_GAP_PX : undefined,
+        bottom: menuPortal && openAbove ? window.innerHeight - rect.top + MENU_GAP_PX : undefined,
         left: rect.left,
         width: rect.width,
+        maxHeight: panelMaxHeight,
+        listMaxHeight,
       })
     }
+
+    let resizeObserver
+
+    const connectObserver = () => {
+      const menuEl = menuRef.current
+      if (!menuEl || typeof ResizeObserver === 'undefined') return
+      resizeObserver = new ResizeObserver(updatePosition)
+      resizeObserver.observe(menuEl)
+    }
+
     updatePosition()
+    const raf = requestAnimationFrame(() => {
+      updatePosition()
+      connectObserver()
+    })
+
     window.addEventListener('resize', updatePosition)
     window.addEventListener('scroll', updatePosition, true)
+
     return () => {
+      cancelAnimationFrame(raf)
       window.removeEventListener('resize', updatePosition)
       window.removeEventListener('scroll', updatePosition, true)
+      resizeObserver?.disconnect()
     }
   }, [open, menuPortal, filteredOptions.length, query])
 
@@ -145,18 +207,29 @@ function SearchableSelect({
     <div
       ref={menuRef}
       className={clsx(
-        'overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg',
-        menuPortal ? 'fixed z-[200]' : 'absolute left-0 right-0 top-full z-50 mt-1',
+        'flex flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg',
+        menuPortal
+          ? 'fixed z-[200]'
+          : clsx(
+              'absolute left-0 right-0 z-50',
+              menuCoords.placement === 'above' ? 'bottom-full mb-1' : 'top-full mt-1'
+            ),
         listClassName
       )}
       style={
         menuPortal
-          ? { top: menuCoords.top, left: menuCoords.left, width: menuCoords.width }
-          : undefined
+          ? {
+              top: menuCoords.top,
+              bottom: menuCoords.bottom,
+              left: menuCoords.left,
+              width: menuCoords.width,
+              maxHeight: menuCoords.maxHeight,
+            }
+          : { maxHeight: menuCoords.maxHeight }
       }
       onMouseDown={(event) => event.stopPropagation()}
     >
-      <div className="border-b border-gray-100 p-2">
+      <div className="shrink-0 border-b border-gray-100 p-2">
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
@@ -174,7 +247,12 @@ function SearchableSelect({
         id={listboxId}
         role="listbox"
         aria-label={label || 'Options'}
-        className={clsx('overflow-y-auto overscroll-contain py-1', listMaxHeight)}
+        className={clsx('flex-1 py-1', SCROLLABLE_OPTIONS_LIST_CLASS, listMaxHeight)}
+        style={
+          menuCoords.listMaxHeight != null
+            ? { maxHeight: menuCoords.listMaxHeight }
+            : undefined
+        }
       >
         {filteredOptions.length === 0 ? (
           <li className="px-3 py-2 text-sm text-gray-500">No matches</li>

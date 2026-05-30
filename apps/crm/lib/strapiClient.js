@@ -17,19 +17,21 @@ class StrapiClient {
   setToken(token) {
     this.token = token;
     if (typeof window !== 'undefined') {
+      localStorage.setItem('auth-token', token);
       localStorage.setItem('strapi_token', token);
     }
   }
 
   /**
    * Get authentication token.
-   * Uses strapi_token first, then auth-token (set by @webfudge/auth on CRM login).
+   * Prefers auth-token (@webfudge/auth) and always re-reads localStorage so login
+   * updates are not masked by a stale in-memory or legacy strapi_token value.
    */
   getToken() {
-    if (this.token) return this.token;
     if (typeof window !== 'undefined') {
       this.token =
-        localStorage.getItem('strapi_token') || localStorage.getItem('auth-token');
+        localStorage.getItem('auth-token') ||
+        localStorage.getItem('strapi_token');
     }
     return this.token;
   }
@@ -40,6 +42,7 @@ class StrapiClient {
   removeToken() {
     this.token = null;
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth-token');
       localStorage.removeItem('strapi_token');
     }
   }

@@ -19,11 +19,34 @@ export function formatRelativeTime(dateString) {
   if (Number.isNaN(date.getTime())) return '';
   const now = Date.now();
   const diffMs = now - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
+  const isFuture = diffMs < 0;
+  const absMs = Math.abs(diffMs);
+  const diffSec = Math.floor(absMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
   const diffHour = Math.floor(diffMin / 60);
   const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 0) return 'just now';
+
+  if (isFuture) {
+    if (diffDay === 0) {
+      if (diffHour === 0) {
+        if (diffMin === 0) return 'due today';
+        return `in ${diffMin} minute${diffMin !== 1 ? 's' : ''}`;
+      }
+      return `in ${diffHour} hour${diffHour !== 1 ? 's' : ''}`;
+    }
+    if (diffDay < 7) return `in ${diffDay} day${diffDay !== 1 ? 's' : ''}`;
+    if (diffDay < 30) {
+      const w = Math.floor(diffDay / 7);
+      return `in ${w} week${w !== 1 ? 's' : ''}`;
+    }
+    if (diffDay < 365) {
+      const m = Math.floor(diffDay / 30);
+      return `in ${m} month${m !== 1 ? 's' : ''}`;
+    }
+    const y = Math.floor(diffDay / 365);
+    return `in ${y} year${y !== 1 ? 's' : ''}`;
+  }
+
   if (diffDay === 0) {
     if (diffHour === 0) {
       if (diffMin === 0) return 'just now';

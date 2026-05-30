@@ -253,8 +253,10 @@ export function WorkspaceHeader({
               ))}
             </div>
           )}
-          <h1 className="text-5xl font-light text-brand-foreground mb-1 tracking-tight">{title}</h1>
-          {subtitle ? <p className="text-brand-text-light">{subtitle}</p> : null}
+          <h1 className="text-xl sm:text-4xl font-normal text-brand-foreground mb-0.5 tracking-tight leading-snug">
+            {title}
+          </h1>
+          {subtitle ? <p className="text-brand-text-light leading-relaxed">{subtitle}</p> : null}
         </div>
 
         {(children || showSearch || (showActions && hasDefaultActionButtons) || actions) && (

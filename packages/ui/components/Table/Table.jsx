@@ -19,8 +19,15 @@ function columnKey(column, index) {
   return column.key ?? String(index)
 }
 
-function widthStyle(px) {
+function widthStyle(px, { resizable = false, flexGrow = false } = {}) {
+  if (flexGrow && resizable) {
+    if (px) return { minWidth: px, width: 'auto' }
+    return { minWidth: DEFAULT_MIN_COL_WIDTH, width: 'auto' }
+  }
   if (!px) return {}
+  if (resizable) {
+    return { width: px, minWidth: px }
+  }
   return {
     width: px,
     minWidth: px,
@@ -179,6 +186,7 @@ export function Table({
   const tableMinWidthPx = useMemo(() => {
     if (!resizableColumns || columns.length === 0) return undefined
     return columns.reduce((sum, column, index) => {
+      if (column.flexGrow) return sum + (resolveWidthPx(column, index) ?? DEFAULT_MIN_COL_WIDTH)
       const w = resolveWidthPx(column, index)
       return sum + (w ?? 120)
     }, 0)
@@ -190,7 +198,7 @@ export function Table({
         className={clsx(styles.table, resizableColumns && 'table-fixed')}
         style={
           tableMinWidthPx
-            ? { minWidth: tableMinWidthPx, width: tableMinWidthPx }
+            ? { minWidth: tableMinWidthPx, width: '100%' }
             : undefined
         }
         {...props}
@@ -203,6 +211,10 @@ export function Table({
               const isSortable = Boolean(column.sortable && column.onHeaderClick)
               const px = resolveWidthPx(column, index)
               const canResize = resizableColumns && column.resizable !== false
+              const colWidthStyle = widthStyle(px, {
+                resizable: resizableColumns,
+                flexGrow: Boolean(column.flexGrow),
+              })
 
               return (
                 <th
@@ -213,7 +225,7 @@ export function Table({
                     canResize && 'relative select-none',
                     column.headerClassName
                   )}
-                  style={widthStyle(px)}
+                  style={colWidthStyle}
                   aria-sort={
                     column.sortDirection === 'asc'
                       ? 'ascending'
@@ -290,7 +302,10 @@ export function Table({
                           clipCell && 'overflow-hidden',
                           column.className
                         )}
-                        style={widthStyle(cellPx)}
+                        style={widthStyle(cellPx, {
+                          resizable: resizableColumns,
+                          flexGrow: Boolean(column.flexGrow),
+                        })}
                       >
                         {column.render
                           ? column.render(row[column.key], row, rowIndex)

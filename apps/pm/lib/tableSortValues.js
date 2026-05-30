@@ -81,7 +81,7 @@ export function getProjectSortValue(row, key) {
     case 'name':
       return stringValue(row.name);
     case 'status':
-      return PROJECT_STATUS_ORDER[row.status] ?? 99;
+      return PROJECT_STATUS_ORDER[row.strapiStatus ?? row.status] ?? 99;
     case 'progress':
       return Number(row.progress) || 0;
     case 'projectManager':
@@ -245,7 +245,7 @@ export function getAccountProjectSortValue(row, key) {
     case 'project':
       return stringValue(row.name);
     case 'status':
-      return PROJECT_STATUS_ORDER[row.status] ?? stringValue(row.status);
+      return PROJECT_STATUS_ORDER[row.strapiStatus ?? row.status] ?? stringValue(row.status);
     case 'manager':
       return stringValue(row.projectManager?.name || row.projectManager?.email);
     case 'budget': {

@@ -84,6 +84,7 @@ class AuthService {
       const token = data.jwt || data.token;
       if (token) {
         localStorage.setItem('auth-token', token);
+        localStorage.setItem('strapi_token', token);
         localStorage.setItem('auth-user', JSON.stringify(data.user));
         localStorage.setItem('user-role', data.user.role || data.user.primaryRole?.name || 'User');
 
@@ -175,6 +176,7 @@ class AuthService {
       const token = data.jwt || data.token;
       if (token) {
         localStorage.setItem('auth-token', token);
+        localStorage.setItem('strapi_token', token);
         localStorage.setItem('auth-user', JSON.stringify(data.user));
         localStorage.setItem('user-role', data.user.role || data.user.primaryRole?.name || 'User');
 
@@ -252,14 +254,10 @@ class AuthService {
           }
         } else if (authRes.status === 401) {
           console.warn('Token expired or invalid (auth/me)');
+          return null;
         }
       } catch (e) {
         console.warn('auth/me request failed:', e);
-      }
-
-      const storedUser = this.getStoredUser();
-      if (storedUser) {
-        return storedUser;
       }
 
       return null;
@@ -274,6 +272,7 @@ class AuthService {
    */
   logout() {
     localStorage.removeItem('auth-token');
+    localStorage.removeItem('strapi_token');
     localStorage.removeItem('auth-user');
     localStorage.removeItem('user-role');
     localStorage.removeItem('auth-organizations');

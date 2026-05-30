@@ -78,6 +78,29 @@ const STATUS_TABS = [
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'pm.projects.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'pm.projects.tableColumnOrder';
+const COLUMN_WIDTHS_STORAGE_KEY = 'pm.projects.tableColumnWidths';
+
+/** Default pixel widths for resizable table columns (keyed by column `key`). */
+const DEFAULT_COLUMN_WIDTHS = {
+  name: 280,
+  status: 170,
+  progress: 150,
+  projectManager: 200,
+  endDate: 130,
+  startDate: 130,
+  tasks: 110,
+  team: 130,
+  client: 170,
+  budget: 120,
+  description: 200,
+  createdAt: 120,
+  updatedAt: 120,
+  actions: 220,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  actions: 220,
+};
 
 const TOGGLEABLE_COLUMNS = [
   { key: 'status', label: 'Status' },
@@ -134,6 +157,33 @@ function loadColumnOrder() {
 function persistColumnOrder(order) {
   try {
     window.localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(order));
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadColumnWidths() {
+  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_WIDTHS };
+  try {
+    const raw = window.localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_COLUMN_WIDTHS };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_COLUMN_WIDTHS };
+    const merged = { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
+    for (const [key, min] of Object.entries(MIN_COLUMN_WIDTHS)) {
+      if (typeof merged[key] === 'number' && merged[key] < min) {
+        merged[key] = min;
+      }
+    }
+    return merged;
+  } catch {
+    return { ...DEFAULT_COLUMN_WIDTHS };
+  }
+}
+
+function persistColumnWidths(widths) {
+  try {
+    window.localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(widths));
   } catch {
     /* ignore */
   }
@@ -320,6 +370,7 @@ export default function ProjectsPage() {
   const [sortPickerOpen, setSortPickerOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
+  const [columnWidths, setColumnWidths] = useState(() => ({ ...DEFAULT_COLUMN_WIDTHS }));
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const [commentComposerMenu, setCommentComposerMenu] = useState(null);
   const [commentDraft, setCommentDraft] = useState('');
@@ -446,6 +497,17 @@ export default function ProjectsPage() {
   useEffect(() => {
     setColumnVisibility(loadColumnVisibility());
     setColumnOrder(loadColumnOrder());
+    const widths = loadColumnWidths();
+    setColumnWidths(widths);
+    persistColumnWidths(widths);
+  }, []);
+
+  const handleColumnWidthsChange = useCallback((next) => {
+    setColumnWidths(next);
+  }, []);
+
+  const handleColumnResizeEnd = useCallback((next) => {
+    persistColumnWidths(next);
   }, []);
 
   useEffect(() => {
@@ -536,13 +598,16 @@ export default function ProjectsPage() {
   const resetColumnTablePreferences = useCallback(() => {
     const vis = { ...DEFAULT_COLUMN_VISIBILITY };
     const order = [...REORDERABLE_COLUMN_KEYS];
+    const widths = { ...DEFAULT_COLUMN_WIDTHS };
     setColumnVisibility(vis);
     setColumnOrder(order);
+    setColumnWidths(widths);
     columnDropIndicatorRef.current = null;
     setColumnDropIndicator(null);
     try {
       window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(vis));
       persistColumnOrder(order);
+      persistColumnWidths(widths);
     } catch {
       /* ignore */
     }
@@ -681,8 +746,8 @@ export default function ProjectsPage() {
       {
         key: 'name',
         label: 'PROJECT NAME',
-        headerClassName: 'max-w-[14rem] sm:max-w-[17rem] lg:max-w-[20rem]',
-        className: 'max-w-[14rem] sm:max-w-[17rem] lg:max-w-[20rem] align-top',
+        defaultWidth: '280px',
+        className: 'align-top',
         render: (_, row) => {
           const initial = (row.name || 'P').trim().charAt(0).toUpperCase() || 'P';
           const commentCount = Number(commentCountsByProjectId[String(row.id)] || 0);
@@ -954,7 +1019,8 @@ export default function ProjectsPage() {
       {
         key: 'actions',
         label: 'ACTIONS',
-        className: 'w-[220px]',
+        resizable: false,
+        className: 'whitespace-nowrap',
         render: (_, row) => {
           const canMutateProject = canEditProjectInPm(row, currentUserId);
           return (
@@ -1318,6 +1384,10 @@ export default function ProjectsPage() {
               data={sortedProjects}
               keyField="id"
               variant="modern"
+              resizableColumns
+              columnWidths={columnWidths}
+              onColumnWidthsChange={handleColumnWidthsChange}
+              onColumnResizeEnd={handleColumnResizeEnd}
               onRowClick={(row) => router.push(`/projects/${row.slug || row.id}`)}
             />
             {projects.length === 0 ? (

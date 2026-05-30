@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
+import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 import {
   ChevronRight,
   ChevronDown,
@@ -14,8 +14,8 @@ import {
   Share,
   Bell,
   Image,
-} from "lucide-react";
-import { Card } from "../../components/Card";
+} from 'lucide-react'
+import { Card } from '../../components/Card'
 
 export default function PageHeader({
   title,
@@ -35,44 +35,38 @@ export default function PageHeader({
   children,
   hasActiveFilters = false,
 }) {
-  const pathname = usePathname();
-  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-  const [searchInputValue, setSearchInputValue] = useState("");
+  const pathname = usePathname()
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const [searchInputValue, setSearchInputValue] = useState('')
 
   // Build breadcrumb from pathname if not provided
   const breadcrumbItems =
     breadcrumb.length > 0
       ? breadcrumb.map((item) => {
-          if (typeof item === "string") {
-            const segments = pathname.split("/").filter(Boolean);
-            const itemIndex = breadcrumb.findIndex((b) => b === item);
+          if (typeof item === 'string') {
+            const segments = pathname.split('/').filter(Boolean)
+            const itemIndex = breadcrumb.findIndex((b) => b === item)
             if (itemIndex >= 0 && itemIndex < segments.length) {
-              const href = "/" + segments.slice(0, itemIndex + 1).join("/");
-              return { label: item, href };
+              const href = '/' + segments.slice(0, itemIndex + 1).join('/')
+              return { label: item, href }
             }
-            return { label: item, href: "#" };
+            return { label: item, href: '#' }
           }
           const label =
-            typeof item.label === "string"
-              ? item.label
-              : typeof item === "string"
-              ? item
-              : "";
+            typeof item.label === 'string' ? item.label : typeof item === 'string' ? item : ''
           return {
-            label: label || "Page",
-            href: item.href || "#",
-          };
+            label: label || 'Page',
+            href: item.href || '#',
+          }
         })
       : pathname
-          .split("/")
+          .split('/')
           .filter(Boolean)
           .map((segment, index, array) => {
-            const href = "/" + array.slice(0, index + 1).join("/");
-            const label =
-              segment.charAt(0).toUpperCase() +
-              segment.slice(1).replace(/-/g, " ");
-            return { label, href };
-          });
+            const href = '/' + array.slice(0, index + 1).join('/')
+            const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+            return { label, href }
+          })
 
   return (
     <Card glass={true} className="relative z-[40]">
@@ -85,33 +79,27 @@ export default function PageHeader({
                 <div key={index} className="flex items-center gap-2">
                   {index === breadcrumbItems.length - 1 ? (
                     <span className="text-gray-900 font-medium">
-                      {typeof item.label === "string"
-                        ? item.label
-                        : String(item.label || "")}
+                      {typeof item.label === 'string' ? item.label : String(item.label || '')}
                     </span>
                   ) : (
                     <Link
-                      href={item.href || "#"}
+                      href={item.href || '#'}
                       className="text-gray-600 hover:text-gray-900 transition-colors duration-200 cursor-pointer"
                     >
-                      {typeof item.label === "string"
-                        ? item.label
-                        : String(item.label || "")}
+                      {typeof item.label === 'string' ? item.label : String(item.label || '')}
                     </Link>
                   )}
-                  {index < breadcrumbItems.length - 1 && (
-                    <ChevronRight className="w-4 h-4" />
-                  )}
+                  {index < breadcrumbItems.length - 1 && <ChevronRight className="w-4 h-4" />}
                 </div>
               ))}
             </div>
           )}
 
           {/* Title and Subtitle */}
-          <h1 className="text-5xl font-light text-gray-900 mb-1 tracking-tight">
+          <h1 className="text-xl sm:text-4xl font-normal text-gray-900 mb-0.5 tracking-tight leading-snug">
             {title}
           </h1>
-          {subtitle && <p className="text-gray-600">{subtitle}</p>}
+          {subtitle && <p className="text-gray-600 leading-relaxed">{subtitle}</p>}
         </div>
 
         {/* Custom content or default actions */}
@@ -123,13 +111,13 @@ export default function PageHeader({
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder={searchPlaceholder || "Search..."}
+                  placeholder={searchPlaceholder || 'Search...'}
                   value={searchInputValue}
                   onChange={(e) => {
-                    const value = e.target.value;
-                    setSearchInputValue(value);
+                    const value = e.target.value
+                    setSearchInputValue(value)
                     if (onSearchChange) {
-                      onSearchChange(value);
+                      onSearchChange(value)
                     }
                   }}
                   className="w-64 pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:bg-white/15 transition-all duration-300 placeholder:text-gray-400 shadow-lg"
@@ -178,12 +166,10 @@ export default function PageHeader({
                   key={index}
                   onClick={action.onClick}
                   className={`p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg hover:bg-white/20 hover:border-white/30 transition-all duration-300 shadow-lg ${
-                    action.className || ""
+                    action.className || ''
                   }`}
                 >
-                  {action.icon && (
-                    <action.icon className="w-5 h-5 text-gray-600" />
-                  )}
+                  {action.icon && <action.icon className="w-5 h-5 text-gray-600" />}
                 </button>
               ))}
           </div>
@@ -200,20 +186,16 @@ export default function PageHeader({
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg flex items-center justify-center shadow-lg">
-                    <span className="text-orange-500 text-sm font-medium">
-                      U
-                    </span>
+                    <span className="text-orange-500 text-sm font-medium">U</span>
                   </div>
                   <div className="text-left hidden lg:block">
-                    <p className="text-sm font-semibold text-gray-900">
-                      User
-                    </p>
+                    <p className="text-sm font-semibold text-gray-900">User</p>
                     <p className="text-xs text-gray-600">Role</p>
                   </div>
                 </div>
                 <ChevronDown
                   className={`w-4 h-4 text-gray-600 transition-transform ${
-                    showProfileDropdown ? "rotate-180" : ""
+                    showProfileDropdown ? 'rotate-180' : ''
                   }`}
                 />
               </button>
@@ -222,5 +204,5 @@ export default function PageHeader({
         )}
       </div>
     </Card>
-  );
+  )
 }

@@ -3,7 +3,12 @@
 import { useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { Avatar, Card } from '@webfudge/ui'
-import { resolveUserDisplayName, resolveUserInitials, resolveUserRole, useAuth } from '@webfudge/auth'
+import {
+  resolveUserDisplayName,
+  resolveUserInitials,
+  resolveUserRole,
+  useAuth,
+} from '@webfudge/auth'
 import { Bell, ChevronDown, LogOut, Search, Settings, User } from 'lucide-react'
 
 export default function Topbar() {
@@ -41,8 +46,10 @@ export default function Topbar() {
         <div className="flex items-start justify-between gap-6">
           <div>
             <p className="text-sm text-brand-text-light">{pageTitle}</p>
-            <h1 className="text-5xl font-light text-brand-foreground leading-none mt-1">{pageTitle}</h1>
-            <p className="text-brand-text-light mt-2">{subtitle}</p>
+            <h1 className="text-xl sm:text-2xl font-semibold text-brand-foreground leading-snug mt-1 tracking-tight">
+              {pageTitle}
+            </h1>
+            <p className="text-sm text-brand-text-light mt-1.5 leading-relaxed">{subtitle}</p>
           </div>
 
           <div className="flex items-center gap-5 self-center">
@@ -73,7 +80,9 @@ export default function Topbar() {
                     className={avatarClass}
                   />
                   <div className="text-left hidden lg:block">
-                    <p className="text-sm font-semibold text-brand-foreground">{resolveUserDisplayName(user)}</p>
+                    <p className="text-sm font-semibold text-brand-foreground">
+                      {resolveUserDisplayName(user)}
+                    </p>
                     <p className="text-xs text-brand-text-light">{resolveUserRole(user)}</p>
                   </div>
                 </div>
@@ -86,13 +95,20 @@ export default function Topbar() {
 
               {showProfileDropdown && (
                 <>
-                  <div className="fixed inset-0 z-[99998]" onClick={() => setShowProfileDropdown(false)} aria-hidden />
+                  <div
+                    className="fixed inset-0 z-[99998]"
+                    onClick={() => setShowProfileDropdown(false)}
+                    aria-hidden
+                  />
                   <div
                     className="fixed right-6 top-24 w-72 z-[99999]"
                     onMouseEnter={() => setShowProfileDropdown(true)}
                     onMouseLeave={() => setShowProfileDropdown(false)}
                   >
-                    <Card glass className="rounded-lg shadow-2xl border border-white/40 p-0 overflow-hidden">
+                    <Card
+                      glass
+                      className="rounded-lg shadow-2xl border border-white/40 p-0 overflow-hidden"
+                    >
                       <div className="p-4 border-b border-white/20">
                         <div className="flex items-center gap-3">
                           <Avatar
@@ -102,9 +118,12 @@ export default function Topbar() {
                             className={`${avatarClass} font-semibold`}
                           />
                           <div className="min-w-0">
-                            <p className="font-semibold text-brand-foreground truncate">{resolveUserDisplayName(user)}</p>
+                            <p className="font-semibold text-brand-foreground truncate">
+                              {resolveUserDisplayName(user)}
+                            </p>
                             <p className="text-sm text-brand-text-light truncate">
-                              {(user?.attributes as { email?: string } | undefined)?.email ?? (user as { email?: string })?.email}
+                              {(user?.attributes as { email?: string } | undefined)?.email ??
+                                (user as { email?: string })?.email}
                             </p>
                           </div>
                         </div>
