@@ -76,13 +76,14 @@ export function TotalBalanceCard({
     <Card
       variant="elevated"
       padding={false}
+      surface="books"
       className={clsx(
-        'flex min-h-0 flex-col overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
+        'flex min-h-0 flex-col overflow-hidden border border-[color:var(--books-border,rgba(0,0,0,0.06))]',
         className
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col space-y-6 overflow-auto p-6 md:p-7">
-        <div className="flex items-start justify-between gap-3">
+      <div className="flex min-h-0 flex-1 flex-col space-y-5 overflow-auto p-6 md:p-7">
+        <div className="flex items-start justify-between gap-3 border-b border-[color:var(--books-border,rgba(0,0,0,0.06))] pb-4">
           <p className="text-sm font-semibold text-[var(--books-text-primary,#1a1a1a)]">{title}</p>
           <div className="relative shrink-0">
             <label htmlFor={currencySelectId} className="sr-only">
@@ -97,10 +98,11 @@ export function TotalBalanceCard({
                 onCurrencyChange?.(code)
               }}
               className={clsx(
-                'appearance-none cursor-pointer rounded-full border border-orange-200/90 py-1.5 pl-3 pr-8 text-xs font-semibold shadow-sm',
+                'appearance-none cursor-pointer rounded-full border border-[color:var(--books-border,rgba(0,0,0,0.1))] py-1.5 pl-3 pr-8 text-xs font-semibold shadow-sm',
                 'bg-[var(--books-input-bg,#ffffff)] text-[var(--books-input-text,#111827)]',
-                'transition-all duration-200 hover:border-orange-300 hover:bg-[var(--books-bg-elevated,#fff7ed)]',
-                'focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/25'
+                'transition-all duration-200 hover:border-orange-400/60 hover:bg-[var(--books-orange-bg,rgba(234,88,12,0.08))]',
+                'focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-500/25',
+                'dark:border-orange-500/25'
               )}
             >
               {currencyOptions.map((code) => (
@@ -139,7 +141,7 @@ export function TotalBalanceCard({
             type="button"
             variant="primary"
             rounded="pill"
-            className="flex-1 min-w-[7rem] bg-[#EA580C] font-semibold text-white shadow-md hover:bg-[#c2410c] sm:flex-none"
+            className="flex-1 min-w-[7rem] bg-[var(--books-brand,#ea580c)] font-semibold text-white shadow-md hover:bg-[var(--books-brand-hover,#c2410c)] sm:flex-none"
             onClick={onTransfer}
           >
             <ArrowLeftRight className="mr-2 h-4 w-4" aria-hidden />
@@ -149,7 +151,7 @@ export function TotalBalanceCard({
             type="button"
             variant="muted"
             rounded="pill"
-            className="flex-1 min-w-[7rem] border border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-card,#ffffff)] font-semibold text-[var(--books-text-primary,#1a1a1a)] shadow-sm hover:bg-[var(--books-bg-elevated,#f9fafb)] sm:flex-none"
+            className="flex-1 min-w-[7rem] border border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-elevated,#f9fafb)] font-semibold text-[var(--books-text-primary,#1a1a1a)] shadow-sm hover:border-orange-300/50 hover:bg-[var(--books-orange-bg,rgba(234,88,12,0.06))] dark:bg-[var(--books-bg-elevated,#252830)] sm:flex-none"
             onClick={onRequest}
           >
             <ArrowLeftRight className="mr-2 h-4 w-4 text-[#FF6B35]" aria-hidden />
@@ -168,7 +170,7 @@ export function TotalBalanceCard({
             {wallets.map((w) => (
               <div
                 key={w.code}
-                className="min-w-[5.5rem] shrink-0 rounded-xl bg-[var(--books-bg-elevated,#f9fafb)] p-3 transition-colors duration-200 hover:bg-[var(--books-surface-muted,#f3f4f6)] dark:bg-[var(--books-bg-elevated)] dark:hover:bg-[var(--books-surface-muted)]"
+                className="min-w-[5.5rem] shrink-0 rounded-xl border border-[color:var(--books-border,rgba(0,0,0,0.06))] bg-[var(--books-bg-elevated,#f9fafb)] p-3 transition-colors duration-200 hover:border-orange-300/40 hover:bg-[var(--books-surface-muted,#f3f4f6)] dark:bg-[var(--books-bg-elevated)] dark:hover:bg-[var(--books-surface-muted)]"
               >
                 <div className="mb-2 flex items-center justify-between gap-1">
                   <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--books-text-secondary,#6b7280)]">

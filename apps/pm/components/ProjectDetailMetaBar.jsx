@@ -55,10 +55,9 @@ function TeamStack({ members = [] }) {
   );
 }
 
-function crmClientAccountHref(clientAccountId) {
+function pmClientAccountHref(clientAccountId) {
   if (clientAccountId == null || clientAccountId === '') return null;
-  const crmBase = (process.env.NEXT_PUBLIC_CRM_APP_URL || 'http://localhost:3001').replace(/\/$/, '');
-  return `${crmBase}/clients/accounts/${clientAccountId}`;
+  return `/clients/accounts/${clientAccountId}`;
 }
 
 function teamMembersForMeta(project) {
@@ -87,7 +86,7 @@ export default function ProjectDetailMetaBar({ project, className = '' }) {
   const updatedLabel = updatedRaw ? `Updated ${formatRelativeTime(updatedRaw)}` : null;
 
   const clientName = project.clientName?.trim();
-  const clientHref = crmClientAccountHref(project.clientAccountId);
+  const clientHref = pmClientAccountHref(project.clientAccountId);
   const team = teamMembersForMeta(project);
 
   return (
@@ -102,8 +101,6 @@ export default function ProjectDetailMetaBar({ project, className = '' }) {
         {clientName && clientHref ? (
           <Link
             href={clientHref}
-            target="_blank"
-            rel="noopener noreferrer"
             className="truncate text-sm font-semibold text-orange-600 hover:text-orange-700 hover:underline"
             title={clientName}
           >

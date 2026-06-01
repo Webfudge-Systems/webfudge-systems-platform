@@ -23,6 +23,7 @@ import {
 import {
   Activity,
   AlignLeft,
+  Building2,
   Calendar,
   CheckCircle2,
   CheckSquare,
@@ -150,6 +151,38 @@ function isPresent(value) {
 
 function userLabel(user) {
   return user?.name || user?.username || user?.email || `User ${user?.id}`;
+}
+
+function pmClientAccountHref(clientAccountId) {
+  if (clientAccountId == null || clientAccountId === '') return null;
+  return `/clients/accounts/${clientAccountId}`;
+}
+
+function ProjectClientInfoValue({ clientAccountId, clientName }) {
+  const name = clientName?.trim();
+  const href = pmClientAccountHref(clientAccountId);
+
+  if (!name) {
+    return <p className="text-base font-normal leading-snug text-gray-400">—</p>;
+  }
+
+  if (!href) {
+    return (
+      <span className="inline-flex max-w-full rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-base font-semibold text-orange-900 shadow-sm ring-1 ring-orange-200/80">
+        <span className="truncate">{name}</span>
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="inline-flex max-w-full min-w-0 items-center rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-base font-semibold text-orange-900 shadow-sm ring-1 ring-orange-200/80 transition-colors hover:bg-orange-100 hover:text-orange-950"
+      title={`Open ${name}`}
+    >
+      <span className="truncate">{name}</span>
+    </Link>
+  );
 }
 
 function projectToInlineDraft(project) {
@@ -647,7 +680,12 @@ export default function ProjectDetailPage() {
                     <InfoSection title="Key info" icon={Target} isFirst>
                       <div className="mb-4 grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                         <InfoRow label="Owner" value={project.projectManager ? userLabel(project.projectManager) : ''} />
-                        <InfoRow label="Client" value={project.clientName || ''} />
+                        <InfoRow label="Client" icon={Building2}>
+                          <ProjectClientInfoValue
+                            clientAccountId={project.clientAccountId}
+                            clientName={project.clientName}
+                          />
+                        </InfoRow>
                         <InfoRow label="Start date" value={formatDate(project.startDate, 'short') || ''} icon={Calendar} />
                         <InfoRow label="Due date" value={formatDate(project.endDate, 'short') || ''} icon={Clock} />
                       </div>

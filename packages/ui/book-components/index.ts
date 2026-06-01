@@ -42,22 +42,17 @@ export type {
   ActivityStatus,
 } from './tables/RecentActivitiesTable'
 
-export { BooksDataTable } from './tables/BooksDataTable'
-export type { BooksDataColumn } from './tables/BooksDataTable'
+export type { BooksDataColumn } from './types'
 
-export { booksToolbarSearchInputClassName } from './tables/booksSearchInputClassName'
+export {
+  booksToolbarSearchInputClassName,
+  booksToolbarFilterButtonClassName,
+  booksToolbarIconButtonClassName,
+} from './tables/booksToolbarStyles'
+
 export { BooksHubToolbar } from './layout/BooksHubToolbar'
 export type { BooksHubToolbarProps } from './layout/BooksHubToolbar'
 export { BooksHubDataShell, BooksHubTableHead } from './layout/BooksHubDataShell'
 export type { BooksHubDataShellProps, BooksHubTab } from './layout/BooksHubDataShell'
 export { BooksHubFeedBody } from './layout/BooksHubFeedBody'
 export type { BooksHubFeedGroup } from './layout/BooksHubFeedBody'
-
-export {
-  BooksListTableCard,
-  BooksTableResultsCount,
-  BooksTableEmptyBelow,
-} from './tables/BooksTableChrome'
-
-export { BooksKPICard } from './cards/BooksKPICard'
-export type { BooksKPICardProps } from './cards/BooksKPICard'

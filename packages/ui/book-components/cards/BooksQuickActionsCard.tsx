@@ -30,10 +30,8 @@ export function BooksQuickActionsCard({
     <Card
       variant="elevated"
       padding={false}
-      className={clsx(
-        'flex min-h-0 flex-col overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
-        className
-      )}
+      surface="books"
+      className={clsx('flex min-h-0 flex-col overflow-hidden', className)}
     >
       <div className="flex min-h-0 flex-1 flex-col gap-6 p-6 md:p-7">
         <div className="shrink-0">

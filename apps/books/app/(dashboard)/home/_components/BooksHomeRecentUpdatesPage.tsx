@@ -4,7 +4,8 @@ import { useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { clsx } from 'clsx'
 import { Clock3, History, Pencil, User } from 'lucide-react'
-import { BooksDataTable, type BooksDataColumn } from '@webfudge/ui/book-components'
+import { Table } from '@webfudge/ui'
+import type { BooksDataColumn } from '@webfudge/ui/book-components'
 import { useBooksTableColumnPicker } from '@/app/_components/BooksTableColumnPicker'
 import BooksHomeHubDataShell from './BooksHomeHubDataShell'
 import { HOME_RECENT_UPDATES_MOCK, HOME_UPDATES_FILTER_TABS } from '../_data/homeHubMock'
@@ -168,10 +169,10 @@ export default function BooksHomeRecentUpdatesPage() {
         emptyDescription="When you create or edit invoices, bills, expenses, and journals, the latest changes appear in this log."
       >
         {filtered.length > 0 ? (
-          <BooksDataTable
-            columns={resolvedColumns as BooksDataColumn[]}
+          <Table
+            variant="books"
+            columns={resolvedColumns}
             data={tableData}
-            layout="list"
             keyField="id"
           />
         ) : null}

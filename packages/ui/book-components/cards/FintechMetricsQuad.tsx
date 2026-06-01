@@ -25,8 +25,9 @@ export function FintechMetricsQuad({ items, className }: FintechMetricsQuadProps
     <Card
       variant="elevated"
       padding={false}
+      surface="books"
       className={clsx(
-        'overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
+        'overflow-hidden',
         className
       )}
     >

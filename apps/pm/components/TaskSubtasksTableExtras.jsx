@@ -5,7 +5,7 @@ import { Avatar, Button, Select, Table, TableCellCreated, ownerDisplayFromUser }
 import { ChevronDown, ChevronRight, Copy, Edit3, Eye, Link2, ListTree, Pencil, Plus, Trash2 } from 'lucide-react';
 import PMRowActions from './PMRowActions';
 import TaskAssigneesPicker from './TaskAssigneesPicker';
-import { getTaskStatusMeta, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge';
+import { pmTableSelectFillProps, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge';
 import { usePmTableSort } from '../hooks/usePmTableSort';
 
 function SortableSubtasksTable({ columns, data, ...tableProps }) {
@@ -92,15 +92,6 @@ export function TaskSubtasksAfterRow({
     });
   };
 
-  const statusChrome = {
-    primary: 'border-blue-200 bg-blue-50 text-blue-800',
-    warning: 'border-amber-200 bg-amber-50 text-amber-800',
-    purple: 'border-purple-200 bg-purple-50 text-purple-800',
-    success: 'border-green-200 bg-green-50 text-green-800',
-    danger: 'border-red-200 bg-red-50 text-red-800',
-    default: 'border-gray-200 bg-gray-50 text-gray-800',
-  };
-
   const subtaskColumns = useMemo(
     () => [
     {
@@ -152,23 +143,19 @@ export function TaskSubtasksAfterRow({
     {
       key: 'status',
       label: 'STATUS',
-      render: (_, st) => {
-        const meta = getTaskStatusMeta(st.strapiStatus || 'SCHEDULED');
-        const chrome = statusChrome[meta.variant] || statusChrome.default;
-        return (
-          <div onClick={(e) => e.stopPropagation()}>
-            <Select
-              value={st.strapiStatus}
-              options={TASK_STATUS_OPTIONS}
-              onChange={(status) => onUpdateTask?.(st, { status })}
-              disabled={savingId === st.id}
-              className={`py-1.5 text-xs font-semibold uppercase tracking-wide ${chrome}`}
-              containerClassName="min-w-[140px]"
-              placeholder="Status"
-            />
-          </div>
-        );
-      },
+      render: (_, st) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Select
+            value={st.strapiStatus}
+            options={TASK_STATUS_OPTIONS}
+            onChange={(status) => onUpdateTask?.(st, { status })}
+            disabled={savingId === st.id}
+            {...pmTableSelectFillProps(st.strapiStatus || 'SCHEDULED', 'status')}
+            containerClassName="min-w-[140px]"
+            placeholder="Status"
+          />
+        </div>
+      ),
     },
     {
       key: 'priority',
@@ -180,7 +167,7 @@ export function TaskSubtasksAfterRow({
             options={PRIORITY_OPTIONS}
             onChange={(priority) => onUpdateTask?.(st, { priority })}
             disabled={memberScopedTasks || savingId === st.id}
-            className="border-orange-200 bg-orange-50 py-1.5 text-xs font-semibold uppercase tracking-wide text-orange-800"
+            {...pmTableSelectFillProps(st.priority, 'priority')}
             containerClassName="min-w-[120px]"
             placeholder="Priority"
           />

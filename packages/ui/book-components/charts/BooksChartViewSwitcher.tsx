@@ -254,8 +254,9 @@ export function BooksChartViewSwitcher({
     <Card
       variant="elevated"
       padding={false}
+      surface="books"
       className={twMerge(
-        'flex h-full min-h-0 min-w-0 flex-col overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
+        'flex h-full min-h-0 min-w-0 flex-col overflow-hidden',
         className
       )}
     >
@@ -507,7 +508,7 @@ export function BooksChartViewSwitcher({
                       />
                       <Tooltip
                         cursor={{
-                          stroke: 'var(--books-orange-text,#ea580c)',
+                          stroke: 'var(--books-brand, #ea580c)',
                           strokeDasharray: '4 4',
                           strokeOpacity: 0.5,
                         }}
@@ -528,7 +529,7 @@ export function BooksChartViewSwitcher({
                         type="natural"
                         dataKey="value"
                         name="Income"
-                        stroke="var(--books-orange-text,#ea580c)"
+                        stroke="var(--books-brand, #ea580c)"
                         strokeWidth={2.5}
                         fill={`url(#${incomeGradientId})`}
                         fillOpacity={1}
@@ -563,7 +564,7 @@ export function BooksChartViewSwitcher({
                 <h3 className="text-sm font-semibold text-[var(--books-text-primary,#111827)]">{sectionTitle}</h3>
                 <div className="flex items-center gap-4 rounded-full border border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-elevated,#f9fafb)] px-3 py-1.5 text-[12px] font-medium text-[var(--books-text-secondary,#374151)]">
                   <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 shrink-0 rounded-full bg-[#EA580C]" aria-hidden />
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--books-brand,#ea580c)]" aria-hidden />
                     {profitLabel}
                   </span>
                   <span className="flex items-center gap-1.5">
@@ -601,7 +602,7 @@ export function BooksChartViewSwitcher({
                               patternTransform="rotate(45)"
                             >
                               <rect width="6" height="6" fill="transparent" />
-                              <line x1="0" y1="0" x2="0" y2="6" stroke="#EA580C" strokeWidth="2.4" />
+                              <line x1="0" y1="0" x2="0" y2="6" stroke="var(--books-brand, #ea580c)" strokeWidth="2.4" />
                             </pattern>
                           </defs>
                           <CartesianGrid
@@ -642,7 +643,7 @@ export function BooksChartViewSwitcher({
                             dataKey="profit"
                             name={profitLabel}
                             fill={`url(#${hatchBarId})`}
-                            stroke="#EA580C"
+                            stroke="var(--books-brand, #ea580c)"
                             strokeWidth={1}
                             radius={[3, 3, 0, 0]}
                             barSize={20}

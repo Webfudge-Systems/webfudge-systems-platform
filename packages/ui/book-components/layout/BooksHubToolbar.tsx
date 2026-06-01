@@ -4,6 +4,7 @@ import type { ChangeEvent, ReactNode } from 'react'
 import { Filter } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Button, WorkspaceSearchInput } from '@webfudge/ui'
+import { booksToolbarFilterButtonClassName, booksToolbarSearchInputClassName } from '../tables/booksToolbarStyles'
 
 export type BooksHubToolbarProps = {
   title: string
@@ -33,13 +34,6 @@ export function BooksHubToolbar({
   trailing,
   className,
 }: BooksHubToolbarProps) {
-  const filterBtnClassName = clsx(
-    'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors',
-    'border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-elevated,#f9fafb)] text-[var(--books-text-secondary,#374151)]',
-    'hover:border-orange-300 hover:bg-[var(--books-orange-bg,rgba(234,88,12,0.1))] hover:text-[#ea580c]',
-    'dark:bg-[var(--books-bg-elevated,#252830)] dark:text-[var(--books-text-secondary,#9ca3af)]'
-  )
-
   return (
     <div
       className={clsx(
@@ -59,6 +53,7 @@ export function BooksHubToolbar({
           placeholder={searchPlaceholder}
           value={searchValue}
           onChange={(e: ChangeEvent<HTMLInputElement>) => onSearchChange?.(e.target.value)}
+          className={booksToolbarSearchInputClassName}
         />
         {showFilter ? (
           <Button
@@ -66,7 +61,7 @@ export function BooksHubToolbar({
             variant="muted"
             size="sm"
             rounded="pill"
-            className={filterBtnClassName}
+            className={booksToolbarFilterButtonClassName}
             onClick={onFilterClick}
           >
             <Filter className="h-4 w-4 shrink-0" aria-hidden />

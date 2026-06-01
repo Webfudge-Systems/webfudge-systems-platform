@@ -30,7 +30,6 @@ export default function SubPageTabs({ trailing }: SubPageTabsProps) {
       return [
         { label: 'Dashboard', href: '/home' },
         { label: 'Activity', href: '/home/activity' },
-        { label: 'Announcements', href: '/home/announcements' },
         { label: 'Recent Updates', href: '/home/recent-updates' },
       ]
     }
@@ -71,6 +70,7 @@ export default function SubPageTabs({ trailing }: SubPageTabsProps) {
         <nav className="min-w-0 shrink-0" aria-label="Sub page tabs">
           <TabsWithActions
             variant="pill"
+            pillTheme="books"
             pillTrack="hug"
             tabs={visibleTabItems}
             activeTab={activeVisibleId}

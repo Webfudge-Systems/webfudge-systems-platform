@@ -182,3 +182,9 @@ export const theme = {
 };
 
 export default theme;
+
+export {
+  booksListTableCardClassName,
+  booksKpiCardClassName,
+  booksElevatedCardClassName,
+} from './booksSurface';

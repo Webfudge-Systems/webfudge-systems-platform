@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Books API client ΓÇö wired to real Strapi backend endpoints.
  * All monetary values in paise/cents (integer). Display layer converts.
  */
@@ -307,7 +307,6 @@ export const documentsApi = {
 }
 
 // ΓöÇΓöÇΓöÇ Legacy booksApi shim (keeps old imports compiling) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyResponse = Promise<any>
 
 export const booksApi = {

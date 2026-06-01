@@ -1,62 +1,89 @@
-// @ts-nocheck
 'use client'
 
-import { Card } from '@webfudge/ui'
-import { BooksDataTable } from '@webfudge/ui/book-components'
+import { useMemo } from 'react'
+import { Archive, CheckCircle2, FileText, Layers } from 'lucide-react'
+import BooksListPageShell from '@/app/_components/BooksListPageShell'
 
 type ModulePageProps = {
-  /** Shown only when you need an in-page title (layout Topbar usually covers this). */
-  showTitle?: boolean
   title: string
   subtitle?: string
   columns?: Array<{ key: string; title: string }>
   data?: Array<Record<string, string | number>>
+  addHref?: string
+  addLabel?: string
 }
 
 export default function ModulePage({
-  showTitle = false,
   title,
   subtitle,
   columns,
   data,
+  addHref,
+  addLabel = `Add ${title.replace(/^All\s+/i, '').replace(/s$/, '')}`,
 }: ModulePageProps) {
-  const defaultColumns = columns ?? [
-    { key: 'name', title: 'Name' },
-    { key: 'status', title: 'Status' },
-    { key: 'updatedAt', title: 'Updated' },
-  ]
+  const defaultColumns = useMemo(
+    () =>
+      columns ?? [
+        { key: 'name', title: 'Name' },
+        { key: 'status', title: 'Status' },
+        { key: 'updatedAt', title: 'Updated' },
+      ],
+    [columns]
+  )
 
-  const defaultData = data ?? [
-    { id: 1, name: `${title} Record`, status: 'Active', updatedAt: 'Today' },
-    { id: 2, name: `${title} Draft`, status: 'Draft', updatedAt: 'Yesterday' },
-  ]
+  const tableData = useMemo(
+    () =>
+      data ?? [
+        { id: 1, name: `${title} Record`, status: 'Active', updatedAt: 'Today' },
+        { id: 2, name: `${title} Draft`, status: 'Draft', updatedAt: 'Yesterday' },
+      ],
+    [data, title]
+  )
+
+  const kpis = useMemo(() => {
+    const total = tableData.length
+    const active = tableData.filter((r) => String(r.status).toLowerCase() === 'active').length
+    const draft = tableData.filter((r) => String(r.status).toLowerCase() === 'draft').length
+    return [
+      { title: 'Total records', value: total, subtitle, icon: Layers },
+      { title: 'Active', value: active, icon: CheckCircle2 },
+      { title: 'Draft', value: draft, icon: FileText },
+      { title: 'Archived', value: Math.max(0, total - active - draft), icon: Archive },
+    ]
+  }, [tableData, subtitle])
+
+  const tabs = useMemo(
+    () => [
+      { key: 'all', label: 'All', count: tableData.length },
+      {
+        key: 'active',
+        label: 'Active',
+        count: tableData.filter((r) => String(r.status).toLowerCase() === 'active').length,
+      },
+      {
+        key: 'draft',
+        label: 'Draft',
+        count: tableData.filter((r) => String(r.status).toLowerCase() === 'draft').length,
+      },
+    ],
+    [tableData]
+  )
 
   return (
-    <div className="min-h-full space-y-6">
-      {showTitle ? (
-        <div>
-          <h1 className="text-2xl font-semibold text-[var(--books-text-on-page,var(--books-text-primary))]">
-            {title}
-          </h1>
-          {subtitle ? (
-            <p className="mt-1 text-sm text-[var(--books-text-on-page-muted,var(--books-text-secondary))] opacity-90">
-              {subtitle}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/*
-        Avoid a full-bleed bg-white wrapper: it reads as a sharp rectangle on dark page bg.
-        Rounding + surface come from Card; `modernEmbedded` Table is borderless inside the shell.
-      */}
-      <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl !bg-[var(--books-bg-card,#ffffff)]">
-        <BooksDataTable
-          layout="embedded"
-          columns={defaultColumns}
-          data={defaultData as Record<string, unknown>[]}
-        />
-      </Card>
-    </div>
+    <BooksListPageShell
+      title={title}
+      subtitle={subtitle}
+      kpis={kpis}
+      tabs={tabs}
+      columns={defaultColumns}
+      data={tableData as Record<string, unknown>[]}
+      emptyIcon={FileText}
+      emptyTitle={`No ${title.toLowerCase()} yet`}
+      emptyDescription={subtitle ?? `Create your first ${title.toLowerCase()} record.`}
+      addHref={addHref}
+      addLabel={addLabel}
+      searchPlaceholder="Search records..."
+      exportFilePrefix="books-module"
+    />
   )
 }

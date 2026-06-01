@@ -6,6 +6,10 @@ import type { LucideIcon } from 'lucide-react'
 import { Filter, MoreHorizontal } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Button, Card, TableRowActionMenuPortal, WorkspaceSearchInput } from '@webfudge/ui'
+import {
+  booksToolbarFilterButtonClassName,
+  booksToolbarSearchInputClassName,
+} from './booksToolbarStyles'
 
 export type ActivityStatus = 'completed' | 'pending' | 'in_progress'
 
@@ -163,21 +167,15 @@ export function RecentActivitiesTable({
 
   const closeRowMenu = () => setRowMenuAnchor(null)
 
-  const filterBtnClassName = clsx(
-    'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors',
-    'border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-elevated,#f9fafb)] text-[var(--books-text-secondary,#374151)]',
-    'hover:border-orange-300 hover:bg-[var(--books-orange-bg,rgba(234,88,12,0.1))] hover:text-[#ea580c]',
-    'dark:bg-[var(--books-bg-elevated,#252830)] dark:text-[var(--books-text-secondary,#9ca3af)]'
-  )
-
   const headerToolbar = (
     <div className="flex shrink-0 items-center gap-2">
       <WorkspaceSearchInput
         placeholder={searchPlaceholder}
         value={query}
         onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
+        className={booksToolbarSearchInputClassName}
       />
-      <Button type="button" variant="muted" size="sm" rounded="pill" className={filterBtnClassName} onClick={onFilterClick}>
+      <Button type="button" variant="muted" size="sm" rounded="pill" className={booksToolbarFilterButtonClassName} onClick={onFilterClick}>
         <Filter className="h-4 w-4 shrink-0" aria-hidden />
         Filter
       </Button>
@@ -189,10 +187,8 @@ export function RecentActivitiesTable({
       <Card
         variant="elevated"
         padding={false}
-        className={clsx(
-          'flex h-full min-h-0 flex-col overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
-          className
-        )}
+        surface="books"
+        className={clsx('flex h-full min-h-0 flex-col overflow-hidden', className)}
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[color:var(--books-border,rgba(0,0,0,0.06))] p-5 md:p-6">
           <div className="min-w-0 pr-2">
@@ -229,10 +225,8 @@ export function RecentActivitiesTable({
     <Card
       variant="elevated"
       padding={false}
-      className={clsx(
-        'flex min-h-0 flex-col overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
-        className
-      )}
+      surface="books"
+      className={clsx('flex min-h-0 flex-col overflow-hidden', className)}
     >
       <div className="flex shrink-0 items-center justify-between gap-3 p-6 md:px-7 md:pt-7">
         <h2 className="min-w-0 text-base font-semibold tracking-tight text-[var(--books-text-primary,#1a1a1a)]">

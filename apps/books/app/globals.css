@@ -15,7 +15,11 @@
   --books-text-tertiary: #9ca3af;
   --books-green: #10b981;
   --books-green-bg: rgba(16, 185, 129, 0.1);
+  /** Solid brand orange — avatars, active tabs, primary buttons (same in light/dark). */
+  --books-brand: #ea580c;
+  --books-brand-hover: #c2410c;
   --books-orange-bg: rgba(234, 88, 12, 0.1);
+  /** Text/icons on surfaces — not for solid fills (use --books-brand). */
   --books-orange-text: #ea580c;
   --books-input-bg: #ffffff;
   --books-input-border: rgba(0, 0, 0, 0.1);
@@ -54,7 +58,10 @@
   --books-text-tertiary: #6b7280;
   --books-green: #34d399;
   --books-green-bg: rgba(52, 211, 153, 0.12);
+  --books-brand: #ea580c;
+  --books-brand-hover: #c2410c;
   --books-orange-bg: rgba(234, 88, 12, 0.15);
+  /** Lighter orange for labels/icons on dark cards only */
   --books-orange-text: #fb923c;
   --books-input-bg: #252830;
   --books-input-border: rgba(255, 255, 255, 0.1);

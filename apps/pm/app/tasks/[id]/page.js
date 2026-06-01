@@ -52,7 +52,12 @@ import { usePmTableSort } from '../../../hooks/usePmTableSort';
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker';
 import { recurrencePayloadFromForm } from '../../../components/TaskRecurrenceFormFields';
 import { SidebarCardTitle } from '@webfudge/ui';
-import { getTaskStatusMeta, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
+import {
+  getTaskStatusMeta,
+  pmTableSelectFillProps,
+  PRIORITY_OPTIONS,
+  TASK_STATUS_OPTIONS,
+} from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
 import {
   addTaskComment,
@@ -634,30 +639,19 @@ export default function TaskDetailPage() {
       {
         key: 'status',
         label: 'STATUS',
-        render: (_, row) => {
-          const meta = getTaskStatusMeta(row.strapiStatus || 'SCHEDULED');
-          const chrome =
-            meta.variant === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-              : meta.variant === 'warning'
-                ? 'border-amber-200 bg-amber-50 text-amber-900'
-                : meta.variant === 'purple'
-                  ? 'border-violet-200 bg-violet-50 text-violet-800'
-                  : 'border-gray-200 bg-gray-50 text-gray-700';
-          return (
-            <div onClick={(e) => e.stopPropagation()}>
-              <Select
-                value={row.strapiStatus}
-                options={TASK_STATUS_OPTIONS}
-                onChange={(status) => updateSubtaskField(row, { status })}
-                disabled={saving}
-                className={`py-1.5 text-xs font-semibold uppercase tracking-wide ${chrome}`}
-                containerClassName="min-w-[140px]"
-                placeholder="Status"
-              />
-            </div>
-          );
-        },
+        render: (_, row) => (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Select
+              value={row.strapiStatus}
+              options={TASK_STATUS_OPTIONS}
+              onChange={(status) => updateSubtaskField(row, { status })}
+              disabled={saving}
+              {...pmTableSelectFillProps(row.strapiStatus || 'SCHEDULED', 'status')}
+              containerClassName="min-w-[140px]"
+              placeholder="Status"
+            />
+          </div>
+        ),
       },
       {
         key: 'priority',
@@ -669,7 +663,7 @@ export default function TaskDetailPage() {
               options={PRIORITY_OPTIONS}
               onChange={(priority) => updateSubtaskField(row, { priority })}
               disabled={isPmMember || saving}
-              className="border-orange-200 bg-orange-50 py-1.5 text-xs font-semibold uppercase tracking-wide text-orange-800"
+              {...pmTableSelectFillProps(row.priority, 'priority')}
               containerClassName="min-w-[120px]"
               placeholder="Priority"
             />

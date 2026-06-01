@@ -385,6 +385,36 @@ export interface AdminUser extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiAllocationAllocation extends Struct.CollectionTypeSchema {
+  collectionName: 'allocations'
+  info: {
+    description: 'Vehicle allocation records'
+    displayName: 'Allocation'
+    pluralName: 'allocations'
+    singularName: 'allocation'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    dealerId: Schema.Attribute.String
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::allocation.allocation'> &
+      Schema.Attribute.Private
+    metadata: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'ALLOCATED'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Required
+  }
+}
+
 export interface ApiAppApp extends Struct.CollectionTypeSchema {
   collectionName: 'apps'
   info: {
@@ -686,7 +716,6 @@ export interface ApiClientAccountClientAccount extends Struct.CollectionTypeSche
     publishedAt: Schema.Attribute.DateTime
     state: Schema.Attribute.String
     status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'ACTIVE'>
-    subType: Schema.Attribute.String
     twitter: Schema.Attribute.String
     type: Schema.Attribute.String
     updatedAt: Schema.Attribute.DateTime
@@ -829,6 +858,59 @@ export interface ApiCrmActivityCrmActivity extends Struct.CollectionTypeSchema {
     summary: Schema.Attribute.Text & Schema.Attribute.Required
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiDealDeal extends Struct.CollectionTypeSchema {
+  collectionName: 'deals'
+  info: {
+    description: 'CRM sales opportunities / pipeline deals'
+    displayName: 'Deal'
+    pluralName: 'deals'
+    singularName: 'deal'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    contact: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    dealGroup: Schema.Attribute.String
+    deliveryProject: Schema.Attribute.Relation<'oneToOne', 'api::project.project'>
+    description: Schema.Attribute.Text
+    expectedCloseDate: Schema.Attribute.Date
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::deal.deal'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    priority: Schema.Attribute.Enumeration<['low', 'medium', 'high']> &
+      Schema.Attribute.DefaultTo<'medium'>
+    probability: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100
+          min: 0
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    source: Schema.Attribute.String & Schema.Attribute.DefaultTo<'OTHER'>
+    stage: Schema.Attribute.Enumeration<
+      ['discovery', 'prospect', 'proposal', 'negotiation', 'won', 'lost']
+    > &
+      Schema.Attribute.DefaultTo<'discovery'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    value: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    visibility: Schema.Attribute.Enumeration<['public', 'private', 'team']> &
+      Schema.Attribute.DefaultTo<'public'>
   }
 }
 
@@ -1114,7 +1196,7 @@ export interface ApiInvitationInvitation extends Struct.CollectionTypeSchema {
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     permissions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
     publishedAt: Schema.Attribute.DateTime
-    role: Schema.Attribute.String & Schema.Attribute.DefaultTo<'User'>
+    role: Schema.Attribute.String & Schema.Attribute.DefaultTo<'Member'>
     status: Schema.Attribute.Enumeration<['pending', 'accepted', 'expired']> &
       Schema.Attribute.DefaultTo<'pending'>
     token: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.Unique
@@ -1164,7 +1246,7 @@ export interface ApiInvoiceLineItemInvoiceLineItem extends Struct.CollectionType
 export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
   collectionName: 'invoices'
   info: {
-    description: 'Customer invoices'
+    description: 'CRM invoices, proforma invoices and receipts'
     displayName: 'Invoice'
     pluralName: 'invoices'
     singularName: 'invoice'
@@ -1173,53 +1255,58 @@ export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
     draftAndPublish: false
   }
   attributes: {
-    adjustment: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
-    balanceDue: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
-    billingAddress: Schema.Attribute.JSON
+    amountPaid: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    balanceDue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    billToAddress: Schema.Attribute.Text
+    billToCompany: Schema.Attribute.String
+    billToEmail: Schema.Attribute.Email
+    billToGstin: Schema.Attribute.String
+    billToName: Schema.Attribute.String
+    billToPhone: Schema.Attribute.String
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
-    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
-    customer: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
-    discountAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
-    discountType: Schema.Attribute.Enumeration<['percentage', 'fixed']> &
-      Schema.Attribute.DefaultTo<'percentage'>
-    discountValue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
+    discount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    documentType: Schema.Attribute.Enumeration<
+      ['INVOICE', 'PROFORMA_INVOICE', 'CREDIT_NOTE', 'RECEIPT']
+    > &
+      Schema.Attribute.DefaultTo<'INVOICE'>
     dueDate: Schema.Attribute.Date
-    estimate: Schema.Attribute.Relation<'manyToOne', 'api::estimate.estimate'>
-    exchangeRate: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<1>
-    invoiceDate: Schema.Attribute.Date & Schema.Attribute.Required
-    invoiceNumber: Schema.Attribute.String
-    isBilledFromTime: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    fromOrgAddress: Schema.Attribute.Text
+    fromOrgEmail: Schema.Attribute.Email
+    fromOrgGstin: Schema.Attribute.String
+    fromOrgLogo: Schema.Attribute.String
+    fromOrgName: Schema.Attribute.String
+    fromOrgPhone: Schema.Attribute.String
+    invoiceDate: Schema.Attribute.Date
+    invoiceNumber: Schema.Attribute.String & Schema.Attribute.Required
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    lineItems: Schema.Attribute.JSON
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::invoice.invoice'> &
       Schema.Attribute.Private
     notes: Schema.Attribute.Text
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
-    paidAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
-    paidAt: Schema.Attribute.DateTime
-    paymentTerms: Schema.Attribute.Enumeration<
-      ['net_15', 'net_30', 'net_45', 'net_60', 'due_on_receipt', 'custom']
-    >
-    portalLink: Schema.Attribute.String
-    project: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
     publishedAt: Schema.Attribute.DateTime
-    sentAt: Schema.Attribute.DateTime
-    shippingAddress: Schema.Attribute.JSON
-    shippingCharge: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    sameAsShipTo: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    shipToAddress: Schema.Attribute.Text
+    shipToName: Schema.Attribute.String
+    showSignature: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
     status: Schema.Attribute.Enumeration<
-      ['draft', 'sent', 'viewed', 'partial', 'paid', 'overdue', 'void']
+      ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED', 'PARTIAL']
     > &
-      Schema.Attribute.DefaultTo<'draft'>
-    subtotal: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
-    taxAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
-    termsConditions: Schema.Attribute.Text
-    total: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+      Schema.Attribute.DefaultTo<'DRAFT'>
+    subtotal: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    taxLabel: Schema.Attribute.String & Schema.Attribute.DefaultTo<'GST'>
+    taxRate: Schema.Attribute.Decimal
+    terms: Schema.Attribute.String
+    termsAndConditions: Schema.Attribute.Text
+    total: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
-    viewedAt: Schema.Attribute.DateTime
-    voidedAt: Schema.Attribute.DateTime
-    voidReason: Schema.Attribute.String
   }
 }
 
@@ -1371,6 +1458,64 @@ export interface ApiManualJournalManualJournal extends Struct.CollectionTypeSche
   }
 }
 
+export interface ApiMeetingMeeting extends Struct.CollectionTypeSchema {
+  collectionName: 'meetings'
+  info: {
+    description: 'CRM meetings \u2014 scheduled calls, demos, check-ins, and client meetings'
+    displayName: 'Meeting'
+    pluralName: 'meetings'
+    singularName: 'meeting'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    agenda: Schema.Attribute.Text
+    aiSummary: Schema.Attribute.Text
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    attendees: Schema.Attribute.Relation<'manyToMany', 'api::contact.contact'>
+    attendeesMeta: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    contact: Schema.Attribute.Relation<'manyToOne', 'api::contact.contact'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
+    endTime: Schema.Attribute.DateTime
+    externalMeetingId: Schema.Attribute.String
+    isVirtual: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::meeting.meeting'> &
+      Schema.Attribute.Private
+    location: Schema.Attribute.String
+    meetingType: Schema.Attribute.Enumeration<
+      ['discovery', 'demo', 'follow_up', 'check_in', 'review', 'internal', 'other']
+    > &
+      Schema.Attribute.DefaultTo<'other'>
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizer: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    outcome: Schema.Attribute.Enumeration<['positive', 'neutral', 'negative', 'pending']> &
+      Schema.Attribute.DefaultTo<'pending'>
+    publishedAt: Schema.Attribute.DateTime
+    recordingUrl: Schema.Attribute.String
+    recurrenceRule: Schema.Attribute.String
+    reminderPreset: Schema.Attribute.Enumeration<
+      ['none', 'tenMin', 'thirtyMin', 'oneHour', 'oneDay']
+    > &
+      Schema.Attribute.DefaultTo<'thirtyMin'>
+    startTime: Schema.Attribute.DateTime & Schema.Attribute.Required
+    status: Schema.Attribute.Enumeration<['scheduled', 'completed', 'cancelled', 'no_show']> &
+      Schema.Attribute.DefaultTo<'scheduled'>
+    title: Schema.Attribute.String & Schema.Attribute.Required
+    transcriptUrl: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    visibility: Schema.Attribute.Enumeration<['public', 'private', 'team']> &
+      Schema.Attribute.DefaultTo<'public'>
+  }
+}
+
 export interface ApiModuleModule extends Struct.CollectionTypeSchema {
   collectionName: 'modules'
   info: {
@@ -1433,12 +1578,23 @@ export interface ApiNotificationNotification extends Struct.CollectionTypeSchema
         'success',
         'warning',
         'error',
+        'mention',
         'lead_created',
         'lead_updated',
         'lead_assigned',
+        'lead_comment',
         'deal_created',
         'deal_updated',
+        'deal_comment',
+        'contact_updated',
+        'contact_comment',
+        'client_account_updated',
+        'client_account_comment',
         'task_assigned',
+        'task_updated',
+        'task_comment',
+        'project_updated',
+        'project_comment',
         'invite_sent',
         'invite_accepted',
         'system',
@@ -1448,6 +1604,41 @@ export interface ApiNotificationNotification extends Struct.CollectionTypeSchema
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     user: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+  }
+}
+
+export interface ApiOrganizationRoleOrganizationRole extends Struct.CollectionTypeSchema {
+  collectionName: 'organization_roles'
+  info: {
+    description: 'Organization membership roles (system-wide templates and org-specific custom roles)'
+    displayName: 'Organization Role'
+    pluralName: 'organization-roles'
+    singularName: 'organization-role'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    accessLevel: Schema.Attribute.Enumeration<['high', 'medium', 'basic']> &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'basic'>
+    code: Schema.Attribute.UID<'name'> & Schema.Attribute.Required
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    isSystem: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::organization-role.organization-role'
+    > &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    permissions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
 }
 
@@ -1477,7 +1668,7 @@ export interface ApiOrganizationUserOrganizationUser extends Struct.CollectionTy
       Schema.Attribute.Private
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     publishedAt: Schema.Attribute.DateTime
-    role: Schema.Attribute.String & Schema.Attribute.DefaultTo<'User'>
+    role: Schema.Attribute.Relation<'manyToOne', 'api::organization-role.organization-role'>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     user: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
@@ -1673,7 +1864,7 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
     budgetAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     budgetType: Schema.Attribute.Enumeration<['hours', 'amount']> &
       Schema.Attribute.DefaultTo<'amount'>
-    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
@@ -1691,6 +1882,7 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
     projectManager: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     publishedAt: Schema.Attribute.DateTime
     slug: Schema.Attribute.UID<'name'>
+    sourceDeal: Schema.Attribute.Relation<'oneToOne', 'api::deal.deal'>
     startDate: Schema.Attribute.DateTime
     status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'PLANNING'>
     tasks: Schema.Attribute.Relation<'manyToMany', 'api::task.task'>
@@ -1699,6 +1891,69 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
     unbilledAmount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiProposalProposal extends Struct.CollectionTypeSchema {
+  collectionName: 'proposals'
+  info: {
+    description: 'CRM proposals, SOWs and project quotes'
+    displayName: 'Proposal'
+    pluralName: 'proposals'
+    singularName: 'proposal'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    acceptanceNotes: Schema.Attribute.Text
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    assumptions: Schema.Attribute.JSON
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
+    clientAddress: Schema.Attribute.Text
+    clientCompanyName: Schema.Attribute.String
+    clientContactName: Schema.Attribute.String
+    clientEmail: Schema.Attribute.Email
+    clientPhone: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
+    date: Schema.Attribute.Date
+    deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
+    documentType: Schema.Attribute.Enumeration<['SOW', 'PROPOSAL', 'QUOTE']> &
+      Schema.Attribute.DefaultTo<'PROPOSAL'>
+    estimatedTimeline: Schema.Attribute.String
+    handoverDeliverables: Schema.Attribute.JSON
+    leadCompany: Schema.Attribute.Relation<'manyToOne', 'api::lead-company.lead-company'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::proposal.proposal'> &
+      Schema.Attribute.Private
+    milestones: Schema.Attribute.JSON
+    modules: Schema.Attribute.JSON
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    outOfScope: Schema.Attribute.JSON
+    outOfScopeRate: Schema.Attribute.Decimal
+    outOfScopeRateUnit: Schema.Attribute.String
+    paymentTerms: Schema.Attribute.String
+    preparedByCompany: Schema.Attribute.String
+    preparedByEmail: Schema.Attribute.Email
+    preparedByName: Schema.Attribute.String
+    preparedByPhone: Schema.Attribute.String
+    projectName: Schema.Attribute.String
+    projectOverview: Schema.Attribute.Text
+    proposalNumber: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    securityItems: Schema.Attribute.JSON
+    status: Schema.Attribute.Enumeration<['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED']> &
+      Schema.Attribute.DefaultTo<'DRAFT'>
+    taxInfo: Schema.Attribute.String
+    title: Schema.Attribute.String
+    totalValue: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    validUntil: Schema.Attribute.Date
+    warrantyDays: Schema.Attribute.Integer
   }
 }
 
@@ -1918,6 +2173,37 @@ export interface ApiSalesOrderSalesOrder extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiServiceRecordServiceRecord extends Struct.CollectionTypeSchema {
+  collectionName: 'service_records'
+  info: {
+    description: 'Vehicle service and maintenance records'
+    displayName: 'Service Record'
+    pluralName: 'service-records'
+    singularName: 'service-record'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::service-record.service-record'> &
+      Schema.Attribute.Private
+    metadata: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    serviceDate: Schema.Attribute.Date
+    title: Schema.Attribute.String & Schema.Attribute.Required
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Required
+  }
+}
+
 export interface ApiSubscriptionSubscription extends Struct.CollectionTypeSchema {
   collectionName: 'subscriptions'
   info: {
@@ -1971,10 +2257,18 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
   }
   attributes: {
     assignee: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    assigner: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    assignmentApprovalStatus: Schema.Attribute.Enumeration<
+      ['not_required', 'pending', 'approved', 'rejected']
+    > &
+      Schema.Attribute.DefaultTo<'not_required'>
+    assignmentRequestedBy: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     billable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    clientAccount: Schema.Attribute.Relation<'manyToOne', 'api::client-account.client-account'>
     collaborators: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
     description: Schema.Attribute.Text
     endTime: Schema.Attribute.String
     hoursLogged: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
@@ -1988,13 +2282,39 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String & Schema.Attribute.Required
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     parent: Schema.Attribute.Relation<'manyToOne', 'api::task.task'>
+    pendingCollaborators: Schema.Attribute.Relation<'manyToMany', 'plugin::users-permissions.user'>
     priority: Schema.Attribute.Enumeration<['low', 'medium', 'high']> &
       Schema.Attribute.DefaultTo<'medium'>
-    progress: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     projects: Schema.Attribute.Relation<'manyToMany', 'api::project.project'>
     publishedAt: Schema.Attribute.DateTime
     rate: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    recurrenceCustomUnit: Schema.Attribute.Enumeration<['day', 'week', 'month']> &
+      Schema.Attribute.DefaultTo<'day'>
+    recurrenceEndsAt: Schema.Attribute.DateTime
+    recurrenceFrequency: Schema.Attribute.Enumeration<
+      ['none', 'daily', 'weekly', 'monthly', 'custom']
+    > &
+      Schema.Attribute.DefaultTo<'none'>
+    recurrenceGroupId: Schema.Attribute.String
+    recurrenceInterval: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>
+    recurrenceMonthDay: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 31
+          min: 1
+        },
+        number
+      >
+    recurrenceWeekdays: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
     scheduledDate: Schema.Attribute.DateTime
+    startDate: Schema.Attribute.DateTime
     startTime: Schema.Attribute.String
     status: Schema.Attribute.Enumeration<
       ['SCHEDULED', 'IN_PROGRESS', 'INTERNAL_REVIEW', 'COMPLETED', 'CANCELLED', 'OVERDUE']
@@ -2008,6 +2328,80 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     timerStartedAt: Schema.Attribute.DateTime
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiVehicleEventVehicleEvent extends Struct.CollectionTypeSchema {
+  collectionName: 'vehicle_events'
+  info: {
+    description: 'Append-only lifecycle events for vehicles'
+    displayName: 'Vehicle Event'
+    pluralName: 'vehicle-events'
+    singularName: 'vehicle-event'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    eventType: Schema.Attribute.Enumeration<
+      [
+        'CREATED',
+        'ALLOCATED',
+        'DISPATCHED',
+        'IN_TRANSIT',
+        'DELIVERED',
+        'ACTIVE',
+        'INACTIVE',
+        'SERVICE_ADDED',
+        'WARRANTY_CLAIM',
+      ]
+    > &
+      Schema.Attribute.Required
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::vehicle-event.vehicle-event'> &
+      Schema.Attribute.Private
+    metadata: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Required
+  }
+}
+
+export interface ApiVehicleVehicle extends Struct.CollectionTypeSchema {
+  collectionName: 'vehicles'
+  info: {
+    description: 'Vehicle master records for VLM'
+    displayName: 'Vehicle'
+    pluralName: 'vehicles'
+    singularName: 'vehicle'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Private
+    make: Schema.Attribute.String
+    metadata: Schema.Attribute.JSON
+    model: Schema.Attribute.String
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    registrationNumber: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vin: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.Unique
+    year: Schema.Attribute.Integer
   }
 }
 
@@ -2084,6 +2478,38 @@ export interface ApiVendorVendor extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     vendorCode: Schema.Attribute.String
+  }
+}
+
+export interface ApiWarrantyRecordWarrantyRecord extends Struct.CollectionTypeSchema {
+  collectionName: 'warranty_records'
+  info: {
+    description: 'Vehicle warranty and claim records'
+    displayName: 'Warranty Record'
+    pluralName: 'warranty-records'
+    singularName: 'warranty-record'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    claimNumber: Schema.Attribute.String
+    claimStatus: Schema.Attribute.String & Schema.Attribute.DefaultTo<'OPEN'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    details: Schema.Attribute.Text
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::warranty-record.warranty-record'> &
+      Schema.Attribute.Private
+    metadata: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    provider: Schema.Attribute.String & Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
+      Schema.Attribute.Required
   }
 }
 
@@ -2471,8 +2897,16 @@ export interface PluginUsersPermissionsUser extends Struct.CollectionTypeSchema 
     timestamps: true
   }
   attributes: {
+    blocked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    confirmationToken: Schema.Attribute.String & Schema.Attribute.Private
+    confirmed: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    email: Schema.Attribute.Email &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 6
+      }>
     firstName: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 80
@@ -2484,9 +2918,23 @@ export interface PluginUsersPermissionsUser extends Struct.CollectionTypeSchema 
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'plugin::users-permissions.user'> &
       Schema.Attribute.Private
+    password: Schema.Attribute.Password &
+      Schema.Attribute.Private &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 6
+      }>
+    provider: Schema.Attribute.String
     publishedAt: Schema.Attribute.DateTime
+    resetPasswordToken: Schema.Attribute.String & Schema.Attribute.Private
+    role: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.role'>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    username: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.SetMinMaxLength<{
+        minLength: 3
+      }>
   }
 }
 
@@ -2501,6 +2949,7 @@ declare module '@strapi/strapi' {
       'admin::transfer-token': AdminTransferToken
       'admin::transfer-token-permission': AdminTransferTokenPermission
       'admin::user': AdminUser
+      'api::allocation.allocation': ApiAllocationAllocation
       'api::app.app': ApiAppApp
       'api::bank-account.bank-account': ApiBankAccountBankAccount
       'api::bank-transaction.bank-transaction': ApiBankTransactionBankTransaction
@@ -2511,6 +2960,7 @@ declare module '@strapi/strapi' {
       'api::contact.contact': ApiContactContact
       'api::credit-note.credit-note': ApiCreditNoteCreditNote
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity
+      'api::deal.deal': ApiDealDeal
       'api::delivery-challan.delivery-challan': ApiDeliveryChallanDeliveryChallan
       'api::direct-message.direct-message': ApiDirectMessageDirectMessage
       'api::document.document': ApiDocumentDocument
@@ -2523,22 +2973,29 @@ declare module '@strapi/strapi' {
       'api::item.item': ApiItemItem
       'api::lead-company.lead-company': ApiLeadCompanyLeadCompany
       'api::manual-journal.manual-journal': ApiManualJournalManualJournal
+      'api::meeting.meeting': ApiMeetingMeeting
       'api::module.module': ApiModuleModule
       'api::notification.notification': ApiNotificationNotification
+      'api::organization-role.organization-role': ApiOrganizationRoleOrganizationRole
       'api::organization-user.organization-user': ApiOrganizationUserOrganizationUser
       'api::organization.organization': ApiOrganizationOrganization
       'api::payment-made.payment-made': ApiPaymentMadePaymentMade
       'api::payment-received.payment-received': ApiPaymentReceivedPaymentReceived
       'api::project.project': ApiProjectProject
+      'api::proposal.proposal': ApiProposalProposal
       'api::purchase-order.purchase-order': ApiPurchaseOrderPurchaseOrder
       'api::recurring-expense.recurring-expense': ApiRecurringExpenseRecurringExpense
       'api::recurring-invoice.recurring-invoice': ApiRecurringInvoiceRecurringInvoice
       'api::retainer-invoice.retainer-invoice': ApiRetainerInvoiceRetainerInvoice
       'api::sales-order.sales-order': ApiSalesOrderSalesOrder
+      'api::service-record.service-record': ApiServiceRecordServiceRecord
       'api::subscription.subscription': ApiSubscriptionSubscription
       'api::task.task': ApiTaskTask
+      'api::vehicle-event.vehicle-event': ApiVehicleEventVehicleEvent
+      'api::vehicle.vehicle': ApiVehicleVehicle
       'api::vendor-credit.vendor-credit': ApiVendorCreditVendorCredit
       'api::vendor.vendor': ApiVendorVendor
+      'api::warranty-record.warranty-record': ApiWarrantyRecordWarrantyRecord
       'plugin::content-releases.release': PluginContentReleasesRelease
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction
       'plugin::i18n.locale': PluginI18NLocale

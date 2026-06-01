@@ -148,6 +148,8 @@ Your complete guide to the Webfudge Platform documentation.
 | **[BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md](./BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md)** | Added Books `/threads` (“Conversations”) page aligned with CRM latest conversations UI |
 | **[BOOKS_SHELL_TABS_HEADER_SIDEBAR_REFACTOR.md](./BOOKS_SHELL_TABS_HEADER_SIDEBAR_REFACTOR.md)** | Books shell refactor: floating sidebar groups, route-driven sub-page tabs, and grouped top header actions |
 | **[BOOKS_THEME_TOGGLE.md](./BOOKS_THEME_TOGGLE.md)** | Books light/dark theme: CSS variables, `BooksThemeProvider`, sidebar toggle, FOUC script; dashboard + list pages use `@webfudge/ui/book-components` and `TabsWithActions` `booksModern` for matching card surfaces |
+| **[BOOKS_DARK_LIST_UI_CONSISTENCY.md](./BOOKS_DARK_LIST_UI_CONSISTENCY.md)** | Books list/hub dark UI: shared `BooksListPageShell`, `booksModern` toolbar tokens, Recent Activities search, reports hub, ModulePage KPI+modal pattern |
+| **[BOOKS_UI_COMPONENT_CONSOLIDATION.md](./BOOKS_UI_COMPONENT_CONSOLIDATION.md)** | Books uses shared `@webfudge/ui` Card/KPICard/Table with `theme`/`surface="books"`; `book-components` keeps domain widgets only |
 
 ---
 

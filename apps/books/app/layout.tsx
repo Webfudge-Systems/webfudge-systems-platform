@@ -12,10 +12,14 @@ const BOOKS_THEME_BOOT_SCRIPT = `
 (function() {
   try {
     var theme = localStorage.getItem('books-theme');
-    if (theme === 'dark') {
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
       document.documentElement.classList.add('dark');
     }
-  } catch (e) {}
+  } catch (e) {
+    document.documentElement.classList.add('dark');
+  }
 })();
 `
 

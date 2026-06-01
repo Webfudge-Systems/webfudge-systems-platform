@@ -53,8 +53,8 @@ export function FinanceDualChart({
     <Card
       variant="elevated"
       padding={false}
+      surface="books"
       className={twMerge(
-        '!bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
         className
       )}
     >
@@ -68,7 +68,7 @@ export function FinanceDualChart({
           <h3 className="text-sm font-semibold text-[var(--books-text-primary,#1f2937)]">{sectionTitle}</h3>
           <div className="flex items-center gap-4 text-xs font-medium text-[var(--books-text-secondary,#4b5563)]">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[#EA580C]" aria-hidden />
+              <span className="h-2 w-2 rounded-full bg-[var(--books-brand,#ea580c)]" aria-hidden />
               {profitLabel}
             </span>
             <span className="flex items-center gap-1.5">

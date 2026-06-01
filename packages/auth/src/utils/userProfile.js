@@ -29,6 +29,20 @@ export function resolveUserDisplayName(user) {
 }
 
 /**
+ * Short name for greetings (first name when available).
+ * @param {object|null|undefined} user
+ * @returns {string}
+ */
+export function resolveUserGreetingName(user) {
+  const u = flattenUser(user)
+  if (!u) return 'there'
+  const fn = (u.firstName != null ? String(u.firstName) : '').trim()
+  if (fn) return fn
+  const display = resolveUserDisplayName(user)
+  return display.split(/\s+/)[0] || 'there'
+}
+
+/**
  * Initials from first/last name when present; otherwise from email local part.
  * @param {object|null|undefined} user
  * @returns {string}

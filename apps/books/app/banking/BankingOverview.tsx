@@ -2,16 +2,17 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Button, Modal, TabsWithActions } from '@webfudge/ui'
-import type { BooksDataColumn } from '@webfudge/ui/book-components'
 import {
-  BooksDataTable,
-  BooksKPICard,
-  BooksListTableCard,
-  BooksTableEmptyBelow,
-  BooksTableResultsCount,
-  booksToolbarSearchInputClassName,
-} from '@webfudge/ui/book-components'
+  Button,
+  Card,
+  KPICard,
+  Modal,
+  Table,
+  TableEmptyBelow,
+  TableResultsCount,
+  TabsWithActions,
+} from '@webfudge/ui'
+import { booksToolbarSearchInputClassName, type BooksDataColumn } from '@webfudge/ui/book-components'
 import { formatCurrency } from '@webfudge/utils'
 import { ArrowLeftRight, Building2, Landmark, PiggyBank, Plus, Wallet } from 'lucide-react'
 import { useBooksTableColumnPicker } from '@/app/_components/BooksTableColumnPicker'
@@ -187,8 +188,9 @@ export default function BankingOverview() {
     <div className="min-h-full space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi, idx) => (
-          <BooksKPICard
+          <KPICard
             key={idx}
+            theme="books"
             title={kpi.title}
             value={kpi.value}
             subtitle={kpi.subtitle}
@@ -223,7 +225,7 @@ export default function BankingOverview() {
         {columnPickerDropdown}
       </div>
 
-      <BooksTableResultsCount count={filtered.length} />
+      <TableResultsCount count={filtered.length} theme="books" />
 
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -231,7 +233,7 @@ export default function BankingOverview() {
         </div>
       ) : null}
 
-      <BooksListTableCard>
+      <Card variant="elevated" padding={false} surface="books">
         <div className="border-b border-[color:var(--books-border,rgba(0,0,0,0.08))] px-6 py-4">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-orange-bg,rgba(234,88,12,0.1))] text-[var(--books-orange-text,#ea580c)]">
@@ -246,15 +248,16 @@ export default function BankingOverview() {
           </div>
         </div>
 
-        <BooksDataTable
-          columns={(visibleColumns.length ? visibleColumns : [...TABLE_COLUMNS]) as BooksDataColumn[]}
+        <Table
+          variant="books"
+          columns={visibleColumns.length ? visibleColumns : [...TABLE_COLUMNS]}
           data={filtered as unknown as Record<string, unknown>[]}
           keyField="id"
-          layout="list"
         />
 
         {!loading && filtered.length === 0 ? (
-          <BooksTableEmptyBelow
+          <TableEmptyBelow
+            theme="books"
             className="border-t border-[color:var(--books-border,rgba(0,0,0,0.08))]"
             icon={Building2}
             title="No accounts match"
@@ -267,7 +270,7 @@ export default function BankingOverview() {
             }
           />
         ) : null}
-      </BooksListTableCard>
+      </Card>
 
       <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter banking" size="lg">
         <div className="space-y-4">

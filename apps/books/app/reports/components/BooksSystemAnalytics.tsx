@@ -1,14 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Card, Select } from '@webfudge/ui'
+import { Card, KPICard, Select } from '@webfudge/ui'
 import { Banknote, Clock3, Receipt, Wallet } from 'lucide-react'
 import { booksApi } from '@/lib/api'
 import type { BankAccount, Expense, Invoice, Project, TimeEntry } from '@/lib/types'
 import { formatCurrency } from '@webfudge/utils'
 import BooksFinancialCharts from './BooksFinancialCharts'
-import { BooksKPICard } from '@webfudge/ui/book-components'
-
 export default function BooksSystemAnalytics() {
   const [timeRange, setTimeRange] = useState<'this_fiscal_year' | 'previous_fiscal_year' | 'last_12_months'>('this_fiscal_year')
   // Backend analytics not connected yet: keep the UI in "0-data" placeholder mode,
@@ -99,13 +97,15 @@ export default function BooksSystemAnalytics() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-2">
-        <BooksKPICard
+        <KPICard
+          theme="books"
           title="Total Receivables"
           value={formatCurrency(displayKpis.totalReceivables)}
           subtitle={zeroMode ? '0 for selected range' : 'Current + overdue'}
           icon={Receipt}
         />
-        <BooksKPICard
+        <KPICard
+          theme="books"
           title="Total Payables"
           value={formatCurrency(displayKpis.totalPayables)}
           subtitle={zeroMode ? '0 for selected range' : 'Current + overdue'}

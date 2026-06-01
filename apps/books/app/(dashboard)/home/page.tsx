@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { clsx } from 'clsx'
 import {
   Briefcase,
+  Building2,
   Coins,
   Cpu,
   FileText,
   Plane,
   Receipt,
+  ScrollText,
   ShoppingBag,
   Smartphone,
   Sparkles,
@@ -18,9 +20,9 @@ import {
   Wallet,
 } from 'lucide-react'
 import { formatCurrency } from '@webfudge/utils'
+import { KPICard } from '@webfudge/ui'
 import {
   BooksChartViewSwitcher,
-  BooksKPICard,
   BooksQuickAccessCard,
   MonthlySpendingLimitCard,
   RecentActivitiesTable,
@@ -30,7 +32,7 @@ import {
 import type { BooksQuickAccessShortcut } from '@webfudge/ui/book-components'
 import type { ActivityTableRow, AnalyticsAreaPoint, ProfitLossMonth } from '@webfudge/ui/book-components'
 import { booksApi } from '@/lib/api'
-import type { Customer, Expense, Invoice, InvoiceStatus, TimeEntry } from '@/lib/types'
+import type { Bill, Customer, Expense, Invoice, InvoiceStatus, TimeEntry, Vendor } from '@/lib/types'
 
 const DEFAULT_MONTHLY_SPEND_LIMIT = 0
 
@@ -42,7 +44,7 @@ const HOME_ROW_MID = 'h-[280px] min-h-[280px]'
 const HOME_ROW_BOTTOM = 'h-[340px] min-h-[340px]'
 const HOME_QUICK_ACCESS_HEIGHT = 'xl:h-[calc(320px+1.5rem+280px)] xl:min-h-[calc(320px+1.5rem+280px)]'
 
-/** Map MoM trend to BooksKPICard `change` / `changeType` (CRM-style footer). */
+/** Map MoM trend to `KPICard` `change` / `changeType` (CRM-style footer). */
 function trendToKpiProps(
   trend: { text: string; up: boolean },
   /** Payables: higher spend → red (treat like "decrease" sentiment in UI). */
@@ -187,11 +189,15 @@ export default function HomePage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [bills, setBills] = useState<Bill[]>([])
+  const [vendors, setVendors] = useState<Vendor[]>([])
   useEffect(() => {
     booksApi.fetchInvoices().then((res) => setInvoices(res.data ?? [])).catch(() => setInvoices([]))
     booksApi.fetchExpenses().then((res) => setExpenses(res.data ?? [])).catch(() => setExpenses([]))
     booksApi.fetchTimeEntries().then((res) => setTimeEntries(res.data ?? [])).catch(() => setTimeEntries([]))
     booksApi.fetchCustomers().then((res) => setCustomers(res.data ?? [])).catch(() => setCustomers([]))
+    booksApi.fetchBills().then((res) => setBills(res.data ?? [])).catch(() => setBills([]))
+    booksApi.fetchVendors().then((res) => setVendors(res.data ?? [])).catch(() => setVendors([]))
   }, [])
 
   const customerNameById = useMemo(() => {
@@ -382,8 +388,22 @@ export default function HomePage() {
         icon: TrendingUp,
         onClick: () => router.push('/reports'),
       },
+      {
+        id: 'bills',
+        title: 'Bills',
+        count: bills.length,
+        icon: ScrollText,
+        onClick: () => router.push('/purchases/bills'),
+      },
+      {
+        id: 'vendors',
+        title: 'Vendors',
+        count: vendors.length,
+        icon: Building2,
+        onClick: () => router.push('/purchases/vendors'),
+      },
     ],
-    [customers.length, expenses.length, invoices.length, router]
+    [bills.length, customers.length, expenses.length, invoices.length, router, vendors.length]
   )
 
   return (
@@ -391,8 +411,9 @@ export default function HomePage() {
       {/* KPI row — extra top spacing below header tabs */}
       <div className="mb-6 grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2 sm:pt-5 lg:grid-cols-4 lg:pt-6">
         {booksHomeKpis.map((kpi) => (
-          <BooksKPICard
+          <KPICard
             key={kpi.title}
+            theme="books"
             title={kpi.title}
             value={kpi.value}
             change={kpi.change}

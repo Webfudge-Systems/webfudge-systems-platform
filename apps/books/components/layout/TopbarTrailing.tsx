@@ -112,7 +112,7 @@ export default function TopbarTrailing({ className }: TopbarTrailingProps) {
             size="sm"
             fallback={resolveUserInitials(user)}
             alt={displayName}
-            className="h-8 w-8 shrink-0 rounded-full border-0 bg-[#EA580C] font-semibold text-white"
+            className="h-8 w-8 shrink-0 rounded-full border-0 bg-[var(--books-brand,#ea580c)] font-semibold text-white"
           />
           <span className="hidden min-w-0 sm:block">
             <span className="block truncate text-sm font-medium text-[var(--books-text-primary,#111827)]">

@@ -29,6 +29,9 @@ import { canReadPM, canWritePM, canReadClientAccounts } from '../lib/rbac'
 import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 import { usePmSidebarBadges } from '../lib/usePmSidebarBadges'
 
+/** Orange W mark — `public/logo/pm-vertical-logo.png` (from Vertical logo 1 bg removed.png) */
+const PM_SIDEBAR_LOGO = '/logo/pm-vertical-logo.png'
+
 export default function PMSidebar({ collapsed = false, onToggle }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -213,7 +216,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           {collapsed ? (
             <Link href="/" className="flex shrink-0" aria-label="Webfudge PM home">
               <Image
-                src="/logo/Vertical logo 1 bg removed.png"
+                src={PM_SIDEBAR_LOGO}
                 alt="Webfudge"
                 width={32}
                 height={32}
@@ -228,8 +231,8 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
               aria-label="Webfudge PM home"
             >
               <Image
-                src="/logo/Vertical logo 1 bg removed.png"
-                alt=""
+                src={PM_SIDEBAR_LOGO}
+                alt="Webfudge"
                 width={44}
                 height={44}
                 className="h-11 w-11 shrink-0 object-contain"

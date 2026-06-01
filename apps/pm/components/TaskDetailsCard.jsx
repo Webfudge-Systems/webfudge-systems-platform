@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import TaskAssigneesPicker from './TaskAssigneesPicker'
 import TaskRecurrenceFormFields from './TaskRecurrenceFormFields'
-import { PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge'
+import { pmTableSelectFillProps, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge'
 
 function isPresent(value) {
   if (value == null) return false
@@ -217,6 +217,7 @@ export default function TaskDetailsCard({
                 options={TASK_STATUS_OPTIONS}
                 onChange={(v) => onTaskInfoFieldChange('status', v)}
                 disabled={saving}
+                {...pmTableSelectFillProps(taskInfoDraft.status, 'status')}
               />
             </DetailCell>
             <DetailCell label="Priority">
@@ -225,6 +226,7 @@ export default function TaskDetailsCard({
                 options={PRIORITY_OPTIONS}
                 onChange={(v) => onTaskInfoFieldChange('priority', v)}
                 disabled={saving}
+                {...pmTableSelectFillProps(taskInfoDraft.priority, 'priority')}
               />
             </DetailCell>
           </GridRow>

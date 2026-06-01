@@ -3,16 +3,16 @@
 import type { LucideIcon } from 'lucide-react'
 import type { ReactNode, RefObject } from 'react'
 import { useState } from 'react'
-import { Modal, TabsWithActions } from '@webfudge/ui'
 import {
-  BooksKPICard,
-  BooksListTableCard,
-  BooksTableEmptyBelow,
-  BooksTableResultsCount,
-  booksToolbarSearchInputClassName,
-  type BooksDataColumn,
-} from '@webfudge/ui/book-components'
-import { Button } from '@webfudge/ui'
+  Button,
+  Card,
+  KPICard,
+  Modal,
+  TableEmptyBelow,
+  TableResultsCount,
+  TabsWithActions,
+} from '@webfudge/ui'
+import { booksToolbarSearchInputClassName, type BooksDataColumn } from '@webfudge/ui/book-components'
 
 export type BooksHomeHubTab = {
   id: string
@@ -48,7 +48,7 @@ export type BooksHomeHubDataShellProps = {
   /** Rendered between KPIs and the list toolbar (e.g. featured announcement). */
   aboveToolbar?: ReactNode
   onColumnVisibilityClick?: () => void
-  toolbarRef?: RefObject<HTMLDivElement | null>
+  toolbarRef?: RefObject<HTMLDivElement>
   toolbarSlot?: ReactNode
 }
 
@@ -93,8 +93,9 @@ export default function BooksHomeHubDataShell({
       {kpis.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((kpi) => (
-            <BooksKPICard
+            <KPICard
               key={kpi.title}
+              theme="books"
               title={kpi.title}
               value={kpi.value}
               subtitle={kpi.subtitle}
@@ -130,9 +131,9 @@ export default function BooksHomeHubDataShell({
         {toolbarSlot}
       </div>
 
-      <BooksTableResultsCount count={resultCount} />
+      <TableResultsCount count={resultCount} theme="books" />
 
-      <BooksListTableCard>
+      <Card variant="elevated" padding={false} surface="books">
         {listColumns && listColumns.length > 0 ? (
           <div
             className="flex border-b border-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-surface-muted,#f5f5f5)]"
@@ -153,14 +154,15 @@ export default function BooksHomeHubDataShell({
         {children}
 
         {showEmpty && emptyIcon ? (
-          <BooksTableEmptyBelow
+          <TableEmptyBelow
+            theme="books"
             className="border-t border-[color:var(--books-border,rgba(0,0,0,0.08))]"
             icon={emptyIcon}
             title={emptyTitle}
             description={emptyDescription}
           />
         ) : null}
-      </BooksListTableCard>
+      </Card>
 
       <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title={filterModalTitle} size="lg">
         <div className="space-y-4">

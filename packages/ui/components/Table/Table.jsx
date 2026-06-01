@@ -123,6 +123,28 @@ export function Table({
       row: 'hover:bg-blue-50/50 transition-all duration-200 group',
       cell: 'px-6 py-4 text-sm text-gray-700 group-hover:text-gray-900',
     },
+    /** Books list pages — `--books-*` tokens, inside `Card` with `surface="books"`. */
+    books: {
+      container: 'overflow-x-auto min-w-full bg-[var(--books-bg-card,#ffffff)]',
+      table: 'min-w-full',
+      header: 'bg-[var(--books-surface-muted,#f5f5f5)] border-b border-[color:var(--books-border,rgba(0,0,0,0.08))]',
+      headerCell:
+        'px-6 py-4 text-left text-xs font-bold text-[var(--books-text-secondary,#4b5563)] uppercase tracking-wide',
+      body: 'divide-y divide-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-card,#ffffff)]',
+      row: 'hover:bg-[var(--books-bg-elevated,#f9fafb)] transition-all duration-200 group',
+      cell: 'px-6 py-4 text-sm text-[var(--books-text-primary,#111827)] group-hover:text-[var(--books-text-primary,#111827)]',
+    },
+    /** Books table inside elevated card (same tokens, no min-width on container). */
+    booksEmbedded: {
+      container: 'overflow-x-auto bg-[var(--books-bg-card,#ffffff)]',
+      table: 'min-w-full',
+      header: 'bg-[var(--books-surface-muted,#f5f5f5)] border-b border-[color:var(--books-border,rgba(0,0,0,0.08))]',
+      headerCell:
+        'px-6 py-4 text-left text-xs font-bold text-[var(--books-text-secondary,#4b5563)] uppercase tracking-wide',
+      body: 'divide-y divide-[color:var(--books-border,rgba(0,0,0,0.08))] bg-[var(--books-bg-card,#ffffff)]',
+      row: 'hover:bg-[var(--books-bg-elevated,#f9fafb)] transition-all duration-200 group',
+      cell: 'px-6 py-4 text-sm text-[var(--books-text-primary,#111827)] group-hover:text-[var(--books-text-primary,#111827)]',
+    },
   }
 
   const styles = variants[variant] || variants.default

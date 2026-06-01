@@ -21,7 +21,7 @@ type BooksThemeContextValue = {
 const BooksThemeContext = createContext<BooksThemeContextValue | null>(null)
 
 export function BooksThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<BooksTheme>('light')
+  const [theme, setTheme] = useState<BooksTheme>('dark')
 
   useLayoutEffect(() => {
     setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light')

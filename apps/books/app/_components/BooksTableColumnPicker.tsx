@@ -210,12 +210,14 @@ export function useBooksTableColumnPicker({ columns, storageKey }: { columns: Co
   const dropdown =
     columnPickerOpen && keys.length > 0 ? (
       <div
-        className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl"
+        className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-[color:var(--books-border)] bg-[var(--books-bg-elevated)] p-2.5 shadow-[var(--books-shell-shadow)]"
         role="dialog"
         aria-label="Table columns"
       >
-        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">Columns</p>
-        <p className="mb-2 text-xs leading-snug text-gray-500">
+        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--books-text-secondary)]">
+          Columns
+        </p>
+        <p className="mb-2 text-xs leading-snug text-[var(--books-text-tertiary)]">
           First column stays first. Drag the grip to reorder; an orange line shows where the row will land.
         </p>
         <ul
@@ -224,13 +226,17 @@ export function useBooksTableColumnPicker({ columns, storageKey }: { columns: Co
         >
           {pinnedKey ? (
             <li data-column-row className="relative flex items-stretch rounded-lg border border-transparent">
-              <span className="flex w-8 shrink-0 items-center justify-center text-gray-300" aria-hidden title="Fixed order">
+              <span
+                className="flex w-8 shrink-0 items-center justify-center text-[var(--books-text-tertiary)]"
+                aria-hidden
+                title="Fixed order"
+              >
                 —
               </span>
-              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-gray-800 hover:bg-gray-50">
+              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-[var(--books-text-primary)] hover:bg-[var(--books-bg-card)]">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 shrink-0 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                  className="h-4 w-4 shrink-0 rounded border-[color:var(--books-border-em)] text-[var(--books-orange-text)] focus:ring-[var(--books-orange-text)]"
                   checked={Boolean(visibility[pinnedKey])}
                   onChange={(e) => setColumnVisible(pinnedKey, e.target.checked)}
                 />
@@ -248,13 +254,13 @@ export function useBooksTableColumnPicker({ columns, storageKey }: { columns: Co
               <li
                 key={key}
                 data-column-row
-                className="relative flex items-stretch rounded-lg border border-transparent hover:border-gray-100"
+                className="relative flex items-stretch rounded-lg border border-transparent hover:border-[color:var(--books-border)]"
                 onDragOver={(e) => handleColumnRowDragOver(e, key)}
                 onDrop={(e) => handleColumnDrop(e, key)}
               >
                 {showLineBefore ? (
                   <div
-                    className="pointer-events-none absolute left-1 right-2 top-0 z-10 h-[3px] -translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
+                    className="pointer-events-none absolute left-1 right-2 top-0 z-10 h-[3px] -translate-y-1 rounded-full bg-[var(--books-orange-text)] shadow-[0_0_0_1px_var(--books-bg-elevated)]"
                     aria-hidden
                   />
                 ) : null}
@@ -262,15 +268,15 @@ export function useBooksTableColumnPicker({ columns, storageKey }: { columns: Co
                   draggable
                   onDragStart={(e) => handleColumnDragStart(e, key)}
                   onDragEnd={handleColumnDragEnd}
-                  className="flex w-8 shrink-0 cursor-grab items-center justify-center rounded-l-lg text-gray-400 active:cursor-grabbing hover:bg-gray-100 hover:text-gray-600"
+                  className="flex w-8 shrink-0 cursor-grab items-center justify-center rounded-l-lg text-[var(--books-text-tertiary)] active:cursor-grabbing hover:bg-[var(--books-bg-card)] hover:text-[var(--books-text-secondary)]"
                   aria-label={`Drag to reorder ${colLabel(def)}`}
                 >
                   <GripVertical className="h-4 w-4" strokeWidth={2} aria-hidden />
                 </span>
-                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-gray-800 hover:bg-gray-50">
+                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-[var(--books-text-primary)] hover:bg-[var(--books-bg-card)]">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 shrink-0 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                    className="h-4 w-4 shrink-0 rounded border-[color:var(--books-border-em)] text-[var(--books-orange-text)] focus:ring-[var(--books-orange-text)]"
                     checked={Boolean(visibility[key])}
                     onChange={(e) => setColumnVisible(key, e.target.checked)}
                   />
@@ -278,7 +284,7 @@ export function useBooksTableColumnPicker({ columns, storageKey }: { columns: Co
                 </label>
                 {showLineAfter ? (
                   <div
-                    className="pointer-events-none absolute bottom-0 left-1 right-2 z-10 h-[3px] translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
+                    className="pointer-events-none absolute bottom-0 left-1 right-2 z-10 h-[3px] translate-y-1 rounded-full bg-[var(--books-orange-text)] shadow-[0_0_0_1px_var(--books-bg-elevated)]"
                     aria-hidden
                   />
                 ) : null}
@@ -286,12 +292,12 @@ export function useBooksTableColumnPicker({ columns, storageKey }: { columns: Co
             )
           })}
         </ul>
-        <div className="mt-2 border-t border-gray-100 pt-2">
+        <div className="mt-2 border-t border-[color:var(--books-border)] pt-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="w-full text-sm font-medium text-gray-700"
+            className="w-full border-[color:var(--books-orange-text)] text-sm font-medium text-[var(--books-orange-text)] hover:bg-[var(--books-orange-bg)]"
             onClick={resetColumnTablePreferences}
           >
             Reset to default

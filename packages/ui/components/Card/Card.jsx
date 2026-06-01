@@ -1,4 +1,5 @@
 import { clsx } from 'clsx'
+import { booksElevatedCardClassName, booksListTableCardClassName } from '../../themes/booksSurface'
 
 /** Shared elevation for primary content cards (forms, detail sections, KPI panels). */
 const CARD_SHADOW_MAJOR = 'shadow-[0_3px_16px_rgba(15,23,42,0.10),0_2px_5px_rgba(15,23,42,0.06)]'
@@ -15,6 +16,8 @@ export function Card({
   padding = true,
   hoverable = false,
   variant = 'default',
+  /** `books` applies Books CSS variable surfaces (list shells, dashboard widgets). */
+  surface,
   glass = false,
   gradient = false,
   gradientType = 'glass',
@@ -58,11 +61,19 @@ export function Card({
     return 'hover:shadow-md hover:border-gray-200'
   }
 
+  const booksSurfaceClass =
+    surface === 'books'
+      ? padding === false && variant === 'elevated'
+        ? booksListTableCardClassName
+        : booksElevatedCardClassName
+      : null
+
   return (
     <div
       className={clsx(
         'rounded-xl transition-all duration-300',
         getVariantClasses(),
+        booksSurfaceClass,
         hoverable && `${getHoverClasses()} cursor-pointer`,
         padding && 'p-6',
         className

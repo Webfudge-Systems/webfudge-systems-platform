@@ -294,7 +294,9 @@ export default function BooksGettingStartedPanel() {
           </div>
           <div>
             <p className="text-sm font-semibold text-gray-900">What&apos;s new</p>
-            <p className="mt-1 text-xs text-gray-600">Product news for Books appears under Home → Announcements.</p>
+            <p className="mt-1 text-xs text-[var(--books-text-secondary,#6b7280)]">
+              Product updates appear under Home → Recent Updates.
+            </p>
           </div>
         </div>
       </div>

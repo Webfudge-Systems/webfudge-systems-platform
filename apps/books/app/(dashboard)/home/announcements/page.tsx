@@ -1,7 +1,6 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import BooksHomeAnnouncementsPage from '../_components/BooksHomeAnnouncementsPage'
-
+/** Announcements hub removed — send legacy links to dashboard. */
 export default function HomeAnnouncementsRoutePage() {
-  return <BooksHomeAnnouncementsPage />
+  redirect('/home')
 }

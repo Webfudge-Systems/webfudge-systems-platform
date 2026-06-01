@@ -14,19 +14,8 @@ import {
 } from '@dnd-kit/core'
 import { Avatar, Button, Select } from '@webfudge/ui'
 import { ChevronRight, FolderKanban, GripVertical } from 'lucide-react'
-import { getTaskStatusMeta, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge'
+import { pmTableSelectFillProps, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge'
 import TaskAssigneesPicker from './TaskAssigneesPicker'
-
-const STATUS_SELECT_VARIANT_CLASS = {
-  primary: 'border-blue-200 bg-blue-50 text-blue-800',
-  warning: 'border-amber-200 bg-amber-50 text-amber-800',
-  orange: 'border-orange-200 bg-orange-50 text-orange-800',
-  cyan: 'border-cyan-200 bg-cyan-50 text-cyan-800',
-  purple: 'border-purple-200 bg-purple-50 text-purple-800',
-  success: 'border-green-200 bg-green-50 text-green-800',
-  danger: 'border-red-200 bg-red-50 text-red-800',
-  default: 'border-gray-200 bg-gray-50 text-gray-800',
-}
 
 const KANBAN_STAGES = [
   { key: 'SCHEDULED', label: 'To Do' },
@@ -372,9 +361,6 @@ export function MyTasksListByStatus({ tasks, router, updateTask, savingId }) {
               <tbody className="divide-y divide-gray-100">
                 {section.tasks.map((row) => {
                   const initial = (row.name || 'T').trim().charAt(0).toUpperCase() || 'T'
-                  const meta = getTaskStatusMeta(row.strapiStatus)
-                  const chrome =
-                    STATUS_SELECT_VARIANT_CLASS[meta.variant] || STATUS_SELECT_VARIANT_CLASS.default
                   const overdue = isTaskOverdue(row)
                   return (
                     <tr key={row.id} className="hover:bg-gray-50/70">
@@ -385,7 +371,7 @@ export function MyTasksListByStatus({ tasks, router, updateTask, savingId }) {
                             options={TASK_STATUS_OPTIONS}
                             onChange={(status) => updateTask(row, { status })}
                             disabled={savingId === row.id}
-                            className={`py-2 text-sm font-bold uppercase tracking-wide ${chrome}`}
+                            {...pmTableSelectFillProps(row.strapiStatus, 'status')}
                             containerClassName="min-w-[150px]"
                             placeholder="Status"
                           />
@@ -441,7 +427,7 @@ export function MyTasksListByStatus({ tasks, router, updateTask, savingId }) {
                             options={PRIORITY_OPTIONS}
                             onChange={(priority) => updateTask(row, { priority })}
                             disabled={savingId === row.id}
-                            className="border-orange-200 bg-orange-50 py-1.5 text-xs font-semibold uppercase tracking-wide text-orange-800"
+                            {...pmTableSelectFillProps(row.priority, 'priority')}
                             containerClassName="min-w-[120px]"
                             placeholder="Priority"
                           />

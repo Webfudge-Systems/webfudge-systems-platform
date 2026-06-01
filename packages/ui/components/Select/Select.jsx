@@ -3,6 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { clsx } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 import { ChevronDown, Search } from 'lucide-react'
 
 const SEARCHABLE_OPTION_THRESHOLD = 8
@@ -39,6 +40,7 @@ function SearchableSelect({
   listMaxHeight = DEFAULT_LIST_MAX_HEIGHT,
   listClassName,
   menuPortal = true,
+  chevronClassName,
   id: idProp,
   ...props
 }) {
@@ -191,15 +193,16 @@ function SearchableSelect({
     setQuery('')
   }
 
-  const triggerClasses = clsx(
-    'flex w-full items-center justify-between gap-2 rounded-lg border text-left shadow-sm',
-    'py-2.5 pr-10 text-gray-900',
+  const triggerClasses = twMerge(
+    'flex w-full items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white text-left text-gray-900 shadow-sm',
+    'py-2.5 pr-10',
     Icon ? 'pl-10' : 'px-3',
     'focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent',
     'transition-colors duration-200',
     'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500',
-    error ? 'border-red-300' : open ? 'border-orange-500 ring-2 ring-orange-500 ring-offset-0' : 'border-gray-300',
-    !selectedOption && allowEmpty ? 'text-gray-500' : '',
+    error && 'border-red-300',
+    open && !className && 'border-orange-500 ring-2 ring-orange-500 ring-offset-0',
+    !selectedOption && allowEmpty && 'text-gray-500',
     className
   )
 
@@ -321,7 +324,11 @@ function SearchableSelect({
         </button>
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
           <ChevronDown
-            className={clsx('h-5 w-5 text-gray-400 transition-transform', open && 'rotate-180')}
+            className={clsx(
+              'h-5 w-5 transition-transform',
+              chevronClassName || 'text-gray-400',
+              open && 'rotate-180'
+            )}
           />
         </div>
         {open && !menuPortal ? menuPanel : null}
@@ -352,6 +359,7 @@ export function Select({
   listMaxHeight = DEFAULT_LIST_MAX_HEIGHT,
   listClassName,
   menuPortal = true,
+  chevronClassName,
   value,
   disabled,
   ...props
@@ -378,6 +386,7 @@ export function Select({
         listMaxHeight={listMaxHeight}
         listClassName={listClassName}
         menuPortal={menuPortal}
+        chevronClassName={chevronClassName}
         {...props}
       />
     )
@@ -404,14 +413,13 @@ export function Select({
           </div>
         )}
         <select
-          className={clsx(
-            'block w-full rounded-lg border border-gray-300 bg-white',
-            'px-3 py-2.5 pr-10 text-sm text-gray-900 shadow-none appearance-none',
-            Icon ? 'pl-10' : '',
-            'focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500',
+          className={twMerge(
+            'block w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2.5 pr-10 text-sm text-gray-900 shadow-none',
+            Icon && 'pl-10',
+            'focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20',
             'transition-colors duration-200',
             'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500',
-            error ? 'border-red-300' : 'border-gray-300',
+            error && 'border-red-300',
             className
           )}
           onChange={handleChange}

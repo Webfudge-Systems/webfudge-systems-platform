@@ -104,8 +104,9 @@ export function StackedBankCards({
     <Card
       variant="elevated"
       padding={false}
+      surface="books"
       className={clsx(
-        'flex h-full min-h-0 flex-col !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
+        'flex h-full min-h-0 flex-col border border-[color:var(--books-border,rgba(0,0,0,0.06))]',
         className
       )}
     >
@@ -164,8 +165,9 @@ export function StackedBankCards({
               >
                 <div
                   className={clsx(
-                    'relative aspect-[1.586/1] w-full max-h-[228px] min-h-[168px] overflow-hidden rounded-2xl border border-white/25 p-4 text-white shadow-lg',
-                    card.gradientClassName
+                    'relative aspect-[1.586/1] w-full max-h-[228px] min-h-[168px] overflow-hidden rounded-2xl border border-white/20 p-4 text-white shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-1 ring-white/10',
+                    card.gradientClassName,
+                    position === 0 && 'ring-2 ring-orange-400/40'
                   )}
                 >
                   <div
@@ -206,7 +208,7 @@ export function StackedBankCards({
               className={clsx(
                 'h-2 rounded-full transition-all duration-300',
                 i === activeIndex
-                  ? 'w-6 bg-[#EA580C]'
+                  ? 'w-6 bg-[var(--books-brand,#ea580c)]'
                   : 'w-2 bg-[var(--books-border-em,rgba(0,0,0,0.2))] hover:bg-[var(--books-text-tertiary,#9ca3af)]'
               )}
               aria-label={`Show card ${i + 1}`}

@@ -3,8 +3,8 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { Button, Modal, TabsWithActions } from '@webfudge/ui'
-import { BooksListTableCard, BooksTableEmptyBelow, BooksTableResultsCount, booksToolbarSearchInputClassName } from '../tables/BooksTableChrome'
+import { Button, Card, Modal, TableEmptyBelow, TableResultsCount, TabsWithActions } from '@webfudge/ui'
+import { booksToolbarSearchInputClassName } from '../tables/booksToolbarStyles'
 
 export type BooksHubTab = {
   key: string
@@ -86,19 +86,20 @@ export function BooksHubDataShell({
         searchInputClassName={booksToolbarSearchInputClassName}
       />
 
-      <BooksTableResultsCount count={resultCount} />
+      <TableResultsCount count={resultCount} theme="books" />
 
-      <BooksListTableCard>
+      <Card variant="elevated" padding={false} surface="books">
         {showEmpty ? null : children}
         {showEmpty ? (
-          <BooksTableEmptyBelow
+          <TableEmptyBelow
+            theme="books"
             className="border-t border-[color:var(--books-border,rgba(0,0,0,0.08))]"
             icon={empty.icon}
             title={empty.title}
             description={empty.description}
           />
         ) : null}
-      </BooksListTableCard>
+      </Card>
 
       {showFilter ? (
         <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title={filterModalTitle} size="lg">
@@ -118,7 +119,7 @@ export function BooksHubDataShell({
   )
 }
 
-/** Shared thead row for hub feed/table layouts inside {@link BooksListTableCard}. */
+/** Shared thead row for hub feed/table layouts inside Books list `Card` (`surface="books"`). */
 export function BooksHubTableHead({ columns }: { columns: string[] }) {
   return (
     <thead className="bg-[var(--books-surface-muted,#f5f5f5)] border-b border-[color:var(--books-border,rgba(0,0,0,0.08))]">

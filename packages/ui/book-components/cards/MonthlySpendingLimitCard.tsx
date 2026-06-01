@@ -64,13 +64,14 @@ export function MonthlySpendingLimitCard({
     <Card
       variant="elevated"
       padding={false}
+      surface="books"
       className={clsx(
-        'relative flex min-h-0 flex-col overflow-hidden !bg-[var(--books-bg-card,#ffffff)] dark:shadow-[0_4px_28px_rgba(0,0,0,0.55),0_2px_10px_rgba(0,0,0,0.38)]',
+        'relative flex min-h-0 flex-col overflow-hidden border border-[color:var(--books-border,rgba(0,0,0,0.06))]',
         className
       )}
     >
       <div className="flex min-h-0 flex-1 flex-col p-5 md:p-6">
-        <div className="mb-3 flex shrink-0 items-start justify-between gap-2">
+        <div className="mb-3 flex shrink-0 items-start justify-between gap-2 border-b border-[color:var(--books-border,rgba(0,0,0,0.06))] pb-3">
           <div className="min-w-0">
             <h2 className="text-base font-semibold tracking-tight text-[var(--books-text-primary,#111827)]">
               {title}
@@ -129,7 +130,7 @@ export function MonthlySpendingLimitCard({
         </div>
 
         <div className="mt-3 grid shrink-0 grid-cols-2 gap-3">
-          <div className="rounded-xl bg-[var(--books-bg-elevated,#f8fafc)] px-3 py-3 dark:bg-[var(--books-bg-elevated,#252830)]">
+          <div className="rounded-xl border border-[color:var(--books-border,rgba(0,0,0,0.06))] bg-[var(--books-bg-elevated,#f8fafc)] px-3 py-3 dark:bg-[var(--books-bg-elevated,#252830)]">
             <p className="text-[11px] font-medium text-[var(--books-text-secondary,#6b7280)]">Amount spent</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <p className="text-lg font-bold tracking-tight text-[var(--books-text-primary,#111827)]">{spentLabel}</p>
@@ -146,7 +147,7 @@ export function MonthlySpendingLimitCard({
             </div>
           </div>
 
-          <div className="rounded-xl bg-[var(--books-bg-elevated,#f8fafc)] px-3 py-3 dark:bg-[var(--books-bg-elevated,#252830)]">
+          <div className="rounded-xl border border-[color:var(--books-border,rgba(0,0,0,0.06))] bg-[var(--books-bg-elevated,#f8fafc)] px-3 py-3 dark:bg-[var(--books-bg-elevated,#252830)]">
             <p className="text-[11px] font-medium text-[var(--books-text-secondary,#6b7280)]">Monthly limit</p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <p className="text-lg font-bold tracking-tight text-[var(--books-text-primary,#111827)]">{limitLabel}</p>
