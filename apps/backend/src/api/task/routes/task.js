@@ -17,6 +17,8 @@ module.exports = {
     { method: 'PUT', path: '/tasks/:id', handler: `${UID}.update`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/approve-assignment', handler: `${UID}.approveAssignment`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/reject-assignment', handler: `${UID}.rejectAssignment`, config: authFalse },
+    { method: 'POST', path: '/tasks/:id/timer/start', handler: `${UID}.timerStart`, config: authFalse },
+    { method: 'POST', path: '/tasks/:id/timer/stop', handler: `${UID}.timerStop`, config: authFalse },
     { method: 'DELETE', path: '/tasks/:id', handler: `${UID}.delete`, config: authFalse },
   ],
 };

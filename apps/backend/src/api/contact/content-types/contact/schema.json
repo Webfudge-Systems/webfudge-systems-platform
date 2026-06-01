@@ -106,6 +106,49 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::client-account.client-account"
+    },
+    "isCustomer": {
+      "type": "boolean",
+      "default": false
+    },
+    "isVendor": {
+      "type": "boolean",
+      "default": false
+    },
+    "clientType": {
+      "type": "enumeration",
+      "enum": ["agency_client", "direct_client", "partner", "individual"],
+      "default": "agency_client"
+    },
+    "currency": {
+      "type": "string",
+      "default": "INR"
+    },
+    "billingAddress": {
+      "type": "json"
+    },
+    "shippingAddress": {
+      "type": "json"
+    },
+    "paymentTerms": {
+      "type": "enumeration",
+      "enum": ["net_15", "net_30", "net_45", "net_60", "due_on_receipt"],
+      "default": "net_30"
+    },
+    "creditLimit": {
+      "type": "integer",
+      "default": 0
+    },
+    "taxNumber": {
+      "type": "string"
+    },
+    "portalAccess": {
+      "type": "boolean",
+      "default": false
+    },
+    "unusedCredits": {
+      "type": "integer",
+      "default": 0
     }
   }
 }

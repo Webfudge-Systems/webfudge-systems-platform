@@ -136,6 +136,51 @@
     },
     "recurrenceGroupId": {
       "type": "string"
+    },
+    "hoursLogged": {
+      "type": "decimal",
+      "default": 0
+    },
+    "billable": {
+      "type": "boolean",
+      "default": true
+    },
+    "invoiced": {
+      "type": "boolean",
+      "default": false
+    },
+    "logDate": {
+      "type": "date"
+    },
+    "startTime": {
+      "type": "string"
+    },
+    "endTime": {
+      "type": "string"
+    },
+    "timerRunning": {
+      "type": "boolean",
+      "default": false
+    },
+    "timerStartedAt": {
+      "type": "datetime"
+    },
+    "invoicedOn": {
+      "type": "datetime"
+    },
+    "rate": {
+      "type": "integer",
+      "default": 0
+    },
+    "timeProject": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::project.project"
+    },
+    "timeInvoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invoice.invoice"
     }
   }
 }

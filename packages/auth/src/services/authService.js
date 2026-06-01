@@ -2,6 +2,7 @@
 import { flattenUser } from '../utils/userProfile';
 
 const API_BASE_URL =
+  process.env.NEXT_PUBLIC_STRAPI_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === 'production'
     ? 'https://api.webfudge.in'

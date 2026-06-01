@@ -101,6 +101,80 @@
         },
         "trialEndsAt": {
             "type": "datetime"
+        },
+        "fiscalYearStart": {
+            "type": "integer",
+            "default": 4,
+            "min": 1,
+            "max": 12
+        },
+        "baseCurrency": {
+            "type": "string",
+            "default": "INR"
+        },
+        "booksActivated": {
+            "type": "boolean",
+            "default": false
+        },
+        "invoicePrefix": {
+            "type": "string",
+            "default": "INV"
+        },
+        "estimatePrefix": {
+            "type": "string",
+            "default": "EST"
+        },
+        "taxName": {
+            "type": "string",
+            "default": "GST"
+        },
+        "defaultTaxRate": {
+            "type": "decimal",
+            "default": 18
+        },
+        "invoiceSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "billSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "estimateSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "expenseSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "journalSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "poSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "soSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "vendorSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "paymentSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "creditNoteSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "retainerSequence": {
+            "type": "integer",
+            "default": 0
         }
     }
 }

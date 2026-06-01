@@ -1,0 +1,25 @@
+{
+  "kind": "collectionType",
+  "collectionName": "vendor_credits",
+  "info": {
+    "singularName": "vendor-credit",
+    "pluralName": "vendor-credits",
+    "displayName": "Vendor Credit",
+    "description": "Credits received from vendors"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "creditNumber":    { "type": "string" },
+    "status":          { "type": "enumeration", "enum": ["draft","open","closed","void"], "default": "draft" },
+    "creditDate":      { "type": "date" },
+    "currency":        { "type": "string", "default": "INR" },
+    "total":           { "type": "integer", "default": 0 },
+    "balanceAvailable":{ "type": "integer", "default": 0 },
+    "reason":          { "type": "text" },
+    "vendor":          { "type": "relation", "relation": "manyToOne", "target": "api::vendor.vendor" },
+    "bill":            { "type": "relation", "relation": "manyToOne", "target": "api::bill.bill" },
+    "organization":    { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" },
+    "createdByUser":   { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" }
+  }
+}

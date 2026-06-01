@@ -6,10 +6,12 @@ import { useAuth } from '@webfudge/auth'
 import { Loader2 } from 'lucide-react'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
+import SubPageTabs from './SubPageTabs'
+import TopbarTrailing from './TopbarTrailing'
 import ConfigureFeaturesModal from '../configure-features/ConfigureFeaturesModal'
+import { getDefaultTabHref } from '@/lib/tabs'
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showConfigure, setShowConfigure] = useState(false)
   const { isAuthenticated, loading, user } = useAuth()
   const pathname = usePathname()
@@ -24,10 +26,18 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     }
   }, [isAuthenticated, isLoginPage, isUnauthorizedPage, loading, router])
 
+  useEffect(() => {
+    if (loading || !isAuthenticated || isLoginPage || isUnauthorizedPage) return
+    const target = getDefaultTabHref(pathname)
+    if (target && target !== pathname) {
+      router.replace(target)
+    }
+  }, [isAuthenticated, isLoginPage, isUnauthorizedPage, loading, pathname, router])
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-[var(--books-bg-page)]">
+        <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
       </div>
     )
   }
@@ -36,11 +46,18 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   if (!isAuthenticated) return null
 
   return (
-    <div className="h-screen flex bg-white">
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((v) => !v)} onConfigureFeatures={() => setShowConfigure(true)} />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
-        <main className="flex-1 overflow-auto p-4">{children}</main>
+    <div className="flex h-screen bg-[var(--books-bg-page)]">
+      <Sidebar onConfigureFeatures={() => setShowConfigure(true)} />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-6 pb-6">
+          <div className="min-h-full" key={pathname}>
+            <div className="flex w-full min-w-0 flex-col gap-3 pb-2 pt-3 md:flex-row md:items-end md:justify-between md:gap-6">
+              <Topbar className="min-w-0 md:max-w-[min(100%,36rem)] md:flex-1" />
+              <SubPageTabs trailing={<TopbarTrailing />} />
+            </div>
+            {children}
+          </div>
+        </main>
       </div>
       <ConfigureFeaturesModal
         isOpen={showConfigure}

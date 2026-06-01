@@ -35,9 +35,21 @@ const {
   randomUUID,
 } = require('../../../utils/task-recurrence');
 
+const { relId } = require('../../../utils/books-crud');
+
 const UID = 'api::task.task';
 
 const PROJECT_UID = 'api::project.project';
+
+async function recomputeProjectFinancials(projectId) {
+  if (!projectId) return;
+  try {
+    const { recomputeFinancials } = require('../../project/controllers/project');
+    await recomputeFinancials(projectId);
+  } catch (err) {
+    console.warn('[task] recomputeProjectFinancials failed:', err.message);
+  }
+}
 
 /**
  * entityService create/update expect integer primary keys for relations (same as project PM).
@@ -630,6 +642,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     } catch (_) {
       /* best-effort */
     }
+    const timeProjId = data.timeProject != null ? relId(data.timeProject) || data.timeProject : null;
+    if (timeProjId) await recomputeProjectFinancials(timeProjId);
     return { data: entry };
   },
 
@@ -643,7 +657,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (pk == null) return ctx.notFound();
 
     const existing = await strapi.entityService.findOne(UID, pk, {
-      populate: ['organization', 'assignee', 'assigner', 'collaborators', 'projects'],
+      populate: ['organization', 'assignee', 'assigner', 'collaborators', 'projects', 'timeProject'],
     });
     if (!existing) return ctx.notFound();
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
@@ -755,6 +769,12 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     } catch (_) {
       /* best-effort */
     }
+    const forTime = await strapi.entityService.findOne(UID, pk, { populate: ['timeProject'] });
+    const projId =
+      (data.timeProject != null ? relId(data.timeProject) || data.timeProject : null) ||
+      relId(forTime?.timeProject) ||
+      relId(existing.timeProject);
+    if (projId) await recomputeProjectFinancials(projId);
     return { data: forLog };
   },
 
@@ -886,7 +906,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (pk == null) return ctx.notFound();
 
     const existing = await strapi.entityService.findOne(UID, pk, {
-      populate: ['organization', 'assignee', 'projects'],
+      populate: ['organization', 'assignee', 'projects', 'timeProject'],
     });
     if (!existing) return ctx.notFound();
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
@@ -895,6 +915,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (isPmOrgMemberRole(ctx)) {
       return ctx.forbidden('Members cannot delete tasks');
     }
+
+    const timeProjBeforeDelete = relId(existing.timeProject);
 
     try {
       await logCrmActivity(strapi, {
@@ -911,6 +933,58 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
 
     const entry = await strapi.entityService.delete(UID, pk);
+    if (timeProjBeforeDelete) await recomputeProjectFinancials(timeProjBeforeDelete);
+    return { data: entry };
+  },
+
+  async timerStart(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+
+    const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
+    if (pk == null) return ctx.notFound();
+
+    const task = await strapi.entityService.findOne(UID, pk, { populate: ['organization'] });
+    if (!task) return ctx.notFound();
+    if (orgIdFromRelation(task.organization) !== ctx.state.orgId) {
+      return ctx.forbidden('Access denied');
+    }
+    if (task.timerRunning) return ctx.badRequest('Timer is already running');
+
+    const entry = await strapi.entityService.update(UID, pk, {
+      data: { timerRunning: true, timerStartedAt: new Date().toISOString() },
+    });
+    return { data: entry };
+  },
+
+  async timerStop(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+
+    const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
+    if (pk == null) return ctx.notFound();
+
+    const task = await strapi.entityService.findOne(UID, pk, {
+      populate: ['organization', 'timeProject'],
+    });
+    if (!task) return ctx.notFound();
+    if (orgIdFromRelation(task.organization) !== ctx.state.orgId) {
+      return ctx.forbidden('Access denied');
+    }
+    if (!task.timerRunning) return ctx.badRequest('Timer is not running');
+
+    const now = new Date();
+    const started = new Date(task.timerStartedAt);
+    const hoursElapsed = (now - started) / 3600000;
+    const newHours = Math.round(((parseFloat(task.hoursLogged) || 0) + hoursElapsed) * 100) / 100;
+
+    const entry = await strapi.entityService.update(UID, pk, {
+      data: { hoursLogged: newHours, timerRunning: false, timerStartedAt: null },
+    });
+
+    const projId = relId(entry.timeProject) || relId(task.timeProject);
+    if (projId) await recomputeProjectFinancials(projId);
+
     return { data: entry };
   },
 

@@ -76,6 +76,28 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
+  // Re-fetch profile (firstName/lastName from /api/auth/me) when user returns to the tab
+  useEffect(() => {
+    const refreshProfile = () => {
+      if (!authService.getToken()) return;
+      authService
+        .getCurrentUser()
+        .then((fresh) => {
+          if (fresh) setUser(fresh);
+        })
+        .catch(() => {});
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshProfile();
+    };
+    window.addEventListener("focus", refreshProfile);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", refreshProfile);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
   const login = async (email, password) => {
     try {
       const response = await authService.login(email, password);

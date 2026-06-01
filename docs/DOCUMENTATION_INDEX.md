@@ -132,6 +132,22 @@ Your complete guide to the Webfudge Platform documentation.
 | **[ACCOUNTS_ROLES_AND_PERMISSIONS_RBAC.md](./ACCOUNTS_ROLES_AND_PERMISSIONS_RBAC.md)**                   | Accounts `/roles` functional: CRM/PM permission matrix, system templates + org-scoped custom roles, org role CRUD APIs, Users page assigns roles by id/code              |
 | **[ACCOUNTS_AUDIT_LOGS_PAGE.md](./ACCOUNTS_AUDIT_LOGS_PAGE.md)**                                          | Accounts `/audit-logs` upgraded to org-wide audit center (CRM/PM/Accounts) with enterprise filters, table + timeline view switcher, and details modal with before/after JSON |
 | **[ACCOUNTS_AUDIT_LOG_USER_EVENTS.md](./ACCOUNTS_AUDIT_LOG_USER_EVENTS.md)**                               | Backend writes user add/invite/membership-update events to the shared activity feed so Audit Logs shows Accounts user management actions                                      |
+| **[MODAL_NAV_PANEL_BOOKS_CRM.md](./MODAL_NAV_PANEL_BOOKS_CRM.md)**                                     | `Modal` `navPanel` variant for Books/CRM module nav; default modal `subtitle` support                                                                         |
+| **[BOOKS_DASHBOARD_QUICK_ACCESS_TEMPLATES_ACTIVITY.md](./BOOKS_DASHBOARD_QUICK_ACCESS_TEMPLATES_ACTIVITY.md)** | Books dashboard “Dashboard” tab: Quick Access cards + Templates + Recent Activity (CRM-mirrored UI)                                                                |
+| **[BOOKS_FINANCIAL_CHARTS_MOVED_TO_SYSTEM.md](./BOOKS_FINANCIAL_CHARTS_MOVED_TO_SYSTEM.md)** | Books dashboard charts moved to `System → Analytics` (`/reports`); Dashboard now shows Sales Analytics + Invoices Pipeline blocks |
+| **[BOOKS_SYSTEM_ANALYTICS_UI_UPDATE.md](./BOOKS_SYSTEM_ANALYTICS_UI_UPDATE.md)** | Books “System Analytics” (`/reports`) upgraded to a full KPI + charts dashboard using `@webfudge/ui` components |
+| **[UI_SELECT_CRM_STYLE_ALIGNMENT.md](./UI_SELECT_CRM_STYLE_ALIGNMENT.md)** | `@webfudge/ui` `Select` styling aligned to match CRM dropdown controls |
+| **[BOOKS_SALES_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_SALES_PAGES_CRM_UI_ALIGNMENT.md)** | Books Sales pages (`/sales/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
+| **[BOOKS_PURCHASES_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_PURCHASES_PAGES_CRM_UI_ALIGNMENT.md)** | Books Purchases pages (`/purchases/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
+| **[BOOKS_ACCOUNTANT_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_ACCOUNTANT_PAGES_CRM_UI_ALIGNMENT.md)** | Books Accountant pages (`/accountant/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
+| **[BOOKS_CRM_STYLE_ADD_PAGES.md](./BOOKS_CRM_STYLE_ADD_PAGES.md)** | CRM-style “Add” pages for Sales/Purchases/Accountant, consistent create UI using `@webfudge/ui` |
+| **[BOOKS_TABLE_COLUMN_PICKER.md](./BOOKS_TABLE_COLUMN_PICKER.md)** | CRM-style column visibility dropdown (eye icon) on Books Sales/Purchases/Accountant list bars |
+| **[BOOKS_HOME_GETTING_STARTED_TABS.md](./BOOKS_HOME_GETTING_STARTED_TABS.md)** | Home page tabs: Getting Started onboarding UI + Announcements / Recent Updates empty states |
+| **[BOOKS_HOME_KPI_CRM_ALIGNMENT.md](./BOOKS_HOME_KPI_CRM_ALIGNMENT.md)** | Books home KPI row uses `@webfudge/ui` `KPICard` (CRM-style) instead of `FintechMetricsQuad` |
+| **[BOOKS_HOME_HUB_PAGES.md](./BOOKS_HOME_HUB_PAGES.md)** | Separate `/home/activity`, `/home/announcements`, `/home/recent-updates` hub pages (Zoho Books–style UI, frontend-only) |
+| **[BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md](./BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md)** | Added Books `/threads` (“Conversations”) page aligned with CRM latest conversations UI |
+| **[BOOKS_SHELL_TABS_HEADER_SIDEBAR_REFACTOR.md](./BOOKS_SHELL_TABS_HEADER_SIDEBAR_REFACTOR.md)** | Books shell refactor: floating sidebar groups, route-driven sub-page tabs, and grouped top header actions |
+| **[BOOKS_THEME_TOGGLE.md](./BOOKS_THEME_TOGGLE.md)** | Books light/dark theme: CSS variables, `BooksThemeProvider`, sidebar toggle, FOUC script; dashboard + list pages use `@webfudge/ui/book-components` and `TabsWithActions` `booksModern` for matching card surfaces |
 
 ---
 

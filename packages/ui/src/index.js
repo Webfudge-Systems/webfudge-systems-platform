@@ -8,6 +8,8 @@ export {
   // Form Components
   Button,
   Input,
+  workspaceSearchInputClassName,
+  WorkspaceSearchInput,
   Select,
   Checkbox,
   Textarea,
