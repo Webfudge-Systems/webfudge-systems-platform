@@ -1,8 +1,11 @@
-'use client';
+'use client'
 
-import { Card } from '@webfudge/ui';
+import { Card } from '../Card'
 
-/** Compact header + inner panel for dashboard insight cards (task overview, workload, projects). */
+/**
+ * Compact header + inner panel for dashboard insight cards (task overview, workload, projects).
+ * Used across PM and CRM manager dashboard widgets.
+ */
 export default function DashboardInsightShell({
   title,
   badge,
@@ -32,7 +35,7 @@ export default function DashboardInsightShell({
         {children}
       </div>
     </Card>
-  );
+  )
 }
 
 export function InsightCountBadge({ children, tone = 'orange' }) {
@@ -40,12 +43,12 @@ export function InsightCountBadge({ children, tone = 'orange' }) {
     orange: 'bg-orange-100 text-orange-800',
     blue: 'bg-blue-100 text-blue-800',
     violet: 'bg-violet-100 text-violet-800',
-  };
+  }
   return (
     <span
       className={`rounded-full px-1.5 py-px text-[10px] font-bold leading-none ${tones[tone] || tones.orange}`}
     >
       {children}
     </span>
-  );
+  )
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { CheckSquare, AlertTriangle, Calendar, Building2 } from 'lucide-react'
-import DashboardKpiRow from '../shared/DashboardKpiRow'
+import { DashboardKpiRow } from '@webfudge/ui'
 import { fetchPersonalKpis } from '../../../lib/api/dashboardDataService'
 import UpcomingMeetingsWidget from '../UpcomingMeetingsWidget'
 import LatestAssignedLeadsWidget from '../LatestAssignedLeadsWidget'

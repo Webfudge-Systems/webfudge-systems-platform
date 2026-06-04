@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Users, DollarSign, TrendingUp, Target } from 'lucide-react'
 import { formatCurrency } from '@webfudge/utils'
-import DashboardKpiRow from '../shared/DashboardKpiRow'
+import { DashboardKpiRow } from '@webfudge/ui'
 import { fetchSalesKpis } from '../../../lib/api/dashboardDataService'
 import SalesAnalyticsWidget from '../SalesAnalyticsWidget'
 import LeadSourcesWidget from '../LeadSourcesWidget'

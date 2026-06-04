@@ -12,11 +12,13 @@ import {
 } from 'recharts'
 import { Filter, Clock } from 'lucide-react'
 import { fetchSalesDashboardData } from '../../../lib/api/dashboardDataService'
-import DashboardChartPanel, {
+import {
+  DashboardChartPanel,
   DashboardChartEmpty,
   DASHBOARD_CHART_ACCENT,
-} from '../shared/DashboardChartPanel'
-import DashboardBarTooltip, { DASHBOARD_BAR_TOOLTIP_CURSOR } from '../shared/DashboardBarTooltip'
+  DashboardBarTooltip,
+  DASHBOARD_BAR_TOOLTIP_CURSOR,
+} from '@webfudge/ui'
 
 function funnelUnit(_value, row) {
   const n = String(row?.name ?? '').toLowerCase()

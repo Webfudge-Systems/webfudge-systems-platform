@@ -109,6 +109,27 @@ export {
   DetailColumnHeading,
   InfoRow,
   SidebarCardTitle,
+  // Dashboard charts
+  GradientStackedBarChart,
+  DonutChartFrame,
+  DonutChartCenterLabel,
+  DONUT_TOOLTIP_WRAPPER_STYLE,
+  DashboardChartPanel,
+  DashboardChartEmpty,
+  DASHBOARD_CHART_ACCENT,
+  DashboardBarTooltip,
+  DASHBOARD_BAR_TOOLTIP_CURSOR,
+  DashboardChartCanvas,
+  PRIMARY_ORANGE_SHADES,
+  STACK_SERIES,
+  STACK_ORDER,
+  DashboardKpiRow,
+  DashboardInsightShell,
+  InsightCountBadge,
+  DashboardProgressRow,
+  progressBarColorForValue,
+  // Quick Actions FAB
+  QuickActionsFab,
 } from '../components';
 
 // LAYOUTS - Page structure and containers

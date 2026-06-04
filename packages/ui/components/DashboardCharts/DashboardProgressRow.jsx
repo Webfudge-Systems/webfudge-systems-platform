@@ -1,6 +1,6 @@
-'use client';
+'use client'
 
-import { Avatar } from '@webfudge/ui';
+import { Avatar } from '../Avatar'
 
 const BAR_COLORS = {
   orange: 'bg-orange-500',
@@ -11,9 +11,9 @@ const BAR_COLORS = {
   pink: 'bg-pink-500',
   teal: 'bg-teal-500',
   indigo: 'bg-indigo-500',
-};
+}
 
-/** Compact progress row for dashboard insight lists. */
+/** Compact progress row for dashboard insight lists (workload, project progress, etc.) */
 export default function DashboardProgressRow({
   label,
   meta,
@@ -24,8 +24,8 @@ export default function DashboardProgressRow({
   avatarSrc,
   showPercent = true,
 }) {
-  const value = Math.max(0, Math.min(100, Number(percent) || 0));
-  const barClass = BAR_COLORS[barColor] || BAR_COLORS.orange;
+  const value = Math.max(0, Math.min(100, Number(percent) || 0))
+  const barClass = BAR_COLORS[barColor] || BAR_COLORS.orange
 
   return (
     <div className="flex items-center gap-2">
@@ -67,12 +67,12 @@ export default function DashboardProgressRow({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export function progressBarColorForValue(value) {
-  const v = Number(value) || 0;
-  if (v >= 70) return 'green';
-  if (v >= 40) return 'purple';
-  return 'orange';
+  const v = Number(value) || 0
+  if (v >= 70) return 'green'
+  if (v >= 40) return 'purple'
+  return 'orange'
 }

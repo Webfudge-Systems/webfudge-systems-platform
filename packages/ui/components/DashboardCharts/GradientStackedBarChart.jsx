@@ -153,6 +153,7 @@ function makeStackBarShape(dataKey) {
 
 /**
  * Stacked vertical bar chart with polished dashboard styling.
+ * Each data item should have: { name, overdue, pending, completed }
  */
 export default function GradientStackedBarChart({
   data = [],

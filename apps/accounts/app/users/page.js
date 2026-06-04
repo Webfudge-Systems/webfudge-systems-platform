@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Clock3, Mail, MoreHorizontal, Pencil, ShieldBan, ShieldCheck, UserCheck, UserPlus, Users, UserX } from 'lucide-react'
 import {
   Avatar,
+  Badge,
   Button,
   Input,
   KPICard,
@@ -35,10 +36,10 @@ function getUserStatus(user) {
   return 'active'
 }
 
-function getStatusClasses(status) {
-  if (status === 'active') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
-  if (status === 'invited') return 'bg-orange-100 text-orange-700 border-orange-200'
-  return 'bg-red-100 text-red-700 border-red-200'
+function getUserStatusVariant(status) {
+  if (status === 'active') return 'success'
+  if (status === 'invited') return 'warning'
+  return 'danger'
 }
 
 function roleOptionValue(role) {
@@ -382,13 +383,7 @@ export default function UsersPage() {
         label: 'STATUS',
         render: (_, user) => {
           const status = getUserStatus(user)
-          return (
-            <span
-              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${getStatusClasses(status)}`}
-            >
-              {status}
-            </span>
-          )
+          return <Badge variant={getUserStatusVariant(status)} className="capitalize">{status}</Badge>
         },
       },
       {

@@ -117,3 +117,28 @@ export { MentionComposer } from './MentionComposer';
 
 // Workspace calendar (CRM + PM — meetings, tasks, project timelines)
 export { UnifiedWorkspaceCalendar } from './UnifiedWorkspaceCalendar';
+
+// DASHBOARD CHARTS — shared across CRM, PM, and beyond
+export {
+  GradientStackedBarChart,
+  DonutChartFrame,
+  DonutChartCenterLabel,
+  DONUT_TOOLTIP_WRAPPER_STYLE,
+  DashboardChartPanel,
+  DashboardChartEmpty,
+  DASHBOARD_CHART_ACCENT,
+  DashboardBarTooltip,
+  DASHBOARD_BAR_TOOLTIP_CURSOR,
+  DashboardChartCanvas,
+  PRIMARY_ORANGE_SHADES,
+  STACK_SERIES,
+  STACK_ORDER,
+  DashboardKpiRow,
+  DashboardInsightShell,
+  InsightCountBadge,
+  DashboardProgressRow,
+  progressBarColorForValue,
+} from './DashboardCharts';
+
+// QUICK ACTIONS FAB — shared floating action button base
+export { QuickActionsFab } from './QuickActionsFab';

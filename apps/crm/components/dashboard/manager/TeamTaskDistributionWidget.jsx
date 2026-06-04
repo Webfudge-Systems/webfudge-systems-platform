@@ -16,7 +16,7 @@ import {
   TableCellTaskStatus,
 } from '@webfudge/ui'
 import { fetchManagerDashboardData } from '../../../lib/api/dashboardDataService'
-import GradientStackedBarChart from '../shared/GradientStackedBarChart'
+import { GradientStackedBarChart } from '@webfudge/ui'
 
 const TERMINAL = new Set(['COMPLETED', 'CANCELLED'])
 const TABLE_LIMIT = 50

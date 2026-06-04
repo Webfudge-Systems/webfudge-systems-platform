@@ -2,7 +2,7 @@
 
 import { EmptyState } from '@webfudge/ui';
 import { CheckSquare } from 'lucide-react';
-import DashboardInsightShell, { InsightCountBadge } from './DashboardInsightShell';
+import { DashboardInsightShell, InsightCountBadge } from '@webfudge/ui';
 import TaskActivityAreaChart from './TaskActivityAreaChart';
 
 const SEGMENTS = [

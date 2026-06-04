@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { CheckSquare, AlertTriangle, Calendar, Users } from 'lucide-react'
-import DashboardKpiRow from '../shared/DashboardKpiRow'
+import { DashboardKpiRow } from '@webfudge/ui'
 import { fetchManagerKpis } from '../../../lib/api/dashboardDataService'
 import TeamPerformanceWidget from '../TeamPerformanceWidget'
 import TeamTaskDistributionWidget from '../manager/TeamTaskDistributionWidget'

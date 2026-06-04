@@ -1,6 +1,6 @@
 'use client'
 
-import { KPICard } from '@webfudge/ui'
+import { KPICard } from '../KPICard'
 
 const DEFAULT_SCHEMES = ['orange', 'orange', 'orange', 'orange', 'orange', 'orange']
 

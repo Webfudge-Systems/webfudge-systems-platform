@@ -7,8 +7,12 @@ import { PieChart as PieChartIcon, ChevronRight } from 'lucide-react'
 import { Card, LoadingSpinner, EmptyState } from '@webfudge/ui'
 import leadCompanyService from '../../lib/api/leadCompanyService'
 import { SOURCE_OPTIONS } from '../../lib/dealFormOptions'
-import { DashboardChartCanvas, PRIMARY_ORANGE_SHADES } from './shared/dashboardChartCanvas'
-import { DonutChartFrame, DONUT_TOOLTIP_WRAPPER_STYLE } from './shared/DonutChartFrame'
+import {
+  DashboardChartCanvas,
+  PRIMARY_ORANGE_SHADES,
+  DonutChartFrame,
+  DONUT_TOOLTIP_WRAPPER_STYLE,
+} from '@webfudge/ui'
 
 const TRACK_FILL = '#ffedd5'
 const CHART_INNER = 54

@@ -1,6 +1,6 @@
 'use client'
 
-import { LoadingSpinner } from '@webfudge/ui'
+import { LoadingSpinner } from '../../feedback'
 import { DashboardChartCanvas } from './dashboardChartCanvas'
 
 /**

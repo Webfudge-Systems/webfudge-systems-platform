@@ -7,19 +7,8 @@ import { PieChart as PieChartIcon, Info, ChevronRight } from 'lucide-react'
 import { Card, LoadingSpinner, EmptyState } from '@webfudge/ui'
 import { fetchManagerDashboardData } from '../../../lib/api/dashboardDataService'
 import { scrollbarClass } from '../leadsMeetingsShared'
-import { DonutChartFrame, DONUT_TOOLTIP_WRAPPER_STYLE } from '../shared/DonutChartFrame'
+import { DonutChartFrame, DONUT_TOOLTIP_WRAPPER_STYLE, PRIMARY_ORANGE_SHADES } from '@webfudge/ui'
 
-/** Primary orange scale — distinct slices, single brand family (#FF7A20 anchor). */
-const PRIMARY_ORANGE_SHADES = [
-  '#9a3412', // orange-800
-  '#c2410c', // orange-700
-  '#ea580c', // orange-600
-  '#FF7A20', // brand primary
-  '#fb923c', // orange-400
-  '#fdba74', // orange-300
-  '#fcd34d', // amber-300 (warm accent within family)
-  '#f97316', // orange-500
-]
 const UNASSIGNED_COLOR = '#94a3b8'
 const LIGHT_ORANGE_FILLS = new Set(['#fdba74', '#fcd34d'])
 

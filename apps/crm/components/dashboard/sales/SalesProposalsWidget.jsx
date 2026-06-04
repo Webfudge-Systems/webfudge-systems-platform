@@ -24,8 +24,7 @@ import { COMPACT_HEADER, COMPACT_CELL, DashboardDocRowActions } from './dashboar
 import { formatCurrency } from '@webfudge/utils'
 import proposalService from '../../../lib/api/proposalService'
 import { canEditCRMRecord } from '../../../lib/rbac'
-import { DASHBOARD_CHART_ACCENT } from '../shared/DashboardChartPanel'
-import DashboardBarTooltip, { DASHBOARD_BAR_TOOLTIP_CURSOR } from '../shared/DashboardBarTooltip'
+import { DASHBOARD_CHART_ACCENT, DashboardBarTooltip, DASHBOARD_BAR_TOOLTIP_CURSOR } from '@webfudge/ui'
 
 const PAGE_SIZE = 100
 const TABLE_LIMIT = 25
