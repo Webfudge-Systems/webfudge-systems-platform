@@ -91,9 +91,12 @@ const KPICard = ({
       : 'p-6 pb-0 pr-0'
   const showFooter = !compact && (change || (!change && subtitle))
 
-  const iconBoxClass =
-    'relative h-32 w-32 shrink-0 self-start overflow-hidden rounded-2xl rounded-bl-[0] rounded-tr-[0]'
-  const iconImgClass = 'absolute -bottom-7 -right-7 h-32 w-32'
+  const iconBoxClass = compact
+    ? 'relative h-20 w-20 shrink-0 self-start overflow-hidden rounded-xl rounded-bl-[0] rounded-tr-[0]'
+    : 'relative h-28 w-28 shrink-0 self-start overflow-hidden rounded-2xl rounded-bl-[0] rounded-tr-[0] sm:h-32 sm:w-32'
+  const iconImgClass = compact
+    ? 'absolute bottom-0 right-0 h-16 w-16'
+    : 'absolute bottom-0 right-0 h-24 w-24 sm:h-28 sm:w-28'
 
   const titleClass = isBooks
     ? 'mb-2 text-sm font-medium text-[var(--books-text-secondary,#6b7280)]'
@@ -103,7 +106,11 @@ const KPICard = ({
         'text-4xl font-bold tracking-tight text-[var(--books-text-primary,#111827)]',
         showFooter && 'mb-2'
       )
-    : clsx('text-4xl font-bold text-gray-900', showFooter && 'mb-2')
+    : clsx(
+        'font-bold text-gray-900',
+        compact ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl',
+        showFooter && 'mb-2'
+      )
   const footerClass = isBooks
     ? 'flex items-center gap-1.5 text-sm text-[var(--books-text-secondary,#6b7280)]'
     : 'flex items-center gap-1.5 text-sm text-gray-500'
@@ -129,7 +136,7 @@ const KPICard = ({
       onClick={onClick}
     >
       <div className="flex justify-between items-start">
-        <div className="min-w-0 flex-1 pr-2">
+        <div className={clsx('relative z-10 min-w-0 flex-1', Icon && (compact ? 'pr-3' : 'pr-4 sm:pr-6'))}>
           <p className={titleClass}>{title}</p>
           <p className={valueClass}>{value}</p>
           {showFooter && change && (
