@@ -53,6 +53,8 @@ import {
   ActivitiesTimeline,
   EntityActivityPanel,
   TableCellOrangePill,
+  TableCellDealStageSelect,
+  useIndustrySelectOptions,
 } from '@webfudge/ui';
 import PMPageHeader from '../../../../components/PMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
@@ -81,13 +83,13 @@ import {
   crmNewInvoiceUrl,
 } from '../../../../lib/crmAppUrl';
 import {
-  industryOptions,
   companyTypeSelectOptions,
   INDUSTRY_OTHER_VALUE,
   industryFormFromStored,
   resolveIndustryForSave,
   canonicalCompanyTypeValue,
 } from '@webfudge/utils';
+import { fetchStoredIndustriesForPm } from '../../../../lib/industryOptionsLoader';
 import { getIndustryVisual } from '@webfudge/ui/utils/industryVisuals';
 
 function formatCurrency(value) {
@@ -310,6 +312,7 @@ export default function ClientAccountDetailPage() {
   const [contactsLoading, setContactsLoading] = useState(true);
   const [linkedDeals, setLinkedDeals] = useState([]);
   const [dealsLoading, setDealsLoading] = useState(true);
+  const [stageSavingId, setStageSavingId] = useState(null);
   const [linkedInvoices, setLinkedInvoices] = useState([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
   const [linkedProjects, setLinkedProjects] = useState([]);
@@ -333,6 +336,11 @@ export default function ClientAccountDetailPage() {
   const canCreateDeals = canWriteCrmModule('deals');
   const canCreateInvoices = canWriteCrmModule('client_invoices');
   const canCreateProjects = canWriteCrmModule('client_projects');
+
+  const { options: industrySelectOptions, onIndustrySaved } = useIndustrySelectOptions({
+    fetchStoredIndustries: fetchStoredIndustriesForPm,
+    seedIndustries: account?.industry ? [account.industry] : [],
+  });
 
   const [editingCompanyInfo, setEditingCompanyInfo] = useState(false);
   const [companyInfoDraft, setCompanyInfoDraft] = useState(null);
@@ -772,6 +780,7 @@ export default function ClientAccountDetailPage() {
         description: companyInfoDraft.description.trim() || null,
       };
       await clientAccountService.update(id, payload);
+      onIndustrySaved(resolvedIndustry);
       const refreshed = await clientAccountService.getOne(id);
       if (refreshed?.data) setAccount(refreshed.data);
       setEditingCompanyInfo(false);
@@ -1040,6 +1049,22 @@ export default function ClientAccountDetailPage() {
     [router]
   );
 
+  const handleDealStageChange = useCallback(async (dealId, newStage) => {
+    if (!canWriteCrmModule('deals')) return;
+    setStageSavingId(dealId);
+    try {
+      await dealService.update(dealId, { stage: newStage });
+      setLinkedDeals((prev) =>
+        prev.map((d) => (d.id === dealId ? { ...d, stage: newStage } : d))
+      );
+    } catch (e) {
+      console.error(e);
+      alert(e?.message || 'Failed to update deal stage.');
+    } finally {
+      setStageSavingId(null);
+    }
+  }, []);
+
   const clientAccountDealsColumns = useMemo(
     () => [
       {
@@ -1069,26 +1094,14 @@ export default function ClientAccountDetailPage() {
       {
         key: 'stage',
         label: 'STAGE',
-        render: (_, deal) => {
-          const s = (deal.stage || 'discovery').toLowerCase();
-          const stageMap = {
-            discovery: 'border-sky-200 bg-sky-50 text-sky-900',
-            prospect: 'border-slate-200 bg-slate-50 text-slate-800',
-            proposal: 'border-violet-200 bg-violet-50 text-violet-900',
-            negotiation: 'border-amber-200 bg-amber-50 text-amber-900',
-            won: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-            lost: 'border-red-200 bg-red-50 text-red-900',
-          };
-          const cls = stageMap[s] || stageMap.discovery;
-          const label = s.charAt(0).toUpperCase() + s.slice(1);
-          return (
-            <span
-              className={`inline-flex whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${cls}`}
-            >
-              {label}
-            </span>
-          );
-        },
+        render: (_, deal) => (
+          <TableCellDealStageSelect
+            stage={deal.stage}
+            onStageChange={(next) => handleDealStageChange(deal.id, next)}
+            saving={stageSavingId === deal.id}
+            canEdit={canWriteCrmModule('deals')}
+          />
+        ),
       },
       {
         key: 'priority',
@@ -1174,7 +1187,7 @@ export default function ClientAccountDetailPage() {
         ),
       },
     ],
-    [router]
+    [router, stageSavingId, handleDealStageChange]
   );
 
   const clientAccountInvoicesColumns = useMemo(
@@ -1628,9 +1641,11 @@ export default function ClientAccountDetailPage() {
                                   : prev
                               );
                             }}
-                            options={industryOptions}
+                            options={industrySelectOptions}
                             placeholder="Select industry"
                             icon={IndustryIcon}
+                            allowCustom
+                            searchable
                           />
                           {companyInfoDraft.industry === INDUSTRY_OTHER_VALUE ? (
                             <Input

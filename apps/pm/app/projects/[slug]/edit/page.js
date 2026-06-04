@@ -161,6 +161,9 @@ export default function EditProjectPage() {
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Project name is required';
+    if (form.clientId === undefined || form.clientId === null) {
+      errs.clientId = 'Client is required';
+    }
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       errs.endDate = 'End date must be after start date';
     }
@@ -340,13 +343,16 @@ export default function EditProjectPage() {
             />
             <Select
               label="Client"
+              required
               value={form.clientId}
               options={[{ value: '', label: 'No client' }, ...clientOptions]}
-              onChange={(val) => setForm((p) => ({ ...p, clientId: val }))}
-              placeholder={clientsLoading ? 'Loading clients…' : 'Select a client (optional)'}
+              onChange={(val) => setForm((p) => ({ ...p, clientId: val ?? '' }))}
+              placeholder={clientsLoading ? 'Loading clients…' : 'No client'}
+              allowEmpty={false}
               disabled={clientsLoading}
               searchable
               searchPlaceholder="Search clients…"
+              error={errors.clientId}
             />
             {!clientsLoading && clientOptions.length === 0 ? (
               <p className="text-xs text-gray-500">

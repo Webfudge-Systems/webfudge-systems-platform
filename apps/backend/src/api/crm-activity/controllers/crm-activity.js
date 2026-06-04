@@ -54,6 +54,50 @@ function orgIdFromRelation(rel) {
   return rel;
 }
 
+function commentKindFromMeta(meta) {
+  if (!meta || typeof meta !== 'object') return 'general';
+  return meta.commentKind === 'next_connect' ? 'next_connect' : 'general';
+}
+
+function normalizeCommentKind(raw) {
+  const value = String(raw || 'general').trim().toLowerCase();
+  return value === 'next_connect' ? 'next_connect' : 'general';
+}
+
+function filterActivitiesByCommentKind(rows, commentKind) {
+  if (!commentKind || commentKind === 'all') return rows;
+  if (commentKind === 'next_connect') {
+    return rows.filter((row) => commentKindFromMeta(row.meta) === 'next_connect');
+  }
+  if (commentKind === 'general') {
+    return rows.filter((row) => commentKindFromMeta(row.meta) !== 'next_connect');
+  }
+  return rows;
+}
+
+async function countLeadCompanyComments(strapi, orgId, leadCompanyId, commentKind) {
+  if (!commentKind || commentKind === 'all') {
+    return strapi.db.query(UID).count({
+      where: {
+        organization: orgId,
+        leadCompany: leadCompanyId,
+        action: 'comment',
+      },
+    });
+  }
+
+  const rows = await strapi.entityService.findMany(UID, {
+    filters: {
+      organization: orgId,
+      leadCompany: leadCompanyId,
+      action: 'comment',
+    },
+    fields: ['meta'],
+    limit: 500,
+  });
+  return filterActivitiesByCommentKind(rows, commentKind).length;
+}
+
 module.exports = createCoreController(UID, ({ strapi }) => ({
   /**
    * GET /crm-activities/timeline?contactId= | ?leadCompanyId= | ?dealId= | ?clientAccountId= | ?projectId=
@@ -106,6 +150,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const limit = Math.min(parseInt(q.limit || q['limit'] || '50', 10), 100);
     const type = String(q.type || q['type'] || '').trim().toLowerCase();
+    const commentKind = String(q.commentKind || q['commentKind'] || '').trim().toLowerCase();
 
     let filters;
 
@@ -248,7 +293,12 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       populate: ['actor'],
     });
 
-    return { data: results, meta: { total } };
+    const filtered =
+      type === 'comment' && commentKind
+        ? filterActivitiesByCommentKind(results, commentKind)
+        : results;
+
+    return { data: filtered, meta: { total: filtered.length } };
   },
 
   /**
@@ -349,6 +399,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const comment = String(commentRaw || '').trim();
     if (!comment) return ctx.badRequest('Comment is required');
     if (comment.length > 5000) return ctx.badRequest('Comment is too long');
+    const commentKind = hasLead ? normalizeCommentKind(payload?.commentKind) : 'general';
 
     const actorName =
       ctx.state.user?.username ||
@@ -602,8 +653,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'lead_company',
         subjectId: leadCompanyId,
         leadCompany: leadCompanyId,
-        summary: `${actorName} commented on "${leadName}"`,
-        meta: { comment },
+        summary:
+          commentKind === 'next_connect'
+            ? `${actorName} added a next connect reason on "${leadName}"`
+            : `${actorName} commented on "${leadName}"`,
+        meta: { comment, commentKind },
       },
       populate: ['actor'],
     });
@@ -804,17 +858,18 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     if (!ids.length) return { data: {} };
 
+    const commentKind = String(q.commentKind || q['commentKind'] || '').trim().toLowerCase();
+
     const pairs = await Promise.all(
       ids.map(async (leadCompanyId) => {
         let count = 0;
         try {
-          count = await strapi.db.query(UID).count({
-            where: {
-              organization: ctx.state.orgId,
-              leadCompany: leadCompanyId,
-              action: 'comment',
-            },
-          });
+          count = await countLeadCompanyComments(
+            strapi,
+            ctx.state.orgId,
+            leadCompanyId,
+            commentKind
+          );
         } catch (_) {
           count = 0;
         }

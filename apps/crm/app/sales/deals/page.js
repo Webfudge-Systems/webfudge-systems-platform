@@ -19,7 +19,6 @@ import {
   LayoutGrid,
   Building2,
   Mail,
-  ChevronDown,
   Kanban,
   Table2,
 } from 'lucide-react';
@@ -45,6 +44,7 @@ import {
   TableCellPrimaryContact,
   TableCellTitleSubtitle,
   TableCellProbability,
+  TableCellDealStageSelect,
   ViewToggleGroup,
   ViewToggleButton,
 } from '@webfudge/ui';
@@ -54,7 +54,7 @@ import WonDealProjectModal from '../../../components/WonDealProjectModal';
 import dealService from '../../../lib/api/dealService';
 import { shouldPromptDeliveryProjectOnWon } from '../../../lib/wonDealProjectPrompt';
 import crmActivityService from '../../../lib/api/crmActivityService';
-import { DEAL_STAGE_OPTIONS, contactDisplayName } from '../../../lib/dealFormOptions';
+import { contactDisplayName } from '../../../lib/dealFormOptions';
 import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../lib/rbac';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
@@ -204,19 +204,6 @@ function formatCommentTime(iso) {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-function stageSelectClasses(stage) {
-  const s = (stage || 'discovery').toLowerCase();
-  const map = {
-    discovery: 'border-sky-200 bg-sky-50 text-sky-900',
-    prospect: 'border-slate-200 bg-slate-50 text-slate-800',
-    proposal: 'border-violet-200 bg-violet-50 text-violet-900',
-    negotiation: 'border-amber-200 bg-amber-50 text-amber-900',
-    won: 'border-emerald-200 bg-emerald-50 text-emerald-900',
-    lost: 'border-red-200 bg-red-50 text-red-900',
-  };
-  return map[s] || map.discovery;
 }
 
 function companyLine(deal) {
@@ -740,33 +727,14 @@ export default function DealsPage() {
         key: 'stage',
         visibilityKey: 'stage',
         label: 'STAGE',
-        render: (_, deal) => {
-          const canEditDeal = canEditCRMRecord('deals', deal);
-          return (
-            <div
-              className="min-w-[140px]"
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="relative">
-                <select
-                  aria-label="Stage"
-                  disabled={stageSavingId === deal.id || !canEditDeal}
-                  value={(deal.stage || 'discovery').toLowerCase()}
-                  onChange={(e) => handleStageChange(deal.id, e.target.value)}
-                  className={`w-full cursor-pointer appearance-none rounded-full border py-1.5 pl-3 pr-8 text-xs font-semibold uppercase tracking-wide shadow-sm focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:opacity-50 ${stageSelectClasses(deal.stage)}`}
-                >
-                  {DEAL_STAGE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
-              </div>
-            </div>
-          );
-        },
+        render: (_, deal) => (
+          <TableCellDealStageSelect
+            stage={deal.stage}
+            onStageChange={(next) => handleStageChange(deal.id, next)}
+            saving={stageSavingId === deal.id}
+            canEdit={canEditCRMRecord('deals', deal)}
+          />
+        ),
       },
       {
         key: 'probability',

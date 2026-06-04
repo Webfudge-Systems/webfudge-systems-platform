@@ -30,7 +30,6 @@ const FIELD_LABELS = {
   leadCompany: 'Lead company',
   industry: 'Industry',
   type: 'Type',
-  subType: 'Subtype',
   website: 'Website',
   employees: 'Employees',
   founded: 'Founded',

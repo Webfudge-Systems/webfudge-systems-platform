@@ -32,6 +32,17 @@ const formatCurrency = (value, currency = 'INR') => {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD', maximumFractionDigits: 0 }).format(num);
 };
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === 'production' ? 'https://api.webfudge.in' : 'http://localhost:1338');
+
+function getProposalFileUrl(proposalFile) {
+  const raw = proposalFile?.url;
+  if (!raw) return null;
+  if (raw.startsWith('http')) return raw;
+  return `${API_BASE_URL}${raw.startsWith('/') ? raw : `/${raw}`}`;
+}
+
 const formatDate = (d) => {
   if (!d) return '—';
   const date = new Date(d);
@@ -291,6 +302,9 @@ export default function ProposalDetailPage() {
   const outOfScope = Array.isArray(proposal.outOfScope) ? proposal.outOfScope : [];
   const handoverDeliverables = Array.isArray(proposal.handoverDeliverables) ? proposal.handoverDeliverables : [];
   const statusCfg = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.DRAFT;
+  const isUploadedProposal =
+    proposal.creationMode === 'UPLOAD' || Boolean(proposal.proposalFile?.url || proposal.proposalFile?.id);
+  const uploadedPdfUrl = getProposalFileUrl(proposal.proposalFile);
 
   const statusActions = Object.entries(STATUS_CONFIG)
     .filter(([k]) => k !== proposal.status)
@@ -394,14 +408,25 @@ export default function ProposalDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                onClick={() => setShowPreview(true)}
-                variant="outline"
-                className="h-9 px-3 flex items-center gap-2 border-orange-200 text-orange-700 hover:bg-orange-50"
-              >
-                <Eye className="w-4 h-4" /> Preview
-              </Button>
+              {isUploadedProposal && uploadedPdfUrl ? (
+                <Button
+                  type="button"
+                  onClick={() => window.open(uploadedPdfUrl, '_blank', 'noopener,noreferrer')}
+                  variant="outline"
+                  className="h-9 px-3 flex items-center gap-2 border-orange-200 text-orange-700 hover:bg-orange-50"
+                >
+                  <Download className="w-4 h-4" /> Open PDF
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={() => setShowPreview(true)}
+                  variant="outline"
+                  className="h-9 px-3 flex items-center gap-2 border-orange-200 text-orange-700 hover:bg-orange-50"
+                >
+                  <Eye className="w-4 h-4" /> Preview
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={() => router.push(`/clients/proposals/${id}/edit`)}

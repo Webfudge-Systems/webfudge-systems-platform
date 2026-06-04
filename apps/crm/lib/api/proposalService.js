@@ -18,6 +18,7 @@ const POPULATE_DEFAULT = [
   'leadCompany',
   'clientAccount',
   'deal',
+  'proposalFile',
 ];
 
 const normalizeEntry = (e) => normalizeStrapiEntry(e);
@@ -45,7 +46,7 @@ function buildWritePayload(payload) {
     'totalValue',
   ].forEach(toNullIfBlank);
 
-  for (const key of ['assignedTo', 'leadCompany', 'clientAccount', 'deal']) {
+  for (const key of ['assignedTo', 'leadCompany', 'clientAccount', 'deal', 'proposalFile']) {
     if (Object.prototype.hasOwnProperty.call(data, key)) {
       if (data[key] === '' || data[key] === null) {
         data[key] = null;

@@ -24,6 +24,8 @@ import {
   ViewToggleButton,
   ViewToggleGroup,
   ownerDisplayFromUser,
+  TableCellProjectStatusSelect,
+  PROJECT_STATUS_OPTIONS,
 } from '@webfudge/ui';
 import { clsx } from 'clsx';
 import {
@@ -48,10 +50,6 @@ import PMPageHeader from '../../components/PMPageHeader';
 import { ProgressBar as PMProgress } from '@webfudge/ui';
 import PMRowActions from '../../components/PMRowActions';
 import ProjectsKanbanBoard from '../../components/ProjectsKanbanBoard';
-import {
-  PROJECT_STATUS_OPTIONS,
-  getProjectStatusMeta,
-} from '../../components/PMStatusBadge';
 import { fetchPmAssignableUsers } from '../../lib/api/messageService';
 import {
   addProjectComment,
@@ -190,17 +188,6 @@ function persistColumnWidths(widths) {
 }
 
 /** Same badge chrome as My Tasks / CRM status selects */
-const STATUS_SELECT_VARIANT_CLASS = {
-  primary: 'border-blue-200 bg-blue-50 text-blue-800',
-  warning: 'border-amber-200 bg-amber-50 text-amber-800',
-  orange: 'border-orange-200 bg-orange-50 text-orange-800',
-  cyan: 'border-cyan-200 bg-cyan-50 text-cyan-800',
-  purple: 'border-purple-200 bg-purple-50 text-purple-800',
-  success: 'border-green-200 bg-green-50 text-green-800',
-  danger: 'border-red-200 bg-red-50 text-red-800',
-  default: 'border-gray-200 bg-gray-50 text-gray-800',
-};
-
 function isProjectOverdue(project) {
   if (!project?.endDate) return false;
   const due = new Date(project.endDate);
@@ -806,21 +793,14 @@ export default function ProjectsPage() {
         visibilityKey: 'status',
         label: 'STATUS',
         render: (_, row) => {
-          const meta = getProjectStatusMeta(row.strapiStatus);
-          const chrome = STATUS_SELECT_VARIANT_CLASS[meta.variant] || STATUS_SELECT_VARIANT_CLASS.default;
           const canEditRow = canEditProjectInPm(row, currentUserId);
           return (
-            <div onClick={(event) => event.stopPropagation()}>
-              <Select
-                value={row.strapiStatus}
-                options={PROJECT_STATUS_OPTIONS}
-                onChange={(status) => updateProjectStatus(row, status)}
-                disabled={savingId === row.id || !canEditRow}
-                className={`py-1.5 text-xs font-semibold uppercase tracking-wide ${chrome}`}
-                containerClassName="min-w-[150px]"
-                placeholder="Status"
-              />
-            </div>
+            <TableCellProjectStatusSelect
+              status={row.strapiStatus}
+              onStatusChange={(status) => updateProjectStatus(row, status)}
+              saving={savingId === row.id}
+              canEdit={canEditRow}
+            />
           );
         },
       },
@@ -921,7 +901,7 @@ export default function ProjectsPage() {
               isProjectOverdue(row) ? '[&_.font-semibold]:text-red-700 [&_.text-gray-500]:text-red-600/90' : ''
             }
           >
-            <TableCellCreated dateString={row.endDate} />
+            <TableCellCreated dateString={row.endDate} dateMode="calendar" />
           </div>
         ),
       },
@@ -929,7 +909,7 @@ export default function ProjectsPage() {
         key: 'startDate',
         visibilityKey: 'startDate',
         label: 'START',
-        render: (_, row) => <TableCellCreated dateString={row.startDate} />,
+        render: (_, row) => <TableCellCreated dateString={row.startDate} dateMode="calendar" />,
       },
       {
         key: 'tasks',

@@ -45,6 +45,41 @@ export {
   formatRelativeTime,
   formatTableDate,
   ownerDisplayFromUser,
+  NextConnectFlag,
+  TableCellNextConnect,
+  getNextConnectFlagVariant,
+  getNextConnectFlagLabel,
+  toDateInputValue,
+  LEAD_STATUS_OPTIONS,
+  TASK_STATUS_OPTIONS,
+  DEAL_STAGE_OPTIONS,
+  ACCOUNT_STATUS_OPTIONS,
+  PM_TASK_STATUS_OPTIONS,
+  PROJECT_STATUS_OPTIONS,
+  PROPOSAL_STATUS_OPTIONS,
+  INVOICE_STATUS_OPTIONS,
+  crmLeadTableSelectFillProps,
+  crmTaskTableSelectFillProps,
+  crmDealStageTableSelectFillProps,
+  crmAccountTableSelectFillProps,
+  crmPmTaskTableSelectFillProps,
+  crmProjectTableSelectFillProps,
+  crmProposalTableSelectFillProps,
+  crmInvoiceTableSelectFillProps,
+  TableCellTaskStatus,
+  TableCellDealStage,
+  TableCellProjectStatus,
+  TableCellProposalStatus,
+  TableCellInvoiceStatus,
+  TableCellLeadStatusSelect,
+  TableCellTaskStatusSelect,
+  TableCellAccountStatusSelect,
+  TableCellProjectStatusSelect,
+  TableCellDealStageSelect,
+  TableCellProposalStatusSelect,
+  TableCellInvoiceStatusSelect,
+  TableCellCrmRowActions,
+  crmTableActionsColumn,
   TableRowActionMenuPortal,
   // Navigation Components
   Tabs,
@@ -99,6 +134,10 @@ export {
 
 // HOOKS
 export { useTableSort } from '../hooks/useTableSort';
+export {
+  useIndustrySelectOptions,
+  collectDistinctIndustriesFromList,
+} from '../hooks/useIndustrySelectOptions';
 
 // UTILS
 export {

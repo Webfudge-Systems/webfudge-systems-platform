@@ -15,6 +15,8 @@ import {
   Select,
   Table,
   Textarea,
+  useIndustrySelectOptions,
+  toDateInputValue,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../../lib/api/leadCompanyService';
@@ -23,9 +25,8 @@ import {
   canonicalCompanyTypeValue,
   canonicalIndustryValue,
   companyTypeSelectOptions,
-  getSubTypeOptionsForType,
-  industryOptions,
 } from '@webfudge/utils';
+import { fetchStoredIndustriesForCrm } from '../../../../../lib/industryOptionsLoader';
 import { canEditCRMRecord } from '../../../../../lib/rbac';
 import {
   AlignLeft,
@@ -62,7 +63,6 @@ export default function EditLeadCompanyPage() {
     companyName: '',
     industry: '',
     type: '',
-    subType: '',
     website: '',
     phone: '',
     email: '',
@@ -79,6 +79,7 @@ export default function EditLeadCompanyPage() {
     twitter: '',
     description: '',
     notes: '',
+    nextConnectDate: '',
   });
 
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -134,13 +135,10 @@ export default function EditLeadCompanyPage() {
     []
   );
 
-  const industrySelectOptions = useMemo(() => {
-    const v = draft.industry?.trim();
-    if (!v) return industryOptions;
-    if (industryOptions.some((o) => o.value === v)) return industryOptions;
-    // Allow custom value if backend stored a free-text industry.
-    return [{ value: v, label: v }, ...industryOptions];
-  }, [draft.industry]);
+  const { options: industrySelectOptions, onIndustrySaved } = useIndustrySelectOptions({
+    fetchStoredIndustries: fetchStoredIndustriesForCrm,
+    seedIndustries: draft.industry ? [draft.industry] : [],
+  });
 
   const typeSelectOptions = useMemo(() => {
     const v = draft.type?.trim();
@@ -148,14 +146,6 @@ export default function EditLeadCompanyPage() {
     if (companyTypeSelectOptions.some((o) => o.value === v)) return companyTypeSelectOptions;
     return [{ value: v, label: v }, ...companyTypeSelectOptions];
   }, [draft.type]);
-
-  const subTypeSelectOptions = useMemo(() => {
-    const base = getSubTypeOptionsForType(draft.type || '');
-    const v = draft.subType?.trim();
-    if (!v) return base;
-    if (base.some((o) => o.value === v)) return base;
-    return [{ value: v, label: v }, ...base];
-  }, [draft.type, draft.subType]);
 
   useEffect(() => {
     if (!id) return;
@@ -171,7 +161,6 @@ export default function EditLeadCompanyPage() {
             companyName: d.companyName ?? d.name ?? '',
             industry: canonicalIndustryValue(d.industry ?? ''),
             type: canonicalCompanyTypeValue(d.type ?? ''),
-            subType: d.subType ?? '',
             website: d.website ?? '',
             phone: d.phone ?? '',
             email: d.email ?? '',
@@ -188,6 +177,7 @@ export default function EditLeadCompanyPage() {
             twitter: d.twitter ?? '',
             description: d.description ?? '',
             notes: d.notes ?? '',
+            nextConnectDate: toDateInputValue(d.nextConnectDate),
           });
         }
       } finally {
@@ -243,11 +233,7 @@ export default function EditLeadCompanyPage() {
   }, [id, reloadLinkedContacts]);
 
   const setDraftField = (field, value) => {
-    setDraft((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === 'type' && value !== prev.type) next.subType = '';
-      return next;
-    });
+    setDraft((prev) => ({ ...prev, [field]: value }));
   };
 
   const validateAddContact = () => {
@@ -364,7 +350,6 @@ export default function EditLeadCompanyPage() {
         companyName: draft.companyName.trim(),
         industry: draft.industry.trim(),
         type: draft.type.trim(),
-        subType: draft.subType.trim(),
         website: draft.website.trim(),
         phone: draft.phone.trim(),
         email: draft.email.trim(),
@@ -382,8 +367,13 @@ export default function EditLeadCompanyPage() {
         notes: draft.notes.trim(),
       };
 
+      if (draft.nextConnectDate.trim()) {
+        payload.nextConnectDate = draft.nextConnectDate.trim();
+      } else {
+        payload.nextConnectDate = null;
+      }
+
       if (payload.type === '') delete payload.type;
-      if (payload.subType === '') delete payload.subType;
       if (payload.website === '') delete payload.website;
       if (payload.phone === '') delete payload.phone;
       if (payload.address === '') delete payload.address;
@@ -400,6 +390,7 @@ export default function EditLeadCompanyPage() {
         if (!Number.isNaN(n)) payload.dealValue = n;
       }
       await leadCompanyService.update(id, payload);
+      onIndustrySaved(payload.industry);
       setShowSuccess(true);
       window.setTimeout(() => {
         router.push(`/sales/lead-companies/${id}`);
@@ -659,6 +650,8 @@ export default function EditLeadCompanyPage() {
                     options={industrySelectOptions}
                     placeholder="Select industry"
                     icon={Building2}
+                    allowCustom
+                    searchable
                   />
                 </div>
                 <div>
@@ -668,17 +661,6 @@ export default function EditLeadCompanyPage() {
                     onChange={(v) => setDraftField('type', v)}
                     options={typeSelectOptions}
                     placeholder="Select company type"
-                    icon={Layers}
-                  />
-                </div>
-                <div>
-                  <Select
-                    label="Sub-type"
-                    value={draft.subType}
-                    onChange={(v) => setDraftField('subType', v)}
-                    options={subTypeSelectOptions}
-                    placeholder={draft.type ? 'Select sub-type' : 'Select company type first'}
-                    disabled={!draft.type}
                     icon={Layers}
                   />
                 </div>
@@ -774,6 +756,13 @@ export default function EditLeadCompanyPage() {
                   onChange={(v) => setDraftField('status', v)}
                   options={statusOptions}
                   placeholder="Select status"
+                />
+                <Input
+                  label="Next connect date"
+                  type="date"
+                  value={draft.nextConnectDate}
+                  onChange={(e) => setDraftField('nextConnectDate', e.target.value)}
+                  icon={Calendar}
                 />
                 <Input
                   label="Founded Year"

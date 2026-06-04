@@ -36,6 +36,12 @@ const {
 } = require('../../../utils/task-recurrence');
 
 const { relId } = require('../../../utils/books-crud');
+const {
+  isCrmTaskEntity,
+  crmTaskScopeFilter,
+  readTaskListScope,
+  mergeScopeFilter,
+} = require('../../../utils/task-scope');
 
 const UID = 'api::task.task';
 
@@ -465,11 +471,30 @@ async function memberMayViewTask(strapi, orgId, userId, entry) {
 
 const MEMBER_TASK_UPDATE_FIELDS = new Set(['status']);
 
+function requireTasksRead(ctx, { crmOnly = false } = {}) {
+  if (crmOnly) {
+    return requireModuleAccess(ctx, 'crm', 'tasks', 'read');
+  }
+  const pmDenied = requireModuleAccess(ctx, 'pm', 'tasks', 'read');
+  if (!pmDenied) return null;
+  return requireModuleAccess(ctx, 'crm', 'tasks', 'read');
+}
+
+function requireMyWorkRead(ctx, { crmOnly = false } = {}) {
+  if (crmOnly) {
+    return requireModuleAccess(ctx, 'crm', 'tasks', 'read');
+  }
+  const pmDenied = requireModuleAccess(ctx, 'pm', 'my_tasks', 'read');
+  if (!pmDenied) return null;
+  return requireModuleAccess(ctx, 'crm', 'tasks', 'read');
+}
+
 module.exports = createCoreController(UID, ({ strapi }) => ({
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
-    const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'read');
+    const crmScope = readTaskListScope(ctx) === 'crm';
+    const denied = requireTasksRead(ctx, { crmOnly: crmScope });
     if (denied) return denied;
 
     const { query, page, pageSize, sort } = readListQuery(ctx, {
@@ -478,7 +503,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       defaultSort: 'scheduledDate:desc',
     });
 
-    const filters = { organization: ctx.state.orgId };
+    let filters = { organization: ctx.state.orgId };
     const extra = query.filters;
     const extraFilters = {};
     if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
@@ -491,7 +516,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (extra.projects) extraFilters.projects = extra.projects;
     }
 
-    if (isPmOrgMemberRole(ctx) && ctx.state.user?.id) {
+    if (crmScope) {
+      filters = mergeScopeFilter(filters, crmTaskScopeFilter());
+    }
+
+    if (isPmOrgMemberRole(ctx) && ctx.state.user?.id && !crmScope) {
       const uid = ctx.state.user.id;
       const pids = await projectIdsForMember(strapi, ctx.state.orgId, uid);
       const visOr = [{ assignee: uid }, { collaborators: { id: uid } }];
@@ -988,11 +1017,12 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     return { data: entry };
   },
 
-  /** GET /tasks/my-work */
+  /** GET /tasks/my-work — ?scope=crm excludes PM project-only tasks (CRM app). */
   async myWork(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
-    const denied = requireModuleAccess(ctx, 'pm', 'my_tasks', 'read');
+    const crmScope = readTaskListScope(ctx) === 'crm';
+    const denied = requireMyWorkRead(ctx, { crmOnly: crmScope });
     if (denied) return denied;
 
     const userId = ctx.state.user.id;
@@ -1001,7 +1031,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const terminal = ['COMPLETED', 'CANCELLED'];
 
     const projectTasksPromise =
-      isPmOrgMemberRole(ctx) && userId
+      !crmScope && isPmOrgMemberRole(ctx) && userId
         ? projectIdsForMember(strapi, orgId, userId).then((pids) =>
             pids.length
               ? strapi.entityService.findMany(UID, {
@@ -1011,11 +1041,13 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
                   },
                   limit: 200,
                   sort: { scheduledDate: 'ASC' },
-                  populate: ['leadCompany', 'assignee'],
+                  populate: ['leadCompany', 'assignee', 'clientAccount', 'deal'],
                 })
               : []
           )
         : Promise.resolve([]);
+
+    const crmRelationPopulate = ['leadCompany', 'assignee', 'clientAccount', 'deal'];
 
     const [asAssignee, asCollaborator, fromProjects] = await Promise.all([
       strapi.entityService.findMany(UID, {
@@ -1025,7 +1057,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         },
         limit: 200,
         sort: { scheduledDate: 'ASC' },
-        populate: ['leadCompany', 'assignee'],
+        populate: crmRelationPopulate,
       }),
       strapi.entityService.findMany(UID, {
         filters: {
@@ -1034,7 +1066,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         },
         limit: 200,
         sort: { scheduledDate: 'ASC' },
-        populate: ['leadCompany', 'assignee'],
+        populate: crmRelationPopulate,
       }),
       projectTasksPromise,
     ]);
@@ -1050,7 +1082,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (t?.id != null) byId.set(t.id, t);
     }
 
-    const tasks = [...byId.values()].filter((t) => t && !terminal.includes(t.status));
+    let tasks = [...byId.values()].filter((t) => t && !terminal.includes(t.status));
+    if (crmScope) {
+      tasks = tasks.filter(isCrmTaskEntity);
+    }
 
     const now = new Date();
     const sod = startOfDay(now);

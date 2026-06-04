@@ -8,7 +8,6 @@ export const LEAD_COMPANY_SORT_COLUMNS = [
   { key: 'contactsCount', label: 'Contacts' },
   { key: 'assignedTo',  label: 'Assigned to' },
   { key: 'type',        label: 'Type' },
-  { key: 'subType',     label: 'Sub-type' },
   { key: 'industry',    label: 'Industry' },
   { key: 'score',       label: 'Score' },
   { key: 'healthScore', label: 'Health score' },

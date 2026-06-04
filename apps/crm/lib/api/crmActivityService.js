@@ -87,43 +87,54 @@ export async function fetchMeetingTimeline({ meetingId, limit = 80 } = {}) {
  * @param {{ leadCompanyId: string|number, limit?: number }} opts
  * @returns {Promise<{ data: object[], total: number }>}
  */
-export async function fetchLeadCompanyComments({ leadCompanyId, limit = 30 } = {}) {
+export async function fetchLeadCompanyComments({ leadCompanyId, limit = 30, commentKind } = {}) {
   if (leadCompanyId == null || String(leadCompanyId).trim() === '') {
     return { data: [], total: 0 };
   }
-  const res = await strapiClient.get('/crm-activities/timeline', {
+  const params = {
     leadCompanyId,
     limit,
     type: 'comment',
-  });
+  };
+  if (commentKind) params.commentKind = commentKind;
+  const res = await strapiClient.get('/crm-activities/timeline', params);
   const data = Array.isArray(res?.data) ? res.data : [];
   const total = typeof res?.meta?.total === 'number' ? res.meta.total : data.length;
   return { data, total };
 }
 
 /**
- * @param {{ leadCompanyId: string|number, comment: string }} opts
+ * @param {{ leadCompanyId: string|number, comment: string, commentKind?: 'general' | 'next_connect' }} opts
  * @returns {Promise<{ data: object }>}
  */
-export async function addLeadCompanyComment({ leadCompanyId, comment } = {}) {
+export async function addLeadCompanyComment({ leadCompanyId, comment, commentKind = 'general' } = {}) {
   return strapiClient.post('/crm-activities/comments', {
     leadCompanyId,
     comment,
+    commentKind,
   });
 }
 
+export async function fetchLeadCompanyNextConnectReasons({ leadCompanyId, limit = 20 } = {}) {
+  return fetchLeadCompanyComments({ leadCompanyId, limit, commentKind: 'next_connect' });
+}
+
+export async function addLeadCompanyNextConnectReason({ leadCompanyId, comment } = {}) {
+  return addLeadCompanyComment({ leadCompanyId, comment, commentKind: 'next_connect' });
+}
+
 /**
- * @param {{ leadCompanyIds: (string|number)[] }} opts
+ * @param {{ leadCompanyIds: (string|number)[], commentKind?: 'general' | 'next_connect' | 'all' }} opts
  * @returns {Promise<Record<string, number>>}
  */
-export async function fetchLeadCompanyCommentCounts({ leadCompanyIds } = {}) {
+export async function fetchLeadCompanyCommentCounts({ leadCompanyIds, commentKind } = {}) {
   const ids = Array.isArray(leadCompanyIds)
     ? leadCompanyIds.map((v) => String(v).trim()).filter(Boolean)
     : [];
   if (!ids.length) return {};
-  const res = await strapiClient.get('/crm-activities/comment-counts', {
-    leadCompanyIds: ids.join(','),
-  });
+  const params = { leadCompanyIds: ids.join(',') };
+  if (commentKind) params.commentKind = commentKind;
+  const res = await strapiClient.get('/crm-activities/comment-counts', params);
   return res?.data && typeof res.data === 'object' ? res.data : {};
 }
 
@@ -309,6 +320,8 @@ export default {
   fetchMeetingTimeline,
   fetchLeadCompanyComments,
   addLeadCompanyComment,
+  fetchLeadCompanyNextConnectReasons,
+  addLeadCompanyNextConnectReason,
   fetchLeadCompanyCommentCounts,
   fetchDealComments,
   addDealComment,

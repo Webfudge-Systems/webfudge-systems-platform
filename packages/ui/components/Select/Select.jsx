@@ -41,6 +41,8 @@ function SearchableSelect({
   listClassName,
   menuPortal = true,
   chevronClassName,
+  /** When true, shows "Add …" when search text does not match an existing option. */
+  allowCustom = false,
   id: idProp,
   ...props
 }) {
@@ -82,6 +84,18 @@ function SearchableSelect({
     if (!q) return allOptions
     return allOptions.filter((row) => row.label.toLowerCase().includes(q))
   }, [allOptions, query])
+
+  const customAddLabel = useMemo(() => {
+    const q = query.trim()
+    if (!allowCustom || !q) return null
+    const lower = q.toLowerCase()
+    const exists = allOptions.some(
+      (row) =>
+        row.label.toLowerCase() === lower ||
+        row.value.toLowerCase() === lower
+    )
+    return exists ? null : q
+  }, [allowCustom, allOptions, query])
 
   const selectedOption = useMemo(
     () => allOptions.find((row) => row.value === normalizedValue),
@@ -257,7 +271,7 @@ function SearchableSelect({
             : undefined
         }
       >
-        {filteredOptions.length === 0 ? (
+        {filteredOptions.length === 0 && !customAddLabel ? (
           <li className="px-3 py-2 text-sm text-gray-500">No matches</li>
         ) : (
           filteredOptions.map((row) => {
@@ -287,6 +301,19 @@ function SearchableSelect({
             )
           })
         )}
+        {customAddLabel ? (
+          <li role="presentation" className="border-t border-gray-100">
+            <button
+              type="button"
+              role="option"
+              aria-selected={normalizedValue === customAddLabel}
+              className="flex w-full px-3 py-2 text-left text-sm font-medium text-orange-700 hover:bg-orange-50"
+              onClick={() => pick(customAddLabel)}
+            >
+              <span className="min-w-0 truncate">Add &ldquo;{customAddLabel}&rdquo;</span>
+            </button>
+          </li>
+        ) : null}
       </ul>
     </div>
   )
@@ -360,6 +387,7 @@ export function Select({
   listClassName,
   menuPortal = true,
   chevronClassName,
+  allowCustom = false,
   value,
   disabled,
   ...props
@@ -387,6 +415,7 @@ export function Select({
         listClassName={listClassName}
         menuPortal={menuPortal}
         chevronClassName={chevronClassName}
+        allowCustom={allowCustom}
         {...props}
       />
     )

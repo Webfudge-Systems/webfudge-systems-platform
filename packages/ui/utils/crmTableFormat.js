@@ -2,10 +2,28 @@
  * Shared date / owner helpers for CRM list tables (contacts, leads, client accounts).
  */
 
-export function formatTableDate(dateString) {
+import {
+  formatCalendarRelativeTime,
+  formatCalendarTableDate,
+  isCalendarDateValue,
+  parseDisplayDate,
+} from '@webfudge/utils';
+
+/**
+ * @param {string | null | undefined} dateString
+ * @param {{ dateMode?: 'auto' | 'calendar' | 'datetime' }} [options]
+ * @returns {string}
+ */
+export function formatTableDate(dateString, options = {}) {
   if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return 'N/A';
+  const { dateMode = 'auto' } = options;
+  const useCalendar =
+    dateMode === 'calendar' || (dateMode === 'auto' && isCalendarDateValue(dateString));
+  if (useCalendar) {
+    return formatCalendarTableDate(dateString);
+  }
+  const date = parseDisplayDate(dateString);
+  if (!date) return 'N/A';
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
@@ -13,10 +31,9 @@ export function formatTableDate(dateString) {
   });
 }
 
-export function formatRelativeTime(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return '';
+function formatDatetimeRelativeTime(dateString) {
+  const date = parseDisplayDate(dateString);
+  if (!date) return '';
   const now = Date.now();
   const diffMs = now - date.getTime();
   const isFuture = diffMs < 0;
@@ -68,6 +85,22 @@ export function formatRelativeTime(dateString) {
 }
 
 /**
+ * @param {string | null | undefined} dateString
+ * @param {{ dateMode?: 'auto' | 'calendar' | 'datetime' }} [options]
+ * @returns {string}
+ */
+export function formatRelativeTime(dateString, options = {}) {
+  if (!dateString) return '';
+  const { dateMode = 'auto' } = options;
+  const useCalendar =
+    dateMode === 'calendar' || (dateMode === 'auto' && isCalendarDateValue(dateString));
+  if (useCalendar) {
+    return formatCalendarRelativeTime(dateString);
+  }
+  return formatDatetimeRelativeTime(dateString);
+}
+
+/**
  * @param {object | null | undefined} user - Strapi user / assignedTo
  * @returns {{ label: string, avatarFallback: string }}
  */
@@ -96,3 +129,10 @@ export function ownerDisplayFromUser(user) {
   }
   return { label: 'Unknown', avatarFallback: '?' };
 }
+
+export {
+  formatCalendarRelativeTime,
+  formatCalendarTableDate,
+  isCalendarDateValue,
+  parseDisplayDate,
+};

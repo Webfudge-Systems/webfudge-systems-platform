@@ -15,10 +15,21 @@
     "title": {
       "type": "string"
     },
+    "creationMode": {
+      "type": "enumeration",
+      "enum": ["BUILDER", "UPLOAD"],
+      "default": "BUILDER"
+    },
     "documentType": {
       "type": "enumeration",
       "enum": ["SOW", "PROPOSAL", "QUOTE"],
       "default": "PROPOSAL"
+    },
+    "proposalFile": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["files"]
     },
     "status": {
       "type": "enumeration",

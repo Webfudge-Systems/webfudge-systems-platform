@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@webfudge/auth'
 import { KPICard, EmptyState } from '@webfudge/ui'
 import { CheckSquare, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
@@ -26,6 +26,12 @@ import { transformTask, transformUser, transformProject } from '../lib/api/dataT
  */
 const DASHBOARD_MAIN_ROW_CLASS = 'h-[min(680px,72vh)] min-h-[600px]'
 
+const OPEN_TASK_STATUSES = new Set(['COMPLETED', 'CANCELLED'])
+
+function isOpenAssignedTask(task) {
+  return task && !OPEN_TASK_STATUSES.has(task.strapiStatus)
+}
+
 function getGreeting() {
   const hour = new Date().getHours()
   if (hour < 12) return 'Good Morning'
@@ -48,7 +54,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [projects, setProjects] = useState([])
   const [allTasks, setAllTasks] = useState([])
-  const [collaboratorTasks, setCollaboratorTasks] = useState([])
   const [assigneeTasks, setAssigneeTasks] = useState([])
   const [people, setPeople] = useState([])
   const [stats, setStats] = useState({ todo: 0, inProgress: 0, done: 0, overdue: 0 })
@@ -65,6 +70,11 @@ export default function DashboardPage() {
   const canViewDashboard = canReadPM('dashboard')
   const canViewProjects = canReadPM('projects')
   const canViewTasks = canReadPM('tasks') || canReadPM('my_tasks')
+
+  const openAssigneeTasks = useMemo(
+    () => assigneeTasks.filter(isOpenAssignedTask),
+    [assigneeTasks]
+  )
 
   useEffect(() => {
     const loadData = async () => {
@@ -103,7 +113,16 @@ export default function DashboardPage() {
         if (canViewTasks && userId) {
           try {
             const mineRes = await taskService.getPMTasksByAssignee(userId, { pageSize: 100 })
-            setAssigneeTasks((mineRes?.data || []).map(transformTask).filter(Boolean))
+            const uid = String(userId)
+            const mine = (mineRes?.data || [])
+              .map(transformTask)
+              .filter(Boolean)
+              .filter(
+                (task) =>
+                  (task.assigneeUserIds || []).map(String).includes(uid) ||
+                  (task.assignees || []).some((a) => a?.id != null && String(a.id) === uid)
+              )
+            setAssigneeTasks(mine)
           } catch {
             setAssigneeTasks([])
           }
@@ -123,16 +142,6 @@ export default function DashboardPage() {
           setPeople(transformed)
         }
 
-        if (userId) {
-          try {
-            const collabRes = await taskService.getCollaboratorTasks(userId, {
-              pageSize: 100,
-              sort: 'updatedAt:desc',
-              openOnly: true,
-            })
-            setCollaboratorTasks((collabRes?.data || []).map(transformTask).filter(Boolean))
-          } catch { }
-        }
       } catch (error) {
         console.error('Dashboard load error:', error)
       } finally {
@@ -220,8 +229,8 @@ export default function DashboardPage() {
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-stretch">
         <div className={`lg:col-span-3 ${DASHBOARD_MAIN_ROW_CLASS}`}>
           <DashboardMyTasksWidget
-            tasks={collaboratorTasks}
-            totalCount={collaboratorTasks.length}
+            tasks={openAssigneeTasks}
+            totalCount={openAssigneeTasks.length}
             loading={false}
             className="w-full"
           />

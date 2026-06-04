@@ -22,9 +22,6 @@
     "type": {
       "type": "string"
     },
-    "subType": {
-      "type": "string"
-    },
     "website": {
       "type": "string"
     },
@@ -90,6 +87,9 @@
     },
     "notes": {
       "type": "text"
+    },
+    "nextConnectDate": {
+      "type": "date"
     },
     "assignedTo": {
       "type": "relation",

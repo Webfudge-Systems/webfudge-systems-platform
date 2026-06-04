@@ -10,7 +10,6 @@ import {
   Building2,
   CheckCircle,
   XCircle,
-  ChevronDown,
   MoreHorizontal,
   Pencil,
   Video,
@@ -23,6 +22,7 @@ import {
   Globe,
   MapPin,
   GripVertical,
+  Calendar,
 } from 'lucide-react';
 import {
   Button,
@@ -35,27 +35,76 @@ import {
   KPICard,
   Modal,
   Textarea,
+  Input,
   ChatMessageText,
   TableCellCreated,
   TableCellDateOnly,
   TableCellOwner,
-  TableCellLeadStatus,
   TableCellText,
   TableCellOrangePill,
   TableCellSource,
   TableCellMultiline,
   TableRowActionMenuPortal,
+  toDateInputValue,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
+import { TableCellLeadStatusSelect } from '@webfudge/ui';
+import { LeadNextConnectCell } from '../../../components/LeadNextConnectCell';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import leadCompanyService from '../../../lib/api/leadCompanyService';
 import crmActivityService from '../../../lib/api/crmActivityService';
 import { canEditCRMRecord, canManageCRM } from '../../../lib/rbac';
+import { commentTextFromMeta } from '../../../lib/leadCompanyComments';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.leadCompanies.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.leadCompanies.tableColumnOrder';
+const COLUMN_WIDTHS_STORAGE_KEY = 'crm.leadCompanies.tableColumnWidths';
 const TABLE_SORT_STORAGE_KEY = 'crm.leadCompanies.tableSort';
+
+/** Default pixel widths for resizable table columns (keyed by column `key`). */
+const DEFAULT_COLUMN_WIDTHS = {
+  company: 300,
+  nextConnectDate: 190,
+  primaryContact: 260,
+  status: 170,
+  source: 120,
+  segment: 120,
+  dealValue: 120,
+  contactsCount: 110,
+  assignedTo: 180,
+  createdAt: 150,
+  updatedAt: 130,
+  industry: 140,
+  type: 140,
+  website: 160,
+  companyPhone: 140,
+  companyEmail: 180,
+  address: 200,
+  city: 120,
+  state: 120,
+  country: 120,
+  zipCode: 100,
+  employees: 120,
+  founded: 100,
+  description: 200,
+  linkedIn: 100,
+  twitter: 120,
+  score: 90,
+  healthScore: 100,
+  notes: 180,
+  organization: 160,
+  actions: 220,
+};
+
+/** Enforced minimums when loading saved widths (e.g. after layout updates). */
+const MIN_COLUMN_WIDTHS = {
+  company: 260,
+  nextConnectDate: 110,
+  primaryContact: 220,
+  status: 160,
+  actions: 200,
+};
 
 /** Toggleable column keys and default visibility (extra fields off until user enables them). */
 const TOGGLEABLE_COLUMNS = [
@@ -70,7 +119,6 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'updatedAt', label: 'Updated' },
   { key: 'industry', label: 'Industry' },
   { key: 'type', label: 'Type' },
-  { key: 'subType', label: 'Sub-type' },
   { key: 'website', label: 'Website' },
   { key: 'companyPhone', label: 'Company phone' },
   { key: 'companyEmail', label: 'Company email' },
@@ -144,6 +192,33 @@ function persistColumnOrder(order) {
   }
 }
 
+function loadColumnWidths() {
+  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_WIDTHS };
+  try {
+    const raw = window.localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_COLUMN_WIDTHS };
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_COLUMN_WIDTHS };
+    const merged = { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
+    for (const [key, min] of Object.entries(MIN_COLUMN_WIDTHS)) {
+      if (typeof merged[key] === 'number' && merged[key] < min) {
+        merged[key] = min;
+      }
+    }
+    return merged;
+  } catch {
+    return { ...DEFAULT_COLUMN_WIDTHS };
+  }
+}
+
+function persistColumnWidths(widths) {
+  try {
+    window.localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(widths));
+  } catch {
+    /* ignore */
+  }
+}
+
 function orgDisplayName(org) {
   if (!org) return '—';
   if (typeof org === 'object') {
@@ -158,22 +233,6 @@ function actorDisplay(actor) {
   if (actor.email) return actor.email;
   if (actor.id != null) return `User ${actor.id}`;
   return 'Unknown user';
-}
-
-function commentTextFromMeta(meta) {
-  if (meta == null) return '';
-  if (typeof meta === 'string') {
-    try {
-      const parsed = JSON.parse(meta);
-      return typeof parsed?.comment === 'string' ? parsed.comment : '';
-    } catch {
-      return '';
-    }
-  }
-  if (typeof meta === 'object' && typeof meta.comment === 'string') {
-    return meta.comment;
-  }
-  return '';
 }
 
 function formatCommentTime(iso) {
@@ -204,7 +263,6 @@ export default function LeadCompaniesPage() {
       status: '',
       source: '',
       type: '',
-      subType: '',
       assignedToId: '',
       companyQuery: '',
       dateRange: '',
@@ -230,20 +288,23 @@ export default function LeadCompaniesPage() {
   const [sortOpen, setSortOpen] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
-  const [columnWidths, setColumnWidths] = useState({});
+  const [columnWidths, setColumnWidths] = useState(() => ({ ...DEFAULT_COLUMN_WIDTHS }));
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const [moreActionMenu, setMoreActionMenu] = useState(null);
-  const [statusActionMenu, setStatusActionMenu] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [draftFilters, setDraftFilters] = useState(initialFilters);
   const [commentComposerMenu, setCommentComposerMenu] = useState(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [commentsByCompany, setCommentsByCompany] = useState({});
+  const [nextConnectReasonsByCompany, setNextConnectReasonsByCompany] = useState({});
   const [commentCountsByCompanyId, setCommentCountsByCompanyId] = useState({});
+  const [nextConnectReasonCountsByCompanyId, setNextConnectReasonCountsByCompanyId] = useState({});
   const [commentLoadingCompanyId, setCommentLoadingCompanyId] = useState(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
+  const [nextConnectDraft, setNextConnectDraft] = useState('');
+  const [nextConnectSaving, setNextConnectSaving] = useState(false);
   const columnDragKeyRef = useRef(null);
   const columnDropIndicatorRef = useRef(null);
   const toolbarRef = useRef(null);
@@ -252,6 +313,13 @@ export default function LeadCompaniesPage() {
   useEffect(() => {
     setColumnVisibility(loadColumnVisibility());
     setColumnOrder(loadColumnOrder());
+    const widths = loadColumnWidths();
+    setColumnWidths(widths);
+    persistColumnWidths(widths);
+  }, []);
+
+  const handleColumnResizeEnd = useCallback((next) => {
+    persistColumnWidths(next);
   }, []);
 
   useEffect(() => {
@@ -436,24 +504,6 @@ export default function LeadCompaniesPage() {
       .map((value) => ({ value, label: value }));
   }, [leadCompanies]);
 
-  const subTypeFilterOptions = useMemo(() => {
-    const values = new Set();
-    for (const company of leadCompanies) {
-      const subType = company?.subType;
-      if (!subType) continue;
-      if (
-        draftFilters.type &&
-        String(company?.type || '').toLowerCase() !== draftFilters.type.toLowerCase()
-      ) {
-        continue;
-      }
-      values.add(String(subType));
-    }
-    return [...values]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value }));
-  }, [leadCompanies, draftFilters.type]);
-
   const assigneeFilterOptions = useMemo(() => {
     const map = new Map();
     for (const company of leadCompanies) {
@@ -494,7 +544,6 @@ export default function LeadCompaniesPage() {
     const status = String(company.status || '').toUpperCase();
     const source = String(company.source || '').toUpperCase();
     const companyType = String(company.type || '').toLowerCase();
-    const subType = String(company.subType || '').toLowerCase();
     const assignedId =
       company.assignedTo && typeof company.assignedTo === 'object'
         ? String(company.assignedTo.id ?? company.assignedTo.documentId ?? '')
@@ -512,7 +561,6 @@ export default function LeadCompaniesPage() {
       (!appliedFilters.status || status === appliedFilters.status) &&
       (!appliedFilters.source || source === appliedFilters.source) &&
       (!appliedFilters.type || companyType === appliedFilters.type.toLowerCase()) &&
-      (!appliedFilters.subType || subType === appliedFilters.subType.toLowerCase()) &&
       (!appliedFilters.assignedToId || assignedId === appliedFilters.assignedToId) &&
       (!appliedFilters.companyQuery ||
         companyName.includes(appliedFilters.companyQuery.toLowerCase())) &&
@@ -560,9 +608,19 @@ export default function LeadCompaniesPage() {
     let cancelled = false;
     (async () => {
       try {
-        const counts = await crmActivityService.fetchLeadCompanyCommentCounts({ leadCompanyIds: ids });
+        const [generalCounts, reasonCounts] = await Promise.all([
+          crmActivityService.fetchLeadCompanyCommentCounts({
+            leadCompanyIds: ids,
+            commentKind: 'general',
+          }),
+          crmActivityService.fetchLeadCompanyCommentCounts({
+            leadCompanyIds: ids,
+            commentKind: 'next_connect',
+          }),
+        ]);
         if (cancelled) return;
-        setCommentCountsByCompanyId((prev) => ({ ...prev, ...(counts || {}) }));
+        setCommentCountsByCompanyId((prev) => ({ ...prev, ...(generalCounts || {}) }));
+        setNextConnectReasonCountsByCompanyId((prev) => ({ ...prev, ...(reasonCounts || {}) }));
       } catch {
         /* ignore */
       }
@@ -698,52 +756,132 @@ export default function LeadCompaniesPage() {
   }, [companyToConvert, converting, fetchStats, router]);
 
   const openCommentComposer = useCallback(async (companyId, anchor) => {
-    setCommentComposerMenu(anchor ? { id: companyId, ...anchor } : { id: companyId });
+    const mode = anchor?.mode === 'nextConnect' ? 'nextConnect' : 'general';
+    const company = leadCompanies.find((c) => c?.id === companyId);
+    if (mode === 'nextConnect') {
+      setNextConnectDraft(toDateInputValue(company?.nextConnectDate) || '');
+    } else {
+      setNextConnectDraft('');
+    }
+    setCommentComposerMenu(
+      anchor ? { id: companyId, mode, ...anchor } : { id: companyId, mode }
+    );
     setCommentDraft('');
     setCommentError('');
     setCommentLoadingCompanyId(companyId);
     try {
-      const res = await crmActivityService.fetchLeadCompanyComments({ leadCompanyId: companyId, limit: 20 });
-      setCommentsByCompany((prev) => ({ ...prev, [companyId]: res?.data || [] }));
+      if (mode === 'nextConnect') {
+        const res = await crmActivityService.fetchLeadCompanyNextConnectReasons({
+          leadCompanyId: companyId,
+          limit: 20,
+        });
+        setNextConnectReasonsByCompany((prev) => ({ ...prev, [companyId]: res?.data || [] }));
+      } else {
+        const res = await crmActivityService.fetchLeadCompanyComments({
+          leadCompanyId: companyId,
+          limit: 20,
+          commentKind: 'general',
+        });
+        setCommentsByCompany((prev) => ({ ...prev, [companyId]: res?.data || [] }));
+      }
     } catch (e) {
-      setCommentError(e?.message || 'Could not load comments');
-      setCommentsByCompany((prev) => ({ ...prev, [companyId]: prev[companyId] || [] }));
+      setCommentError(e?.message || 'Could not load messages');
+      if (mode === 'nextConnect') {
+        setNextConnectReasonsByCompany((prev) => ({ ...prev, [companyId]: prev[companyId] || [] }));
+      } else {
+        setCommentsByCompany((prev) => ({ ...prev, [companyId]: prev[companyId] || [] }));
+      }
     } finally {
       setCommentLoadingCompanyId(null);
     }
-  }, []);
+  }, [leadCompanies]);
+
+  const saveNextConnectDate = useCallback(
+    async (companyId, dateValue) => {
+      const company = leadCompanies.find((c) => c?.id === companyId);
+      if (!company || !canEditCRMRecord('leads', company)) return;
+      const normalized = (dateValue || '').trim();
+      const current = toDateInputValue(company.nextConnectDate) || '';
+      if (normalized === current) return;
+
+      setNextConnectSaving(true);
+      setCommentError('');
+      try {
+        await leadCompanyService.update(companyId, {
+          nextConnectDate: normalized || null,
+        });
+        setLeadCompanies((prev) =>
+          prev.map((c) =>
+            c?.id === companyId ? { ...c, nextConnectDate: normalized || null } : c
+          )
+        );
+        setNextConnectDraft(normalized);
+      } catch (e) {
+        setCommentError(e?.message || 'Could not update next connect date');
+      } finally {
+        setNextConnectSaving(false);
+      }
+    },
+    [leadCompanies]
+  );
 
   const closeCommentComposer = useCallback(() => {
     setCommentComposerMenu(null);
     setCommentDraft('');
     setCommentError('');
+    setNextConnectDraft('');
   }, []);
 
   const submitComment = useCallback(async () => {
     const companyId = commentComposerMenu?.id;
+    const mode = commentComposerMenu?.mode === 'nextConnect' ? 'nextConnect' : 'general';
     const text = commentDraft.trim();
     if (!companyId || !text) return;
     setCommentSubmitting(true);
     setCommentError('');
     try {
-      const res = await crmActivityService.addLeadCompanyComment({
-        leadCompanyId: companyId,
-        comment: text,
-      });
+      const res =
+        mode === 'nextConnect'
+          ? await crmActivityService.addLeadCompanyNextConnectReason({
+              leadCompanyId: companyId,
+              comment: text,
+            })
+          : await crmActivityService.addLeadCompanyComment({
+              leadCompanyId: companyId,
+              comment: text,
+              commentKind: 'general',
+            });
       const newComment = res?.data;
       if (newComment) {
-        setCommentsByCompany((prev) => ({
-          ...prev,
-          [companyId]: [newComment, ...(Array.isArray(prev[companyId]) ? prev[companyId] : [])],
-        }));
+        if (mode === 'nextConnect') {
+          setNextConnectReasonsByCompany((prev) => ({
+            ...prev,
+            [companyId]: [newComment, ...(Array.isArray(prev[companyId]) ? prev[companyId] : [])],
+          }));
+          setNextConnectReasonCountsByCompanyId((prev) => ({
+            ...prev,
+            [String(companyId)]: Math.max(
+              1,
+              (parseInt(prev[String(companyId)] || prev[companyId] || 0, 10) || 0) + 1
+            ),
+          }));
+        } else {
+          setCommentsByCompany((prev) => ({
+            ...prev,
+            [companyId]: [newComment, ...(Array.isArray(prev[companyId]) ? prev[companyId] : [])],
+          }));
+          setCommentCountsByCompanyId((prev) => ({
+            ...prev,
+            [String(companyId)]: Math.max(
+              1,
+              (parseInt(prev[String(companyId)] || prev[companyId] || 0, 10) || 0) + 1
+            ),
+          }));
+        }
       }
-      setCommentCountsByCompanyId((prev) => ({
-        ...prev,
-        [String(companyId)]: Math.max(1, (parseInt(prev[String(companyId)] || prev[companyId] || 0, 10) || 0) + 1),
-      }));
       setCommentDraft('');
     } catch (e) {
-      setCommentError(e?.message || 'Could not post comment');
+      setCommentError(e?.message || 'Could not post message');
     } finally {
       setCommentSubmitting(false);
     }
@@ -755,6 +893,7 @@ export default function LeadCompaniesPage() {
         key: 'company',
         label: 'COMPANY',
         fixed: true,
+        defaultWidth: '300px',
         render: (_, company) => (
           <div className="flex items-start gap-3 min-w-[240px] w-full">
             <Avatar fallback={company.companyName?.[0] || 'C'} alt={company.companyName} size="sm" className="flex-shrink-0" />
@@ -774,18 +913,17 @@ export default function LeadCompaniesPage() {
                     e.stopPropagation();
                     const r = e.currentTarget.getBoundingClientRect();
                     openCommentComposer(company.id, {
+                      mode: 'general',
                       top: r.bottom + 8,
                       left: r.left,
                       triggerEl: e.currentTarget,
                     });
                   }}
-                  className={`relative mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${
-                    Number(commentCountsByCompanyId[String(company.id)] || 0) > 0
-                      ? 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white hover:border-gray-300'
-                  } ${commentComposerMenu?.id === company.id ? 'bg-white border-gray-300 text-gray-700' : ''} ${
-                    Number(commentCountsByCompanyId[String(company.id)] || 0) > 0 ? '' : 'opacity-0 group-hover:opacity-100'
-                  }`}
+                  className={`relative mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${Number(commentCountsByCompanyId[String(company.id)] || 0) > 0
+                    ? 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white hover:border-gray-300'
+                    } ${commentComposerMenu?.id === company.id && commentComposerMenu?.mode === 'general' ? 'bg-white border-gray-300 text-gray-700' : ''} ${Number(commentCountsByCompanyId[String(company.id)] || 0) > 0 ? '' : 'opacity-0 group-hover:opacity-100'
+                    }`}
                   aria-label={`Add comment for ${company.companyName || 'company'}`}
                   title="Add comment"
                 >
@@ -803,9 +941,28 @@ export default function LeadCompaniesPage() {
         ),
       },
       {
+        key: 'nextConnectDate',
+        label: 'NEXT CONNECT',
+        fixed: true,
+        defaultWidth: '190px',
+        render: (_, company) => (
+          <LeadNextConnectCell
+            company={company}
+            reasonCount={nextConnectReasonCountsByCompanyId[String(company.id)] || 0}
+            onOpenPopover={openCommentComposer}
+            canEdit={canEditCRMRecord('leads', company)}
+            active={
+              commentComposerMenu?.id === company.id &&
+              commentComposerMenu?.mode === 'nextConnect'
+            }
+          />
+        ),
+      },
+      {
         key: 'primaryContact',
         visibilityKey: 'primaryContact',
         label: 'PRIMARY CONTACT',
+        defaultWidth: '260px',
         render: (_, company) => (
           <div className="space-y-1 min-w-[200px]">
             <div className="flex items-center gap-2 text-sm text-gray-900">
@@ -831,7 +988,21 @@ export default function LeadCompaniesPage() {
         key: 'status',
         visibilityKey: 'status',
         label: 'STATUS',
-        render: (_, company) => <TableCellLeadStatus company={company} />,
+        defaultWidth: '180px',
+        render: (_, company) => {
+          const saving = Object.entries(loadingActions).some(
+            ([key, active]) =>
+              active && key.startsWith(`${company.id}-`) && !key.endsWith('-delete')
+          );
+          return (
+            <TableCellLeadStatusSelect
+              company={company}
+              onStatusChange={handleStatusUpdate}
+              saving={saving}
+              canEdit={canEditCRMRecord('leads', company)}
+            />
+          );
+        },
       },
       {
         key: 'source',
@@ -896,12 +1067,6 @@ export default function LeadCompaniesPage() {
         visibilityKey: 'type',
         label: 'TYPE',
         render: (_, company) => <TableCellText value={company.type} />,
-      },
-      {
-        key: 'subType',
-        visibilityKey: 'subType',
-        label: 'SUB-TYPE',
-        render: (_, company) => <TableCellText value={company.subType} />,
       },
       {
         key: 'website',
@@ -1065,7 +1230,6 @@ export default function LeadCompaniesPage() {
           const canEditLeadCompany = canEditCRMRecord('leads', company);
           const canDeleteLeadCompany = canManageCRM('leads');
           const currentStatus = (company.status || 'NEW').toUpperCase();
-          const statusOptions = ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST'];
           const isClient =
             currentStatus === 'CLIENT' ||
             currentStatus === 'CONVERTED' ||
@@ -1076,7 +1240,7 @@ export default function LeadCompaniesPage() {
               : company?.convertedAccount;
           return (
             <div className="flex min-w-[220px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-              {/* Order matches contacts table: More → (status) → Edit → Mail → Delete */}
+              {/* Order matches contacts table: More → Edit → Mail → Delete */}
               <div className="relative">
                 <Button
                   variant="ghost"
@@ -1091,35 +1255,12 @@ export default function LeadCompaniesPage() {
                         ? null
                         : { id: company.id, top: r.bottom + 4, left: r.left, triggerEl: e.currentTarget }
                     );
-                    setStatusActionMenu(null);
                   }}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </div>
-              {!isClient && canEditLeadCompany ? (
-                <div className="relative">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center gap-1 p-2 text-emerald-600 hover:bg-emerald-50"
-                    title="Change status"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const r = e.currentTarget.getBoundingClientRect();
-                      setStatusActionMenu((prev) =>
-                        prev?.id === company.id
-                          ? null
-                          : { id: company.id, top: r.bottom + 4, left: r.left, triggerEl: e.currentTarget }
-                      );
-                      setMoreActionMenu(null);
-                    }}
-                  >
-                    <Phone className="h-4 w-4" />
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : isClient ? (
+              {isClient ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1182,13 +1323,14 @@ export default function LeadCompaniesPage() {
         },
       },
     ],
-    [router, commentComposerMenu, commentCountsByCompanyId, openCommentComposer]
+    [router, commentComposerMenu, commentCountsByCompanyId, nextConnectReasonCountsByCompanyId, openCommentComposer, handleStatusUpdate, loadingActions]
   );
 
   const visibleTableColumns = useMemo(() => {
     const byKey = Object.fromEntries(allTableColumns.map((c) => [c.key, c]));
     const out = [];
     if (byKey.company) out.push(byKey.company);
+    if (byKey.nextConnectDate) out.push(byKey.nextConnectDate);
     if (columnVisibility.primaryContact && byKey.primaryContact) {
       out.push(byKey.primaryContact);
     }
@@ -1413,6 +1555,7 @@ export default function LeadCompaniesPage() {
               resizableColumns
               columnWidths={columnWidths}
               onColumnWidthsChange={setColumnWidths}
+              onColumnResizeEnd={handleColumnResizeEnd}
             />
             {paginatedCompanies.length === 0 && (
               <div className="p-12 text-center border-t border-gray-200">
@@ -1631,28 +1774,11 @@ export default function LeadCompaniesPage() {
               <span className="text-sm font-medium text-gray-700">Company Type</span>
               <select
                 value={draftFilters.type}
-                onChange={(e) =>
-                  setDraftFilters((prev) => ({ ...prev, type: e.target.value, subType: '' }))
-                }
+                onChange={(e) => setDraftFilters((prev) => ({ ...prev, type: e.target.value }))}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
               >
                 <option value="">Select company type</option>
                 {companyTypeFilterOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-gray-700">Sub-Type</span>
-              <select
-                value={draftFilters.subType}
-                onChange={(e) => setDraftFilters((prev) => ({ ...prev, subType: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-              >
-                <option value="">{draftFilters.type ? 'Select sub-type' : 'Select company type first'}</option>
-                {subTypeFilterOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -1788,54 +1914,18 @@ export default function LeadCompaniesPage() {
           );
         })()}
 
-      {statusActionMenu &&
-        (() => {
-          const company = leadCompanies.find((c) => c.id === statusActionMenu.id);
-          if (!company) return null;
-          const currentStatus = (company.status || 'NEW').toUpperCase();
-          const statusOptions = ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST'];
-          return (
-            <TableRowActionMenuPortal
-              open
-              anchor={{
-                top: statusActionMenu.top,
-                left: statusActionMenu.left,
-                triggerEl: statusActionMenu.triggerEl,
-              }}
-              onClose={() => setStatusActionMenu(null)}
-              menuClassName="w-40"
-              menuWidthPx={160}
-            >
-              {statusOptions.map((status) => {
-                const statusKey = `${company.id}-${status.toLowerCase()}`;
-                const isLoading = Boolean(loadingActions[statusKey]);
-                return (
-                  <button
-                    key={status}
-                    type="button"
-                    disabled={isLoading}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50"
-                    onClick={() => {
-                      setStatusActionMenu(null);
-                      handleStatusUpdate(company.id, status);
-                    }}
-                  >
-                    <span>{status}</span>
-                    {currentStatus === status ? (
-                      <span className="text-xs text-emerald-600">Active</span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </TableRowActionMenuPortal>
-          );
-        })()}
-
       {commentComposerMenu &&
         (() => {
           const company = leadCompanies.find((c) => c.id === commentComposerMenu.id);
           if (!company) return null;
-          const companyComments = Array.isArray(commentsByCompany[company.id]) ? commentsByCompany[company.id] : [];
+          const isNextConnectMode = commentComposerMenu.mode === 'nextConnect';
+          const threadItems = isNextConnectMode
+            ? Array.isArray(nextConnectReasonsByCompany[company.id])
+              ? nextConnectReasonsByCompany[company.id]
+              : []
+            : Array.isArray(commentsByCompany[company.id])
+              ? commentsByCompany[company.id]
+              : [];
           return (
             <TableRowActionMenuPortal
               open
@@ -1851,27 +1941,69 @@ export default function LeadCompaniesPage() {
               <div className="overflow-hidden rounded-2xl">
                 <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">Comments</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {isNextConnectMode ? 'Next connect' : 'Comments'}
+                    </p>
                     <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                      {companyComments.length}
+                      {threadItems.length}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-gray-500 truncate">{company.companyName || 'Lead company'}</p>
                 </div>
 
+                {isNextConnectMode && canEditCRMRecord('leads', company) ? (
+                  <div className="border-b border-gray-100 bg-white px-4 py-3">
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      <Calendar className="h-3.5 w-3.5 text-orange-500" aria-hidden />
+                      Next connect date
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={nextConnectDraft}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setNextConnectDraft(v);
+                          void saveNextConnectDate(company.id, v);
+                        }}
+                        disabled={nextConnectSaving}
+                        className="flex-1 text-sm"
+                        autoFocus={commentComposerMenu?.focus === 'date'}
+                      />
+                      {nextConnectDraft ? (
+                        <Button
+                          type="button"
+                          variant="muted"
+                          size="sm"
+                          disabled={nextConnectSaving}
+                          onClick={() => {
+                            setNextConnectDraft('');
+                            void saveNextConnectDate(company.id, '');
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      ) : null}
+                    </div>
+                    {nextConnectSaving ? (
+                      <p className="mt-1.5 text-xs text-gray-400">Saving date…</p>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="max-h-56 overflow-y-auto bg-gray-50/50 px-4 py-3">
                   {commentLoadingCompanyId === company.id ? (
                     <div className="py-4">
-                      <LoadingSpinner size="sm" message="Loading comments..." />
+                      <LoadingSpinner size="sm" message={isNextConnectMode ? 'Loading reasons...' : 'Loading comments...'} />
                     </div>
-                  ) : companyComments.length > 0 ? (
+                  ) : threadItems.length > 0 ? (
                     <div className="relative">
                       <div
                         className="pointer-events-none absolute left-3 top-3 bottom-3 w-px bg-gradient-to-b from-orange-400/90 via-orange-200 to-gray-200"
                         aria-hidden
                       />
                       <ul className="relative m-0 list-none space-y-3 p-0 pr-1" role="list">
-                        {companyComments.map((row) => (
+                        {threadItems.map((row) => (
                           <li key={row.id} className="relative flex gap-3">
                             <div className="relative z-[1] flex w-6 shrink-0 justify-center pt-0.5">
                               <Avatar
@@ -1896,7 +2028,9 @@ export default function LeadCompaniesPage() {
                     </div>
                   ) : (
                     <p className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-3 text-xs text-gray-500">
-                      No comments yet. Start the thread.
+                      {isNextConnectMode
+                        ? 'No reasons yet. Add why you are scheduling this follow-up.'
+                        : 'No comments yet. Start the thread.'}
                     </p>
                   )}
                 </div>
@@ -1911,8 +2045,12 @@ export default function LeadCompaniesPage() {
                     onChange={(e) => setCommentDraft(e.target.value)}
                     rows={2}
                     resize="none"
-                    autoFocus
-                    placeholder="Add a comment..."
+                    autoFocus={isNextConnectMode ? commentComposerMenu?.focus !== 'date' : true}
+                    placeholder={
+                      isNextConnectMode
+                        ? 'Reason for this follow-up…'
+                        : 'Add a comment…'
+                    }
                     className="rounded-xl text-sm text-gray-900 placeholder:text-gray-400 border-orange-200 focus:ring-orange-500/20"
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') {
@@ -1937,7 +2075,11 @@ export default function LeadCompaniesPage() {
                         size="sm"
                         onClick={submitComment}
                         disabled={!commentDraft.trim() || commentSubmitting}
-                        aria-label={`Send comment for ${company.companyName || 'company'}`}
+                        aria-label={
+                          isNextConnectMode
+                            ? `Add next connect reason for ${company.companyName || 'company'}`
+                            : `Send comment for ${company.companyName || 'company'}`
+                        }
                         className="inline-flex items-center gap-1.5"
                       >
                         <SendHorizontal className="w-3.5 h-3.5" />

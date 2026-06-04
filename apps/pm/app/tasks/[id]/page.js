@@ -19,6 +19,8 @@ import {
   Table,
   TableCellCreated,
   TabsWithActions,
+  TableCellTaskStatusSelect,
+  PM_TASK_STATUS_OPTIONS,
 } from '@webfudge/ui';
 import {
   Activity,
@@ -56,7 +58,6 @@ import {
   getTaskStatusMeta,
   pmTableSelectFillProps,
   PRIORITY_OPTIONS,
-  TASK_STATUS_OPTIONS,
 } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
 import {
@@ -117,6 +118,14 @@ function taskStatusHeaderVisual(status) {
     return {
       pillClass:
         'border border-violet-300/90 bg-gradient-to-br from-violet-50 via-violet-50 to-violet-100/90 text-violet-950 ring-violet-200/70',
+      Icon: ListTodo,
+      label: meta.label,
+    };
+  }
+  if (s === 'ON_HOLD') {
+    return {
+      pillClass:
+        'border border-sky-300/90 bg-gradient-to-br from-sky-50 via-sky-50 to-sky-100/90 text-sky-950 ring-sky-200/70',
       Icon: ListTodo,
       label: meta.label,
     };
@@ -640,17 +649,14 @@ export default function TaskDetailPage() {
         key: 'status',
         label: 'STATUS',
         render: (_, row) => (
-          <div onClick={(e) => e.stopPropagation()}>
-            <Select
-              value={row.strapiStatus}
-              options={TASK_STATUS_OPTIONS}
-              onChange={(status) => updateSubtaskField(row, { status })}
-              disabled={saving}
-              {...pmTableSelectFillProps(row.strapiStatus || 'SCHEDULED', 'status')}
-              containerClassName="min-w-[140px]"
-              placeholder="Status"
-            />
-          </div>
+          <TableCellTaskStatusSelect
+            status={row.strapiStatus}
+            onStatusChange={(status) => updateSubtaskField(row, { status })}
+            saving={saving}
+            options={PM_TASK_STATUS_OPTIONS}
+            fillStyle="pm"
+            containerClassName="min-w-[140px]"
+          />
         ),
       },
       {

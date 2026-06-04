@@ -1444,10 +1444,8 @@ export default function DealDetailPage() {
                           {isPresent(companyEntity.industry) ? (
                             <SidebarDetailRow label="Industry">{companyEntity.industry}</SidebarDetailRow>
                           ) : null}
-                          {(isPresent(companyEntity.type) || isPresent(companyEntity.subType)) && (
-                            <SidebarDetailRow label="Type">
-                              {[companyEntity.type, companyEntity.subType].filter((x) => isPresent(x)).join(' · ')}
-                            </SidebarDetailRow>
+                          {isPresent(companyEntity.type) && (
+                            <SidebarDetailRow label="Type">{companyEntity.type}</SidebarDetailRow>
                           )}
                           {isPresent(companyEntity.website) ? (
                             <SidebarDetailRow label="Website">

@@ -12,15 +12,17 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
-import { Avatar, Button, Select } from '@webfudge/ui'
+import { Avatar, Button, Select, TableCellTaskStatusSelect, PM_TASK_STATUS_OPTIONS } from '@webfudge/ui'
 import { ChevronRight, FolderKanban, GripVertical } from 'lucide-react'
-import { pmTableSelectFillProps, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge'
+import { pmTableSelectFillProps, PRIORITY_OPTIONS } from './PMStatusBadge'
 import TaskAssigneesPicker from './TaskAssigneesPicker'
+import { formatCalendarTableDate, isTaskDueOverdue } from '@webfudge/utils'
 
 const KANBAN_STAGES = [
   { key: 'SCHEDULED', label: 'To Do' },
   { key: 'IN_PROGRESS', label: 'In Progress' },
   { key: 'INTERNAL_REVIEW', label: 'In Review' },
+  { key: 'ON_HOLD', label: 'On Hold' },
   { key: 'COMPLETED', label: 'Completed' },
   { key: 'CANCELLED', label: 'Cancelled' },
 ]
@@ -44,6 +46,12 @@ const STAGE_STYLES = {
     badge: 'bg-violet-100 text-violet-700',
     dropActive: 'border-violet-400 bg-violet-50/80 shadow-lg shadow-violet-100',
   },
+  ON_HOLD: {
+    header: 'bg-sky-50 border-sky-200',
+    text: 'text-sky-700',
+    badge: 'bg-sky-100 text-sky-700',
+    dropActive: 'border-sky-400 bg-sky-50/80 shadow-lg shadow-sky-100',
+  },
   COMPLETED: {
     header: 'bg-emerald-50 border-emerald-200',
     text: 'text-emerald-700',
@@ -65,17 +73,13 @@ const PRIORITY_PILL = {
 }
 
 export function isTaskOverdue(task) {
-  if (!task?.dueDate) return false
-  const due = new Date(task.dueDate)
-  if (Number.isNaN(due.getTime())) return false
-  return due < new Date() && task.strapiStatus !== 'COMPLETED' && task.strapiStatus !== 'CANCELLED'
+  return isTaskDueOverdue(task?.dueDate, task?.strapiStatus)
 }
 
 function formatShortDate(iso) {
   if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const label = formatCalendarTableDate(iso)
+  return label === 'N/A' ? '' : label
 }
 
 function TaskKanbanCardInner({ task, router }) {
@@ -365,17 +369,13 @@ export function MyTasksListByStatus({ tasks, router, updateTask, savingId }) {
                   return (
                     <tr key={row.id} className="hover:bg-gray-50/70">
                       <td className="px-3 py-2.5 align-top">
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <Select
-                            value={row.strapiStatus}
-                            options={TASK_STATUS_OPTIONS}
-                            onChange={(status) => updateTask(row, { status })}
-                            disabled={savingId === row.id}
-                            {...pmTableSelectFillProps(row.strapiStatus, 'status')}
-                            containerClassName="min-w-[150px]"
-                            placeholder="Status"
-                          />
-                        </div>
+                        <TableCellTaskStatusSelect
+                          status={row.strapiStatus}
+                          onStatusChange={(status) => updateTask(row, { status })}
+                          saving={savingId === row.id}
+                          options={PM_TASK_STATUS_OPTIONS}
+                          fillStyle="pm"
+                        />
                       </td>
                       <td className="px-3 py-2.5 align-top">
                         <button

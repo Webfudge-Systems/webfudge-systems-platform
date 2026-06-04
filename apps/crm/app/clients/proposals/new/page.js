@@ -15,6 +15,7 @@ import {
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import proposalService from '../../../../lib/api/proposalService';
+import uploadService from '../../../../lib/api/uploadService';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import contactService from '../../../../lib/api/contactService';
@@ -47,6 +48,7 @@ import {
   Info,
   Hammer,
   BookOpen,
+  Upload,
 } from 'lucide-react';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -510,6 +512,9 @@ export default function NewProposalPage() {
   const previewRef = useRef(null);
   const { currentOrg, user } = useAuth();
 
+  const [creationMode, setCreationMode] = useState('builder');
+  const [pdfFile, setPdfFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -742,7 +747,42 @@ export default function NewProposalPage() {
     if (milestones.length > 1) setMilestones((prev) => prev.filter((m) => m.id !== id));
   };
 
+  const switchCreationMode = (mode) => {
+    setCreationMode(mode);
+    setErrors({});
+    if (mode === 'builder') setPdfFile(null);
+  };
+
+  const handlePdfFileChange = (e) => {
+    const file = e.target.files?.[0];
+    setPdfFile(file || null);
+    if (errors.pdfFile) setErrors((prev) => ({ ...prev, pdfFile: null }));
+  };
+
   // ── Validation ────────────────────────────────────────────────────────────────
+  const validateUpload = () => {
+    const errs = {};
+    if (!leadCompanyId && !clientAccountId) {
+      errs.clientCompanyName = 'Select a lead company or client account';
+    } else if (!proposalData.clientCompanyName.trim()) {
+      errs.clientCompanyName = 'Client company name is required';
+    }
+    if (!proposalData.proposalTitle.trim()) {
+      errs.proposalTitle = 'Proposal title is required';
+    }
+    if (!proposalData.clientEmail.trim()) {
+      errs.clientEmail = 'Client email is required';
+    } else if (!/\S+@\S+\.\S+/.test(proposalData.clientEmail)) {
+      errs.clientEmail = 'Please enter a valid email';
+    }
+    if (!pdfFile) errs.pdfFile = 'Please upload a PDF proposal';
+    else if (pdfFile.type !== 'application/pdf' && !pdfFile.name.toLowerCase().endsWith('.pdf')) {
+      errs.pdfFile = 'Only PDF files are supported';
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const validate = () => {
     const errs = {};
     if (!leadCompanyId && !clientAccountId) {
@@ -815,14 +855,54 @@ export default function NewProposalPage() {
   // ── Submit ────────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (creationMode === 'upload') {
+      if (!validateUpload()) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      setIsSubmitting(true);
+      try {
+        const uploaded = await uploadService.uploadFile(pdfFile);
+        const payload = {
+          ...proposalData,
+          creationMode: 'UPLOAD',
+          title: proposalData.proposalTitle || 'Untitled Proposal',
+          projectName: proposalData.proposalTitle || 'Uploaded proposal',
+          status: 'DRAFT',
+          totalValue: 0,
+          modules: [],
+          milestones: [],
+          assumptions: [],
+          securityItems: [],
+          outOfScope: [],
+          handoverDeliverables: [],
+          leadCompany: leadCompanyId || null,
+          clientAccount: clientAccountId || null,
+          proposalFile: uploaded.id,
+        };
+        const result = await proposalService.create(payload);
+        const createdId = result?.id ?? result?.data?.id;
+        setShowSuccess(true);
+        setTimeout(() => router.push(createdId ? `/clients/proposals/${createdId}` : '/clients/proposals'), 2000);
+      } catch (err) {
+        console.error('Error saving uploaded proposal:', err);
+        setErrors((prev) => ({ ...prev, submit: err?.message || 'Failed to save proposal. Please try again.' }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (!validate()) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    const isSubmitting = true;
+    setIsSubmitting(true);
     try {
       const payload = {
         ...proposalData,
+        creationMode: 'BUILDER',
         title: proposalData.proposalTitle || proposalData.projectName || 'Untitled Proposal',
         status: 'DRAFT',
         totalValue: Number(totalValue) || 0,
@@ -843,6 +923,8 @@ export default function NewProposalPage() {
       console.error('Error saving proposal:', err);
       setErrors((prev) => ({ ...prev, submit: err?.message || 'Failed to save proposal. Please try again.' }));
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -930,8 +1012,12 @@ export default function NewProposalPage() {
 
       <div className="p-4 space-y-6">
         <CRMPageHeader
-          title="New Proposal Builder"
-          subtitle="Build a professional proposal or statement of work"
+          title="New Proposal"
+          subtitle={
+            creationMode === 'upload'
+              ? 'Upload an existing PDF proposal and link it to a client'
+              : 'Build a professional proposal or statement of work'
+          }
           breadcrumb={[
             { label: 'Dashboard', href: '/' },
             { label: 'Clients', href: '/clients' },
@@ -943,6 +1029,37 @@ export default function NewProposalPage() {
           showActions={false}
         />
 
+        {/* Builder vs upload toggle */}
+        <div className="rounded-2xl border border-gray-200/80 bg-gradient-to-br from-gray-50 to-white p-4 shadow-sm">
+          <p className="text-sm font-medium text-gray-700 mb-3">How would you like to add this proposal?</p>
+          <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => switchCreationMode('builder')}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                creationMode === 'builder'
+                  ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Hammer className="w-4 h-4" />
+              Build proposal
+            </button>
+            <button
+              type="button"
+              onClick={() => switchCreationMode('upload')}
+              className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all ${
+                creationMode === 'upload'
+                  ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              Upload PDF
+            </button>
+          </div>
+        </div>
+
         {/* Validation error banner */}
         {Object.keys(errors).length > 0 && (
           <div className="rounded-xl bg-red-50 border-2 border-red-300 p-5">
@@ -951,10 +1068,13 @@ export default function NewProposalPage() {
               <div>
                 <h4 className="text-red-900 font-semibold text-base mb-1">Please fix the following errors:</h4>
                 <ul className="list-disc list-inside space-y-1 text-red-700 text-sm">
+                  {errors.submit && <li>{errors.submit}</li>}
+                  {errors.proposalTitle && <li>{errors.proposalTitle}</li>}
                   {errors.clientCompanyName && <li>{errors.clientCompanyName}</li>}
                   {errors.projectName && <li>{errors.projectName}</li>}
                   {errors.clientEmail && <li>{errors.clientEmail}</li>}
                   {errors.modules && <li>{errors.modules}</li>}
+                  {errors.pdfFile && <li>{errors.pdfFile}</li>}
                 </ul>
               </div>
             </div>
@@ -982,9 +1102,10 @@ export default function NewProposalPage() {
               </div>
               <div className="lg:col-span-2">
                 <Input
-                  label="Proposal Title"
+                  label={creationMode === 'upload' ? 'Proposal Title *' : 'Proposal Title'}
                   value={proposalData.proposalTitle}
                   onChange={(e) => handleChange('proposalTitle', e.target.value)}
+                  error={errors.proposalTitle}
                   placeholder="e.g. OMIMS — OEM & Inventory Management System"
                   icon={FileText}
                 />
@@ -1112,6 +1233,49 @@ export default function NewProposalPage() {
             </div>
           </FormSectionCard>
 
+          {creationMode === 'upload' && (
+            <FormSectionCard
+              icon={Upload}
+              title="Upload Proposal PDF"
+              description="Attach your existing proposal document (PDF only, max 25 MB)"
+              cardClassName="rounded-2xl bg-gradient-to-br from-white/70 to-white/40 backdrop-blur-xl border border-white/30 shadow-xl p-6"
+            >
+              <div className="max-w-xl">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Proposal file *
+                </label>
+                <div
+                  className={`relative rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+                    errors.pdfFile
+                      ? 'border-red-300 bg-red-50/50'
+                      : pdfFile
+                        ? 'border-orange-300 bg-orange-50/30'
+                        : 'border-gray-200 bg-gray-50/50 hover:border-orange-200 hover:bg-orange-50/20'
+                  }`}
+                >
+                  <Upload className="w-10 h-10 text-orange-400 mx-auto mb-3" />
+                  {pdfFile ? (
+                    <p className="text-sm font-semibold text-gray-900">{pdfFile.name}</p>
+                  ) : (
+                    <p className="text-sm text-gray-600 mb-1">Drag and drop or click to choose a PDF</p>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">PDF only</p>
+                  <input
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={handlePdfFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                </div>
+                {errors.pdfFile && (
+                  <p className="mt-2 text-sm text-red-600">{errors.pdfFile}</p>
+                )}
+              </div>
+            </FormSectionCard>
+          )}
+
+          {creationMode === 'builder' && (
+          <>
           {/* ── Section 3: Prepared By ── */}
           <FormSectionCard
             icon={User}
@@ -1507,6 +1671,8 @@ export default function NewProposalPage() {
               rows={4}
             />
           </FormSectionCard>
+          </>
+          )}
 
           {/* ── Action Buttons ── */}
           <div className="flex items-center justify-between pt-6">
@@ -1520,21 +1686,37 @@ export default function NewProposalPage() {
               Cancel
             </Button>
             <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                onClick={handlePreview}
-                variant="outline"
-                className="flex items-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
-              >
-                <Eye className="w-4 h-4" />
-                Preview Proposal
-              </Button>
+              {creationMode === 'builder' && (
+                <Button
+                  type="button"
+                  onClick={handlePreview}
+                  variant="outline"
+                  className="flex items-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview Proposal
+                </Button>
+              )}
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white flex items-center gap-2 min-w-[160px]"
               >
-                <FileText className="w-4 h-4" />
-                Save Proposal
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    {creationMode === 'upload' ? (
+                      <Upload className="w-4 h-4" />
+                    ) : (
+                      <FileText className="w-4 h-4" />
+                    )}
+                    {creationMode === 'upload' ? 'Save uploaded proposal' : 'Save Proposal'}
+                  </>
+                )}
               </Button>
             </div>
           </div>

@@ -17,6 +17,8 @@ import {
   Textarea,
   ChatMessageText,
   ownerDisplayFromUser,
+  TableCellTaskStatusSelect,
+  PM_TASK_STATUS_OPTIONS,
 } from '@webfudge/ui';
 import {
   CheckSquare,
@@ -36,12 +38,12 @@ import TaskAssigneesPicker from './TaskAssigneesPicker';
 import {
   pmTableSelectFillProps,
   PRIORITY_OPTIONS,
-  TASK_STATUS_OPTIONS,
 } from './PMStatusBadge';
 import taskService from '../lib/api/taskService';
 import taskCommentService from '../lib/api/taskCommentService';
 import { usePmTableSort } from '../hooks/usePmTableSort';
 import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
+import { isTaskDueOverdue } from '@webfudge/utils';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.projectTasks.tableSort';
 
@@ -50,6 +52,7 @@ const STATUS_TABS = [
   { id: 'SCHEDULED', label: 'To Do' },
   { id: 'IN_PROGRESS', label: 'In Progress' },
   { id: 'INTERNAL_REVIEW', label: 'In Review' },
+  { id: 'ON_HOLD', label: 'On Hold' },
   { id: 'COMPLETED', label: 'Completed' },
   { id: 'OVERDUE', label: 'Overdue' },
 ];
@@ -81,10 +84,7 @@ function assignerTableLabel(row, assignerUser, derived) {
 }
 
 function isTaskOverdue(task) {
-  if (!task?.dueDate) return false;
-  const due = new Date(task.dueDate);
-  if (Number.isNaN(due.getTime())) return false;
-  return due < new Date() && task.strapiStatus !== 'COMPLETED' && task.strapiStatus !== 'CANCELLED';
+  return isTaskDueOverdue(task?.dueDate, task?.strapiStatus);
 }
 
 function actorDisplay(actor) {
@@ -421,17 +421,13 @@ export default function ProjectTasksPanel({
         key: 'status',
         label: 'STATUS',
         render: (_, row) => (
-          <div onClick={(event) => event.stopPropagation()}>
-            <Select
-              value={row.strapiStatus}
-              options={TASK_STATUS_OPTIONS}
-              onChange={(status) => updateTask(row, { status })}
-              disabled={savingId === row.id}
-              {...pmTableSelectFillProps(row.strapiStatus, 'status')}
-              containerClassName="min-w-[150px]"
-              placeholder="Status"
-            />
-          </div>
+          <TableCellTaskStatusSelect
+            status={row.strapiStatus}
+            onStatusChange={(status) => updateTask(row, { status })}
+            saving={savingId === row.id}
+            options={PM_TASK_STATUS_OPTIONS}
+            fillStyle="pm"
+          />
         ),
       },
       {
@@ -526,14 +522,14 @@ export default function ProjectTasksPanel({
       {
         key: 'startDate',
         label: 'START DATE',
-        render: (_, row) => <TableCellCreated dateString={row.startDate} />,
+        render: (_, row) => <TableCellCreated dateString={row.startDate} dateMode="calendar" />,
       },
       {
         key: 'dueDate',
         label: 'DUE DATE',
         render: (_, row) => (
           <div className={isTaskOverdue(row) ? '[&_.font-semibold]:text-red-700 [&_.text-gray-500]:text-red-600/90' : ''}>
-            <TableCellCreated dateString={row.dueDate} />
+            <TableCellCreated dateString={row.dueDate} dateMode="calendar" />
           </div>
         ),
       },

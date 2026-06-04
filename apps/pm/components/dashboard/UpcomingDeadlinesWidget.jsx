@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, Button, EmptyState, LoadingSpinner } from '@webfudge/ui'
 import { Calendar, ChevronLeft, ChevronRight, CheckSquare } from 'lucide-react'
+import { calendarDayDiff, parseDisplayDate, startOfLocalDay } from '@webfudge/utils'
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const DEADLINE_LIMIT = 3
@@ -15,16 +16,10 @@ const DEADLINE_DOT_COLORS = [
   'bg-violet-500',
 ]
 
-function startOfDay(d) {
-  const x = new Date(d)
-  x.setHours(0, 0, 0, 0)
-  return x
-}
-
 function daysUntil(dueDate) {
-  const due = startOfDay(dueDate)
-  const now = startOfDay(new Date())
-  return Math.round((due - now) / (24 * 60 * 60 * 1000))
+  const due = parseDisplayDate(dueDate)
+  if (!due) return NaN
+  return calendarDayDiff(due)
 }
 
 function formatDaysLeft(days) {
@@ -39,9 +34,10 @@ function isOpenTask(task) {
 }
 
 function dateKey(d) {
-  const x = new Date(d)
-  if (Number.isNaN(x.getTime())) return ''
-  return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`
+  const x = parseDisplayDate(d)
+  if (!x) return ''
+  const local = startOfLocalDay(x)
+  return `${local.getFullYear()}-${local.getMonth()}-${local.getDate()}`
 }
 
 function monthMatrix(viewYear, viewMonth) {
@@ -65,7 +61,11 @@ export default function UpcomingDeadlinesWidget({ tasks = [], loading = false, c
     return (tasks || [])
       .filter((t) => t?.dueDate && isOpenTask(t))
       .map((t) => ({ ...t, daysLeft: daysUntil(t.dueDate) }))
-      .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+      .sort((a, b) => {
+        const aT = parseDisplayDate(a.dueDate)?.getTime() ?? 0
+        const bT = parseDisplayDate(b.dueDate)?.getTime() ?? 0
+        return aT - bT
+      })
       .slice(0, DEADLINE_LIMIT)
   }, [tasks])
 

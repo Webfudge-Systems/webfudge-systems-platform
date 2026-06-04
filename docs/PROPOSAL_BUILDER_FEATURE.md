@@ -3,6 +3,8 @@
 ## Summary
 Added a full-featured Proposal / SOW Builder at `/clients/proposals/new`. Users fill a multi-section form and the data is transformed into a professionally styled proposal document that can be previewed in-app and downloaded as a PDF.
 
+**Upload mode:** A header toggle lets users switch to **Upload PDF** — a shorter form (proposal info, client details, PDF file) that stores the document on Strapi and links it to the proposal record (`creationMode: UPLOAD`, `proposalFile` media).
+
 ## Scope
 - **App:** `apps/crm`
 - **New file:** `apps/crm/app/clients/proposals/new/page.js`

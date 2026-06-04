@@ -28,11 +28,14 @@ function isPresent(value) {
   return s.length > 0 && s !== '—'
 }
 
+const detailLabelClass =
+  'mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-gray-500 sm:text-sm'
+
 function DetailCell({ label, icon: Icon, children, className = '' }) {
   return (
-    <div className={`min-w-0 px-4 py-4 ${className}`}>
-      <div className="mb-2.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-        {Icon ? <Icon className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden /> : null}
+    <div className={`min-w-0 px-6 py-4 ${className}`}>
+      <div className={detailLabelClass}>
+        {Icon ? <Icon className="h-4 w-4 shrink-0 text-gray-400" aria-hidden /> : null}
         <span>{label}</span>
       </div>
       {children}
@@ -56,7 +59,7 @@ function GridRow({ children, cols = 3, className = '' }) {
   )
 }
 
-function ProgressRing({ percent, size = 48 }) {
+function ProgressRing({ percent, size = 44 }) {
   const value = Math.max(0, Math.min(100, Number(percent) || 0))
   const r = 18
   const c = 2 * Math.PI * r
@@ -102,6 +105,9 @@ function computeTaskProgress(task) {
   if (task?.strapiStatus === 'INTERNAL_REVIEW') {
     return { percent: 80, title: 'In Review', sub: 'Awaiting review' }
   }
+  if (task?.strapiStatus === 'ON_HOLD') {
+    return { percent: 40, title: 'On Hold', sub: 'Work is paused' }
+  }
   return { percent: 0, title: 'Not started', sub: 'Update status as you go' }
 }
 
@@ -121,7 +127,7 @@ function computeChecklist(task) {
 
 function AssigneeStack({ assignees = [] }) {
   if (!assignees.length) {
-    return <span className="text-sm text-gray-400">None assigned</span>
+    return <span className="text-base text-gray-400">None assigned</span>
   }
   const visible = assignees.slice(0, 4)
   const extra = assignees.length - visible.length
@@ -136,11 +142,11 @@ function AssigneeStack({ assignees = [] }) {
           fallback={person.initials || (person.name || '?').charAt(0).toUpperCase()}
           alt={person.name}
           title={person.name}
-          className={`ring-2 ring-white ${person.color || 'bg-gray-500 text-white'} !h-8 !w-8 text-xs font-semibold`}
+          className={`ring-2 ring-white ${person.color || 'bg-gray-500 text-white'} !h-9 !w-9 text-xs font-semibold`}
         />
       ))}
       {extra > 0 ? (
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600 ring-2 ring-white">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600 ring-2 ring-white">
           +{extra}
         </span>
       ) : null}
@@ -178,15 +184,15 @@ export default function TaskDetailsCard({
 
   if (editing && taskInfoDraft) {
     return (
-      <Card variant="elevated" className="overflow-hidden rounded-xl p-0">
-        <div className="border-b border-gray-100 px-4 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">Task details</h2>
-          <p className="mt-0.5 text-xs text-gray-500">
+      <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl">
+        <div className="border-b border-gray-100 px-6 pt-6 pb-5">
+          <h2 className="text-xl font-semibold text-gray-900">Task details</h2>
+          <p className="mt-1.5 text-base text-gray-500">
             {draftRecurring ? 'Edit assignment, schedule, and project.' : 'Edit assignment, dates, and project.'}
           </p>
         </div>
 
-        <div className="space-y-5 px-4 py-4">
+        <div className="space-y-5 px-6 pb-6 pt-5">
           <Input
             label="Task name"
             required
@@ -296,12 +302,12 @@ export default function TaskDetailsCard({
               icon={Activity}
               className={draftRecurring ? '' : 'md:border-x md:border-gray-100'}
             >
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-base font-semibold text-gray-900">
                 {formatDate(task.createdAt, 'short') || '—'}
               </p>
             </DetailCell>
             <DetailCell label="Updated" icon={Activity}>
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-base font-semibold text-gray-900">
                 {formatDate(task.updatedAt, 'short') || '—'}
               </p>
             </DetailCell>
@@ -309,8 +315,8 @@ export default function TaskDetailsCard({
 
           <section className="border-t border-gray-100 pt-4">
             <div className="mb-2 flex items-center gap-2">
-              <AlignLeft className="h-4 w-4 text-orange-500" aria-hidden />
-              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              <AlignLeft className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
                 Description
               </h3>
             </div>
@@ -357,25 +363,25 @@ export default function TaskDetailsCard({
   const assignerInitial = (assigner?.initials || assignerName).charAt(0).toUpperCase() || 'U'
 
   return (
-    <Card variant="elevated" className="overflow-hidden rounded-xl p-0">
+    <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl">
       {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-gray-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold text-gray-900">Task details</h2>
-          <p className="mt-0.5 text-xs text-gray-500">
+      <div className="flex flex-col gap-4 border-b border-gray-100 px-6 pt-6 pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 pr-2">
+          <h2 className="text-xl font-semibold text-gray-900">Task details</h2>
+          <p className="mt-1.5 text-base text-gray-500">
             {isRecurring ? 'Assignment, schedule, and project.' : 'Assignment, dates, and project.'}
           </p>
         </div>
         <div
-          className="flex shrink-0 flex-nowrap items-center gap-2"
+          className="flex w-full shrink-0 flex-nowrap items-center gap-2.5 sm:w-auto sm:justify-end"
           role="group"
           aria-label="Task status"
         >
           <span
-            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide ring-1 ${statusVisual.pillClass}`}
+            className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold uppercase tracking-widest shadow-sm ring-2 ${statusVisual.pillClass}`}
             role="status"
           >
-            <StatusIcon className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2.25} aria-hidden />
+            <StatusIcon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={2.25} aria-hidden />
             {statusVisual.label}
           </span>
           <Select
@@ -383,7 +389,7 @@ export default function TaskDetailsCard({
             options={TASK_STATUS_OPTIONS}
             onChange={onStatusChange}
             disabled={saving}
-            containerClassName="w-[140px] shrink-0"
+            containerClassName="w-[148px] shrink-0"
             placeholder="Status"
           />
         </div>
@@ -402,14 +408,14 @@ export default function TaskDetailsCard({
                 className={`shrink-0 text-white ${assigner?.color || 'bg-orange-500'}`}
               />
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-gray-900">{assignerName}</p>
+                <p className="truncate text-base font-semibold leading-snug text-gray-900">{assignerName}</p>
                 {assignerEmail ? (
-                  <p className="truncate text-xs text-gray-500">{assignerEmail}</p>
+                  <p className="truncate text-sm text-gray-500">{assignerEmail}</p>
                 ) : null}
               </div>
             </div>
           ) : (
-            <span className="text-sm text-gray-400">Unassigned</span>
+            <span className="text-base text-gray-400">Unassigned</span>
           )}
         </DetailCell>
 
@@ -425,12 +431,12 @@ export default function TaskDetailsCard({
                 {task.projectSlug ? (
                   <Link
                     href={`/projects/${task.projectSlug}`}
-                    className="truncate text-sm font-semibold text-orange-600 hover:text-orange-700 hover:underline"
+                    className="truncate text-base font-semibold leading-snug text-orange-600 hover:text-orange-700 hover:underline"
                   >
                     {task.project}
                   </Link>
                 ) : (
-                  <span className="truncate text-sm font-semibold text-orange-600">
+                  <span className="truncate text-base font-semibold leading-snug text-orange-600">
                     {task.project}
                   </span>
                 )}
@@ -439,7 +445,7 @@ export default function TaskDetailsCard({
                 <button
                   type="button"
                   onClick={onViewProject}
-                  className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-orange-600"
+                  className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-orange-600"
                 >
                   View project
                   <ExternalLink className="h-3 w-3" aria-hidden />
@@ -447,7 +453,7 @@ export default function TaskDetailsCard({
               ) : null}
             </div>
           ) : (
-            <span className="text-sm text-gray-400">No project</span>
+            <span className="text-base text-gray-400">No project</span>
           )}
         </DetailCell>
       </GridRow>
@@ -455,13 +461,13 @@ export default function TaskDetailsCard({
       {/* Schedule row */}
       <GridRow cols={isRecurring ? 3 : 4}>
         <DetailCell label="Start date" icon={Calendar}>
-          <p className="text-sm font-semibold text-gray-900">
+          <p className="text-base font-semibold leading-snug text-gray-900">
             {formatDate(task.startDate, 'short') || '—'}
           </p>
         </DetailCell>
         {!isRecurring ? (
           <DetailCell label="Due date" icon={Calendar} className="md:border-x md:border-gray-100">
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-base font-semibold leading-snug text-gray-900">
               {formatDate(task.dueDate, 'short') || '—'}
             </p>
           </DetailCell>
@@ -471,12 +477,12 @@ export default function TaskDetailsCard({
           icon={Activity}
           className={isRecurring ? '' : 'md:border-x md:border-gray-100'}
         >
-          <p className="text-sm font-semibold text-gray-900">
+          <p className="text-base font-semibold leading-snug text-gray-900">
             {formatDate(task.createdAt, 'short') || '—'}
           </p>
         </DetailCell>
         <DetailCell label="Updated" icon={Activity}>
-          <p className="text-sm font-semibold text-gray-900">
+          <p className="text-base font-semibold leading-snug text-gray-900">
             {formatDate(task.updatedAt, 'short') || '—'}
           </p>
         </DetailCell>
@@ -490,16 +496,16 @@ export default function TaskDetailsCard({
             {task.parentTask?.id ? (
               <Link
                 href={`/tasks/${task.parentTask.id}`}
-                className="text-sm font-semibold text-orange-600 hover:underline"
+                className="text-base font-semibold leading-snug text-orange-600 hover:underline"
               >
                 {task.parentTask.name || 'View parent'}
               </Link>
             ) : (
-              <span className="text-sm text-gray-400">—</span>
+              <span className="text-base text-gray-400">—</span>
             )}
           </DetailCell>
           <DetailCell label="Repeats" icon={Repeat} className="md:border-l md:border-gray-100">
-            <p className="text-sm text-gray-900">
+            <p className="text-base leading-snug text-gray-900">
               <span className="font-semibold">{task.recurrenceSummary || 'Does not repeat'}</span>
               {task.recurrenceEndsAt ? (
                 <span className="font-normal text-gray-500">
@@ -518,23 +524,23 @@ export default function TaskDetailsCard({
           <div className="flex items-center gap-2.5">
             <Timer className="h-5 w-5 shrink-0 text-gray-400" aria-hidden />
             <div>
-              <p className="text-sm font-semibold text-gray-900">—</p>
-              <p className="text-xs text-gray-500">Not logged yet</p>
+              <p className="text-base font-semibold leading-snug text-gray-900">—</p>
+              <p className="text-sm text-gray-500">Not logged yet</p>
             </div>
           </div>
         </DetailCell>
 
         <DetailCell label="Progress" className="md:border-x md:border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="relative">
+            <div className="relative shrink-0">
               <ProgressRing percent={progress.percent} />
-              <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-800">
+              <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-gray-800">
                 {progress.percent}%
               </span>
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900">{progress.title}</p>
-              <p className="text-xs text-gray-500">{progress.sub}</p>
+              <p className="text-base font-semibold leading-snug text-gray-900">{progress.title}</p>
+              <p className="text-sm text-gray-500">{progress.sub}</p>
             </div>
           </div>
         </DetailCell>
@@ -546,13 +552,13 @@ export default function TaskDetailsCard({
               aria-hidden
             />
             <div>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="text-base font-semibold leading-snug text-gray-900">
                 {checklist.total > 0 ? `${checklist.done}/${checklist.total}` : '—'}
               </p>
               <button
                 type="button"
                 onClick={onViewSubtasks}
-                className="text-xs text-gray-500 hover:text-orange-600 hover:underline"
+                className="text-sm text-gray-500 hover:text-orange-600 hover:underline"
               >
                 {checklist.sub}
               </button>
@@ -564,11 +570,11 @@ export default function TaskDetailsCard({
           <div className="flex items-center gap-2.5">
             <Paperclip className="h-5 w-5 shrink-0 text-gray-400" aria-hidden />
             <div>
-              <p className="text-sm font-semibold text-gray-900">0</p>
+              <p className="text-base font-semibold leading-snug text-gray-900">0</p>
               <button
                 type="button"
                 onClick={onViewFiles}
-                className="text-xs font-medium text-gray-500 hover:text-orange-600 hover:underline"
+                className="text-sm font-medium text-gray-500 hover:text-orange-600 hover:underline"
               >
                 View files
               </button>
@@ -578,24 +584,24 @@ export default function TaskDetailsCard({
       </GridRow>
 
       {/* Description */}
-      <section className="border-t border-gray-100 px-4 py-4">
+      <section className="border-t border-gray-100 px-6 py-4">
         <div className="mb-2 flex items-center gap-2">
-          <AlignLeft className="h-4 w-4 text-orange-500" aria-hidden />
-          <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          <AlignLeft className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
             Description
           </h3>
         </div>
         {isPresent(task.description) ? (
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+          <p className="mt-2.5 whitespace-pre-wrap text-base font-normal leading-relaxed text-gray-800">
             {task.description}
           </p>
         ) : (
-          <p className="text-sm text-gray-400">No task description yet.</p>
+          <p className="mt-2.5 text-base font-normal text-gray-400">No task description yet.</p>
         )}
       </section>
 
       {/* Edit actions */}
-      <div className="border-t border-gray-100 bg-gray-50/50 px-4 py-4 text-center">
+      <div className="border-t border-gray-100 bg-gray-50/50 px-6 py-4 text-center">
         {canEdit ? (
           <p className="text-sm text-gray-600">
             <button

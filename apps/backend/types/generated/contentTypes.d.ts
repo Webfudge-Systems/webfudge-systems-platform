@@ -1387,6 +1387,7 @@ export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::lead-company.lead-company'> &
       Schema.Attribute.Private
+    nextConnectDate: Schema.Attribute.Date
     notes: Schema.Attribute.Text
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     phone: Schema.Attribute.String
@@ -1396,7 +1397,6 @@ export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
     source: Schema.Attribute.String & Schema.Attribute.DefaultTo<'WEBSITE'>
     state: Schema.Attribute.String
     status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'NEW'>
-    subType: Schema.Attribute.String
     twitter: Schema.Attribute.String
     type: Schema.Attribute.String
     updatedAt: Schema.Attribute.DateTime
@@ -1917,6 +1917,8 @@ export interface ApiProposalProposal extends Struct.CollectionTypeSchema {
     clientPhone: Schema.Attribute.String
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    creationMode: Schema.Attribute.Enumeration<['BUILDER', 'UPLOAD']> &
+      Schema.Attribute.DefaultTo<'BUILDER'>
     currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
     date: Schema.Attribute.Date
     deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
@@ -1942,6 +1944,7 @@ export interface ApiProposalProposal extends Struct.CollectionTypeSchema {
     preparedByPhone: Schema.Attribute.String
     projectName: Schema.Attribute.String
     projectOverview: Schema.Attribute.Text
+    proposalFile: Schema.Attribute.Media<'files'>
     proposalNumber: Schema.Attribute.String
     publishedAt: Schema.Attribute.DateTime
     securityItems: Schema.Attribute.JSON
@@ -2317,7 +2320,15 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     startDate: Schema.Attribute.DateTime
     startTime: Schema.Attribute.String
     status: Schema.Attribute.Enumeration<
-      ['SCHEDULED', 'IN_PROGRESS', 'INTERNAL_REVIEW', 'COMPLETED', 'CANCELLED', 'OVERDUE']
+      [
+        'SCHEDULED',
+        'IN_PROGRESS',
+        'INTERNAL_REVIEW',
+        'ON_HOLD',
+        'COMPLETED',
+        'CANCELLED',
+        'OVERDUE',
+      ]
     > &
       Schema.Attribute.DefaultTo<'SCHEDULED'>
     subtasks: Schema.Attribute.Relation<'oneToMany', 'api::task.task'>

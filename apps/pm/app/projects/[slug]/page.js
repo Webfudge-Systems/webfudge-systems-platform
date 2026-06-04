@@ -436,6 +436,10 @@ export default function ProjectDetailPage() {
       setProjectInfoSaveError('Project name is required.');
       return;
     }
+    if (projectInfoDraft.clientId === undefined || projectInfoDraft.clientId === null) {
+      setProjectInfoSaveError('Client is required.');
+      return;
+    }
     if (projectInfoDraft.startDate && projectInfoDraft.endDate && projectInfoDraft.endDate < projectInfoDraft.startDate) {
       setProjectInfoSaveError('Due date must be on or after the start date.');
       return;
@@ -750,11 +754,13 @@ export default function ProjectDetailPage() {
                         />
                         <Select
                           label="Client"
+                          required
                           value={projectInfoDraft.clientId}
-                          options={[{ value: '', label: 'None' }, ...clientOptions]}
-                          onChange={(v) => setProjectInfoField('clientId', v)}
+                          options={[{ value: '', label: 'No client' }, ...clientOptions]}
+                          onChange={(v) => setProjectInfoField('clientId', v ?? '')}
                           disabled={saving}
-                          placeholder="Link client"
+                          placeholder="No client"
+                          allowEmpty={false}
                           searchable
                           searchPlaceholder="Search clients…"
                         />

@@ -10,6 +10,7 @@ import {
   Badge,
   Modal,
   FormSectionCard,
+  useIndustrySelectOptions,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
@@ -34,15 +35,15 @@ import {
   CheckCircle2,
   Layers,
 } from 'lucide-react';
-import {
-  industryOptions,
-  companyTypes,
-  subTypeOptionsByCompanyType,
-} from '@webfudge/utils';
+import { companyTypes } from '@webfudge/utils';
+import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
 
 export default function AddLeadCompanyPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { options: industrySelectOptions, onIndustrySaved } = useIndustrySelectOptions({
+    fetchStoredIndustries: fetchStoredIndustriesForCrm,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
@@ -55,7 +56,6 @@ export default function AddLeadCompanyPage() {
     companyName: '',
     industry: '',
     type: '',
-    subType: '',
     website: '',
     phone: '',
     email: '',
@@ -73,6 +73,7 @@ export default function AddLeadCompanyPage() {
     status: 'NEW',
     dealValue: '',
     notes: '',
+    nextConnectDate: '',
     assignedTo: '',
   });
 
@@ -124,14 +125,6 @@ export default function AddLeadCompanyPage() {
     { value: 'SIZE_501_1000', label: '501-1000 employees' },
     { value: 'SIZE_1000_PLUS', label: '1000+ employees' },
   ];
-
-  const subTypeOptions = subTypeOptionsByCompanyType;
-
-  const getSubTypeOptions = () => {
-    if (!companyData.type) return [];
-    const list = subTypeOptions[companyData.type];
-    return (list || []).map((subType) => ({ value: subType, label: subType }));
-  };
 
   useEffect(() => {
     fetchUsers();
@@ -187,11 +180,7 @@ export default function AddLeadCompanyPage() {
   };
 
   const handleCompanyChange = (field, value) => {
-    setCompanyData((prev) => {
-      const updated = { ...prev, [field]: value };
-      if (field === 'type') updated.subType = '';
-      return updated;
-    });
+    setCompanyData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: null }));
     }
@@ -288,7 +277,6 @@ export default function AddLeadCompanyPage() {
         dealValue: companyData.dealValue ? parseFloat(companyData.dealValue) : 0,
       };
       if (companyData.type) leadCompanyPayload.type = companyData.type;
-      if (companyData.subType) leadCompanyPayload.subType = companyData.subType;
       if (companyData.website?.trim()) leadCompanyPayload.website = companyData.website.trim();
       if (companyData.phone?.trim()) leadCompanyPayload.phone = companyData.phone.trim();
       if (companyData.email?.trim()) leadCompanyPayload.email = companyData.email.trim();
@@ -303,11 +291,15 @@ export default function AddLeadCompanyPage() {
       if (companyData.linkedIn?.trim()) leadCompanyPayload.linkedIn = companyData.linkedIn.trim();
       if (companyData.twitter?.trim()) leadCompanyPayload.twitter = companyData.twitter.trim();
       if (companyData.notes?.trim()) leadCompanyPayload.notes = companyData.notes.trim();
+      if (companyData.nextConnectDate?.trim()) {
+        leadCompanyPayload.nextConnectDate = companyData.nextConnectDate.trim();
+      }
       if (companyData.assignedTo) {
         leadCompanyPayload.assignedTo = parseInt(companyData.assignedTo, 10);
       }
 
       const createdCompany = await leadCompanyService.create(leadCompanyPayload);
+      onIndustrySaved(leadCompanyPayload.industry);
       const companyId = createdCompany?.id ?? createdCompany?.data?.id;
 
       if (companyId && contacts.length > 0 && contactService?.create) {
@@ -486,10 +478,12 @@ export default function AddLeadCompanyPage() {
                   label="Industry *"
                   value={companyData.industry}
                   onChange={(value) => handleCompanyChange('industry', value)}
-                  options={industryOptions}
+                  options={industrySelectOptions}
                   error={errors.industry}
                   placeholder="Select industry"
                   icon={Building2}
+                  allowCustom
+                  searchable
                 />
               </div>
 
@@ -500,17 +494,6 @@ export default function AddLeadCompanyPage() {
                   onChange={(value) => handleCompanyChange('type', value)}
                   options={companyTypes.map((t) => ({ value: t.id, label: t.name }))}
                   placeholder="Select company type"
-                  icon={Layers}
-                />
-              </div>
-              <div>
-                <Select
-                  label="Sub-Type"
-                  value={companyData.subType}
-                  onChange={(value) => handleCompanyChange('subType', value)}
-                  options={getSubTypeOptions()}
-                  placeholder={companyData.type ? 'Select sub-type' : 'Select company type first'}
-                  disabled={!companyData.type}
                   icon={Layers}
                 />
               </div>
@@ -848,6 +831,15 @@ export default function AddLeadCompanyPage() {
                   value={companyData.leadSource}
                   onChange={(value) => handleCompanyChange('leadSource', value)}
                   options={leadSourceOptions}
+                />
+              </div>
+              <div>
+                <Input
+                  label="Next connect date"
+                  type="date"
+                  value={companyData.nextConnectDate}
+                  onChange={(e) => handleCompanyChange('nextConnectDate', e.target.value)}
+                  icon={Calendar}
                 />
               </div>
             </div>

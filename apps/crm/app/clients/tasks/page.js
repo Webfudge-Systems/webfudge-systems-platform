@@ -10,7 +10,6 @@ import {
   AlertTriangle,
   ListTodo,
   PlayCircle,
-  ChevronDown,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -18,6 +17,7 @@ import {
   Video,
   GripVertical,
 } from 'lucide-react';
+import { calendarDayDiff, isCalendarDateBefore } from '@webfudge/utils';
 import {
   Button,
   Table,
@@ -27,13 +27,13 @@ import {
   TabsWithActions,
   KPICard,
   Modal,
-  Badge,
   TableCellCreated,
   TableCellDateOnly,
   TableCellOwner,
   TableCellText,
   TableCellOrangePill,
   TableCellMultiline,
+  TableCellTaskStatusSelect,
   TableRowActionMenuPortal,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
@@ -60,6 +60,7 @@ const TASK_STATUSES = [
   'SCHEDULED',
   'IN_PROGRESS',
   'INTERNAL_REVIEW',
+  'ON_HOLD',
   'OVERDUE',
   'COMPLETED',
   'CANCELLED',
@@ -139,22 +140,19 @@ function endOfDay(d) {
 }
 
 function isTaskOverdue(task) {
-  const terminal = ['COMPLETED', 'CANCELLED'];
+  const terminal = ['COMPLETED', 'CANCELLED', 'ON_HOLD'];
   const st = (task?.status || '').toUpperCase();
   if (terminal.includes(st)) return false;
   if (st === 'OVERDUE') return true;
   if (!task?.scheduledDate) return false;
-  return new Date(task.scheduledDate) < startOfDay(new Date());
+  return isCalendarDateBefore(task.scheduledDate);
 }
 
 function isDueToday(task) {
   if (!task?.scheduledDate) return false;
   const st = (task?.status || '').toUpperCase();
-  if (['COMPLETED', 'CANCELLED'].includes(st)) return false;
-  const sd = new Date(task.scheduledDate);
-  const sod = startOfDay(new Date());
-  const eod = endOfDay(new Date());
-  return sd >= sod && sd <= eod;
+  if (['COMPLETED', 'CANCELLED', 'ON_HOLD'].includes(st)) return false;
+  return calendarDayDiff(task.scheduledDate) === 0;
 }
 
 function accountLabel(acc) {
@@ -187,21 +185,6 @@ function projectsLabel(projects) {
     .join(', ');
 }
 
-function TableCellTaskStatus({ status }) {
-  const s = (status || 'SCHEDULED').toUpperCase();
-  let variant = 'pending';
-  if (s === 'COMPLETED') variant = 'completed';
-  else if (s === 'CANCELLED') variant = 'cancelled';
-  else if (s === 'OVERDUE') variant = 'danger';
-  else if (s === 'IN_PROGRESS') variant = 'active';
-  else if (s === 'INTERNAL_REVIEW') variant = 'warning';
-  return (
-    <Badge variant={variant} className="whitespace-nowrap font-semibold uppercase">
-      {s.replace(/_/g, ' ')}
-    </Badge>
-  );
-}
-
 export default function ClientsTasksPage() {
   const router = useRouter();
   const initialFilters = useMemo(
@@ -228,7 +211,6 @@ export default function ClientsTasksPage() {
   const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
   const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const [moreActionMenu, setMoreActionMenu] = useState(null);
-  const [statusActionMenu, setStatusActionMenu] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [draftFilters, setDraftFilters] = useState(initialFilters);
@@ -529,6 +511,7 @@ export default function ClientsTasksPage() {
       scheduled: 0,
       in_progress: 0,
       internal_review: 0,
+      on_hold: 0,
       completed: 0,
       cancelled: 0,
     };
@@ -539,6 +522,7 @@ export default function ClientsTasksPage() {
       if (st === 'SCHEDULED') c.scheduled += 1;
       if (st === 'IN_PROGRESS') c.in_progress += 1;
       if (st === 'INTERNAL_REVIEW') c.internal_review += 1;
+      if (st === 'ON_HOLD') c.on_hold += 1;
       if (st === 'COMPLETED') c.completed += 1;
       if (st === 'CANCELLED') c.cancelled += 1;
     }
@@ -604,6 +588,7 @@ export default function ClientsTasksPage() {
       else if (activeTab === 'scheduled') matchesTab = st === 'SCHEDULED';
       else if (activeTab === 'in_progress') matchesTab = st === 'IN_PROGRESS';
       else if (activeTab === 'internal_review') matchesTab = st === 'INTERNAL_REVIEW';
+      else if (activeTab === 'on_hold') matchesTab = st === 'ON_HOLD';
       else if (activeTab === 'completed') matchesTab = st === 'COMPLETED';
       else if (activeTab === 'cancelled') matchesTab = st === 'CANCELLED';
 
@@ -662,6 +647,7 @@ export default function ClientsTasksPage() {
     { key: 'scheduled', label: 'Scheduled', count: tabCounts.scheduled },
     { key: 'in_progress', label: 'In progress', count: tabCounts.in_progress },
     { key: 'internal_review', label: 'Review', count: tabCounts.internal_review },
+    { key: 'on_hold', label: 'On hold', count: tabCounts.on_hold },
     { key: 'completed', label: 'Completed', count: tabCounts.completed },
     { key: 'cancelled', label: 'Cancelled', count: tabCounts.cancelled },
   ];
@@ -852,7 +838,19 @@ export default function ClientsTasksPage() {
         key: 'status',
         visibilityKey: 'status',
         label: 'STATUS',
-        render: (_, task) => <TableCellTaskStatus status={task.status} />,
+        render: (_, task) => {
+          const saving = Object.entries(loadingActions).some(
+            ([key, active]) =>
+              active && key.startsWith(`${task.id}-`) && !key.endsWith('-delete')
+          );
+          return (
+            <TableCellTaskStatusSelect
+              status={task.status}
+              onStatusChange={(next) => handleStatusUpdate(task.id, next)}
+              saving={saving}
+            />
+          );
+        },
       },
       {
         key: 'priority',
@@ -870,7 +868,9 @@ export default function ClientsTasksPage() {
         key: 'scheduledDate',
         visibilityKey: 'scheduledDate',
         label: 'SCHEDULED',
-        render: (_, task) => <TableCellDateOnly dateString={task.scheduledDate} />,
+        render: (_, task) => (
+          <TableCellCreated dateString={task.scheduledDate} dateMode="calendar" />
+        ),
       },
       {
         key: 'clientAccount',
@@ -969,31 +969,9 @@ export default function ClientsTasksPage() {
                         ? null
                         : { id: task.id, top: r.bottom + 4, left: r.left, triggerEl: e.currentTarget }
                     );
-                    setStatusActionMenu(null);
                   }}
                 >
                   <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-1 p-2 text-emerald-600 hover:bg-emerald-50"
-                  title="Change status"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const r = e.currentTarget.getBoundingClientRect();
-                    setStatusActionMenu((prev) =>
-                      prev?.id === task.id
-                        ? null
-                        : { id: task.id, top: r.bottom + 4, left: r.left, triggerEl: e.currentTarget }
-                    );
-                    setMoreActionMenu(null);
-                  }}
-                >
-                  <ListTodo className="h-4 w-4" />
-                  <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
               </div>
               <Button
@@ -1692,46 +1670,6 @@ export default function ClientsTasksPage() {
                 <ClipboardList className="h-4 w-4 shrink-0 text-teal-600" />
                 Copy tasks page link
               </button>
-            </TableRowActionMenuPortal>
-          );
-        })()}
-
-      {statusActionMenu &&
-        (() => {
-          const row = tasks.find((t) => t.id === statusActionMenu.id);
-          if (!row) return null;
-          const current = (row.status || 'SCHEDULED').toUpperCase();
-          return (
-            <TableRowActionMenuPortal
-              open
-              anchor={{
-                top: statusActionMenu.top,
-                left: statusActionMenu.left,
-                triggerEl: statusActionMenu.triggerEl,
-              }}
-              onClose={() => setStatusActionMenu(null)}
-              menuClassName="w-48"
-              menuWidthPx={192}
-            >
-              {TASK_STATUSES.map((status) => {
-                const loadingKey = `${row.id}-${status}`;
-                const isLoading = Boolean(loadingActions[loadingKey]);
-                return (
-                  <button
-                    key={status}
-                    type="button"
-                    disabled={isLoading}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50"
-                    onClick={() => {
-                      setStatusActionMenu(null);
-                      handleStatusUpdate(row.id, status);
-                    }}
-                  >
-                    <span>{status.replace(/_/g, ' ')}</span>
-                    {current === status ? <span className="text-xs text-emerald-600">Current</span> : null}
-                  </button>
-                );
-              })}
             </TableRowActionMenuPortal>
           );
         })()}

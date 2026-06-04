@@ -1,8 +1,17 @@
+import {
+  formatCalendarRelativeTime,
+  formatCalendarTableDate,
+  isCalendarDateValue,
+  isTaskDueOverdue,
+  parseDisplayDate,
+} from '@webfudge/utils';
+
 // Status mappings
 const STATUS_MAP = {
   SCHEDULED: 'To Do',
   IN_PROGRESS: 'In Progress',
   INTERNAL_REVIEW: 'Internal Review',
+  ON_HOLD: 'On Hold',
   COMPLETED: 'Done',
   CANCELLED: 'Cancelled',
   OVERDUE: 'Overdue',
@@ -12,6 +21,7 @@ const STATUS_REVERSE_MAP = {
   'To Do': 'SCHEDULED',
   'In Progress': 'IN_PROGRESS',
   'Internal Review': 'INTERNAL_REVIEW',
+  'On Hold': 'ON_HOLD',
   'Done': 'COMPLETED',
   'Cancelled': 'CANCELLED',
 };
@@ -64,10 +74,19 @@ export function transformPriorityToStrapi(frontendPriority) {
 
 export function formatDate(dateString, format = 'short') {
   if (!dateString) return null;
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return null;
+  if (isCalendarDateValue(dateString)) {
+    if (format === 'relative') return formatCalendarRelativeTime(dateString);
+    if (format === 'long') {
+      const date = parseDisplayDate(dateString);
+      if (!date) return null;
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    return formatCalendarTableDate(dateString);
+  }
+  const date = parseDisplayDate(dateString);
+  if (!date) return null;
 
-  if (format === 'relative') return formatRelativeDate(date);
+  if (format === 'relative') return formatRelativeDate(dateString);
   if (format === 'long') {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   }
@@ -286,7 +305,7 @@ export function transformTask(strapiTask) {
     effectiveAssignerUser = primaryAssigneeUser;
   }
 
-  const isOverdue = t.scheduledDate && new Date(t.scheduledDate) < new Date() && t.status !== 'COMPLETED';
+  const isOverdue = isTaskDueOverdue(t.scheduledDate, t.status);
 
   return {
     id,

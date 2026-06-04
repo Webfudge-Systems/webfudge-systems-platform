@@ -22,6 +22,8 @@ import {
   ViewToggleGroup,
   ViewToggleButton,
   ownerDisplayFromUser,
+  TableCellTaskStatusSelect,
+  PM_TASK_STATUS_OPTIONS,
 } from '@webfudge/ui';
 import {
   CheckSquare,
@@ -61,7 +63,6 @@ import TaskAssigneesPicker from '../../components/TaskAssigneesPicker';
 import {
   pmTableSelectFillProps,
   PRIORITY_OPTIONS,
-  TASK_STATUS_OPTIONS,
 } from '../../components/PMStatusBadge';
 import projectService from '../../lib/api/projectService';
 import { fetchPmAssignableUsers } from '../../lib/api/messageService';
@@ -387,10 +388,8 @@ export default function MyTasksPage() {
     return list;
   }, [allTasks, activeTab, searchQuery, isActiveMyTask]);
 
-  const tableRootTasks = useMemo(() => {
-    const idSet = new Set(allTasks.map((t) => t.id).filter((x) => x != null));
-    return filteredTasks.filter((t) => !t.parentId || !idSet.has(t.parentId));
-  }, [allTasks, filteredTasks]);
+  /** Every task in the active filter gets its own row; parents still expose nested subtasks when expanded. */
+  const tableRootTasks = filteredTasks;
 
   const {
     sortedData: sortedTableRootTasks,
@@ -630,7 +629,7 @@ export default function MyTasksPage() {
     for (const task of allTasks) {
       if (isActiveMyTask(task)) counts.MY_TASKS += 1;
       if (task.strapiStatus === 'IN_PROGRESS') counts.IN_PROGRESS += 1;
-      if (isTaskOverdue(task)) counts.OVERDUE = (counts.OVERDUE || 0) + 1;
+      if (isTaskOverdue(task)) counts.OVERDUE += 1;
     }
     return STATUS_TABS.map((tab) => ({ ...tab, badge: counts[tab.id] || 0 }));
   }, [allTasks, isActiveMyTask]);
@@ -843,17 +842,13 @@ export default function MyTasksPage() {
       visibilityKey: 'status',
       label: 'STATUS',
       render: (_, row) => (
-        <div onClick={(event) => event.stopPropagation()}>
-          <Select
-            value={row.strapiStatus}
-            options={TASK_STATUS_OPTIONS}
-            onChange={(status) => updateTask(row, { status })}
-            disabled={savingId === row.id}
-            {...pmTableSelectFillProps(row.strapiStatus, 'status')}
-            containerClassName="min-w-[150px]"
-            placeholder="Status"
-          />
-        </div>
+        <TableCellTaskStatusSelect
+          status={row.strapiStatus}
+          onStatusChange={(status) => updateTask(row, { status })}
+          saving={savingId === row.id}
+          options={PM_TASK_STATUS_OPTIONS}
+          fillStyle="pm"
+        />
       ),
     },
     {
@@ -924,7 +919,7 @@ export default function MyTasksPage() {
       key: 'startDate',
       visibilityKey: 'startDate',
       label: 'START DATE',
-      render: (_, row) => <TableCellCreated dateString={row.startDate} />,
+      render: (_, row) => <TableCellCreated dateString={row.startDate} dateMode="calendar" />,
     },
     {
       key: 'dueDate',
@@ -932,7 +927,7 @@ export default function MyTasksPage() {
       label: 'DUE DATE',
       render: (_, row) => (
         <div className={isTaskOverdue(row) ? '[&_.font-semibold]:text-red-700 [&_.text-gray-500]:text-red-600/90' : ''}>
-          <TableCellCreated dateString={row.dueDate} />
+          <TableCellCreated dateString={row.dueDate} dateMode="calendar" />
         </div>
       ),
     },

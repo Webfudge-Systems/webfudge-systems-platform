@@ -49,6 +49,19 @@ function extractComment(msg) {
   return '';
 }
 
+function isNextConnectReason(meta) {
+  if (meta == null) return false;
+  if (typeof meta === 'string') {
+    try {
+      const parsed = JSON.parse(meta);
+      return parsed?.commentKind === 'next_connect';
+    } catch {
+      return false;
+    }
+  }
+  return meta.commentKind === 'next_connect';
+}
+
 function actorLabel(actor) {
   if (!actor || typeof actor !== 'object') return 'User';
   return (
@@ -159,6 +172,7 @@ function ChatMessage({ msg, highlighted, onReact, onPin }) {
   const text = extractComment(msg);
   const actor = msg.actor;
   const gradient = actorGradient(actor);
+  const nextConnectReason = isNextConnectReason(msg.meta);
 
   const handleReact = (emoji) => {
     setReactions((prev) => {
@@ -197,6 +211,11 @@ function ChatMessage({ msg, highlighted, onReact, onPin }) {
           <span className="text-[11px] font-semibold text-gray-800 truncate max-w-[140px]">
             {actorLabel(actor)}
           </span>
+          {nextConnectReason ? (
+            <span className="inline-flex items-center rounded-full bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-200/80">
+              Next connect reason
+            </span>
+          ) : null}
           <span className="text-[10px] text-gray-400 tabular-nums whitespace-nowrap">
             {formatMsgTime(msg.createdAt)}
           </span>

@@ -35,7 +35,7 @@ import {
   TableCellCreated,
   TableCellDateOnly,
   TableCellOwner,
-  TableCellStatusPill,
+  TableCellAccountStatusSelect,
   formatTableDate,
   TableRowActionMenuPortal,
   Modal,
@@ -197,6 +197,7 @@ export default function ClientAccountsPage() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [draftFilters, setDraftFilters] = useState(initialFilters);
+  const [loadingActions, setLoadingActions] = useState({});
   const canCreateClientAccounts = canWriteClientAccounts();
   const columnDragKeyRef = useRef(null);
   const columnDropIndicatorRef = useRef(null);
@@ -386,6 +387,26 @@ export default function ClientAccountsPage() {
       setDeletingId(null);
     }
   }, [deleteAccountId, deletingId]);
+
+  const handleStatusUpdate = useCallback(
+    async (accountId, newStatus) => {
+      if (!accountId || !canWriteClientAccounts()) return;
+      const loadingKey = `${accountId}-${newStatus}`;
+      setLoadingActions((prev) => ({ ...prev, [loadingKey]: true }));
+      try {
+        await clientAccountService.update(accountId, { status: newStatus });
+        setAccounts((prev) =>
+          prev.map((a) => (a.id === accountId ? { ...a, status: newStatus } : a))
+        );
+      } catch (err) {
+        console.error('Error updating account status:', err);
+        alert('Failed to update status. Please try again.');
+      } finally {
+        setLoadingActions((prev) => ({ ...prev, [loadingKey]: false }));
+      }
+    },
+    []
+  );
 
   // Statistics
   const clientStats = {
@@ -711,7 +732,19 @@ export default function ClientAccountsPage() {
         key: 'status',
         visibilityKey: 'status',
         label: 'STATUS',
-        render: (_, account) => <TableCellStatusPill status={account.status} />,
+        render: (_, account) => {
+          const saving = Object.entries(loadingActions).some(
+            ([key, active]) => active && key.startsWith(`${account.id}-`)
+          );
+          return (
+            <TableCellAccountStatusSelect
+              status={account.status}
+              onStatusChange={(next) => handleStatusUpdate(account.id, next)}
+              saving={saving}
+              canEdit={canWriteClientAccounts()}
+            />
+          );
+        },
       },
       {
         key: 'createdAt',
@@ -929,7 +962,7 @@ export default function ClientAccountsPage() {
         },
       },
     ],
-    [router, deletingId, handleDeleteAccount]
+    [router, deletingId, handleDeleteAccount, handleStatusUpdate, loadingActions]
   );
 
   const visibleTableColumns = useMemo(() => {

@@ -1,11 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Avatar, Button, Select, Table, TableCellCreated, ownerDisplayFromUser } from '@webfudge/ui';
+import { Avatar, Button, Select, Table, TableCellCreated, TableCellTaskStatusSelect, PM_TASK_STATUS_OPTIONS, ownerDisplayFromUser } from '@webfudge/ui';
 import { ChevronDown, ChevronRight, Copy, Edit3, Eye, Link2, ListTree, Pencil, Plus, Trash2 } from 'lucide-react';
 import PMRowActions from './PMRowActions';
 import TaskAssigneesPicker from './TaskAssigneesPicker';
-import { pmTableSelectFillProps, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge';
+import { pmTableSelectFillProps, PRIORITY_OPTIONS } from './PMStatusBadge';
 import { usePmTableSort } from '../hooks/usePmTableSort';
 
 function SortableSubtasksTable({ columns, data, ...tableProps }) {
@@ -144,17 +144,14 @@ export function TaskSubtasksAfterRow({
       key: 'status',
       label: 'STATUS',
       render: (_, st) => (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Select
-            value={st.strapiStatus}
-            options={TASK_STATUS_OPTIONS}
-            onChange={(status) => onUpdateTask?.(st, { status })}
-            disabled={savingId === st.id}
-            {...pmTableSelectFillProps(st.strapiStatus || 'SCHEDULED', 'status')}
-            containerClassName="min-w-[140px]"
-            placeholder="Status"
-          />
-        </div>
+        <TableCellTaskStatusSelect
+          status={st.strapiStatus}
+          onStatusChange={(status) => onUpdateTask?.(st, { status })}
+          saving={savingId === st.id}
+          options={PM_TASK_STATUS_OPTIONS}
+          fillStyle="pm"
+          containerClassName="min-w-[140px]"
+        />
       ),
     },
     {
@@ -221,14 +218,14 @@ export function TaskSubtasksAfterRow({
     {
       key: 'startDate',
       label: 'START DATE',
-      render: (_, st) => <TableCellCreated dateString={st.startDate} />,
+      render: (_, st) => <TableCellCreated dateString={st.startDate} dateMode="calendar" />,
     },
     {
       key: 'dueDate',
       label: 'DUE DATE',
       render: (_, st) => (
         <div>
-          <TableCellCreated dateString={st.dueDate} />
+          <TableCellCreated dateString={st.dueDate} dateMode="calendar" />
         </div>
       ),
     },

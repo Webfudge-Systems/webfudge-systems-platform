@@ -1,7 +1,9 @@
 /**
  * Tasks — Strapi /tasks; dashboard My work uses GET /tasks/my-work.
+ * CRM list/summary calls pass scope=crm so PM project-only tasks are excluded.
  */
 import strapiClient from '../strapiClient';
+import { filterCrmTasks, filterCrmMyWorkSummary } from '../crmTasks';
 import {
   buildListQuery,
   normalizeStrapiEntry,
@@ -10,6 +12,7 @@ import {
 } from './strapiContentApi';
 
 const ENDPOINT = '/tasks';
+const CRM_SCOPE = { scope: 'crm' };
 
 function normalizeEntry(entry) {
   return normalizeStrapiEntry(entry);
@@ -71,21 +74,22 @@ async function getByDealId(dealId, options = {}) {
  * @returns {Promise<{ overdue: { count: number, items: object[] }, today: object, upcoming: object }>}
  */
 export async function fetchMyWorkSummary() {
-  const res = await strapiClient.get(`${ENDPOINT}/my-work`);
+  const res = await strapiClient.get(`${ENDPOINT}/my-work`, CRM_SCOPE);
   const data = res?.data;
   if (!data || typeof data !== 'object') {
-    return {
-      overdue: { count: 0, items: [] },
-      today: { count: 0, items: [] },
-      upcoming: { count: 0, items: [] },
-    };
+    return filterCrmMyWorkSummary(null);
   }
-  return data;
+  return filterCrmMyWorkSummary(data);
 }
 
 async function getAll(params = {}) {
-  const response = await strapiClient.get(ENDPOINT, buildListQuery(params));
-  return normalizeListResponse(response);
+  const response = await strapiClient.get(
+    ENDPOINT,
+    buildListQuery({ ...params, ...CRM_SCOPE })
+  );
+  const normalized = normalizeListResponse(response);
+  normalized.data = filterCrmTasks(normalized.data);
+  return normalized;
 }
 
 async function getOne(id, options = {}) {

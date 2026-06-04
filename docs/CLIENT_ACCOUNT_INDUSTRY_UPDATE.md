@@ -23,7 +23,7 @@ Expanded industry choices on client account forms, added a custom text field whe
 - `subType` attribute removed from `client-account` content type.
 - Sub-type UI removed from create, edit, and account detail inline edit.
 - Lead → client conversion no longer copies `subType`.
-- Lead companies still support sub-type where company type requires it.
+- Lead companies use company type only (sub-type removed; see [LEAD_COMPANY_SUBTYPE_REMOVAL.md](./LEAD_COMPANY_SUBTYPE_REMOVAL.md)).
 
 ## Usage / Migration
 

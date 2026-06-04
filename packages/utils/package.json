@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.js",
     "./formatters": "./src/formatters/index.js",
+    "./formatters/calendarDate": "./src/formatters/calendarDate.js",
     "./crmShared": "./src/crmShared/index.js"
   },
   "scripts": {
