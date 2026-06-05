@@ -16,6 +16,7 @@ import {
   TableSkeleton,
   TabsWithActions,
   Textarea,
+  Pagination,
   ChatMessageText,
   ownerDisplayFromUser,
   TableCellTaskStatusSelect,
@@ -49,6 +50,7 @@ import { isTaskDueOverdue } from '@webfudge/utils';
 import { filterMajorTasks } from '../lib/taskListUtils';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.projectTasks.tableSort';
+const TABLE_PAGE_SIZE = 12;
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Tasks' },
@@ -163,6 +165,7 @@ export default function ProjectTasksPanel({
   const [commentError, setCommentError] = useState('');
   const [sortPickerOpen, setSortPickerOpen] = useState(false);
   const [promoteModal, setPromoteModal] = useState({ open: false, task: null });
+  const [tablePage, setTablePage] = useState(1);
   const toolbarRef = useRef(null);
 
   const handleApproveAssignment = useCallback(
@@ -326,6 +329,22 @@ export default function ProjectTasksPanel({
     storageKey: TABLE_SORT_STORAGE_KEY,
     data: tableRootTasks,
   });
+
+  const totalTableRows = sortedTableRootTasks.length;
+  const totalTablePages = Math.max(1, Math.ceil(totalTableRows / TABLE_PAGE_SIZE));
+  const paginatedTableTasks = useMemo(() => {
+    const start = (tablePage - 1) * TABLE_PAGE_SIZE;
+    return sortedTableRootTasks.slice(start, start + TABLE_PAGE_SIZE);
+  }, [sortedTableRootTasks, tablePage]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [activeTab, searchQuery]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(sortedTableRootTasks.length / TABLE_PAGE_SIZE));
+    setTablePage((prev) => Math.min(prev, maxPage));
+  }, [sortedTableRootTasks.length]);
 
   useEffect(() => {
     if (!sortPickerOpen) return;
@@ -686,8 +705,14 @@ export default function ProjectTasksPanel({
           <span className="text-gray-400">Loading tasks…</span>
         ) : (
           <>
-            Showing <span className="font-semibold text-gray-900">{sortedTableRootTasks.length}</span> result
-            {sortedTableRootTasks.length !== 1 ? 's' : ''}
+            Showing <span className="font-semibold text-gray-900">{totalTableRows}</span> result
+            {totalTableRows !== 1 ? 's' : ''}
+            {totalTableRows > TABLE_PAGE_SIZE ? (
+              <>
+                {' '}
+                (page {tablePage} of {totalTablePages})
+              </>
+            ) : null}
           </>
         )}
       </div>
@@ -701,7 +726,7 @@ export default function ProjectTasksPanel({
           <>
             <Table
               columns={sortableTaskColumns}
-              data={sortedTableRootTasks}
+              data={paginatedTableTasks}
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/tasks/${row.id}`)}
@@ -742,6 +767,16 @@ export default function ProjectTasksPanel({
                 )}
               </div>
             )}
+            {totalTablePages > 1 ? (
+              <Pagination
+                currentPage={tablePage}
+                totalPages={totalTablePages}
+                totalItems={totalTableRows}
+                itemsPerPage={TABLE_PAGE_SIZE}
+                onPageChange={setTablePage}
+                className="border-t border-gray-200 bg-gray-50"
+              />
+            ) : null}
           </>
         )}
       </div>

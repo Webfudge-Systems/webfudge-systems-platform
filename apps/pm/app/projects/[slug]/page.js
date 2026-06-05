@@ -60,7 +60,7 @@ import taskService from '../../../lib/api/taskService';
 import { fetchPmAssignableUsers } from '../../../lib/api/messageService';
 import { fetchChatMentionUsers } from '../../../lib/api/chatMentionUsers';
 import { formatDate, transformProject, transformTask, transformUser } from '../../../lib/api/dataTransformers';
-import { enrichTasksWithProjectManager, filterMajorTasks } from '../../../lib/taskListUtils';
+import { enrichTasksWithProjectManager, filterMajorTasks, mergeTasksById } from '../../../lib/taskListUtils';
 import {
   collectTaskAssigneeUsers,
   usersForProjectTaskAssignment,
@@ -269,14 +269,19 @@ export default function ProjectDetailPage() {
     }
   }, [slug]);
 
-  const loadTasks = useCallback(async ({ silent = false } = {}) => {
+  const loadTasks = useCallback(async ({ silent = false, mergeWithPrevious = false } = {}) => {
     if (!project?.id) return;
     const pid = Number(project.id);
     if (Number.isNaN(pid)) return;
     try {
       if (!silent) setTasksLoading(true);
-      const rawList = await taskService.fetchAllTasksByProject(pid, { pageSize: 100, sort: 'updatedAt:desc' });
-      setTasks(rawList.map(transformTask).filter(Boolean));
+      const rawList = await taskService.fetchAllTasksByProject(pid, { pageSize: 500, sort: 'updatedAt:desc' });
+      const list = rawList.map(transformTask).filter(Boolean);
+      if (mergeWithPrevious) {
+        setTasks((prev) => mergeTasksById(list, prev));
+      } else {
+        setTasks(list);
+      }
     } catch (error) {
       console.error('Load project tasks error:', error);
       if (!silent) setTasks([]);
@@ -512,18 +517,9 @@ export default function ProjectDetailPage() {
       }
       setTaskModal({ open: false, task: null, parentContext: null });
       if (savedTask?.id) {
-        setTasks((prev) => {
-          const without = prev.filter((task) => String(task.id) !== String(savedTask.id));
-          return [savedTask, ...without];
-        });
+        setTasks((prev) => mergeTasksById([savedTask], prev));
       }
-      await loadTasks({ silent: true });
-      if (savedTask?.id) {
-        setTasks((prev) => {
-          if (prev.some((task) => String(task.id) === String(savedTask.id))) return prev;
-          return [savedTask, ...prev];
-        });
-      }
+      await loadTasks({ silent: true, mergeWithPrevious: true });
       await loadProject();
     } catch (error) {
       console.error('Save task error:', error);

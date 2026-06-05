@@ -89,7 +89,7 @@ export default function DashboardPage() {
           canViewProjects
             ? projectService.getAllProjects({ pageSize: 10, sort: 'updatedAt:desc' })
             : Promise.resolve({ data: [] }),
-          canViewTasks ? taskService.fetchAllTasks({ pageSize: 100, sort: 'updatedAt:desc' }).then((data) => ({ data })) : Promise.resolve({ data: [] }),
+          canViewTasks ? taskService.fetchAllTasks({ pageSize: 500, sort: 'updatedAt:desc' }).then((data) => ({ data })) : Promise.resolve({ data: [] }),
           strapiClient.getXtrawrkxUsers({ pageSize: 200 }),
         ])
 
@@ -116,7 +116,7 @@ export default function DashboardPage() {
 
         if (canViewTasks && userId) {
           try {
-            const mineRaw = await taskService.fetchPMTasksByAssignee(userId, { pageSize: 100, sort: 'updatedAt:desc' });
+            const mineRaw = await taskService.fetchPMTasksByAssignee(userId, { pageSize: 500, sort: 'updatedAt:desc' });
             const uid = String(userId);
             const mine = mineRaw
               .map(transformTask)

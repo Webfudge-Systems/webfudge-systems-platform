@@ -2,7 +2,7 @@
 
 > **Audience:** `greenway-suite`, `xtrawrkx-suite`, and any fork that mirrors Webfudge PM.  
 > **Purpose:** Single reference so humans and **Cursor** can port the same PM changes into another codebase.  
-> **Source of truth:** `webfudge-platform` — base commit `5a36f712` (5 Jun 2026) + follow-up **reporter edit/delete** for org Members.
+> **Source of truth:** `webfudge-platform` — base commit `5a36f712` (5 Jun 2026) + follow-ups: **Reporter edit/delete** for org Members, **task list pagination / tab count sync** (same day).
 
 ---
 
@@ -27,6 +27,7 @@ Port all PM changes from webfudge-platform into this repo:
 5) Reporter label + Project Manager on tasks
 6) subtask promote + single assignee
 7) replace isPmMember gates with canEditTaskInPm/canDeleteTaskInPm
+8) task list pagination — fetchAllTasks* helpers + major-task tab badges
 Match existing code style. Backend before frontend. List files changed when done.
 ```
 
@@ -43,6 +44,7 @@ Match existing code style. Backend before frontend. List files changed when done
 | 5 | Project Manager on task rows | `buildTaskPopulateConfig` | `taskService`, `dataTransformers`, `taskListUtils` | No |
 | 6 | Subtasks: single assignee, promote to major | `clampSubtaskToSingleAssignee` | `promoteSubtaskToMajorTask`, modals | No |
 | 7 | Major-task list filtering | — | `taskListUtils`, dashboard, My Tasks | No |
+| 8 | Task list pagination & tab counts | — (uses existing `GET /tasks` pagination) | `taskService` fetch helpers, My Tasks, dashboard, project Tasks tab | No |
 
 ---
 
@@ -220,6 +222,75 @@ Replace `isPmMember` / `memberScopedTasks` blocking **all** edits with per-row c
 - [ ] `app/page.js` dashboard stats: use `filterMajorTasks` for KPIs
 - [ ] My Tasks: KPIs/tabs use major tasks; **My Tasks** tab still shows assigned subtasks as own rows
 
+### Task list pagination & tab count sync (follow-up)
+
+**Symptom:** After creating a task, the new row appeared but **All Tasks** badge, **Showing X results**, and KPI **Total Tasks** stayed at the old number (e.g. 12 instead of 13). An older task silently dropped off the list when sorted by `updatedAt:desc`.
+
+**Cause:** List pages called single-page APIs (`getAllTasks`, `getTasksByProject`, or page-1-only assignee queries). The UI state held only one page of rows; counts were derived from that truncated array.
+
+**Backend:** No schema or controller change required. Task `find` already accepts `pagination[page]`, `pagination[pageSize]` (capped at **500** via `readListQuery` in `task/controllers/task.js`). Default page size when omitted is **25**.
+
+**New helpers in `apps/pm/lib/api/taskService.js`** (module-level `paginateTaskApi` + class methods):
+
+| Symbol | Role |
+|--------|------|
+| `paginateTaskApi(fetchPage, options)` | Internal — walks pages until `meta.pagination.pageCount` / `total` satisfied; merges rows by Strapi `id` |
+| `fetchAllTasks(options)` | Org-wide PM lists — wraps `getAllTasks` |
+| `fetchAllTasksByProject(projectId, options)` | Project detail Tasks tab — wraps `getTasksByProject` |
+| `fetchPMTasksByAssignee(userId, options)` | Dashboard “my tasks” — paginates **assignee** and **collaborators** streams separately, merges, then `filterPmScopedTasks` (drops CRM-linked `leadCompany`, `clientAccount`, `contact`, `deal`) |
+| `getPMTasksByAssignee(userId, options)` | Thin wrapper — now calls `fetchPMTasksByAssignee` |
+| `getTaskStats()` | Uses `fetchAllTasks` instead of a single `pageSize: 500` call |
+
+Default list sort for fetch helpers: `updatedAt:desc`. Default page size: **100** (max **500** per request).
+
+**Page load pattern** (My Tasks + project detail):
+
+```javascript
+// loadTasks
+const rawList = await taskService.fetchAllTasks({ pageSize: 100, sort: 'updatedAt:desc', ...filters });
+setAllTasks(rawList.map(transformTask).filter(Boolean));
+
+// loadTasks({ silent: true }) — refresh after save without table spinner
+```
+
+**Save pattern** (`handleSaveTask` / `saveTask`):
+
+1. `createTask` / `updateTask` → `transformTask(res?.data)`
+2. Optimistic merge into local state (prepend, dedupe by `id`)
+3. `loadTasks({ silent: true })` full refetch
+4. If saved task still missing from refetch, merge again (race guard)
+
+**Where counts must align** (all use **`filterMajorTasks`** for “All Tasks” / status tabs, except My Tasks tab):
+
+| Surface | Count source | Table rows |
+|---------|--------------|------------|
+| My Tasks `/my-tasks` | `tabsWithBadges.all` = `majorTasks.length` | `sortedTableRootTasks` = major only on All / In Progress / Overdue tabs |
+| My Tasks **My Tasks** tab | `allTasks` + `isActiveMyTask` (includes subtasks) | Assigned subtasks as own rows |
+| Dashboard KPIs | `filterMajorTasks(allTasks)` | N/A |
+| Dashboard **My tasks** widget | `fetchPMTasksByAssignee` → open assignee filter | Widget list |
+| Project detail Tasks tab badge | `majorProjectTasks.length` | `ProjectTasksPanel` |
+| `ProjectTasksPanel` status tabs | Count **`majorTasks`** (not raw `tasks.length`) | `filterMajorTasks(filteredTasks)` |
+
+**Files touched (webfudge-platform):**
+
+- `apps/pm/lib/api/taskService.js` — pagination helpers
+- `apps/pm/app/my-tasks/page.js` — `loadTasks`, `handleSaveTask`
+- `apps/pm/app/page.js` — dashboard `fetchAllTasks` + `fetchPMTasksByAssignee`
+- `apps/pm/app/projects/[slug]/page.js` — `fetchAllTasksByProject`, `saveTask`, `majorProjectTasks` for badge/KPIs
+- `apps/pm/components/ProjectTasksPanel.jsx` — tab badges from `majorTasks`
+
+**Intentionally unchanged:** `projects/page.js` (server-paginated project list, `pageSize: 12`); calendar (`loadWorkspaceCalendar.js` date-range queries).
+
+### Sync checklist — task list pagination (PM frontend only)
+
+- [ ] Add `paginateTaskApi`, `fetchAllTasks`, `fetchAllTasksByProject`, `fetchPMTasksByAssignee` to **`taskService.js`** (match method names exactly)
+- [ ] Point **`getPMTasksByAssignee`** and **`getTaskStats`** at the fetch-all helpers
+- [ ] **`my-tasks/page.js`**: `loadTasks` → `fetchAllTasks`; support `loadTasks({ silent: true })`; optimistic merge in `handleSaveTask`
+- [ ] **`app/page.js`**: org stats via `fetchAllTasks`; assignee widget via `fetchPMTasksByAssignee`
+- [ ] **`projects/[slug]/page.js`**: `fetchAllTasksByProject`; `majorProjectTasks = filterMajorTasks(tasks)` for Tasks tab badge + KPIs; same save merge pattern
+- [ ] **`ProjectTasksPanel.jsx`**: tab badges count **`majorTasks`** (`filterMajorTasks(tasks)`), not `tasks.length`
+- [ ] Do **not** replace intentional pagination on **`projects/page.js`** (project grid)
+
 ---
 
 ## 5. File mapping (webfudge-platform → target suite)
@@ -243,19 +314,19 @@ Use this table to locate equivalents. Path prefixes may differ (`apps/pm` vs `xt
 | `apps/pm/lib/pmOrgRoles.js` | All permission helpers incl. `isTaskReporter` |
 | `apps/pm/lib/taskListUtils.js` | **New file** — copy entire module |
 | `apps/pm/lib/api/dataTransformers.js` | `isPrivate` on project; PM fields on task |
-| `apps/pm/lib/api/taskService.js` | PM populate, `promoteSubtaskToMajorTask` |
+| `apps/pm/lib/api/taskService.js` | PM populate, `promoteSubtaskToMajorTask`, **`fetchAllTasks` / `fetchAllTasksByProject` / `fetchPMTasksByAssignee`** |
 | `apps/pm/lib/tableSortColumns.js` | Reporter column label |
 
 ### PM frontend — pages
 
 | Webfudge path | What to port |
 |---------------|--------------|
-| `apps/pm/app/page.js` | Major-task dashboard stats |
-| `apps/pm/app/my-tasks/page.js` | Permissions, promote, Reporter, enrich |
+| `apps/pm/app/page.js` | Major-task dashboard stats; **`fetchAllTasks` + `fetchPMTasksByAssignee`** |
+| `apps/pm/app/my-tasks/page.js` | Permissions, promote, Reporter, enrich; **`fetchAllTasks` load + optimistic save** |
 | `apps/pm/app/projects/page.js` | Lock icon |
 | `apps/pm/app/projects/add/page.js` | Private checkbox |
 | `apps/pm/app/projects/[slug]/edit/page.js` | Private checkbox |
-| `apps/pm/app/projects/[slug]/page.js` | `displayTasks`, subtask permissions |
+| `apps/pm/app/projects/[slug]/page.js` | `displayTasks`, subtask permissions; **`fetchAllTasksByProject`, `majorProjectTasks` badge/KPIs** |
 | `apps/pm/app/tasks/[id]/page.js` | Full permission model, PM column, promote |
 
 ### PM frontend — components
@@ -263,7 +334,7 @@ Use this table to locate equivalents. Path prefixes may differ (`apps/pm` vs `xt
 | Webfudge path | What to port |
 |---------------|--------------|
 | `apps/pm/components/ProjectDetailMetaBar.jsx` | Private badge |
-| `apps/pm/components/ProjectTasksPanel.jsx` | `canEditTaskInPm` gates, promote modal |
+| `apps/pm/components/ProjectTasksPanel.jsx` | `canEditTaskInPm` gates, promote modal; **tab badges from `filterMajorTasks(tasks)`** |
 | `apps/pm/components/QuickCreateTaskModal.jsx` | Scoped picker props |
 | `apps/pm/components/TaskAssigneesPicker.jsx` | `maxAssignees` support |
 | `apps/pm/components/TaskDetailsCard.jsx` | Reporter label, PM row, `canEdit` |
@@ -277,6 +348,7 @@ If the target suite talks to the same Strapi API, ensure:
 
 | Item | Detail |
 |------|--------|
+| **Task list** | `GET /api/tasks` with `pagination[page]`, `pagination[pageSize]` (max 500); no new fields |
 | **Project field** | `isPrivate: boolean` (default false) |
 | **Task field** | `assigner` relation (unchanged) — UI calls it Reporter |
 | **Task populate** | `populate[projects][populate][projectManager]=*` on list/detail |
@@ -338,6 +410,14 @@ No database migration required — `isPrivate` defaults to public.
 - [ ] Admin/Manager can **Make major task**
 - [ ] Dashboard counts exclude nested subtasks (major tasks only)
 
+### Task list counts (pagination follow-up)
+
+- [ ] My Tasks **All Tasks** badge matches **Showing X results** after create/delete
+- [ ] Creating a task increments count; no older major task disappears from the list
+- [ ] Project detail **Tasks** tab badge matches panel table count
+- [ ] Dashboard KPI **To Do / In Progress / Done / Overdue** reflect all major tasks (not one page)
+- [ ] `ProjectTasksPanel` **All Tasks** badge equals major-task rows, not raw list length including nested subtasks
+
 ---
 
 ## 9. Related docs (webfudge-platform)
@@ -359,6 +439,7 @@ No database migration required — `isPrivate` defaults to public.
 |------|--------|
 | 5 Jun 2026 | Base release `5a36f712` — privacy, permissions, Reporter, PM display, subtasks |
 | 5 Jun 2026 | Follow-up — Member **Reporter** gets full edit + delete on own created tasks (`isTaskReporter`, backend update/delete gates) |
+| 5 Jun 2026 | Follow-up — **Task list pagination**: `fetchAllTasks*` in `taskService.js`; My Tasks, dashboard, project Tasks tab, and `ProjectTasksPanel` tab badges stay in sync after create |
 
 ---
 

@@ -114,25 +114,21 @@ function filterPmScopedTasks(items) {
 async function paginateTaskApi(fetchPage, options = {}) {
   const pageSize = Math.min(Number(options.pageSize) || 100, 500);
   let page = 1;
-  let pageCount = 1;
-  let reportedTotal = null;
   const byId = new Map();
 
-  do {
+  for (;;) {
     const res = await fetchPage(page, pageSize);
     const batch = Array.isArray(res?.data) ? res.data : [];
     for (const row of batch) {
       const id = row?.id ?? row?.attributes?.id;
       if (id != null) byId.set(id, row);
     }
-    if (typeof res?.meta?.pagination?.total === 'number') {
-      reportedTotal = res.meta.pagination.total;
-    }
-    pageCount = res?.meta?.pagination?.pageCount ?? 1;
     if (!batch.length) break;
-    if (reportedTotal != null && byId.size >= reportedTotal) break;
+    // Full page → keep going (meta.pageCount can be wrong); partial page → done.
+    if (batch.length < pageSize) break;
     page += 1;
-  } while (page <= pageCount);
+    if (page > 500) break;
+  }
 
   return [...byId.values()];
 }
@@ -213,6 +209,12 @@ class TaskService {
     );
     mergeRows(collabRows);
 
+    const reporterRows = await paginateTaskApi(
+      (page, pageSize) => this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'assigner' }),
+      options
+    );
+    mergeRows(reporterRows);
+
     return filterPmScopedTasks([...byId.values()]);
   }
 
@@ -246,6 +248,8 @@ class TaskService {
     if (projectId) base['filters[projects][id][$eq]'] = projectId;
     if (options.stream === 'collaborators') {
       base['filters[collaborators][id][$eq]'] = userId;
+    } else if (options.stream === 'assigner') {
+      base['filters[assigner][id][$eq]'] = userId;
     } else {
       base['filters[assignee][id][$eq]'] = userId;
     }
@@ -483,7 +487,7 @@ class TaskService {
   async getTaskStats(userId = null) {
     try {
       void userId;
-      const tasks = await this.fetchAllTasks({ pageSize: 100, sort: 'updatedAt:desc' });
+      const tasks = await this.fetchAllTasks({ pageSize: 500, sort: 'updatedAt:desc' });
 
       const now = new Date();
       const totalTasks = tasks.length;

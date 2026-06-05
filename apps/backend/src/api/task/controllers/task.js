@@ -577,6 +577,7 @@ async function userMayViewTask(strapi, ctx, orgId, userId, entry) {
   const row = await strapi.entityService.findOne(UID, entry.id, {
     populate: {
       assignee: true,
+      assigner: true,
       collaborators: true,
       pendingCollaborators: true,
       assignmentRequestedBy: true,
@@ -587,6 +588,7 @@ async function userMayViewTask(strapi, ctx, orgId, userId, entry) {
   if (!row || orgIdFromRelation(row.organization) !== orgId) return false;
   const requesterId = relationId(row.assignmentRequestedBy);
   if (requesterId != null && Number(requesterId) === Number(userId)) return true;
+  if (userIsTaskReporter(row, userId)) return true;
   const aid = relationId(row.assignee);
   if (aid != null && Number(aid) === Number(userId)) return true;
   const cols = collaboratorIdsFromEntity(row);
@@ -655,7 +657,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!isPmOrgAdminRole(ctx) && ctx.state.user?.id && !crmScope) {
       const uid = ctx.state.user.id;
       const pids = await projectIdsVisibleToUser(strapi, ctx, ctx.state.orgId, uid);
-      const visOr = [{ assignee: uid }, { collaborators: { id: uid } }];
+      const visOr = [{ assigner: uid }, { assignee: uid }, { collaborators: { id: uid } }];
       if (pids.length) visOr.push({ projects: { id: { $in: pids } } });
       const hasExtra = Object.keys(extraFilters).length > 0;
       if (hasExtra) {
