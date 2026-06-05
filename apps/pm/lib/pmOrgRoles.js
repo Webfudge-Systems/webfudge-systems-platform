@@ -80,23 +80,33 @@ export function isTaskAssigneeOrCollaborator(task, userId) {
   return [...ids].some((id) => Number.isFinite(id) && id === Number(userId))
 }
 
+/** User created the task (Reporter / Strapi `assigner`). */
+export function isTaskReporter(task, userId) {
+  if (!task || userId == null) return false
+  if (task.assignerId != null && Number(task.assignerId) === Number(userId)) return true
+  const assigner = task.assigner
+  if (assigner?.id != null && Number(assigner.id) === Number(userId)) return true
+  return false
+}
+
 /**
- * Edit a task: admin/manager always; org members when assigned (assignee or collaborator).
+ * Edit a task: admin/manager always; org members when assignee, collaborator, or reporter.
  */
 export function canEditTaskInPm(task, userId) {
   if (!task || userId == null) return false
   const kind = getPmOrgRoleKind()
   if (kind === 'admin' || kind === 'manager') return true
-  return isTaskAssigneeOrCollaborator(task, userId)
+  return isTaskAssigneeOrCollaborator(task, userId) || isTaskReporter(task, userId)
 }
 
 /**
- * Delete a task: admin/manager only. Assignees may edit but never delete.
+ * Delete a task: admin/manager always; org members only for tasks they created (reporter).
  */
 export function canDeleteTaskInPm(task, userId) {
   if (!task || userId == null) return false
   const kind = getPmOrgRoleKind()
-  return kind === 'admin' || kind === 'manager'
+  if (kind === 'admin' || kind === 'manager') return true
+  return isTaskReporter(task, userId)
 }
 
 /**

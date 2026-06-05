@@ -270,6 +270,12 @@ function userIsTaskAssigneeOrCollaborator(task, userId) {
   return collaboratorIdsFromEntity(task).some((id) => Number(id) === Number(userId));
 }
 
+function userIsTaskReporter(task, userId) {
+  if (!task || userId == null) return false;
+  const reporterId = assignerPkFromEntity(task);
+  return reporterId != null && Number(reporterId) === Number(userId);
+}
+
 function userMayApproveTaskAssignments(ctx) {
   return isPmOrgAdminRole(ctx) || isPmOrgManagerRole(ctx);
 }
@@ -853,8 +859,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (!ok) return ctx.forbidden('Access denied');
     }
     if (isPmOrgMemberRole(ctx) && ctx.state.user?.id) {
-      const isAssigned = userIsTaskAssigneeOrCollaborator(existing, ctx.state.user.id);
-      if (!isAssigned) {
+      const uid = ctx.state.user.id;
+      const canFullEdit =
+        userIsTaskAssigneeOrCollaborator(existing, uid) || userIsTaskReporter(existing, uid);
+      if (!canFullEdit) {
         const allowed = {};
         for (const k of MEMBER_TASK_UPDATE_FIELDS) {
           if (Object.prototype.hasOwnProperty.call(data, k)) allowed[k] = data[k];
@@ -1091,21 +1099,27 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   async delete(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
-    const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'manage');
+    const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'write');
     if (denied) return denied;
 
     const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
     if (pk == null) return ctx.notFound();
 
     const existing = await strapi.entityService.findOne(UID, pk, {
-      populate: ['organization', 'assignee', 'projects', 'timeProject'],
+      populate: ['organization', 'assignee', 'assigner', 'projects', 'timeProject'],
     });
     if (!existing) return ctx.notFound();
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
-    if (isPmOrgMemberRole(ctx)) {
-      return ctx.forbidden('Members cannot delete tasks');
+    if (!isPmOrgAdminRole(ctx) && ctx.state.user?.id) {
+      const ok = await userMayViewTask(strapi, ctx, ctx.state.orgId, ctx.state.user.id, existing);
+      if (!ok) return ctx.forbidden('Access denied');
+    }
+    if (isPmOrgMemberRole(ctx) && ctx.state.user?.id) {
+      if (!userIsTaskReporter(existing, ctx.state.user.id)) {
+        return ctx.forbidden('Members may only delete tasks they created');
+      }
     }
 
     const timeProjBeforeDelete = relId(existing.timeProject);

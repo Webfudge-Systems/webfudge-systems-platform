@@ -17,6 +17,7 @@ Fixed task creation and assignee rules so project-scoped membership drives who c
 | Org Manager | Yes (any project) | Yes | Project team only when project selected | Yes, immediate |
 | Org Member on project team | Yes (pending approval) | Yes if assignee on parent | Project team only | Yes, pending approval |
 | Org Member (task assignee only) | No | Yes on that parent task | Parent’s project team | Yes, pending approval |
+| Org Member (task reporter only) | No | No | — | Full edit + delete own created tasks |
 
 ### Assignee list
 
