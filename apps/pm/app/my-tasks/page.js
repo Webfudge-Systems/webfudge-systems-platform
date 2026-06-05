@@ -343,23 +343,23 @@ export default function MyTasksPage() {
   const pmOrgRoleKind = useMemo(() => getPmOrgRoleKind(), []);
   const memberScopedTasks = pmOrgRoleKind === 'member';
 
-  const loadTasks = useCallback(async () => {
+  const loadTasks = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
-      const params = { pageSize: 200, sort: 'updatedAt:desc' };
+      if (!silent) setLoading(true);
+      const params = { pageSize: 100, sort: 'updatedAt:desc' };
       if (filters.priority) params.priority = filters.priority;
       if (filters.projectId) params.projectId = filters.projectId;
 
-      const res = await taskService.getAllTasks(params);
-      const list = (res?.data || []).map(transformTask).filter(Boolean);
+      const rawList = await taskService.fetchAllTasks(params);
+      const list = rawList.map(transformTask).filter(Boolean);
       setAllTasks(list);
     } catch (error) {
       console.error('Load tasks error:', error);
-      setAllTasks([]);
+      if (!silent) setAllTasks([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, [filters.priority, filters.projectId, getUserId]);
+  }, [filters.priority, filters.projectId]);
 
   const currentUserId = useMemo(() => {
     const id = getUserId();
@@ -676,13 +676,28 @@ export default function MyTasksPage() {
   const handleSaveTask = async (payload) => {
     try {
       setSaving(true);
+      let savedTask = null;
       if (taskModal.task) {
-        await taskService.updateTask(taskModal.task.id, payload);
+        const res = await taskService.updateTask(taskModal.task.id, payload);
+        savedTask = transformTask(res?.data);
       } else {
-        await taskService.createTask(payload);
+        const res = await taskService.createTask(payload);
+        savedTask = transformTask(res?.data);
       }
       setTaskModal({ open: false, task: null, parentContext: null });
-      await loadTasks();
+      if (savedTask?.id) {
+        setAllTasks((prev) => {
+          const without = prev.filter((task) => String(task.id) !== String(savedTask.id));
+          return [savedTask, ...without];
+        });
+      }
+      await loadTasks({ silent: true });
+      if (savedTask?.id) {
+        setAllTasks((prev) => {
+          if (prev.some((task) => String(task.id) === String(savedTask.id))) return prev;
+          return [savedTask, ...prev];
+        });
+      }
     } catch (error) {
       console.error('Save task error:', error);
     } finally {

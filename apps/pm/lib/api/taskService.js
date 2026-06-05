@@ -98,6 +98,45 @@ function normalizeTaskPayload(taskData = {}) {
   return payload;
 }
 
+function filterPmScopedTasks(items) {
+  return (items || []).filter((task) => {
+    const t = task.attributes || task;
+    return !CRM_RELATION_FIELDS.some((field) => {
+      const rel = t[field];
+      if (!rel) return false;
+      const relData = rel.data !== undefined ? rel.data : rel;
+      return relData !== null && relData !== undefined && (Array.isArray(relData) ? relData.length > 0 : true);
+    });
+  });
+}
+
+/** Walk every page of a task list API response; merge rows by id. */
+async function paginateTaskApi(fetchPage, options = {}) {
+  const pageSize = Math.min(Number(options.pageSize) || 100, 500);
+  let page = 1;
+  let pageCount = 1;
+  let reportedTotal = null;
+  const byId = new Map();
+
+  do {
+    const res = await fetchPage(page, pageSize);
+    const batch = Array.isArray(res?.data) ? res.data : [];
+    for (const row of batch) {
+      const id = row?.id ?? row?.attributes?.id;
+      if (id != null) byId.set(id, row);
+    }
+    if (typeof res?.meta?.pagination?.total === 'number') {
+      reportedTotal = res.meta.pagination.total;
+    }
+    pageCount = res?.meta?.pagination?.pageCount ?? 1;
+    if (!batch.length) break;
+    if (reportedTotal != null && byId.size >= reportedTotal) break;
+    page += 1;
+  } while (page <= pageCount);
+
+  return [...byId.values()];
+}
+
 class TaskService {
   async getAllTasks(options = {}) {
     try {
@@ -128,6 +167,96 @@ class TaskService {
       return await strapiClient.get('/tasks', params);
     } catch (error) {
       console.error('Error fetching tasks:', error);
+      return { data: [], meta: { pagination: { total: 0 } } };
+    }
+  }
+
+  /**
+   * Paginate through every task page for list views (My Tasks, dashboards).
+   */
+  async fetchAllTasks(options = {}) {
+    const sort = options.sort || 'updatedAt:desc';
+    return paginateTaskApi(
+      (page, pageSize) => this.getAllTasks({ ...options, page, pageSize, sort }),
+      options
+    );
+  }
+
+  /** Paginate through all tasks linked to a project (project detail Tasks tab). */
+  async fetchAllTasksByProject(projectId, options = {}) {
+    const sort = options.sort || 'updatedAt:desc';
+    return paginateTaskApi(
+      (page, pageSize) => this.getTasksByProject(projectId, { ...options, page, pageSize, sort }),
+      options
+    );
+  }
+
+  /** Paginate assignee + collaborator streams for dashboard "My tasks" widgets. */
+  async fetchPMTasksByAssignee(userId, options = {}) {
+    const byId = new Map();
+    const mergeRows = (rows) => {
+      for (const row of rows || []) {
+        const id = row?.id ?? row?.attributes?.id;
+        if (id != null) byId.set(id, row);
+      }
+    };
+
+    const assigneeRows = await paginateTaskApi(
+      (page, pageSize) => this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'assignee' }),
+      options
+    );
+    mergeRows(assigneeRows);
+
+    const collabRows = await paginateTaskApi(
+      (page, pageSize) => this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'collaborators' }),
+      options
+    );
+    mergeRows(collabRows);
+
+    return filterPmScopedTasks([...byId.values()]);
+  }
+
+  _buildPMTasksListParams(userId, options = {}) {
+    const pageSize = Math.min(Number(options.pageSize) || 200, 500);
+    const sort = options.sort || 'updatedAt:desc';
+    const basePopulate = {
+      'populate[assignee]': '*',
+      'populate[assigner]': '*',
+      'populate[collaborators]': '*',
+      'populate[pendingCollaborators]': '*',
+      'populate[assignmentRequestedBy][fields][0]': 'id',
+      'populate[assignmentRequestedBy][fields][1]': 'username',
+      'populate[assignmentRequestedBy][fields][2]': 'email',
+      ...TASK_PROJECTS_POPULATE,
+      'populate[subtasks][fields][0]': 'id',
+      'populate[subtasks][fields][1]': 'name',
+      'populate[subtasks][fields][2]': 'status',
+      'populate[parent][fields][0]': 'id',
+      'populate[parent][fields][1]': 'name',
+    };
+    const base = {
+      'pagination[page]': options.page || 1,
+      'pagination[pageSize]': pageSize,
+      sort,
+      ...basePopulate,
+    };
+    if (options.status) base['filters[status][$eq]'] = options.status;
+    if (options.priority) base['filters[priority][$eq]'] = options.priority;
+    const projectId = options.projectId || options.project;
+    if (projectId) base['filters[projects][id][$eq]'] = projectId;
+    if (options.stream === 'collaborators') {
+      base['filters[collaborators][id][$eq]'] = userId;
+    } else {
+      base['filters[assignee][id][$eq]'] = userId;
+    }
+    return base;
+  }
+
+  async _getPMTasksByAssigneePage(userId, options = {}) {
+    try {
+      return await strapiClient.get('/tasks', this._buildPMTasksListParams(userId, options));
+    } catch (error) {
+      console.error('Error fetching PM tasks by assignee page:', error);
       return { data: [], meta: { pagination: { total: 0 } } };
     }
   }
@@ -178,7 +307,7 @@ class TaskService {
       return await strapiClient.get('/tasks', params);
     } catch (error) {
       console.error('Error fetching tasks by project:', error);
-      return { data: [] };
+      return { data: [], meta: { pagination: { total: 0 } } };
     }
   }
 
@@ -217,55 +346,8 @@ class TaskService {
   // Gets tasks where the user is primary assignee or in collaborators; excludes CRM-scoped tasks
   async getPMTasksByAssignee(userId, options = {}) {
     try {
-      const pageSize = Math.min(Number(options.pageSize) || 200, 500);
-      const sort = options.sort || 'updatedAt:desc';
-      const basePopulate = {
-        'populate[assignee]': '*',
-        'populate[assigner]': '*',
-        'populate[collaborators]': '*',
-        'populate[pendingCollaborators]': '*',
-        'populate[assignmentRequestedBy][fields][0]': 'id',
-        'populate[assignmentRequestedBy][fields][1]': 'username',
-        'populate[assignmentRequestedBy][fields][2]': 'email',
-        ...TASK_PROJECTS_POPULATE,
-        'populate[subtasks][fields][0]': 'id',
-        'populate[subtasks][fields][1]': 'name',
-        'populate[subtasks][fields][2]': 'status',
-        'populate[parent][fields][0]': 'id',
-        'populate[parent][fields][1]': 'name',
-      };
-      const base = {
-        'pagination[page]': options.page || 1,
-        'pagination[pageSize]': pageSize,
-        sort,
-        ...basePopulate,
-      };
-      if (options.status) base['filters[status][$eq]'] = options.status;
-      if (options.priority) base['filters[priority][$eq]'] = options.priority;
-      const projectId = options.projectId || options.project;
-      if (projectId) base['filters[projects][id][$eq]'] = projectId;
-
-      const [responseAssignee, responseCollab] = await Promise.all([
-        strapiClient.get('/tasks', { ...base, 'filters[assignee][id][$eq]': userId }),
-        strapiClient.get('/tasks', { ...base, 'filters[collaborators][id][$eq]': userId }),
-      ]);
-
-      const byId = new Map();
-      for (const row of [...(responseAssignee?.data || []), ...(responseCollab?.data || [])]) {
-        const id = row?.id ?? row?.attributes?.id;
-        if (id != null) byId.set(id, row);
-      }
-      const items = [...byId.values()];
-      const pmTasks = items.filter((task) => {
-        const t = task.attributes || task;
-        return !CRM_RELATION_FIELDS.some((field) => {
-          const rel = t[field];
-          if (!rel) return false;
-          const relData = rel.data !== undefined ? rel.data : rel;
-          return relData !== null && relData !== undefined && (Array.isArray(relData) ? relData.length > 0 : true);
-        });
-      });
-      return { data: pmTasks, meta: responseAssignee?.meta };
+      const items = await this.fetchPMTasksByAssignee(userId, options);
+      return { data: items, meta: { pagination: { total: items.length } } };
     } catch (error) {
       console.error('Error fetching PM tasks by assignee:', error);
       return { data: [] };
@@ -400,13 +482,8 @@ class TaskService {
 
   async getTaskStats(userId = null) {
     try {
-      let response;
-      if (userId) {
-        response = await this.getAllTasks({ pageSize: 500 });
-      } else {
-        response = await this.getAllTasks({ pageSize: 500 });
-      }
-      const tasks = response?.data || [];
+      void userId;
+      const tasks = await this.fetchAllTasks({ pageSize: 100, sort: 'updatedAt:desc' });
 
       const now = new Date();
       const totalTasks = tasks.length;

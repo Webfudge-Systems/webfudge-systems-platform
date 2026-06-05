@@ -305,6 +305,8 @@ export default function ProjectTasksPanel({
     return list;
   }, [tasks, activeTab, searchQuery]);
 
+  const majorTasks = useMemo(() => filterMajorTasks(tasks), [tasks]);
+
   const tableRootTasks = useMemo(() => filterMajorTasks(filteredTasks), [filteredTasks]);
 
   const {
@@ -363,13 +365,13 @@ export default function ProjectTasksPanel({
   }, [tableRootTasks]);
 
   const tabsWithBadges = useMemo(() => {
-    const counts = { all: tasks.length };
-    for (const task of tasks) {
+    const counts = { all: majorTasks.length };
+    for (const task of majorTasks) {
       counts[task.strapiStatus] = (counts[task.strapiStatus] || 0) + 1;
       if (isTaskOverdue(task)) counts.OVERDUE = (counts.OVERDUE || 0) + 1;
     }
     return STATUS_TABS.map((tab) => ({ ...tab, badge: counts[tab.id] || 0 }));
-  }, [tasks]);
+  }, [majorTasks]);
 
   const taskColumns = useMemo(
     () => [
