@@ -16,8 +16,11 @@ Admins and managers can create tasks as before; assignees apply immediately (no 
 | Actor | Create task on project | Assignees on create |
 |--------|------------------------|---------------------|
 | Org Admin / Manager | Yes (any project) | Applied immediately |
-| Org Member on project team | Yes | Pending until approved |
+| Org Member on project team | Yes | Pending until approved (any project teammate, including Admin/Manager org roles) |
+| Org Member assignee on parent task only | Subtasks only | Pending until approved |
 | Org Member not on team | No | — |
+
+Assignee picker lists **project team members only** (team + project manager), regardless of org role.
 
 ### Approval
 

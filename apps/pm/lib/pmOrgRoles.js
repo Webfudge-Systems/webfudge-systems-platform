@@ -33,6 +33,13 @@ export function canEditProjectInPm(project, userId) {
   return false
 }
 
+/**
+ * Only admins can set the isPrivate flag (and toggle it in the UI).
+ */
+export function canToggleProjectPrivacy() {
+  return getPmOrgRoleKind() === 'admin'
+}
+
 /** User is project manager or listed in project assignees (team). */
 export function isProjectTeamMember(project, userId) {
   if (!project || userId == null) return false
@@ -57,4 +64,47 @@ export function canCreateTaskInProject(project, userId) {
 export function canApproveTaskAssignmentsInPm() {
   const kind = getPmOrgRoleKind()
   return kind === 'admin' || kind === 'manager'
+}
+
+/** User is primary assignee or listed collaborator on a task row. */
+export function isTaskAssigneeOrCollaborator(task, userId) {
+  if (!task || userId == null) return false
+  const ids = new Set()
+  if (task.assigneeId != null) ids.add(Number(task.assigneeId))
+  if (Array.isArray(task.assigneeUserIds)) {
+    task.assigneeUserIds.forEach((id) => ids.add(Number(id)))
+  }
+  ;(task.assignees || []).forEach((u) => {
+    if (u?.id != null) ids.add(Number(u.id))
+  })
+  return [...ids].some((id) => Number.isFinite(id) && id === Number(userId))
+}
+
+/**
+ * Edit a task: admin/manager always; org members when assigned (assignee or collaborator).
+ */
+export function canEditTaskInPm(task, userId) {
+  if (!task || userId == null) return false
+  const kind = getPmOrgRoleKind()
+  if (kind === 'admin' || kind === 'manager') return true
+  return isTaskAssigneeOrCollaborator(task, userId)
+}
+
+/**
+ * Delete a task: admin/manager only. Assignees may edit but never delete.
+ */
+export function canDeleteTaskInPm(task, userId) {
+  if (!task || userId == null) return false
+  const kind = getPmOrgRoleKind()
+  return kind === 'admin' || kind === 'manager'
+}
+
+/**
+ * Subtasks: admin/manager always; org members when assigned to the parent task.
+ */
+export function canCreateSubtaskOnTask(task, userId) {
+  if (!task || userId == null) return false
+  const kind = getPmOrgRoleKind()
+  if (kind === 'admin' || kind === 'manager') return true
+  return isTaskAssigneeOrCollaborator(task, userId)
 }

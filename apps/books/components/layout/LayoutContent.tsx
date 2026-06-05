@@ -13,7 +13,7 @@ import { getDefaultTabHref } from '@/lib/tabs'
 
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const [showConfigure, setShowConfigure] = useState(false)
-  const { isAuthenticated, loading, user } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
 
@@ -62,7 +62,6 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
       <ConfigureFeaturesModal
         isOpen={showConfigure}
         onClose={() => setShowConfigure(false)}
-        userId={String((user as { id?: string | number } | null)?.id ?? '')}
       />
     </div>
   )
