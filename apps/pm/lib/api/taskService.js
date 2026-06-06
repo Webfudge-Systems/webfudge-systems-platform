@@ -1,4 +1,5 @@
 import strapiClient from '../strapiClient';
+import { listCacheBust, paginateStrapiList } from '@webfudge/utils';
 
 const CRM_RELATION_FIELDS = ['leadCompany', 'clientAccount', 'contact', 'deal'];
 
@@ -112,25 +113,7 @@ function filterPmScopedTasks(items) {
 
 /** Walk every page of a task list API response; merge rows by id. */
 async function paginateTaskApi(fetchPage, options = {}) {
-  const pageSize = Math.min(Number(options.pageSize) || 100, 500);
-  let page = 1;
-  const byId = new Map();
-
-  for (;;) {
-    const res = await fetchPage(page, pageSize);
-    const batch = Array.isArray(res?.data) ? res.data : [];
-    for (const row of batch) {
-      const id = row?.id ?? row?.attributes?.id;
-      if (id != null) byId.set(id, row);
-    }
-    if (!batch.length) break;
-    // Full page → keep going (meta.pageCount can be wrong); partial page → done.
-    if (batch.length < pageSize) break;
-    page += 1;
-    if (page > 500) break;
-  }
-
-  return [...byId.values()];
+  return paginateStrapiList(fetchPage, options);
 }
 
 class TaskService {
@@ -159,6 +142,7 @@ class TaskService {
       if (options.priority) params['filters[priority][$eq]'] = options.priority;
       const projectId = options.projectId || options.project;
       if (projectId) params['filters[projects][id][$eq]'] = projectId;
+      if (options.cacheBust != null) params._ = String(options.cacheBust);
 
       return await strapiClient.get('/tasks', params);
     } catch (error) {
@@ -172,24 +156,28 @@ class TaskService {
    */
   async fetchAllTasks(options = {}) {
     const sort = options.sort || 'updatedAt:desc';
+    const cacheBust = listCacheBust(options);
     return paginateTaskApi(
-      (page, pageSize) => this.getAllTasks({ ...options, page, pageSize, sort }),
-      options
+      (page, pageSize) => this.getAllTasks({ ...options, page, pageSize, sort, cacheBust }),
+      { ...options, cacheBust }
     );
   }
 
   /** Paginate through all tasks linked to a project (project detail Tasks tab). */
   async fetchAllTasksByProject(projectId, options = {}) {
     const sort = options.sort || 'updatedAt:desc';
+    const cacheBust = listCacheBust(options);
     return paginateTaskApi(
-      (page, pageSize) => this.getTasksByProject(projectId, { ...options, page, pageSize, sort }),
-      options
+      (page, pageSize) =>
+        this.getTasksByProject(projectId, { ...options, page, pageSize, sort, cacheBust }),
+      { ...options, cacheBust }
     );
   }
 
   /** Paginate assignee + collaborator streams for dashboard "My tasks" widgets. */
   async fetchPMTasksByAssignee(userId, options = {}) {
     const byId = new Map();
+    const cacheBust = listCacheBust(options);
     const mergeRows = (rows) => {
       for (const row of rows || []) {
         const id = row?.id ?? row?.attributes?.id;
@@ -198,20 +186,23 @@ class TaskService {
     };
 
     const assigneeRows = await paginateTaskApi(
-      (page, pageSize) => this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'assignee' }),
-      options
+      (page, pageSize) =>
+        this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'assignee', cacheBust }),
+      { ...options, cacheBust }
     );
     mergeRows(assigneeRows);
 
     const collabRows = await paginateTaskApi(
-      (page, pageSize) => this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'collaborators' }),
-      options
+      (page, pageSize) =>
+        this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'collaborators', cacheBust }),
+      { ...options, cacheBust }
     );
     mergeRows(collabRows);
 
     const reporterRows = await paginateTaskApi(
-      (page, pageSize) => this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'assigner' }),
-      options
+      (page, pageSize) =>
+        this._getPMTasksByAssigneePage(userId, { ...options, page, pageSize, stream: 'assigner', cacheBust }),
+      { ...options, cacheBust }
     );
     mergeRows(reporterRows);
 
@@ -253,6 +244,7 @@ class TaskService {
     } else {
       base['filters[assignee][id][$eq]'] = userId;
     }
+    if (options.cacheBust != null) base._ = String(options.cacheBust);
     return base;
   }
 
@@ -308,6 +300,7 @@ class TaskService {
         'populate[parent][fields][1]': 'name',
       };
       if (options.status) params['filters[status][$eq]'] = options.status;
+      if (options.cacheBust != null) params._ = String(options.cacheBust);
       return await strapiClient.get('/tasks', params);
     } catch (error) {
       console.error('Error fetching tasks by project:', error);

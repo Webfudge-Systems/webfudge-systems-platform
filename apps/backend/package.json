@@ -15,7 +15,9 @@
     "upgrade:dry": "npx @strapi/upgrade latest --dry",
     "test:redis": "node scripts/test-redis.js",
     "backfill:task-assigners": "node scripts/backfill-task-assigners.js",
-    "backfill:task-assigners:dry-run": "node scripts/backfill-task-assigners.js --dry-run"
+    "backfill:task-assigners:dry-run": "node scripts/backfill-task-assigners.js --dry-run",
+    "flush:api-cache": "node scripts/flush-api-cache.js",
+    "audit:prod-tasks": "node scripts/prod-task-audit.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",

@@ -304,6 +304,7 @@ export default function MyTasksPage() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const openedCreateFromQuery = useRef(false);
+  const loadTasksRequestIdRef = useRef(0);
   const [allTasks, setAllTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -348,6 +349,7 @@ export default function MyTasksPage() {
   const memberScopedTasks = pmOrgRoleKind === 'member';
 
   const loadTasks = useCallback(async ({ silent = false, mergeWithPrevious = false } = {}) => {
+    const requestId = ++loadTasksRequestIdRef.current;
     try {
       if (!silent) setLoading(true);
       const params = { pageSize: 500, sort: 'updatedAt:desc' };
@@ -355,6 +357,7 @@ export default function MyTasksPage() {
       if (filters.projectId) params.projectId = filters.projectId;
 
       const rawList = await taskService.fetchAllTasks(params);
+      if (requestId !== loadTasksRequestIdRef.current) return;
       const list = rawList.map(transformTask).filter(Boolean);
       if (mergeWithPrevious) {
         setAllTasks((prev) => mergeTasksById(list, prev));
@@ -363,9 +366,10 @@ export default function MyTasksPage() {
       }
     } catch (error) {
       console.error('Load tasks error:', error);
+      if (requestId !== loadTasksRequestIdRef.current) return;
       if (!silent) setAllTasks([]);
     } finally {
-      if (!silent) setLoading(false);
+      if (requestId === loadTasksRequestIdRef.current && !silent) setLoading(false);
     }
   }, [filters.priority, filters.projectId]);
 

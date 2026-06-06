@@ -679,6 +679,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const total = await safeCount(strapi, UID, filters, results.length);
     const pageCount = Math.ceil(Math.max(total, 1) / pageSize);
+    ctx.set('Cache-Control', 'no-store');
     return { data: results, meta: { pagination: { page, pageSize, pageCount, total } } };
   },
 
@@ -704,6 +705,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       const ok = await userMayViewTask(strapi, ctx, ctx.state.orgId, ctx.state.user.id, entry);
       if (!ok) return ctx.forbidden('Access denied');
     }
+    ctx.set('Cache-Control', 'no-store');
     return { data: entry };
   },
 
@@ -1306,6 +1308,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
           : null,
       }));
 
+    ctx.set('Cache-Control', 'no-store');
     return {
       data: {
         overdue: { count: overdue.length, items: slice(overdue, 5) },
