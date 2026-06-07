@@ -651,6 +651,7 @@ export default function EditLeadCompanyPage() {
                     placeholder="Select industry"
                     icon={Building2}
                     allowCustom
+                    onCustomAdd={onIndustrySaved}
                     searchable
                   />
                 </div>

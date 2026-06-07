@@ -7,6 +7,7 @@ import {
   Mail,
   Phone,
   PhoneCall,
+  PhoneOff,
   Building2,
   CheckCircle,
   XCircle,
@@ -458,12 +459,15 @@ export default function LeadCompaniesPage() {
 
   // Calculate statistics from visible lead rows to avoid stale server-side aggregates.
   const leadStats = useMemo(() => {
-    const out = { new: 0, contacted: 0, qualified: 0, lost: 0 };
+    const out = { total: 0, contacted: 0, nonContacted: 0, lost: 0, new: 0, qualified: 0 };
     for (const c of leadCompanies) {
       if (!c) continue;
+      out.total += 1;
       const status = (c.status || '').toString().toUpperCase();
-      if (status === 'NEW') out.new += 1;
-      else if (status === 'CONTACTED') out.contacted += 1;
+      if (status === 'NEW') {
+        out.new += 1;
+        out.nonContacted += 1;
+      } else if (status === 'CONTACTED') out.contacted += 1;
       else if (status === 'QUALIFIED') out.qualified += 1;
       else if (status === 'LOST') out.lost += 1;
     }
@@ -1362,9 +1366,9 @@ export default function LeadCompaniesPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
-          title="New Leads"
-          value={leadStats.new}
-          subtitle={leadStats.new === 0 ? 'No leads' : `${leadStats.new} ${leadStats.new === 1 ? 'lead' : 'leads'}`}
+          title="Total Leads"
+          value={leadStats.total}
+          subtitle={leadStats.total === 0 ? 'No leads' : `${leadStats.total} ${leadStats.total === 1 ? 'lead' : 'leads'}`}
           icon={Building2}
           colorScheme="orange"
         />
@@ -1376,10 +1380,14 @@ export default function LeadCompaniesPage() {
           colorScheme="orange"
         />
         <KPICard
-          title="Qualified Leads"
-          value={leadStats.qualified}
-          subtitle={leadStats.qualified === 0 ? 'No leads' : `${leadStats.qualified} ${leadStats.qualified === 1 ? 'lead' : 'leads'}`}
-          icon={CheckCircle}
+          title="Non contacted Leads"
+          value={leadStats.nonContacted}
+          subtitle={
+            leadStats.nonContacted === 0
+              ? 'No leads'
+              : `${leadStats.nonContacted} ${leadStats.nonContacted === 1 ? 'lead' : 'leads'}`
+          }
+          icon={PhoneOff}
           colorScheme="orange"
         />
         <KPICard

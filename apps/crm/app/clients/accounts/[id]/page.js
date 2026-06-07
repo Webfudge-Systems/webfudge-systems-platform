@@ -1596,6 +1596,7 @@ export default function ClientAccountDetailPage() {
                             placeholder="Select industry"
                             icon={IndustryIcon}
                             allowCustom
+                            onCustomAdd={onIndustrySaved}
                             searchable
                           />
                           {companyInfoDraft.industry === INDUSTRY_OTHER_VALUE ? (

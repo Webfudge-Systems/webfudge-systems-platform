@@ -468,6 +468,7 @@ export default function EditClientAccountPage() {
                   placeholder="Select industry"
                   icon={Building2}
                   allowCustom
+                  onCustomAdd={onIndustrySaved}
                   searchable
                 />
                 {form.industry === INDUSTRY_OTHER_VALUE ? (

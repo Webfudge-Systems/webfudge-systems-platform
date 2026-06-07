@@ -169,6 +169,7 @@ export {
   readStoredSortRules,
   writeStoredSortRules,
 } from '../utils/tableSort';
+export { userSelectLabel, buildUserSelectOptions } from '../utils/userSelectOptions';
 
 // THEME - Design tokens and configuration
 export { theme, colors, spacing, borderRadius, shadows, typography } from '../themes';

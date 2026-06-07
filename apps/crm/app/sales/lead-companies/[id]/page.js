@@ -15,7 +15,6 @@ import {
   Briefcase,
   CheckCircle2,
   User,
-  Star,
   Activity,
   FileText,
   Video,
@@ -1582,6 +1581,7 @@ export default function LeadCompanyDetailPage() {
                             placeholder="Select industry"
                             icon={Building2}
                             allowCustom
+                            onCustomAdd={onIndustrySaved}
                             searchable
                           />
                           <Select
@@ -1912,10 +1912,6 @@ export default function LeadCompanyDetailPage() {
                           {assigneeName(lead.assignedTo)}
                         </p>
                         <p className="text-sm text-gray-500">{assigneeRole(lead.assignedTo)}</p>
-                        <div className="mt-0.5 flex items-center gap-1 text-sm text-gray-600">
-                          <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
-                          <span className="font-medium">4.9 rating</span>
-                        </div>
                       </div>
                     </div>
                     {canManageLeadCompanies ? (
