@@ -131,14 +131,14 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
     },
     {
       type: 'link',
-      href: '/sales',
+      href: '/sales/customers',
       icon: Receipt,
       label: 'Sales',
       isActive: (p) => p.startsWith('/sales'),
     },
     {
       type: 'link',
-      href: '/purchases',
+      href: '/purchases/vendors',
       icon: Briefcase,
       label: 'Purchases',
       isActive: (p) => p.startsWith('/purchases'),
@@ -152,7 +152,7 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
     },
     {
       type: 'link',
-      href: '/accountant',
+      href: '/accountant/manual-journals',
       icon: Calculator,
       label: 'Accountant',
       isActive: (p) => p.startsWith('/accountant'),

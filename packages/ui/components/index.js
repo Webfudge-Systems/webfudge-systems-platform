@@ -74,6 +74,7 @@ export {
   TableCellCrmRowActions,
   crmTableActionsColumn,
 } from './TableCrmCells';
+export { crmTableCellTheme } from '../utils/crmTableCellTheme';
 export {
   NextConnectFlag,
   getNextConnectFlagVariant,

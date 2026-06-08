@@ -80,6 +80,7 @@ export {
   TableCellInvoiceStatusSelect,
   TableCellCrmRowActions,
   crmTableActionsColumn,
+  crmTableCellTheme,
   TableRowActionMenuPortal,
   // Navigation Components
   Tabs,
