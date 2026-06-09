@@ -94,6 +94,8 @@ export {
   WorkflowStatusBadge,
   ActivitiesTimeline,
   EntityActivityPanel,
+  EntityFilesPanel,
+  ChatMessageAttachments,
   LinkifiedText,
   ChatMessageText,
   MentionComposer,

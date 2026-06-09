@@ -12,6 +12,7 @@ import {
   Card,
   EmptyState,
   EntityActivityPanel,
+  EntityFilesPanel,
   KPICard,
   LoadingSpinner,
   Modal,
@@ -61,6 +62,8 @@ import {
   PRIORITY_OPTIONS,
 } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
+import { entityChatMediaProps, entityFilesPanelProps } from '../../../lib/entityMedia';
+import { countEntityAttachments } from '../../../lib/api/entityAttachmentService';
 import {
   addTaskComment,
   fetchTaskActivityTimeline,
@@ -210,6 +213,7 @@ export default function TaskDetailPage() {
   const [crmTimelineError, setCrmTimelineError] = useState(null);
   const [crmTimelineTotal, setCrmTimelineTotal] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
+  const [fileCount, setFileCount] = useState(0);
   const [subtaskModalOpen, setSubtaskModalOpen] = useState(false);
   const [subtaskEditModal, setSubtaskEditModal] = useState({ open: false, task: null });
   const [subtaskDeleteModal, setSubtaskDeleteModal] = useState({ open: false, task: null });
@@ -246,6 +250,25 @@ export default function TaskDetailPage() {
   useEffect(() => {
     loadTask();
   }, [loadTask]);
+
+  useEffect(() => {
+    if (!task?.id) {
+      setFileCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const count = await countEntityAttachments({ subjectType: 'task', subjectId: task.id });
+        if (!cancelled) setFileCount(count);
+      } catch {
+        if (!cancelled) setFileCount(0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [task?.id]);
 
   useEffect(() => {
     loadLookups();
@@ -347,7 +370,7 @@ export default function TaskDetailPage() {
         ...tab,
         badge:
           tab.key === 'files'
-            ? 0
+            ? fileCount || undefined
             : tab.key === 'activity'
               ? activityCount || undefined
               : tab.key === 'comments'
@@ -356,13 +379,21 @@ export default function TaskDetailPage() {
                   ? (task?.subtaskCount ?? task?.subtasks?.length) || undefined
                   : undefined,
       })),
-    [activityCount, commentCount, task?.subtaskCount, task?.subtasks]
+    [activityCount, commentCount, fileCount, task?.subtaskCount, task?.subtasks]
   );
 
   const handleAddTaskComment = useCallback(
-    async ({ entityId, comment }) => {
-      const res = await addTaskComment({ taskId: entityId, comment });
+    async ({ entityId, comment, attachments }) => {
+      const res = await addTaskComment({ taskId: entityId, comment, attachments });
       await reloadTaskTimeline({ silent: true });
+      if (attachments?.length) {
+        try {
+          const count = await countEntityAttachments({ subjectType: 'task', subjectId: entityId });
+          setFileCount(count);
+        } catch {
+          /* optional */
+        }
+      }
       return res;
     },
     [reloadTaskTimeline]
@@ -981,6 +1012,7 @@ export default function TaskDetailPage() {
               }}
               onViewFiles={() => setActiveTab('files')}
               onViewSubtasks={() => setActiveTab('subtasks')}
+              attachmentCount={fileCount}
             />
           </div>
 
@@ -1113,6 +1145,7 @@ export default function TaskDetailPage() {
             className="w-full"
             minHeightPx={440}
             maxHeightPx={680}
+            {...entityChatMediaProps}
           />
         </section>
         </div>
@@ -1175,6 +1208,7 @@ export default function TaskDetailPage() {
             className="w-full"
             minHeightPx={560}
             maxHeightPx={800}
+            {...entityChatMediaProps}
           />
         </div>
       ) : null}
@@ -1230,19 +1264,22 @@ export default function TaskDetailPage() {
               className="w-full"
               minHeightPx={560}
               maxHeightPx={800}
+              {...entityChatMediaProps}
             />
           </div>
         </div>
       ) : null}
 
       {activeTab === 'files' ? (
-        <Card variant="elevated" className="rounded-xl">
-          <EmptyState
-            icon={Paperclip}
-            title="No attachments"
-            description="The attachments section is a frontend-first CRM parity surface until file relations are added."
-          />
-        </Card>
+        <EntityFilesPanel
+          subjectType="task"
+          subjectId={task.id}
+          canEdit={canEditCurrentTask}
+          title="Task files"
+          emptyDescription="Upload documents, images, or other files linked to this task."
+          onRowsChange={(rows) => setFileCount(rows?.length ?? 0)}
+          {...entityFilesPanelProps}
+        />
       ) : null}
 
       {canEditCurrentTask ? (

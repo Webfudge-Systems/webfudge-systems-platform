@@ -60,6 +60,7 @@ import strapiClient from '../../../../lib/strapiClient';
 import { MeetingsEmbedList } from '@webfudge/ui';
 import meetingService from '../../../../lib/api/meetingService';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
+import { entityChatMediaProps } from '../../../../lib/entityMedia';
 import {
   companyTypeSelectOptions,
   canonicalIndustryValue,
@@ -2179,10 +2180,11 @@ export default function LeadCompanyDetailPage() {
                   fetchCommentsFn={({ entityId }) =>
                     fetchLeadCompanyComments({ leadCompanyId: entityId, limit: 80 })
                   }
-                  addCommentFn={({ entityId, comment }) =>
-                    addLeadCompanyComment({ leadCompanyId: entityId, comment })
+                  addCommentFn={({ entityId, comment, attachments }) =>
+                    addLeadCompanyComment({ leadCompanyId: entityId, comment, attachments })
                   }
                   fetchMentionUsers={fetchChatMentionUsers}
+                  {...entityChatMediaProps}
                 />
               </div>
             </div>

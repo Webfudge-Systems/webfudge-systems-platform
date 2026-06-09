@@ -3,6 +3,14 @@
  */
 import strapiClient from '../strapiClient';
 
+function commentPayload(fields) {
+  const { attachments, ...rest } = fields;
+  if (Array.isArray(attachments) && attachments.length) {
+    return { ...rest, attachments };
+  }
+  return rest;
+}
+
 /**
  * Organization-wide activity (GET /crm-activities/feed).
  * @param {{ limit?: number, start?: number, type?: string }} opts
@@ -107,12 +115,13 @@ export async function fetchLeadCompanyComments({ leadCompanyId, limit = 30, comm
  * @param {{ leadCompanyId: string|number, comment: string, commentKind?: 'general' | 'next_connect' }} opts
  * @returns {Promise<{ data: object }>}
  */
-export async function addLeadCompanyComment({ leadCompanyId, comment, commentKind = 'general' } = {}) {
-  return strapiClient.post('/crm-activities/comments', {
+export async function addLeadCompanyComment({ leadCompanyId, comment, commentKind = 'general', attachments } = {}) {
+  return strapiClient.post('/crm-activities/comments', commentPayload({
     leadCompanyId,
     comment,
     commentKind,
-  });
+    attachments,
+  }));
 }
 
 export async function fetchLeadCompanyNextConnectReasons({ leadCompanyId, limit = 20 } = {}) {
@@ -162,11 +171,8 @@ export async function fetchDealComments({ dealId, limit = 30 } = {}) {
  * @param {{ dealId: string|number, comment: string }} opts
  * @returns {Promise<{ data: object }>}
  */
-export async function addDealComment({ dealId, comment } = {}) {
-  return strapiClient.post('/crm-activities/comments', {
-    dealId,
-    comment,
-  });
+export async function addDealComment({ dealId, comment, attachments } = {}) {
+  return strapiClient.post('/crm-activities/comments', commentPayload({ dealId, comment, attachments }));
 }
 
 /**
@@ -206,11 +212,8 @@ export async function fetchContactComments({ contactId, limit = 60 } = {}) {
  * @param {{ contactId: string|number, comment: string }} opts
  * @returns {Promise<{ data: object }>}
  */
-export async function addContactComment({ contactId, comment } = {}) {
-  return strapiClient.post('/crm-activities/comments', {
-    contactId,
-    comment,
-  });
+export async function addContactComment({ contactId, comment, attachments } = {}) {
+  return strapiClient.post('/crm-activities/comments', commentPayload({ contactId, comment, attachments }));
 }
 
 /**
@@ -250,11 +253,8 @@ export async function fetchClientAccountComments({ clientAccountId, limit = 60 }
  * @param {{ clientAccountId: string|number, comment: string }} opts
  * @returns {Promise<{ data: object }>}
  */
-export async function addClientAccountComment({ clientAccountId, comment } = {}) {
-  return strapiClient.post('/crm-activities/comments', {
-    clientAccountId,
-    comment,
-  });
+export async function addClientAccountComment({ clientAccountId, comment, attachments } = {}) {
+  return strapiClient.post('/crm-activities/comments', commentPayload({ clientAccountId, comment, attachments }));
 }
 
 /**
@@ -296,8 +296,8 @@ export async function fetchTaskComments({ taskId, limit = 30 } = {}) {
  * @param {{ taskId: string|number, comment: string }} opts
  * @returns {Promise<{ data: object }>}
  */
-export async function addTaskComment({ taskId, comment } = {}) {
-  return strapiClient.post('/crm-activities/comments', { taskId, comment });
+export async function addTaskComment({ taskId, comment, attachments } = {}) {
+  return strapiClient.post('/crm-activities/comments', commentPayload({ taskId, comment, attachments }));
 }
 
 /**

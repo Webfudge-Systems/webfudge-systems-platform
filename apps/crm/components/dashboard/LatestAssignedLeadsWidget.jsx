@@ -22,7 +22,8 @@ import {
   Phone,
 } from 'lucide-react'
 import leadCompanyService from '../../lib/api/leadCompanyService'
-import { canEditCRMRecord, currentUserIds } from '../../lib/rbac'
+import { canEditCRMRecord, currentStrapiUserId, isAssignedToCurrentUser } from '../../lib/rbac'
+import { primaryContactForLeadCompany } from '../../lib/leadCompanyContacts'
 import { leadCompanyLabel, leadInitials } from './leadsMeetingsShared'
 
 const LEADS_LIMIT = 10
@@ -31,21 +32,16 @@ const COMPACT_HEADER = '!px-3 !py-2.5'
 const COMPACT_CELL = '!px-3 !py-2.5'
 
 function primaryContactName(company) {
-  const contact = company?.contacts?.[0]
-  if (contact) {
-    return `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || '—'
-  }
-  return 'No primary contact'
+  const { name } = primaryContactForLeadCompany(company)
+  return name || 'No primary contact'
 }
 
 function primaryEmail(company) {
-  const contact = company?.contacts?.[0]
-  return contact?.email || company?.email || ''
+  return primaryContactForLeadCompany(company).email
 }
 
 function primaryPhone(company) {
-  const contact = company?.contacts?.[0]
-  return contact?.phone || company?.phone || ''
+  return primaryContactForLeadCompany(company).phone
 }
 
 function AssignedLeadsTable({ rows, onStatusChange, savingByLeadId, router }) {
@@ -226,7 +222,7 @@ export default function LatestAssignedLeadsWidget({ className = '' }) {
   const [savingByLeadId, setSavingByLeadId] = useState({})
 
   const loadLeads = useCallback(async () => {
-    const userId = currentUserIds()[0]
+    const userId = currentStrapiUserId()
     if (!userId) {
       setLeads([])
       setLoading(false)
@@ -240,10 +236,9 @@ export default function LatestAssignedLeadsWidget({ className = '' }) {
         'pagination[pageSize]': LEADS_LIMIT,
         'filters[assignedTo][id][$eq]': userId,
         populate: ['assignedTo'],
-        mergeContactsFromContactsApi: true,
       })
       const raw = Array.isArray(res?.data) ? res.data : []
-      setLeads(raw)
+      setLeads(raw.filter(isAssignedToCurrentUser))
     } catch (e) {
       console.error('LatestAssignedLeadsWidget:', e)
       setLeads([])

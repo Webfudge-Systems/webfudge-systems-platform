@@ -50,6 +50,7 @@ import {
   TableRowActionMenuPortal,
   ActivitiesTimeline,
   EntityActivityPanel,
+  EntityFilesPanel,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import dealService from '../../../../lib/api/dealService';
@@ -66,6 +67,7 @@ import {
 } from '../../../../lib/dealFormOptions';
 import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../../lib/rbac';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
+import { entityChatMediaProps, entityFilesPanelProps } from '../../../../lib/entityMedia';
 
 const headerIconBtnClass =
   'rounded-xl border border-white/20 bg-white/10 p-2.5 text-brand-text-light shadow-lg backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/20';
@@ -1979,14 +1981,25 @@ export default function DealDetailPage() {
             </Card>
           )}
 
-          {(detailTab === 'products' || detailTab === 'documents') && (
+          {detailTab === 'products' && (
             <Card variant="elevated" className="rounded-xl p-10">
               <EmptyState
                 icon={Briefcase}
                 title="Coming soon"
-                description="This section will be connected in a future update."
+                description="Product line items for this deal will be connected in a future update."
               />
             </Card>
+          )}
+
+          {detailTab === 'documents' && (
+            <EntityFilesPanel
+              subjectType="deal"
+              subjectId={deal?.id ?? id}
+              canEdit={canWriteDeals}
+              title="Deal documents"
+              emptyDescription="Upload contracts, proposals, or other files for this deal."
+              {...entityFilesPanelProps}
+            />
           )}
 
           {detailTab === 'activities' && (
@@ -2043,10 +2056,12 @@ export default function DealDetailPage() {
                   }
                   addCommentFn={
                     canWriteDeals
-                      ? ({ entityId, comment }) => addDealComment({ dealId: entityId, comment })
+                      ? ({ entityId, comment, attachments }) =>
+                          addDealComment({ dealId: entityId, comment, attachments })
                       : null
                   }
                   fetchMentionUsers={fetchChatMentionUsers}
+                  {...entityChatMediaProps}
                 />
               </div>
             </div>

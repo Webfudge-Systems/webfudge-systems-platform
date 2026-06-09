@@ -112,6 +112,8 @@ export {
 // CRM / entity activity (timeline + chats panel)
 export { ActivitiesTimeline } from './ActivitiesTimeline';
 export { EntityActivityPanel } from './EntityActivityPanel';
+export { EntityFilesPanel } from './EntityFilesPanel';
+export { ChatMessageAttachments } from './ChatMessageAttachments';
 export { LinkifiedText } from './LinkifiedText';
 export { ChatMessageText } from './ChatMessageText';
 export { MentionComposer } from './MentionComposer';

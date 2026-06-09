@@ -12,6 +12,7 @@ import {
   Card,
   EmptyState,
   EntityActivityPanel,
+  EntityFilesPanel,
   Input,
   KPICard,
   LoadingSpinner,
@@ -59,6 +60,8 @@ import {
 import taskService from '../../../lib/api/taskService';
 import { fetchPmAssignableUsers } from '../../../lib/api/messageService';
 import { fetchChatMentionUsers } from '../../../lib/api/chatMentionUsers';
+import { entityChatMediaProps, entityFilesPanelProps } from '../../../lib/entityMedia';
+import { countEntityAttachments } from '../../../lib/api/entityAttachmentService';
 import { formatDate, transformProject, transformTask, transformUser } from '../../../lib/api/dataTransformers';
 import { enrichTasksWithProjectManager, filterMajorTasks, mergeTasksById } from '../../../lib/taskListUtils';
 import {
@@ -219,6 +222,7 @@ export default function ProjectDetailPage() {
     return id != null ? String(id) : '';
   }, [authUser]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [fileCount, setFileCount] = useState(0);
   const [project, setProject] = useState(null);
   const canEditThisProject = useMemo(
     () => (project ? canEditProjectInPm(project, currentUserId) : false),
@@ -320,6 +324,25 @@ export default function ProjectDetailPage() {
   }, [loadProject]);
 
   useEffect(() => {
+    if (!project?.id) {
+      setFileCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const count = await countEntityAttachments({ subjectType: 'project', subjectId: project.id });
+        if (!cancelled) setFileCount(count);
+      } catch {
+        if (!cancelled) setFileCount(0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
+
+  useEffect(() => {
     loadUsers();
   }, [loadUsers]);
 
@@ -400,18 +423,26 @@ export default function ProjectDetailPage() {
           tab.key === 'tasks'
             ? majorProjectTasks.length
             : tab.key === 'files'
-              ? 0
+              ? fileCount || undefined
               : tab.key === 'activity'
                 ? activityCount || undefined
                 : undefined,
       })),
-    [majorProjectTasks.length, activityCount]
+    [majorProjectTasks.length, activityCount, fileCount]
   );
 
   const handleAddProjectComment = useCallback(
-    async ({ entityId, comment }) => {
-      const res = await addProjectComment({ projectId: entityId, comment });
+    async ({ entityId, comment, attachments }) => {
+      const res = await addProjectComment({ projectId: entityId, comment, attachments });
       await reloadProjectTimeline({ silent: true });
+      if (attachments?.length) {
+        try {
+          const count = await countEntityAttachments({ subjectType: 'project', subjectId: entityId });
+          setFileCount(count);
+        } catch {
+          /* optional */
+        }
+      }
       return res;
     },
     [reloadProjectTimeline]
@@ -1083,19 +1114,22 @@ export default function ProjectDetailPage() {
               mentionUsers={projectTaskUsers}
               fetchMentionUsers={fetchChatMentionUsers}
               chatFooterBadgeText="Messages are saved on this project for your team."
+              {...entityChatMediaProps}
             />
           </div>
         </div>
       ) : null}
 
       {activeTab === 'files' ? (
-        <Card variant="elevated" className="rounded-xl">
-          <EmptyState
-            icon={FileText}
-            title="No files attached"
-            description="The files tab is ready for the CRM-style attachments experience once backend file relations are added."
-          />
-        </Card>
+        <EntityFilesPanel
+          subjectType="project"
+          subjectId={project.id}
+          canEdit={canEditThisProject}
+          title="Project files"
+          emptyDescription="Upload specs, designs, contracts, or other files for this project."
+          onRowsChange={(rows) => setFileCount(rows?.length ?? 0)}
+          {...entityFilesPanelProps}
+        />
       ) : null}
 
       <QuickCreateTaskModal

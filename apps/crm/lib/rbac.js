@@ -38,6 +38,15 @@ export function currentUserIds() {
     .map(String)
 }
 
+/** Strapi users-permissions id for relation filters (assignedTo). */
+export function currentStrapiUserId() {
+  const user = authService.getStoredUser()
+  const raw = user?.id ?? user?.strapiUserId ?? user?.userId
+  if (raw == null) return null
+  const n = parseInt(String(raw), 10)
+  return Number.isNaN(n) ? null : n
+}
+
 function normalizeIdentity(value) {
   return value == null ? '' : String(value).trim().toLowerCase()
 }

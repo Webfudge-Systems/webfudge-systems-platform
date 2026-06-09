@@ -68,6 +68,7 @@ import { MeetingsEmbedList } from '@webfudge/ui';
 import meetingService from '../../../../lib/api/meetingService';
 import { canWriteCRM, canEditCRMRecord } from '../../../../lib/rbac';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
+import { entityChatMediaProps } from '../../../../lib/entityMedia';
 import { pmAddProjectUrl, pmProjectDetailUrl } from '../../../../lib/pmAppUrl';
 import {
   companyTypeSelectOptions,
@@ -2121,10 +2122,12 @@ export default function ClientAccountDetailPage() {
                   }
                   addCommentFn={
                     canEditClientAccount
-                      ? ({ entityId, comment }) => addClientAccountComment({ clientAccountId: entityId, comment })
+                      ? ({ entityId, comment, attachments }) =>
+                          addClientAccountComment({ clientAccountId: entityId, comment, attachments })
                       : null
                   }
                   fetchMentionUsers={fetchChatMentionUsers}
+                  {...entityChatMediaProps}
                 />
               </div>
             </div>
