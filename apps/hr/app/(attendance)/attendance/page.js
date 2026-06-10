@@ -8,7 +8,6 @@ import {
   Home,
   Clock,
   CalendarClock,
-  Pencil,
   MapPin,
   FileSpreadsheet,
   Users,
@@ -21,8 +20,14 @@ import {
   Avatar,
   TableCellText,
   Card,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRKpiRow from '../../../components/layout/HRKpiRow'
+import HRSectionCard from '../../../components/shared/HRSectionCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
+import HRTableRowActions from '../../../components/shared/HRTableRowActions'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import { EMPLOYEES } from '../../../lib/mock-data/employees'
 import { ATTENDANCE_LOG, SHIFTS, OVERTIME_RECORDS } from '../../../lib/mock-data/attendance'
@@ -35,9 +40,6 @@ import {
 } from '../../../lib/attendancePage'
 
 const STATUS_FILTERS = ['', 'Present', 'On Leave', 'WFH', 'Absent']
-
-const SECTION_CARD =
-  'rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'
 
 export default function AttendancePage() {
   const router = useRouter()
@@ -124,17 +126,13 @@ export default function AttendancePage() {
         label: 'ACTIONS',
         fixed: true,
         render: (_, row) => (
-          <div className="flex min-w-[80px] items-center" onClick={(e) => e.stopPropagation()}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-emerald-600 hover:bg-emerald-50"
-              title="View employee"
-              onClick={() => router.push(`/employees/${row.employeeId}`)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
+          <HRTableRowActions
+            onEdit={() => router.push(`/employees/${row.employeeId}`)}
+            editTitle="View employee"
+            onDelete={() => console.log('Delete attendance record', row.id)}
+            deleteTitle="Delete record"
+            itemName={row.employee}
+          />
         ),
       },
     ],
@@ -182,7 +180,7 @@ export default function AttendancePage() {
           : 0
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="Attendance"
         subtitle={`Today: ${todayDateLabel()} · ${snapshot.markedPct}% marked in`}
@@ -191,11 +189,12 @@ export default function AttendancePage() {
           { label: 'Attendance', href: '/attendance' },
         ]}
         showActions
+        showSearch
         onImportClick={() => console.log('Import attendance')}
         onExportClick={() => console.log('Export attendance')}
       />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+      <HRKpiRow columns={5}>
         <KPICard
           title="Present"
           value={snapshot.present}
@@ -231,7 +230,7 @@ export default function AttendancePage() {
           icon={CalendarClock}
           colorScheme="orange"
         />
-      </div>
+      </HRKpiRow>
 
       <TabsWithActions
         tabs={tabItems.map((item) => ({
@@ -271,13 +270,10 @@ export default function AttendancePage() {
         }
       />
 
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{resultCount}</span> result
-        {resultCount !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={resultCount} />
 
       {activeTab === 'today' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table
             columns={todayColumns}
             data={todayRows}
@@ -292,11 +288,11 @@ export default function AttendancePage() {
               <p className="text-sm text-gray-500">Try adjusting your search or status filter.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'monthly' && (
-        <Card className={SECTION_CARD}>
+        <HRSectionCard>
           <div className="flex flex-col items-center py-10 text-center">
             <FileSpreadsheet className="mb-3 h-12 w-12 text-gray-300" />
             <h3 className="text-lg font-semibold text-gray-800">Monthly attendance log</h3>
@@ -307,7 +303,7 @@ export default function AttendancePage() {
               Open monthly grid
             </Button>
           </div>
-        </Card>
+        </HRSectionCard>
       )}
 
       {activeTab === 'shifts' && (
@@ -330,7 +326,7 @@ export default function AttendancePage() {
       )}
 
       {activeTab === 'overtime' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={overtimeColumns} data={overtimeRows} keyField="id" variant="modern" />
           {overtimeRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -339,11 +335,11 @@ export default function AttendancePage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'reports' && (
-        <Card className={SECTION_CARD}>
+        <HRSectionCard>
           <div className="flex flex-col items-center py-10 text-center">
             <Users className="mb-3 h-12 w-12 text-gray-300" />
             <h3 className="text-lg font-semibold text-gray-800">Attendance reports</h3>
@@ -354,8 +350,8 @@ export default function AttendancePage() {
               Export report
             </Button>
           </div>
-        </Card>
+        </HRSectionCard>
       )}
-    </div>
+    </HRModulePage>
   )
 }

@@ -21,8 +21,12 @@ import {
   TableCellDateOnly,
   TableCellOrangePill,
   Card,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRKpiRow from '../../../components/layout/HRKpiRow'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import {
   OPEN_JOBS,
@@ -269,7 +273,7 @@ export default function RecruitmentPage() {
               : 0
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="Recruitment"
         subtitle={`${stats.openJobs} open role${stats.openJobs === 1 ? '' : 's'} · ${stats.inPipeline} in pipeline`}
@@ -278,11 +282,12 @@ export default function RecruitmentPage() {
           { label: 'Recruitment', href: '/recruitment' },
         ]}
         showActions
+        showSearch
         onImportClick={() => console.log('Import recruitment')}
         onExportClick={() => console.log('Export recruitment')}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <HRKpiRow>
         <KPICard
           title="Open Jobs"
           value={stats.openJobs}
@@ -311,7 +316,7 @@ export default function RecruitmentPage() {
           icon={FileCheck}
           colorScheme="orange"
         />
-      </div>
+      </HRKpiRow>
 
       <TabsWithActions
         tabs={tabItems.map((item) => ({
@@ -370,15 +375,10 @@ export default function RecruitmentPage() {
         }
       />
 
-      {activeTab !== 'pipeline' && (
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{resultCount}</span> result
-          {resultCount !== 1 ? 's' : ''}
-        </div>
-      )}
+      {activeTab !== 'pipeline' && <TableResultsCount count={resultCount} />}
 
       {activeTab === 'jobs' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={jobColumns} data={jobRows} keyField="id" variant="modern" />
           {jobRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -391,7 +391,7 @@ export default function RecruitmentPage() {
               </Button>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'pipeline' && (
@@ -437,7 +437,7 @@ export default function RecruitmentPage() {
       )}
 
       {activeTab === 'candidates' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={candidateColumns} data={candidateRows} keyField="id" variant="modern" />
           {candidateRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -446,7 +446,7 @@ export default function RecruitmentPage() {
               <p className="text-sm text-gray-500">Try adjusting your search or stage filter.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'interviews' && (
@@ -457,7 +457,7 @@ export default function RecruitmentPage() {
               Schedule Interview
             </Button>
           </div>
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <HRDataTableCard>
             <Table columns={interviewColumns} data={interviewRows} keyField="id" variant="modern" />
             {interviewRows.length === 0 && (
               <div className="border-t border-gray-200 p-12 text-center">
@@ -466,12 +466,12 @@ export default function RecruitmentPage() {
                 <p className="text-sm text-gray-500">Try adjusting your search.</p>
               </div>
             )}
-          </div>
+          </HRDataTableCard>
         </>
       )}
 
       {activeTab === 'offers' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={offerColumns} data={offerRows} keyField="id" variant="modern" />
           {offerRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -480,8 +480,8 @@ export default function RecruitmentPage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
-    </div>
+    </HRModulePage>
   )
 }

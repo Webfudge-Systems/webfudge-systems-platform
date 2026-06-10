@@ -6,24 +6,36 @@ import {
   CalendarOff,
   Briefcase,
   Target,
-  GraduationCap,
   Receipt,
-  Headphones,
   BarChart3,
-  Settings,
-  Sparkles,
-  LifeBuoy,
-  Zap,
   UserPlus,
 } from 'lucide-react'
 
-/** Top 2×2 tile grid — Dashboard, Employees, Attendance, Leave */
+/** Top 2×2 tile grid — Dashboard, Employees, Payroll, Expenses */
 export const HR_PRIMARY_TILES = [
   { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { id: 'employees', label: 'Employees', href: '/employees', icon: Users },
-  { id: 'attendance', label: 'Attendance', href: '/attendance', icon: CalendarCheck },
-  { id: 'leave', label: 'Leave', href: '/leave', icon: CalendarOff },
+  { id: 'employees', label: 'Employees', icon: Users, hasSubNav: true },
+  { id: 'payroll', label: 'Payroll', href: '/payroll', icon: Wallet },
+  { id: 'expenses', label: 'Expenses', href: '/expenses', icon: Receipt },
 ]
+
+/** Secondary row — Recruitment, Performance, Analytics */
+export const HR_SECONDARY_TILES = [
+  { id: 'recruitment', label: 'Recruitment', href: '/recruitment', icon: Briefcase },
+  { id: 'performance', label: 'Performance', href: '/performance', icon: Target },
+  { id: 'analytics', label: 'Analytics', href: '/analytics', icon: BarChart3 },
+]
+
+/** Employee section — opens in nav panel when Employees tile is clicked */
+export const HR_EMPLOYEE_SUB_NAV = {
+  id: 'employees',
+  label: 'Employees',
+  children: [
+    { id: 'directory', label: 'All employees', href: '/employees', icon: Users },
+    { id: 'attendance', label: 'Attendance', href: '/attendance', icon: CalendarCheck },
+    { id: 'leave', label: 'Leave', href: '/leave', icon: CalendarOff },
+  ],
+}
 
 /** Quick actions — open drawer forms (see HRQuickActionDrawer) */
 export const HR_QUICK_ACTION_ITEMS = [
@@ -33,50 +45,7 @@ export const HR_QUICK_ACTION_ITEMS = [
   { id: 'post-job', label: 'Post job', action: 'post-job', icon: Briefcase },
 ]
 
-/** Collapsible panels — Finance, Talent, Quick actions, Support */
-export const HR_SIDEBAR_PANELS = [
-  {
-    id: 'finance',
-    title: 'Finance',
-    headerIcon: Receipt,
-    items: [
-      { id: 'expenses', label: 'Expenses', href: '/expenses', icon: Receipt },
-      { id: 'payroll', label: 'Payroll', href: '/payroll', icon: Wallet },
-    ],
-  },
-  {
-    id: 'talent',
-    title: 'Talent',
-    headerIcon: Sparkles,
-    items: [
-      { id: 'recruitment', label: 'Recruitment', href: '/recruitment', icon: Briefcase },
-      { id: 'performance', label: 'Performance', href: '/performance', icon: Target },
-      { id: 'learning', label: 'Learning', href: '/learning', icon: GraduationCap },
-    ],
-  },
-  {
-    id: 'quick_actions',
-    title: 'Quick actions',
-    headerIcon: Zap,
-    items: HR_QUICK_ACTION_ITEMS,
-  },
-  {
-    id: 'support',
-    title: 'Support',
-    headerIcon: LifeBuoy,
-    items: [
-      { id: 'helpdesk', label: 'Helpdesk', href: '/helpdesk', icon: Headphones },
-      { id: 'analytics', label: 'Analytics', href: '/analytics', icon: BarChart3 },
-      { id: 'settings', label: 'Settings', href: '/settings', icon: Settings },
-    ],
-  },
-]
-
 export const HR_PRIMARY_BOX_ITEMS = HR_PRIMARY_TILES
-export const HR_SIDEBAR_LINK_GROUPS = HR_SIDEBAR_PANELS.map((p) => ({
-  id: p.id,
-  items: p.items,
-}))
 
 export function isNavItemActive(pathname, href) {
   if (!href) return false
@@ -84,8 +53,19 @@ export function isNavItemActive(pathname, href) {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-export function panelHasActiveItem(pathname, panel) {
-  return panel.items.some((item) => isNavItemActive(pathname, item.href))
+export function isEmployeeSectionActive(pathname) {
+  return (
+    isNavItemActive(pathname, '/employees') ||
+    isNavItemActive(pathname, '/attendance') ||
+    isNavItemActive(pathname, '/leave')
+  )
+}
+
+export function tileIsActive(pathname, item) {
+  if (item.hasSubNav && item.id === 'employees') {
+    return isEmployeeSectionActive(pathname)
+  }
+  return item.href ? isNavItemActive(pathname, item.href) : false
 }
 
 /** Matches dashboard `AppPageHeader` / `Card glass` topbar surface */

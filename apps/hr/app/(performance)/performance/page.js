@@ -21,8 +21,13 @@ import {
   TableCellOrangePill,
   Card,
   ProgressBar,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRKpiRow from '../../../components/layout/HRKpiRow'
+import HRSectionCard from '../../../components/shared/HRSectionCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import { COMPANY_OKRS, REVIEW_CYCLES, APPRAISALS, PIPS } from '../../../lib/mock-data/performance'
 import {
@@ -35,7 +40,6 @@ import {
   RECEIVED_FEEDBACK,
 } from '../../../lib/performancePage'
 
-const SECTION_CARD = 'rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'
 const APPRAISAL_STATUS_FILTERS = ['', 'Pending', 'Approved']
 
 export default function PerformancePage() {
@@ -194,7 +198,7 @@ export default function PerformancePage() {
               : 0
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="Performance"
         subtitle={`${stats.activeCycleName} · ${stats.cycleCompletion}% complete`}
@@ -203,11 +207,12 @@ export default function PerformancePage() {
           { label: 'Performance', href: '/performance' },
         ]}
         showActions
+        showSearch
         onImportClick={() => console.log('Import performance')}
         onExportClick={() => console.log('Export performance')}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <HRKpiRow>
         <KPICard
           title="Review Cycle"
           value={`${stats.cycleCompletion}%`}
@@ -236,7 +241,7 @@ export default function PerformancePage() {
           icon={AlertTriangle}
           colorScheme="orange"
         />
-      </div>
+      </HRKpiRow>
 
       <TabsWithActions
         tabs={tabItems.map((item) => ({
@@ -280,10 +285,7 @@ export default function PerformancePage() {
       />
 
       {activeTab !== 'goals' && activeTab !== 'feedback' && (
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{resultCount}</span> result
-          {resultCount !== 1 ? 's' : ''}
-        </div>
+        <TableResultsCount count={resultCount} />
       )}
 
       {activeTab === 'goals' && (
@@ -298,7 +300,7 @@ export default function PerformancePage() {
             </Button>
           </div>
           {COMPANY_OKRS.map((o, i) => (
-            <Card key={i} className={SECTION_CARD}>
+            <HRSectionCard key={i}>
               <div className="mb-4 flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50">
                   <Target className="h-5 w-5 text-orange-600" aria-hidden />
@@ -316,13 +318,13 @@ export default function PerformancePage() {
                   </div>
                 ))}
               </div>
-            </Card>
+            </HRSectionCard>
           ))}
         </div>
       )}
 
       {activeTab === 'reviews' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={reviewColumns} data={reviewRows} keyField="id" variant="modern" />
           {reviewRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -331,12 +333,12 @@ export default function PerformancePage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'feedback' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card className={SECTION_CARD}>
+          <HRSectionCard>
             <div className="mb-4 flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-orange-600" aria-hidden />
               <h3 className="font-semibold text-gray-900">Pending feedback requests</h3>
@@ -354,8 +356,8 @@ export default function PerformancePage() {
                 </li>
               ))}
             </ul>
-          </Card>
-          <Card className={SECTION_CARD}>
+          </HRSectionCard>
+          <HRSectionCard>
             <div className="mb-4 flex items-center gap-2">
               <FileText className="h-5 w-5 text-orange-600" aria-hidden />
               <h3 className="font-semibold text-gray-900">Received (anonymized)</h3>
@@ -368,12 +370,12 @@ export default function PerformancePage() {
                 </li>
               ))}
             </ul>
-          </Card>
+          </HRSectionCard>
         </div>
       )}
 
       {activeTab === 'appraisals' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={appraisalColumns} data={appraisalRows} keyField="id" variant="modern" />
           {appraisalRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -382,11 +384,11 @@ export default function PerformancePage() {
               <p className="text-sm text-gray-500">Try adjusting your search or status filter.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'pips' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={pipColumns} data={pipRows} keyField="id" variant="modern" />
           {pipRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -395,8 +397,8 @@ export default function PerformancePage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
-    </div>
+    </HRModulePage>
   )
 }

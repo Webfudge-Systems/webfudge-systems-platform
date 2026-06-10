@@ -24,6 +24,9 @@ import {
   TableCellOrangePill,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRSectionCard from '../../../components/shared/HRSectionCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import {
   DEPARTMENTS_TABLE,
@@ -41,8 +44,6 @@ const SECTION_ICONS = {
   Plug,
   CreditCard,
 }
-
-const SECTION_CARD = 'rounded-2xl border border-gray-200 bg-white shadow-sm'
 
 export default function SettingsPage() {
   const [section, setSection] = useState('company')
@@ -91,7 +92,7 @@ export default function SettingsPage() {
   )
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="Settings"
         subtitle="Company profile, departments, roles, and integrations — aligned with CRM workspace settings"
@@ -99,10 +100,11 @@ export default function SettingsPage() {
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Settings', href: '/settings' },
         ]}
+        showSearch
       />
 
       <div className="flex flex-col gap-6 lg:flex-row">
-        <Card className={`${SECTION_CARD} shrink-0 p-2 lg:w-60`}>
+        <HRSectionCard className="shrink-0 !p-2 lg:w-60">
           <nav className="space-y-0.5" aria-label="Settings sections">
             {HR_SETTINGS_SECTIONS.map((s) => {
               const Icon = SECTION_ICONS[s.icon]
@@ -124,7 +126,7 @@ export default function SettingsPage() {
               )
             })}
           </nav>
-        </Card>
+        </HRSectionCard>
 
         <div className="min-w-0 flex-1 space-y-6">
           {activeSection && (
@@ -203,14 +205,14 @@ export default function SettingsPage() {
                   Add department
                 </Button>
               </div>
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <HRDataTableCard>
                 <Table columns={deptColumns} data={deptRows} keyField="id" variant="modern" />
-              </div>
+              </HRDataTableCard>
             </>
           )}
 
           {section === 'roles' && (
-            <Card className={`${SECTION_CARD} overflow-x-auto p-4`}>
+            <HRDataTableCard className="p-4">
               <div className="mb-4 flex items-center gap-2">
                 <Shield className="h-5 w-5 text-orange-600" aria-hidden />
                 <h3 className="font-semibold text-gray-900">Module permissions</h3>
@@ -243,7 +245,7 @@ export default function SettingsPage() {
                   ))}
                 </tbody>
               </table>
-            </Card>
+            </HRDataTableCard>
           )}
 
           {section === 'notifications' && (
@@ -301,7 +303,7 @@ export default function SettingsPage() {
           )}
 
           {section === 'billing' && (
-            <Card className={`${SECTION_CARD} max-w-lg`}>
+            <HRSectionCard className="max-w-lg">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
                   <CreditCard className="h-5 w-5 text-orange-600" aria-hidden />
@@ -314,10 +316,10 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </div>
-            </Card>
+            </HRSectionCard>
           )}
         </div>
       </div>
-    </div>
+    </HRModulePage>
   )
 }

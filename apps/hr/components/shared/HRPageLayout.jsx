@@ -1,5 +1,8 @@
 'use client'
 
+import HRModulePage from '../layout/HRModulePage'
+
+/** @deprecated Prefer HRModulePage — kept for dashboard / legacy imports. */
 export default function HRPageLayout({ children, className = '' }) {
-  return <div className={`min-h-full p-4 space-y-4 bg-gray-50 ${className}`.trim()}>{children}</div>
+  return <HRModulePage className={className}>{children}</HRModulePage>
 }

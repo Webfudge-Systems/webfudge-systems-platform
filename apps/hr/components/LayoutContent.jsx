@@ -6,8 +6,9 @@ import HRSidebar from './layout/HRSidebar'
 import { canReadCurrentHRPath } from '../lib/rbac'
 import { HRQuickActionsProvider } from './quick-actions/HRQuickActionsContext'
 import HRQuickActionDrawer from './quick-actions/HRQuickActionDrawer'
+import HRQuickActionsFab from './quick-actions/HRQuickActionsFab'
 
-const PUBLIC_PATHS = ['/login', '/unauthorized']
+const PUBLIC_PATHS = ['/login', '/unauthorized', '/coming-soon']
 
 export default function LayoutContent({ children }) {
   const pathname = usePathname()
@@ -25,6 +26,7 @@ export default function LayoutContent({ children }) {
         deniedTitle="This HR module is not available for your role."
         deniedDescription="Your current permissions do not include read access for this area. Contact an admin if you need access."
         deniedVariant="card"
+        extras={!isPublic ? <HRQuickActionsFab /> : null}
       >
         {children}
       </WorkspaceLayoutContent>

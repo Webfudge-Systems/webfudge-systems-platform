@@ -1,14 +1,27 @@
 'use client'
 
-import HRGlassCard from '../shared/HRGlassCard'
+import HRDashboardInsightShell from './HRDashboardInsightShell'
 
-/** Matched-height dashboard tile (pair in a 2-col row) */
-export default function HRDashboardTile({ children, className = '' }) {
+/** PM-aligned dashboard metric tile — glass card + inner gray panel */
+export default function HRDashboardTile({
+  title,
+  badge,
+  subtitle,
+  action,
+  panelClassName = 'p-3',
+  children,
+  className = '',
+}) {
   return (
-    <HRGlassCard
-      className={`flex h-full min-h-[300px] w-full flex-col !p-4 sm:min-h-[320px] sm:!p-5 ${className}`}
+    <HRDashboardInsightShell
+      title={title}
+      badge={badge}
+      subtitle={subtitle}
+      action={action}
+      panelClassName={panelClassName}
+      className={`min-h-[280px] sm:min-h-[300px] ${className}`}
     >
       {children}
-    </HRGlassCard>
+    </HRDashboardInsightShell>
   )
 }

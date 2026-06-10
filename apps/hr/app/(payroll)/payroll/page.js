@@ -8,7 +8,6 @@ import {
   Banknote,
   FileText,
   Plus,
-  Pencil,
   Download,
   Landmark,
   CreditCard,
@@ -22,8 +21,14 @@ import {
   TableCellText,
   TableCellOrangePill,
   Card,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRKpiRow from '../../../components/layout/HRKpiRow'
+import HRSectionCard from '../../../components/shared/HRSectionCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
+import HRTableRowActions from '../../../components/shared/HRTableRowActions'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import {
   PAYROLL_RUN,
@@ -40,8 +45,6 @@ import {
   filterComplianceItems,
   getPayrollTabItems,
 } from '../../../lib/payrollPage'
-
-const SECTION_CARD = 'rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'
 
 export default function PayrollPage() {
   const router = useRouter()
@@ -130,17 +133,13 @@ export default function PayrollPage() {
         label: 'ACTIONS',
         fixed: true,
         render: (_, row) => (
-          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-emerald-600 hover:bg-emerald-50"
-              title="View employee"
-              onClick={() => router.push(`/employees/${row.id}`)}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
+          <HRTableRowActions
+            onEdit={() => router.push(`/employees/${row.id}`)}
+            editTitle="View employee"
+            onDelete={() => console.log('Remove from payroll', row.id)}
+            deleteTitle="Remove from payroll"
+            itemName={row.name}
+          />
         ),
       },
     ],
@@ -231,11 +230,13 @@ export default function PayrollPage() {
         label: 'ACTIONS',
         fixed: true,
         render: (_, row) => (
-          <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="sm" onClick={() => console.log('Edit structure', row.id)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </div>
+          <HRTableRowActions
+            onEdit={() => console.log('Edit structure', row.id)}
+            editTitle="Edit structure"
+            onDelete={() => console.log('Delete structure', row.id)}
+            deleteTitle="Delete structure"
+            itemName={row.name}
+          />
         ),
       },
     ],
@@ -301,7 +302,7 @@ export default function PayrollPage() {
             : 0
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="Payroll"
         subtitle={`${PAYROLL_RUN.month} run · ${stats.employees} employees · ${stats.runStatus}`}
@@ -310,18 +311,19 @@ export default function PayrollPage() {
           { label: 'Payroll', href: '/payroll' },
         ]}
         showActions
+        showSearch
         onImportClick={() => console.log('Import payroll')}
         onExportClick={() => console.log('Export payroll')}
       />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <HRKpiRow columns={6}>
         <KPICard compact title="Total Gross" value={stats.totalGross} icon={Wallet} colorScheme="orange" />
         <KPICard compact title="Deductions" value={stats.totalDeductions} icon={TrendingDown} colorScheme="orange" />
         <KPICard compact title="Total Net" value={stats.totalNet} icon={Banknote} colorScheme="orange" />
         <KPICard compact title="PF Liability" value={stats.pfLiability} icon={FileText} colorScheme="orange" />
         <KPICard compact title="ESI" value={stats.esiLiability} icon={FileText} colorScheme="orange" />
         <KPICard compact title="TDS" value={stats.tdsLiability} icon={FileText} colorScheme="orange" />
-      </div>
+      </HRKpiRow>
 
       <TabsWithActions
         tabs={tabItems.map((item) => ({
@@ -345,16 +347,11 @@ export default function PayrollPage() {
         exportTitle="Export"
       />
 
-      {activeTab !== 'loans' && (
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{resultCount}</span> result
-          {resultCount !== 1 ? 's' : ''}
-        </div>
-      )}
+      {activeTab !== 'loans' && <TableResultsCount count={resultCount} />}
 
       {activeTab === 'overview' && (
         <>
-          <Card className={SECTION_CARD}>
+          <HRSectionCard>
             <p className="font-semibold text-gray-900">
               {PAYROLL_RUN.month} Payroll — ₹{(PAYROLL_RUN.gross / 100000).toFixed(2)}L gross ·{' '}
               {PAYROLL_RUN.employees} employees
@@ -374,8 +371,8 @@ export default function PayrollPage() {
                 </span>
               ))}
             </div>
-          </Card>
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          </HRSectionCard>
+          <HRDataTableCard>
             <Table
               columns={employeeColumns}
               data={employeeRows}
@@ -390,13 +387,13 @@ export default function PayrollPage() {
                 <p className="text-sm text-gray-500">Try adjusting your search.</p>
               </div>
             )}
-          </div>
+          </HRDataTableCard>
         </>
       )}
 
       {activeTab === 'structures' && (
         <>
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <HRDataTableCard>
             <Table columns={structureColumns} data={structureRows} keyField="id" variant="modern" />
             {structureRows.length === 0 && (
               <div className="border-t border-gray-200 p-12 text-center">
@@ -405,7 +402,7 @@ export default function PayrollPage() {
                 <p className="text-sm text-gray-500">Try adjusting your search.</p>
               </div>
             )}
-          </div>
+          </HRDataTableCard>
           <Button variant="primary" className="bg-orange-500 hover:bg-orange-600">
             <Plus className="mr-2 h-4 w-4" />
             Create Structure
@@ -414,7 +411,7 @@ export default function PayrollPage() {
       )}
 
       {activeTab === 'payslips' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={payslipColumns} data={payslipRows} keyField="id" variant="modern" />
           {payslipRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -423,11 +420,11 @@ export default function PayrollPage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'compliance' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={complianceColumns} data={complianceRows} keyField="name" variant="modern" />
           {complianceRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -436,11 +433,11 @@ export default function PayrollPage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'loans' && (
-        <Card className={`${SECTION_CARD} text-center`}>
+        <HRSectionCard className="text-center">
           <CreditCard className="mx-auto mb-3 h-12 w-12 text-gray-300" />
           <h3 className="text-lg font-semibold text-gray-800">Loans & advances</h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-gray-500">
@@ -450,8 +447,8 @@ export default function PayrollPage() {
             <Plus className="mr-2 h-4 w-4" />
             Add loan or advance
           </Button>
-        </Card>
+        </HRSectionCard>
       )}
-    </div>
+    </HRModulePage>
   )
 }

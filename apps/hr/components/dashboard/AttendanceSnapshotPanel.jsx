@@ -1,10 +1,10 @@
 'use client'
 
 import { useMemo } from 'react'
-import { UserCheck, Users, Palmtree, Home } from 'lucide-react'
+import { Users, Palmtree, Home } from 'lucide-react'
 import { buildAttendanceSnapshot } from '../../lib/attendanceSnapshot'
 import HRDashboardTile from './HRDashboardTile'
-import HRPanelHeader from '../shared/HRPanelHeader'
+import { HRInsightCountBadge } from './HRDashboardInsightShell'
 import {
   TileHighlightCard,
   TileBreakdownRow,
@@ -24,35 +24,31 @@ export default function AttendanceSnapshotPanel({ activeEmployeeCount }) {
   ]
 
   return (
-    <HRDashboardTile>
-      <HRPanelHeader
-        className="mb-3 shrink-0"
-        title="Attendance today"
-        subtitle="Live check-in snapshot"
-        icon={UserCheck}
+    <HRDashboardTile
+      title="Attendance today"
+      badge={<HRInsightCountBadge tone="emerald">{snap.markedPct}%</HRInsightCountBadge>}
+      subtitle="Live check-in snapshot"
+      panelClassName="flex flex-col gap-2 p-3"
+    >
+      <TileHighlightCard
+        icon={Users}
+        label="Checked in"
+        title={`${snap.marked} of ${snap.roster} employees`}
+        meta={`${snap.markedPct}% marked · ${snap.absent} absent`}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
-        <TileHighlightCard
-          icon={Users}
-          label="Checked in"
-          title={`${snap.marked} of ${snap.roster} employees`}
-          meta={`${snap.markedPct}% marked · ${snap.absent} absent`}
-        />
-
-        <ul className="flex flex-1 flex-col justify-center gap-1.5">
-          {rows.map((row) => (
-            <TileBreakdownRow
-              key={row.key}
-              icon={row.icon}
-              label={row.label}
-              value={row.value}
-              pct={snap.roster > 0 ? Math.round((row.value / snap.roster) * 100) : 0}
-              accent={row.accent}
-            />
-          ))}
-        </ul>
-      </div>
+      <ul className="flex flex-col gap-1.5">
+        {rows.map((row) => (
+          <TileBreakdownRow
+            key={row.key}
+            icon={row.icon}
+            label={row.label}
+            value={row.value}
+            pct={snap.roster > 0 ? Math.round((row.value / snap.roster) * 100) : 0}
+            accent={row.accent}
+          />
+        ))}
+      </ul>
 
       <TileFooterLink href="/attendance" label="View attendance" />
     </HRDashboardTile>

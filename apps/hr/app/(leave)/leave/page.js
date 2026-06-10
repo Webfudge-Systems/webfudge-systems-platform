@@ -8,7 +8,6 @@ import {
   XCircle,
   CalendarDays,
   Plus,
-  Pencil,
   Calendar,
   FileText,
   Palmtree,
@@ -23,8 +22,14 @@ import {
   TableCellDateOnly,
   TableCellOrangePill,
   Card,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRKpiRow from '../../../components/layout/HRKpiRow'
+import HRSectionCard from '../../../components/shared/HRSectionCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
+import HRTableRowActions from '../../../components/shared/HRTableRowActions'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import { LEAVE_REQUESTS, LEAVE_BALANCES, LEAVE_POLICIES } from '../../../lib/mock-data/leave'
 import {
@@ -37,8 +42,6 @@ import { useHRQuickActions } from '../../../components/quick-actions/HRQuickActi
 import { HR_QUICK_ACTION_IDS } from '../../../lib/quickActions'
 
 const STATUS_FILTERS = ['', 'Pending', 'Approved', 'Rejected']
-
-const SECTION_CARD = 'rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'
 
 const ON_LEAVE_THIS_WEEK = [
   { name: 'Sneha Reddy', detail: 'PL until Jun 24' },
@@ -123,15 +126,13 @@ export default function LeavePage() {
                 </Button>
               </>
             ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-2 text-emerald-600 hover:bg-emerald-50"
-                title="View employee"
-                onClick={() => router.push(`/employees/${row.employeeId}`)}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
+              <HRTableRowActions
+                onEdit={() => router.push(`/employees/${row.employeeId}`)}
+                editTitle="View employee"
+                onDelete={() => console.log('Delete leave request', row.id)}
+                deleteTitle="Delete request"
+                itemName={row.employee}
+              />
             )}
           </div>
         ),
@@ -192,7 +193,7 @@ export default function LeavePage() {
           : 0
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="Leave Management"
         subtitle={`${stats.pending} pending approval${stats.pending === 1 ? '' : 's'} · ${stats.total} total requests`}
@@ -201,11 +202,12 @@ export default function LeavePage() {
           { label: 'Leave', href: '/leave' },
         ]}
         showActions
+        showSearch
         onImportClick={() => console.log('Import leave')}
         onExportClick={() => console.log('Export leave')}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <HRKpiRow>
         <KPICard
           title="Pending"
           value={stats.pending}
@@ -234,7 +236,7 @@ export default function LeavePage() {
           icon={CalendarDays}
           colorScheme="orange"
         />
-      </div>
+      </HRKpiRow>
 
       <TabsWithActions
         tabs={tabItems.map((item) => ({
@@ -277,13 +279,10 @@ export default function LeavePage() {
         }
       />
 
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{resultCount}</span> result
-        {resultCount !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={resultCount} />
 
       {activeTab === 'requests' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table
             columns={requestColumns}
             data={requestRows}
@@ -302,11 +301,11 @@ export default function LeavePage() {
               </Button>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'balances' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={balanceColumns} data={balanceRows} keyField="employeeId" variant="modern" />
           {balanceRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -315,12 +314,12 @@ export default function LeavePage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'calendar' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Card className={`lg:col-span-2 ${SECTION_CARD}`}>
+          <HRSectionCard className="lg:col-span-2">
             <div className="flex flex-col items-center py-12 text-center">
               <Calendar className="mb-3 h-12 w-12 text-gray-300" />
               <h3 className="text-lg font-semibold text-gray-800">Leave calendar</h3>
@@ -331,8 +330,8 @@ export default function LeavePage() {
                 Open calendar
               </Button>
             </div>
-          </Card>
-          <Card className={SECTION_CARD}>
+          </HRSectionCard>
+          <HRSectionCard>
             <h3 className="mb-4 font-semibold text-gray-900">Who&apos;s on leave this week</h3>
             <ul className="space-y-3">
               {ON_LEAVE_THIS_WEEK.map((item) => (
@@ -345,7 +344,7 @@ export default function LeavePage() {
                 </li>
               ))}
             </ul>
-          </Card>
+          </HRSectionCard>
         </div>
       )}
 
@@ -374,6 +373,6 @@ export default function LeavePage() {
           </Button>
         </div>
       )}
-    </div>
+    </HRModulePage>
   )
 }

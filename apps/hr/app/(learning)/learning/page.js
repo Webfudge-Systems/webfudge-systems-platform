@@ -19,8 +19,12 @@ import {
   TableCellDateOnly,
   TableCellOrangePill,
   Card,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRKpiRow from '../../../components/layout/HRKpiRow'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import { COURSES, LEARNING_PATHS, ASSIGNMENTS, CERTIFICATES } from '../../../lib/mock-data/learning'
 import {
@@ -226,7 +230,7 @@ export default function LearningPage() {
             : 0
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="Learning & Development"
         subtitle={`${stats.totalCourses} courses · ${stats.avgCompletion}% avg completion`}
@@ -235,11 +239,12 @@ export default function LearningPage() {
           { label: 'Learning', href: '/learning' },
         ]}
         showActions
+        showSearch
         onImportClick={() => console.log('Import learning')}
         onExportClick={() => console.log('Export learning')}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <HRKpiRow>
         <KPICard
           title="Courses"
           value={stats.totalCourses}
@@ -268,7 +273,7 @@ export default function LearningPage() {
           icon={Award}
           colorScheme="orange"
         />
-      </div>
+      </HRKpiRow>
 
       <TabsWithActions
         tabs={tabItems.map((item) => ({
@@ -311,10 +316,7 @@ export default function LearningPage() {
         }
       />
 
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{resultCount}</span> result
-        {resultCount !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={resultCount} />
 
       {activeTab === 'courses' && (
         <>
@@ -335,7 +337,7 @@ export default function LearningPage() {
               </Card>
             ))}
           </div>
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <HRDataTableCard>
             <Table columns={courseColumns} data={courseRows} keyField="id" variant="modern" />
             {courseRows.length === 0 && (
               <div className="border-t border-gray-200 p-12 text-center">
@@ -348,12 +350,12 @@ export default function LearningPage() {
                 </Button>
               </div>
             )}
-          </div>
+          </HRDataTableCard>
         </>
       )}
 
       {activeTab === 'paths' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={pathColumns} data={pathRows} keyField="id" variant="modern" />
           {pathRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -362,11 +364,11 @@ export default function LearningPage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'assignments' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={assignmentColumns} data={assignmentRows} keyField="id" variant="modern" />
           {assignmentRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -375,11 +377,11 @@ export default function LearningPage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'certificates' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={certificateColumns} data={certificateRows} keyField="id" variant="modern" />
           {certificateRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -388,8 +390,8 @@ export default function LearningPage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
-    </div>
+    </HRModulePage>
   )
 }

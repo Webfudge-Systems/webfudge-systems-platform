@@ -21,9 +21,14 @@ import {
   TableCellDateOnly,
   TableCellOrangePill,
   Card,
+  TableResultsCount,
 } from '@webfudge/ui'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRKpiRow from '../../../components/layout/HRKpiRow'
+import HRSectionCard from '../../../components/shared/HRSectionCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import { EXPENSE_CLAIMS, EXPENSE_PAYOUTS } from '../../../lib/mock-data/expenses'
 import {
@@ -38,8 +43,6 @@ import { useHRQuickActions } from '../../../components/quick-actions/HRQuickActi
 import { HR_QUICK_ACTION_IDS } from '../../../lib/quickActions'
 
 const STATUS_FILTERS = ['', 'Pending', 'Approved', 'Rejected', 'Paid']
-
-const SECTION_CARD = 'rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'
 
 export default function ExpensesPage() {
   const { openQuickAction } = useHRQuickActions()
@@ -204,7 +207,7 @@ export default function ExpensesPage() {
           : 0
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="Expenses"
         subtitle={`${stats.pending} pending claim${stats.pending === 1 ? '' : 's'} · ${stats.claimedLabel} claimed this month`}
@@ -213,11 +216,12 @@ export default function ExpensesPage() {
           { label: 'Expenses', href: '/expenses' },
         ]}
         showActions
+        showSearch
         onImportClick={() => console.log('Import expenses')}
         onExportClick={() => console.log('Export expenses')}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <HRKpiRow>
         <KPICard
           title="Pending"
           value={stats.pending}
@@ -246,7 +250,7 @@ export default function ExpensesPage() {
           icon={Receipt}
           colorScheme="orange"
         />
-      </div>
+      </HRKpiRow>
 
       <TabsWithActions
         tabs={tabItems.map((item) => ({
@@ -302,15 +306,10 @@ export default function ExpensesPage() {
         }
       />
 
-      {activeTab !== 'reports' && (
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{resultCount}</span> result
-          {resultCount !== 1 ? 's' : ''}
-        </div>
-      )}
+      {activeTab !== 'reports' && <TableResultsCount count={resultCount} />}
 
       {activeTab === 'claims' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={claimColumns} data={claimRows} keyField="id" variant="modern" />
           {claimRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -323,11 +322,11 @@ export default function ExpensesPage() {
               </Button>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'approvals' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={approvalColumns} data={approvalRows} keyField="id" variant="modern" />
           {approvalRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -336,18 +335,18 @@ export default function ExpensesPage() {
               <p className="text-sm text-gray-500">All expense claims are up to date.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'reports' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <HRKpiRow>
             <KPICard title="Claimed (Month)" value={stats.claimedLabel} icon={Receipt} colorScheme="orange" />
             <KPICard title="Approved" value={stats.approvedLabel} icon={CheckCircle} colorScheme="orange" />
             <KPICard title="Pending" value={stats.pendingLabel} icon={Clock} colorScheme="orange" />
             <KPICard title="Rejected" value={stats.rejectedLabel} icon={XCircle} colorScheme="orange" />
-          </div>
-          <Card className={`${SECTION_CARD} h-72`}>
+          </HRKpiRow>
+          <HRSectionCard className="h-72">
             <div className="mb-4 flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-orange-600" aria-hidden />
               <h3 className="font-semibold text-gray-900">Spend by category</h3>
@@ -361,12 +360,12 @@ export default function ExpensesPage() {
                 <Bar dataKey="amount" fill="#F97316" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </Card>
+          </HRSectionCard>
         </div>
       )}
 
       {activeTab === 'payouts' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={payoutColumns} data={payoutRows} keyField="id" variant="modern" />
           {payoutRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -375,8 +374,8 @@ export default function ExpensesPage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
-    </div>
+    </HRModulePage>
   )
 }

@@ -1,17 +1,32 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMemo, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@webfudge/ui'
-import HRPageHeader from '../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../components/layout/HRModulePage'
-import EmployeeForm, { employeeToForm } from '../../../../components/employees/EmployeeForm'
+import HRPageHeader from '../../../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../../../components/layout/HRModulePage'
+import EmployeeForm, { employeeToForm } from '../../../../../components/employees/EmployeeForm'
+import { getEmployeeById } from '../../../../../lib/mock-data/employees'
 import { Save, ArrowLeft } from 'lucide-react'
 
-export default function AddEmployeePage() {
+export default function EditEmployeePage() {
+  const params = useParams()
   const router = useRouter()
+  const employee = useMemo(() => getEmployeeById(params.id), [params.id])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [form, setForm] = useState(() => employeeToForm(null))
+  const [form, setForm] = useState(() => employeeToForm(employee))
+
+  if (!employee) {
+    return (
+      <HRModulePage>
+        <p className="text-gray-600">Employee not found.</p>
+        <Link href="/employees" className="mt-2 inline-block text-sm text-orange-600">
+          Back to directory
+        </Link>
+      </HRModulePage>
+    )
+  }
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -22,19 +37,19 @@ export default function AddEmployeePage() {
     setIsSubmitting(true)
     setTimeout(() => {
       setIsSubmitting(false)
-      router.push('/employees')
+      router.push(`/employees/${employee.id}`)
     }, 600)
   }
 
   return (
     <HRModulePage>
       <HRPageHeader
-        title="Add New Employee"
-        subtitle="Create a new employee record with employment details"
+        title={`Edit ${employee.name}`}
+        subtitle="Update employment and contact details"
         breadcrumb={[
-          { label: 'Dashboard', href: '/dashboard' },
           { label: 'Employees', href: '/employees' },
-          { label: 'Add New', href: '/employees/new' },
+          { label: employee.name, href: `/employees/${employee.id}` },
+          { label: 'Edit', href: `/employees/${employee.id}/edit` },
         ]}
         showSearch={false}
         showActions={false}
@@ -44,7 +59,12 @@ export default function AddEmployeePage() {
         <EmployeeForm form={form} onChange={handleChange} />
 
         <div className="flex items-center justify-between border-t border-gray-200 pt-6">
-          <Button type="button" variant="outline" onClick={() => router.back()} className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(`/employees/${employee.id}`)}
+            className="flex items-center gap-2"
+          >
             <ArrowLeft className="h-4 w-4" />
             Cancel
           </Button>
@@ -61,7 +81,7 @@ export default function AddEmployeePage() {
             ) : (
               <>
                 <Save className="h-4 w-4" />
-                Create Employee
+                Save Changes
               </>
             )}
           </Button>

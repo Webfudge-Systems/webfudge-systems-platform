@@ -25,8 +25,13 @@ import {
   Accordion,
   Textarea,
   ChatMessageText,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
+import HRModulePage from '../../../components/layout/HRModulePage'
+import HRKpiRow from '../../../components/layout/HRKpiRow'
+import HRSectionCard from '../../../components/shared/HRSectionCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRDrawer from '../../../components/shared/HRDrawer'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import {
@@ -44,8 +49,6 @@ import {
 
 const STATUS_FILTERS = ['', 'Open', 'In Progress', 'Resolved', 'Closed']
 const PRIORITY_FILTERS = ['', 'High', 'Medium', 'Low']
-const SECTION_CARD = 'rounded-2xl border border-gray-200 bg-white p-6 shadow-sm'
-
 export default function HelpdeskPage() {
   const [activeTab, setActiveTab] = useState('tickets')
   const [searchQuery, setSearchQuery] = useState('')
@@ -159,7 +162,7 @@ export default function HelpdeskPage() {
           : 0
 
   return (
-    <div className="min-h-full space-y-6 p-4 md:p-6">
+    <HRModulePage>
       <HRPageHeader
         title="HR Helpdesk"
         subtitle={`${stats.open} open · ${stats.inProgress} in progress · ${stats.slaCompliance}% within SLA`}
@@ -168,11 +171,12 @@ export default function HelpdeskPage() {
           { label: 'Helpdesk', href: '/helpdesk' },
         ]}
         showActions
+        showSearch
         onImportClick={() => console.log('Import tickets')}
         onExportClick={() => console.log('Export tickets')}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <HRKpiRow>
         <KPICard
           title="Open"
           value={stats.open}
@@ -201,7 +205,7 @@ export default function HelpdeskPage() {
           icon={AlertTriangle}
           colorScheme="orange"
         />
-      </div>
+      </HRKpiRow>
 
       <TabsWithActions
         tabs={tabItems.map((item) => ({
@@ -257,15 +261,10 @@ export default function HelpdeskPage() {
         }
       />
 
-      {activeTab !== 'sla' && (
-        <div className="text-sm text-gray-600">
-          Showing <span className="font-semibold text-gray-900">{resultCount}</span> result
-          {resultCount !== 1 ? 's' : ''}
-        </div>
-      )}
+      {activeTab !== 'sla' && <TableResultsCount count={resultCount} />}
 
       {activeTab === 'tickets' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table
             columns={ticketColumns}
             data={ticketRows}
@@ -284,11 +283,11 @@ export default function HelpdeskPage() {
               </Button>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'categories' && (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <HRDataTableCard>
           <Table columns={categoryColumns} data={categoryRows} keyField="id" variant="modern" />
           {categoryRows.length === 0 && (
             <div className="border-t border-gray-200 p-12 text-center">
@@ -297,31 +296,31 @@ export default function HelpdeskPage() {
               <p className="text-sm text-gray-500">Try adjusting your search.</p>
             </div>
           )}
-        </div>
+        </HRDataTableCard>
       )}
 
       {activeTab === 'sla' && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card className={`${SECTION_CARD} text-center`}>
+        <HRKpiRow columns={3}>
+          <HRSectionCard className="text-center">
             <p className="text-3xl font-bold text-emerald-600">{stats.slaCompliance}%</p>
             <p className="mt-1 text-sm text-gray-500">Within SLA</p>
-          </Card>
-          <Card className={`${SECTION_CARD} text-center`}>
+          </HRSectionCard>
+          <HRSectionCard className="text-center">
             <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
               <Timer className="h-5 w-5 text-orange-600" aria-hidden />
             </div>
             <p className="text-3xl font-bold text-gray-900">{stats.avgResolutionHours}h</p>
             <p className="mt-1 text-sm text-gray-500">Avg resolution time</p>
-          </Card>
-          <Card className={`${SECTION_CARD} text-center`}>
+          </HRSectionCard>
+          <HRSectionCard className="text-center">
             <p className="text-3xl font-bold text-red-600">{stats.breaches}</p>
             <p className="mt-1 text-sm text-gray-500">Breaches this week</p>
-          </Card>
-        </div>
+          </HRSectionCard>
+        </HRKpiRow>
       )}
 
       {activeTab === 'faq' && (
-        <Card className={SECTION_CARD}>
+        <HRSectionCard>
           <div className="mb-4 flex items-center gap-2">
             <HelpCircle className="h-5 w-5 text-orange-600" aria-hidden />
             <h3 className="font-semibold text-gray-900">Frequently asked questions</h3>
@@ -333,7 +332,7 @@ export default function HelpdeskPage() {
               content: f.a,
             }))}
           />
-        </Card>
+        </HRSectionCard>
       )}
 
       <HRDrawer
@@ -375,6 +374,6 @@ export default function HelpdeskPage() {
           </>
         )}
       </HRDrawer>
-    </div>
+    </HRModulePage>
   )
 }
