@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Clock3, Mail, MoreHorizontal, Pencil, ShieldBan, ShieldCheck, UserCheck, UserPlus, Users, UserX } from 'lucide-react'
+import { Clock3, Eye, EyeOff, Mail, MoreHorizontal, Pencil, ShieldBan, ShieldCheck, Trash2, UserCheck, UserPlus, Users, UserX } from 'lucide-react'
 import {
   Avatar,
+  Badge,
   Button,
   Input,
   KPICard,
@@ -15,11 +16,88 @@ import {
   TableCellRole,
   TableRowActionMenuPortal,
   TabsWithActions,
+  useTableColumnPreferences,
+  TableColumnPicker,
 } from '@webfudge/ui'
 import AccountsPageHeader from '../../components/AccountsPageHeader'
-import { rolesService, usersService } from '../../lib/api'
+import DepartmentPillMultiSelect from '../../components/DepartmentPillMultiSelect'
+import TransferUserSelect from '../../components/TransferUserSelect'
+import { isOrganizationAdmin } from '../../lib/accountsAccess'
+import { departmentsService, rolesService, usersService } from '../../lib/api'
+
+function formatDepartmentLabels(user, departmentCatalog = []) {
+  const nameById = new Map(
+    (departmentCatalog || []).map((d) => [d.id, d.name || '']).filter(([, name]) => name)
+  )
+
+  const labels = []
+  const seen = new Set()
+  const addLabel = (id, name) => {
+    const key = id != null ? String(id) : name
+    if (!key || seen.has(key)) return
+    seen.add(key)
+    labels.push(name || nameById.get(id) || (id != null ? `Dept ${id}` : null))
+  }
+
+  const deptRows = Array.isArray(user?.departments) ? user.departments : []
+  for (const d of deptRows) {
+    if (d && typeof d === 'object') {
+      addLabel(d.id, d.name)
+    } else {
+      const id = Number.parseInt(String(d), 10)
+      if (Number.isFinite(id)) addLabel(id, nameById.get(id))
+    }
+  }
+
+  const ids = Array.isArray(user?.departmentIds) ? user.departmentIds : []
+  for (const id of ids) {
+    addLabel(id, nameById.get(id))
+  }
+
+  const cleaned = labels.filter(Boolean)
+  return cleaned.length ? cleaned.join(', ') : 'None'
+}
 
 const ITEMS_PER_PAGE = 15
+
+const COLUMN_VISIBILITY_STORAGE_KEY = 'accounts.users.tableColumnVisibility'
+const COLUMN_ORDER_STORAGE_KEY = 'accounts.users.tableColumnOrder'
+const COLUMN_WIDTHS_STORAGE_KEY = 'accounts.users.tableColumnWidths'
+
+const DEFAULT_COLUMN_WIDTHS = {
+  user: 260,
+  email: 240,
+  role: 140,
+  departments: 180,
+  status: 120,
+  createdAt: 140,
+  updatedAt: 140,
+  actions: 180,
+}
+
+const MIN_COLUMN_WIDTHS = {
+  user: 220,
+  email: 200,
+  actions: 160,
+}
+
+const TOGGLEABLE_COLUMNS = [
+  { key: 'email', label: 'Email' },
+  { key: 'role', label: 'Role' },
+  { key: 'departments', label: 'Departments' },
+  { key: 'status', label: 'Status' },
+  { key: 'createdAt', label: 'Created' },
+  { key: 'updatedAt', label: 'Last updated' },
+]
+
+const REORDERABLE_COLUMN_KEYS = TOGGLEABLE_COLUMNS.map((c) => c.key)
+
+const DEFAULT_ON_COLUMN_KEYS = new Set(['email', 'role', 'departments', 'status', 'createdAt'])
+
+const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
+  acc[key] = DEFAULT_ON_COLUMN_KEYS.has(key)
+  return acc
+}, {})
 
 function getUserDisplayName(user) {
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
@@ -35,10 +113,10 @@ function getUserStatus(user) {
   return 'active'
 }
 
-function getStatusClasses(status) {
-  if (status === 'active') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
-  if (status === 'invited') return 'bg-orange-100 text-orange-700 border-orange-200'
-  return 'bg-red-100 text-red-700 border-red-200'
+function getUserStatusVariant(status) {
+  if (status === 'active') return 'success'
+  if (status === 'invited') return 'warning'
+  return 'danger'
 }
 
 function roleOptionValue(role) {
@@ -86,7 +164,84 @@ export default function UsersPage() {
   const [editError, setEditError] = useState('')
   const [rowActionMenu, setRowActionMenu] = useState(null)
   const [suspendTargetUser, setSuspendTargetUser] = useState(null)
+  const [suspendTransferToUserId, setSuspendTransferToUserId] = useState('')
+  const [suspendError, setSuspendError] = useState('')
   const [suspendSubmitting, setSuspendSubmitting] = useState(false)
+  const [deleteTargetUser, setDeleteTargetUser] = useState(null)
+  const [deleteTransferToUserId, setDeleteTransferToUserId] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
+  const [allDepartments, setAllDepartments] = useState([])
+  const [inviteDepartmentIds, setInviteDepartmentIds] = useState([])
+  const [invitePrimaryDepartmentId, setInvitePrimaryDepartmentId] = useState(null)
+  const [editDepartmentIds, setEditDepartmentIds] = useState([])
+  const [editPrimaryDepartmentId, setEditPrimaryDepartmentId] = useState(null)
+  const [editChangePassword, setEditChangePassword] = useState(false)
+  const [editPassword, setEditPassword] = useState('')
+  const [showEditPassword, setShowEditPassword] = useState(false)
+  const [editTransferToUserId, setEditTransferToUserId] = useState('')
+  const canEditPassword = useMemo(() => isOrganizationAdmin(), [])
+  const canManageUsers = useMemo(() => isOrganizationAdmin(), [])
+  const editRequiresTransfer = useMemo(() => {
+    if (!editUser) return false
+    return editStatus === 'suspended' && getUserStatus(editUser) !== 'suspended'
+  }, [editStatus, editUser])
+
+  const {
+    columnVisibility,
+    columnOrder,
+    columnPickerOpen,
+    setColumnPickerOpen,
+    columnDropIndicator,
+    toolbarRef,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    tableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  })
+
+  useEffect(() => {
+    if (!columnPickerOpen) return
+    const onDocMouseDown = (e) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(e.target)) {
+        setColumnPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [columnPickerOpen, setColumnPickerOpen, toolbarRef])
+
+  const toggleInviteDepartment = useCallback((deptId) => {
+    setInviteDepartmentIds((prev) => {
+      const next = prev.includes(deptId) ? prev.filter((id) => id !== deptId) : [...prev, deptId]
+      if (!next.includes(invitePrimaryDepartmentId)) {
+        setInvitePrimaryDepartmentId(next[0] ?? null)
+      }
+      return next
+    })
+  }, [invitePrimaryDepartmentId])
+
+  const toggleEditDepartment = useCallback((deptId) => {
+    setEditDepartmentIds((prev) => {
+      const next = prev.includes(deptId) ? prev.filter((id) => id !== deptId) : [...prev, deptId]
+      if (!next.includes(editPrimaryDepartmentId)) {
+        setEditPrimaryDepartmentId(next[0] ?? null)
+      }
+      return next
+    })
+  }, [editPrimaryDepartmentId])
 
   const handleInviteUser = useCallback(() => {
     setInviteEmail('')
@@ -95,6 +250,8 @@ export default function UsersPage() {
     setInviteRoleSelection(defaultRole ? roleOptionValue(defaultRole) : 'code:member')
     setDirectAdd(false)
     setDirectPassword('')
+    setInviteDepartmentIds([])
+    setInvitePrimaryDepartmentId(null)
     setInviteError('')
     setShowInviteModal(true)
   }, [roles])
@@ -128,34 +285,55 @@ export default function UsersPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const list = await rolesService.listForOrg()
+        const rows = await departmentsService.list()
         if (!cancelled) {
-          const finalRoles = list.length
-            ? list
-            : [
+          setAllDepartments(
+            (rows || [])
+              .map((d) => ({ id: d.id, name: d.name || '', isActive: d.isActive !== false }))
+              .filter((d) => d.isActive)
+          )
+        }
+      } catch {
+        if (!cancelled) setAllDepartments([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+      ; (async () => {
+        try {
+          const list = await rolesService.listForOrg()
+          if (!cancelled) {
+            const finalRoles = list.length
+              ? list
+              : [
                 { code: 'admin', name: 'Admin' },
                 { code: 'manager', name: 'Manager' },
                 { code: 'member', name: 'Member' },
               ]
-          setRoles(finalRoles)
+            setRoles(finalRoles)
+          }
+        } catch (error) {
+          if (isUnauthorizedError(error) && typeof window !== 'undefined') {
+            localStorage.removeItem('auth-token')
+            localStorage.removeItem('current-org-id')
+            localStorage.removeItem('auth-user')
+            window.location.href = '/login'
+            return
+          }
+          if (!cancelled) {
+            setRoles([
+              { code: 'admin', name: 'Admin' },
+              { code: 'manager', name: 'Manager' },
+              { code: 'member', name: 'Member' },
+            ])
+          }
         }
-      } catch (error) {
-        if (isUnauthorizedError(error) && typeof window !== 'undefined') {
-          localStorage.removeItem('auth-token')
-          localStorage.removeItem('current-org-id')
-          localStorage.removeItem('auth-user')
-          window.location.href = '/login'
-          return
-        }
-        if (!cancelled) {
-          setRoles([
-            { code: 'admin', name: 'Admin' },
-            { code: 'manager', name: 'Manager' },
-            { code: 'member', name: 'Member' },
-          ])
-        }
-      }
-    })()
+      })()
 
     return () => {
       cancelled = true
@@ -235,6 +413,8 @@ export default function UsersPage() {
         directAdd,
         directPassword: directPassword.trim() || undefined,
         sendWelcomeEmail: true,
+        departmentIds: inviteDepartmentIds,
+        primaryDepartmentId: invitePrimaryDepartmentId,
       })
       setShowInviteModal(false)
       await fetchUsers()
@@ -243,7 +423,15 @@ export default function UsersPage() {
     } finally {
       setInviteSubmitting(false)
     }
-  }, [directAdd, directPassword, fetchUsers, inviteEmail, inviteRoleSelection])
+  }, [
+    directAdd,
+    directPassword,
+    fetchUsers,
+    inviteDepartmentIds,
+    inviteEmail,
+    invitePrimaryDepartmentId,
+    inviteRoleSelection,
+  ])
 
   const openEditModal = useCallback(
     (user) => {
@@ -258,6 +446,17 @@ export default function UsersPage() {
         setEditRoleSelection(match ? roleOptionValue(match) : `code:${code}`)
       }
       setEditStatus(getUserStatus(user))
+      const deptIds = Array.isArray(user?.departmentIds)
+        ? user.departmentIds
+        : Array.isArray(user?.departments)
+          ? user.departments.map((d) => d.id)
+          : []
+      setEditDepartmentIds(deptIds)
+      setEditPrimaryDepartmentId(user?.primaryDepartmentId || deptIds[0] || null)
+      setEditChangePassword(false)
+      setEditPassword('')
+      setShowEditPassword(false)
+      setEditTransferToUserId('')
       setEditError('')
     },
     [roles]
@@ -283,6 +482,21 @@ export default function UsersPage() {
       setEditError('Email is required.')
       return
     }
+    if (editChangePassword) {
+      const nextPassword = editPassword.trim()
+      if (!nextPassword) {
+        setEditError('Password is required when changing password.')
+        return
+      }
+      if (nextPassword.length < 8) {
+        setEditError('Password must be at least 8 characters.')
+        return
+      }
+    }
+    if (editRequiresTransfer && !editTransferToUserId) {
+      setEditError('Select a user to receive open assignments before suspending.')
+      return
+    }
 
     try {
       setEditSubmitting(true)
@@ -295,6 +509,10 @@ export default function UsersPage() {
         status: editStatus,
         email,
         username: name,
+        password: editChangePassword ? editPassword.trim() : undefined,
+        transferToUserId: editRequiresTransfer ? editTransferToUserId : undefined,
+        departmentIds: editDepartmentIds,
+        primaryDepartmentId: editPrimaryDepartmentId,
       })
       setEditUser(null)
       await fetchUsers()
@@ -303,22 +521,32 @@ export default function UsersPage() {
     } finally {
       setEditSubmitting(false)
     }
-  }, [editEmail, editName, editRoleSelection, editStatus, editUser, fetchUsers])
+  }, [
+    editChangePassword,
+    editDepartmentIds,
+    editEmail,
+    editName,
+    editPassword,
+    editPrimaryDepartmentId,
+    editRequiresTransfer,
+    editRoleSelection,
+    editStatus,
+    editTransferToUserId,
+    editUser,
+    fetchUsers,
+  ])
 
   const toggleUserStatus = useCallback(
-    async (user, nextStatus) => {
+    async (user, nextStatus, transferToUserId) => {
       if (!user?.membershipId) return
-      try {
-        await usersService.updateMembership({
-          membershipId: user.membershipId,
-          roleId: user?.roleId ?? undefined,
-          roleCode: String(user?.roleCode || user?.role || 'member').toLowerCase(),
-          status: nextStatus,
-        })
-        await fetchUsers()
-      } catch (error) {
-        console.error('Failed to update user status:', error)
-      }
+      await usersService.updateMembership({
+        membershipId: user.membershipId,
+        roleId: user?.roleId ?? undefined,
+        roleCode: String(user?.roleCode || user?.role || 'member').toLowerCase(),
+        status: nextStatus,
+        transferToUserId: nextStatus === 'suspended' ? transferToUserId : undefined,
+      })
+      await fetchUsers()
     },
     [fetchUsers]
   )
@@ -327,23 +555,64 @@ export default function UsersPage() {
     (user, nextStatus) => {
       if (nextStatus === 'suspended') {
         setSuspendTargetUser(user)
+        setSuspendTransferToUserId('')
+        setSuspendError('')
         return
       }
-      toggleUserStatus(user, nextStatus)
+      toggleUserStatus(user, nextStatus).catch((error) => {
+        console.error('Failed to update user status:', error)
+      })
     },
     [toggleUserStatus]
   )
 
   const confirmSuspendUser = useCallback(async () => {
     if (!suspendTargetUser) return
+    if (!suspendTransferToUserId) {
+      setSuspendError('Select a user to receive open assignments before suspending.')
+      return
+    }
     try {
       setSuspendSubmitting(true)
-      await toggleUserStatus(suspendTargetUser, 'suspended')
+      setSuspendError('')
+      await toggleUserStatus(suspendTargetUser, 'suspended', suspendTransferToUserId)
       setSuspendTargetUser(null)
+      setSuspendTransferToUserId('')
+    } catch (error) {
+      setSuspendError(error?.message || 'Failed to suspend user')
     } finally {
       setSuspendSubmitting(false)
     }
-  }, [suspendTargetUser, toggleUserStatus])
+  }, [suspendTargetUser, suspendTransferToUserId, toggleUserStatus])
+
+  const openDeleteModal = useCallback((user) => {
+    setDeleteTargetUser(user)
+    setDeleteTransferToUserId('')
+    setDeleteError('')
+  }, [])
+
+  const confirmDeleteUser = useCallback(async () => {
+    if (!deleteTargetUser?.membershipId) return
+    if (!deleteTransferToUserId) {
+      setDeleteError('Select a user to receive open assignments before removing this user.')
+      return
+    }
+    try {
+      setDeleteSubmitting(true)
+      setDeleteError('')
+      await usersService.removeMembership({
+        membershipId: deleteTargetUser.membershipId,
+        transferToUserId: deleteTransferToUserId,
+      })
+      setDeleteTargetUser(null)
+      setDeleteTransferToUserId('')
+      await fetchUsers()
+    } catch (error) {
+      setDeleteError(error?.message || 'Failed to remove user')
+    } finally {
+      setDeleteSubmitting(false)
+    }
+  }, [deleteTargetUser, deleteTransferToUserId, fetchUsers])
 
   const columns = useMemo(
     () => [
@@ -378,17 +647,18 @@ export default function UsersPage() {
         ),
       },
       {
+        key: 'departments',
+        label: 'DEPARTMENTS',
+        render: (_, user) => (
+          <span className="min-w-[140px] text-sm text-gray-700">{formatDepartmentLabels(user, allDepartments)}</span>
+        ),
+      },
+      {
         key: 'status',
         label: 'STATUS',
         render: (_, user) => {
           const status = getUserStatus(user)
-          return (
-            <span
-              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${getStatusClasses(status)}`}
-            >
-              {status}
-            </span>
-          )
+          return <Badge variant={getUserStatusVariant(status)} className="capitalize">{status}</Badge>
         },
       },
       {
@@ -468,13 +738,24 @@ export default function UsersPage() {
         },
       },
     ],
-    [openEditModal, requestUserStatusChange]
+    [allDepartments, openEditModal, requestUserStatusChange]
   )
+
+  const visibleColumns = useMemo(() => {
+    const byKey = Object.fromEntries(columns.map((c) => [c.key, c]))
+    const out = []
+    if (byKey.user) out.push(byKey.user)
+    for (const key of columnOrder) {
+      if (columnVisibility[key] && byKey[key]) out.push(byKey[key])
+    }
+    if (byKey.actions) out.push(byKey.actions)
+    return out
+  }, [columns, columnVisibility, columnOrder])
 
   return (
     <div className="p-4 md:p-6 space-y-6 bg-white min-h-full">
       <AccountsPageHeader
-        title="Users"
+        title="Organization's Users"
         subtitle="Manage organization users, invitations, access, and lifecycle."
         breadcrumb={[{ label: 'Users', href: '/users' }]}
         showSearch
@@ -487,7 +768,7 @@ export default function UsersPage() {
         <KPICard title="Suspended Users" value={stats.suspended} subtitle="Blocked from accessing apps" icon={UserX} colorScheme="orange" />
       </div>
 
-      <div className="relative">
+      <div className="relative" ref={toolbarRef}>
         <TabsWithActions
           tabs={tabItems.map((item) => ({
             key: item.key,
@@ -503,6 +784,24 @@ export default function UsersPage() {
           showAdd
           onAddClick={handleInviteUser}
           addTitle="Invite User"
+          showColumnVisibility
+          onColumnVisibilityClick={() => setColumnPickerOpen((open) => !open)}
+          columnVisibilityTitle="Show, hide, or reorder columns"
+        />
+        <TableColumnPicker
+          open={columnPickerOpen}
+          description="User and actions stay visible. Drag column edges in the table to resize."
+          reorderableRows={TOGGLEABLE_COLUMNS}
+          columnVisibility={columnVisibility}
+          columnOrder={columnOrder}
+          columnDropIndicator={columnDropIndicator}
+          onSetVisible={setColumnVisible}
+          onDragStart={handleColumnDragStart}
+          onDragEnd={handleColumnDragEnd}
+          onRowDragOver={handleColumnRowDragOver}
+          onListDragLeave={handleColumnListDragLeave}
+          onDrop={handleColumnDrop}
+          onReset={resetColumnTablePreferences}
         />
       </div>
 
@@ -518,7 +817,7 @@ export default function UsersPage() {
           </div>
         ) : (
           <>
-            <Table columns={columns} data={paginatedUsers} keyField="id" variant="modern" />
+            <Table columns={visibleColumns} data={paginatedUsers} keyField="id" variant="modern" {...tableResizeProps} />
             {paginatedUsers.length === 0 && (
               <div className="p-12 text-center border-t border-gray-200">
                 <Users className="w-10 h-10 mx-auto mb-3 text-gray-300" />
@@ -579,6 +878,16 @@ export default function UsersPage() {
                 </option>
               ))}
             </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Departments</label>
+            <DepartmentPillMultiSelect
+              departments={allDepartments}
+              selectedIds={inviteDepartmentIds}
+              primaryId={invitePrimaryDepartmentId}
+              onToggle={toggleInviteDepartment}
+              onPrimaryChange={setInvitePrimaryDepartmentId}
+            />
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
@@ -646,6 +955,49 @@ export default function UsersPage() {
               placeholder="user@company.com"
             />
           </div>
+          {canEditPassword ? (
+            <>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={editChangePassword}
+                  onChange={(e) => {
+                    setEditChangePassword(e.target.checked)
+                    if (!e.target.checked) {
+                      setEditPassword('')
+                      setShowEditPassword(false)
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
+                />
+                Change password
+              </label>
+              {editChangePassword ? (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-gray-700">New Password</label>
+                  <div className="relative">
+                    <Input
+                      type={showEditPassword ? 'text' : 'password'}
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      autoComplete="new-password"
+                      className="w-full pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showEditPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showEditPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">Minimum 8 characters. The user will sign in with this password.</p>
+                </div>
+              ) : null}
+            </>
+          ) : null}
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Role</label>
             <select
@@ -662,16 +1014,41 @@ export default function UsersPage() {
             </select>
           </div>
           <div className="space-y-1.5">
+            <label className="text-sm font-medium text-gray-700">Departments</label>
+            <DepartmentPillMultiSelect
+              departments={allDepartments}
+              selectedIds={editDepartmentIds}
+              primaryId={editPrimaryDepartmentId}
+              onToggle={toggleEditDepartment}
+              onPrimaryChange={setEditPrimaryDepartmentId}
+            />
+          </div>
+          <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Status</label>
             <select
               value={editStatus}
-              onChange={(e) => setEditStatus(e.target.value)}
+              onChange={(e) => {
+                setEditStatus(e.target.value)
+                if (e.target.value !== 'suspended') setEditTransferToUserId('')
+              }}
               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none"
             >
               <option value="active">Active</option>
               <option value="suspended">Suspended</option>
             </select>
           </div>
+          {editRequiresTransfer ? (
+            <TransferUserSelect
+              users={users}
+              excludeUserId={editUser?.id}
+              value={editTransferToUserId}
+              onChange={(nextId) => {
+                setEditTransferToUserId(nextId)
+                setEditError('')
+              }}
+              disabled={editSubmitting}
+            />
+          ) : null}
           {editError ? <p className="text-sm text-red-600">{editError}</p> : null}
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button variant="muted" onClick={() => setEditUser(null)} disabled={editSubmitting}>
@@ -733,6 +1110,19 @@ export default function UsersPage() {
             )}
             {getUserStatus(rowActionMenu.user) === 'suspended' ? 'Activate user' : 'Suspend user'}
           </button>
+          {canManageUsers ? (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-red-700 transition-colors hover:bg-red-50"
+              onClick={() => {
+                openDeleteModal(rowActionMenu.user)
+                setRowActionMenu(null)
+              }}
+            >
+              <Trash2 className="w-4 h-4 text-red-600" />
+              Remove user
+            </button>
+          ) : null}
         </TableRowActionMenuPortal>
       ) : null}
 
@@ -749,8 +1139,19 @@ export default function UsersPage() {
             <span className="font-semibold text-gray-900">{getUserDisplayName(suspendTargetUser || {})}</span>?
           </p>
           <p className="text-sm text-gray-500">
-            Suspended users cannot access the workspace until reactivated.
+            Suspended users cannot access the workspace until reactivated. Open assignments must be transferred first.
           </p>
+          <TransferUserSelect
+            users={users}
+            excludeUserId={suspendTargetUser?.id}
+            value={suspendTransferToUserId}
+            onChange={(nextId) => {
+              setSuspendTransferToUserId(nextId)
+              setSuspendError('')
+            }}
+            disabled={suspendSubmitting}
+          />
+          {suspendError ? <p className="text-sm text-red-600">{suspendError}</p> : null}
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               variant="muted"
@@ -765,6 +1166,52 @@ export default function UsersPage() {
               disabled={suspendSubmitting}
             >
               {suspendSubmitting ? 'Suspending...' : 'Suspend User'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(deleteTargetUser)}
+        onClose={() => !deleteSubmitting && setDeleteTargetUser(null)}
+        title="Remove User"
+        size="md"
+        closeOnBackdrop={!deleteSubmitting}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">
+            Remove{' '}
+            <span className="font-semibold text-gray-900">{getUserDisplayName(deleteTargetUser || {})}</span>{' '}
+            from this organization?
+          </p>
+          <p className="text-sm text-gray-500">
+            This removes their workspace access. Their account may still exist elsewhere, but they will no longer appear in this organization.
+          </p>
+          <TransferUserSelect
+            users={users}
+            excludeUserId={deleteTargetUser?.id}
+            value={deleteTransferToUserId}
+            onChange={(nextId) => {
+              setDeleteTransferToUserId(nextId)
+              setDeleteError('')
+            }}
+            disabled={deleteSubmitting}
+          />
+          {deleteError ? <p className="text-sm text-red-600">{deleteError}</p> : null}
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              variant="muted"
+              onClick={() => setDeleteTargetUser(null)}
+              disabled={deleteSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={confirmDeleteUser}
+              disabled={deleteSubmitting}
+            >
+              {deleteSubmitting ? 'Removing...' : 'Remove User'}
             </Button>
           </div>
         </div>

@@ -6,6 +6,7 @@ import {
   Avatar,
   Button,
   LoadingSpinner,
+  Modal,
   Select,
   Table,
   TableCellCreated,
@@ -15,8 +16,11 @@ import {
   TableSkeleton,
   TabsWithActions,
   Textarea,
+  Pagination,
   ChatMessageText,
   ownerDisplayFromUser,
+  TableCellTaskStatusSelect,
+  PM_TASK_STATUS_OPTIONS,
 } from '@webfudge/ui';
 import {
   CheckSquare,
@@ -31,25 +35,29 @@ import {
   Trash2,
 } from 'lucide-react';
 import PMRowActions from './PMRowActions';
+import { canDeleteTaskInPm, canEditTaskInPm } from '../lib/pmOrgRoles';
 import { TaskSubtasksAfterRow, TaskSubtasksToggleButton } from './TaskSubtasksTableExtras';
 import TaskAssigneesPicker from './TaskAssigneesPicker';
 import {
   pmTableSelectFillProps,
   PRIORITY_OPTIONS,
-  TASK_STATUS_OPTIONS,
 } from './PMStatusBadge';
 import taskService from '../lib/api/taskService';
 import taskCommentService from '../lib/api/taskCommentService';
 import { usePmTableSort } from '../hooks/usePmTableSort';
 import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
+import { isTaskDueOverdue } from '@webfudge/utils';
+import { filterMajorTasks } from '../lib/taskListUtils';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.projectTasks.tableSort';
+const TABLE_PAGE_SIZE = 12;
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Tasks' },
   { id: 'SCHEDULED', label: 'To Do' },
   { id: 'IN_PROGRESS', label: 'In Progress' },
   { id: 'INTERNAL_REVIEW', label: 'In Review' },
+  { id: 'ON_HOLD', label: 'On Hold' },
   { id: 'COMPLETED', label: 'Completed' },
   { id: 'OVERDUE', label: 'Overdue' },
 ];
@@ -81,10 +89,7 @@ function assignerTableLabel(row, assignerUser, derived) {
 }
 
 function isTaskOverdue(task) {
-  if (!task?.dueDate) return false;
-  const due = new Date(task.dueDate);
-  if (Number.isNaN(due.getTime())) return false;
-  return due < new Date() && task.strapiStatus !== 'COMPLETED' && task.strapiStatus !== 'CANCELLED';
+  return isTaskDueOverdue(task?.dueDate, task?.strapiStatus);
 }
 
 function actorDisplay(actor) {
@@ -136,10 +141,13 @@ export default function ProjectTasksPanel({
   onOpenCreateSubtask,
   onEditTask,
   onDeleteTask,
-  /** Org Member role: only status updates; hide task CRUD. */
+  /** @deprecated Use currentUserId + canEditTaskInPm per row. Kept for promote/assignment flows. */
   memberScopedTasks = false,
+  currentUserId = null,
   /** Project team member may create tasks (including org Members on the team). */
   canCreateProjectTasks = true,
+  /** Optional `(taskRow) => boolean` — e.g. parent-task assignee may add subtasks. */
+  canAddSubtaskOnTask,
   /** Org admin/manager may approve pending member assignments. */
   canApproveAssignments = false,
 }) {
@@ -156,6 +164,8 @@ export default function ProjectTasksPanel({
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
   const [sortPickerOpen, setSortPickerOpen] = useState(false);
+  const [promoteModal, setPromoteModal] = useState({ open: false, task: null });
+  const [tablePage, setTablePage] = useState(1);
   const toolbarRef = useRef(null);
 
   const handleApproveAssignment = useCallback(
@@ -191,7 +201,7 @@ export default function ProjectTasksPanel({
   const updateTask = useCallback(
     async (task, patch) => {
       let next = patch;
-      if (memberScopedTasks) {
+      if (!canEditTaskInPm(task, currentUserId)) {
         next = {};
         if (patch.status !== undefined) next.status = patch.status;
         if (Object.keys(next).length === 0) return;
@@ -206,12 +216,27 @@ export default function ProjectTasksPanel({
         setSavingId(null);
       }
     },
-    [memberScopedTasks, onRefresh]
+    [currentUserId, onRefresh]
   );
 
   const copyTaskLink = useCallback(async (task) => {
     await navigator.clipboard?.writeText(`${window.location.origin}/tasks/${task.id}`);
   }, []);
+
+  const confirmPromoteSubtask = useCallback(async () => {
+    const st = promoteModal.task;
+    if (!st?.id || memberScopedTasks) return;
+    try {
+      setSavingId(st.id);
+      await taskService.promoteSubtaskToMajorTask(st.id);
+      setPromoteModal({ open: false, task: null });
+      await onRefresh?.();
+    } catch (error) {
+      console.error('Promote subtask error:', error);
+    } finally {
+      setSavingId(null);
+    }
+  }, [memberScopedTasks, onRefresh, promoteModal.task]);
 
   const openCommentComposer = useCallback(async (taskId, anchor) => {
     setCommentComposerMenu(anchor ? { id: taskId, ...anchor } : { id: taskId });
@@ -283,10 +308,9 @@ export default function ProjectTasksPanel({
     return list;
   }, [tasks, activeTab, searchQuery]);
 
-  const tableRootTasks = useMemo(() => {
-    const idSet = new Set(tasks.map((t) => t.id).filter((x) => x != null));
-    return filteredTasks.filter((t) => !t.parentId || !idSet.has(t.parentId));
-  }, [tasks, filteredTasks]);
+  const majorTasks = useMemo(() => filterMajorTasks(tasks), [tasks]);
+
+  const tableRootTasks = useMemo(() => filterMajorTasks(filteredTasks), [filteredTasks]);
 
   const {
     sortedData: sortedTableRootTasks,
@@ -305,6 +329,22 @@ export default function ProjectTasksPanel({
     storageKey: TABLE_SORT_STORAGE_KEY,
     data: tableRootTasks,
   });
+
+  const totalTableRows = sortedTableRootTasks.length;
+  const totalTablePages = Math.max(1, Math.ceil(totalTableRows / TABLE_PAGE_SIZE));
+  const paginatedTableTasks = useMemo(() => {
+    const start = (tablePage - 1) * TABLE_PAGE_SIZE;
+    return sortedTableRootTasks.slice(start, start + TABLE_PAGE_SIZE);
+  }, [sortedTableRootTasks, tablePage]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [activeTab, searchQuery]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(sortedTableRootTasks.length / TABLE_PAGE_SIZE));
+    setTablePage((prev) => Math.min(prev, maxPage));
+  }, [sortedTableRootTasks.length]);
 
   useEffect(() => {
     if (!sortPickerOpen) return;
@@ -344,13 +384,13 @@ export default function ProjectTasksPanel({
   }, [tableRootTasks]);
 
   const tabsWithBadges = useMemo(() => {
-    const counts = { all: tasks.length };
-    for (const task of tasks) {
+    const counts = { all: majorTasks.length };
+    for (const task of majorTasks) {
       counts[task.strapiStatus] = (counts[task.strapiStatus] || 0) + 1;
       if (isTaskOverdue(task)) counts.OVERDUE = (counts.OVERDUE || 0) + 1;
     }
     return STATUS_TABS.map((tab) => ({ ...tab, badge: counts[tab.id] || 0 }));
-  }, [tasks]);
+  }, [majorTasks]);
 
   const taskColumns = useMemo(
     () => [
@@ -421,17 +461,13 @@ export default function ProjectTasksPanel({
         key: 'status',
         label: 'STATUS',
         render: (_, row) => (
-          <div onClick={(event) => event.stopPropagation()}>
-            <Select
-              value={row.strapiStatus}
-              options={TASK_STATUS_OPTIONS}
-              onChange={(status) => updateTask(row, { status })}
-              disabled={savingId === row.id}
-              {...pmTableSelectFillProps(row.strapiStatus, 'status')}
-              containerClassName="min-w-[150px]"
-              placeholder="Status"
-            />
-          </div>
+          <TableCellTaskStatusSelect
+            status={row.strapiStatus}
+            onStatusChange={(status) => updateTask(row, { status })}
+            saving={savingId === row.id}
+            options={PM_TASK_STATUS_OPTIONS}
+            fillStyle="pm"
+          />
         ),
       },
       {
@@ -443,7 +479,7 @@ export default function ProjectTasksPanel({
               value={row.priority}
               options={PRIORITY_OPTIONS}
               onChange={(priority) => updateTask(row, { priority })}
-              disabled={memberScopedTasks || savingId === row.id}
+              disabled={!canEditTaskInPm(row, currentUserId) || savingId === row.id}
               {...pmTableSelectFillProps(row.priority, 'priority')}
               containerClassName="min-w-[130px]"
               placeholder="Priority"
@@ -453,7 +489,7 @@ export default function ProjectTasksPanel({
       },
       {
         key: 'assigner',
-        label: 'ASSIGNER',
+        label: 'REPORTER',
         render: (_, row) => {
           const assignerUser = row.assigner || assignerStrapiShape(row, users);
           const derived = ownerDisplayFromUser(assignerUser);
@@ -463,12 +499,12 @@ export default function ProjectTasksPanel({
             <div
               className="flex min-w-[180px] max-w-[min(280px,22vw)] items-center gap-2.5 py-0.5"
               onClick={(event) => event.stopPropagation()}
-              title={label || 'No assigner'}
+              title={label || 'No reporter'}
             >
               <Avatar
                 src={assignerUser?.avatar || undefined}
                 fallback={empty ? '?' : derived.avatarFallback}
-                alt={label || 'Assigner'}
+                alt={label || 'Reporter'}
                 size="sm"
                 className={`flex-shrink-0 text-white ${empty ? 'bg-gray-300 text-gray-600' : 'bg-gray-600'}`}
               />
@@ -494,7 +530,7 @@ export default function ProjectTasksPanel({
               assignees={row.assignees}
               users={users}
               onChange={(assigneeUserIds) => updateTask(row, { assigneeUserIds })}
-              disabled={memberScopedTasks || row.assignmentPending || savingId === row.id}
+              disabled={!canEditTaskInPm(row, currentUserId) || row.assignmentPending || savingId === row.id}
               compact
             />
             {row.assignmentPending && canApproveAssignments ? (
@@ -526,14 +562,14 @@ export default function ProjectTasksPanel({
       {
         key: 'startDate',
         label: 'START DATE',
-        render: (_, row) => <TableCellCreated dateString={row.startDate} />,
+        render: (_, row) => <TableCellCreated dateString={row.startDate} dateMode="calendar" />,
       },
       {
         key: 'dueDate',
         label: 'DUE DATE',
         render: (_, row) => (
           <div className={isTaskOverdue(row) ? '[&_.font-semibold]:text-red-700 [&_.text-gray-500]:text-red-600/90' : ''}>
-            <TableCellCreated dateString={row.dueDate} />
+            <TableCellCreated dateString={row.dueDate} dateMode="calendar" />
           </div>
         ),
       },
@@ -548,18 +584,16 @@ export default function ProjectTasksPanel({
               triggerClassName="inline-flex h-9 w-9 items-center justify-center rounded-md p-2 text-teal-600 transition hover:bg-teal-50"
               items={[
                 { label: 'View', icon: Eye, onClick: () => router.push(`/tasks/${row.id}`) },
-                ...(memberScopedTasks
-                  ? []
-                  : [
-                      { label: 'Edit', icon: Edit3, onClick: () => onEditTask?.(row) },
-                    ]),
+                ...(canEditTaskInPm(row, currentUserId)
+                  ? [{ label: 'Edit', icon: Edit3, onClick: () => onEditTask?.(row) }]
+                  : []),
                 { label: 'Copy link', icon: Copy, onClick: () => copyTaskLink(row) },
-                ...(memberScopedTasks
-                  ? []
-                  : [{ label: 'Delete', icon: Trash2, danger: true, onClick: () => onDeleteTask?.(row) }]),
+                ...(canDeleteTaskInPm(row, currentUserId)
+                  ? [{ label: 'Delete', icon: Trash2, danger: true, onClick: () => onDeleteTask?.(row) }]
+                  : []),
               ]}
             />
-            {!memberScopedTasks ? (
+            {canEditTaskInPm(row, currentUserId) ? (
             <Button
               variant="ghost"
               size="sm"
@@ -585,7 +619,7 @@ export default function ProjectTasksPanel({
             >
               <Link2 className="h-4 w-4" />
             </Button>
-            {!memberScopedTasks ? (
+            {canDeleteTaskInPm(row, currentUserId) ? (
             <Button
               variant="ghost"
               size="sm"
@@ -607,7 +641,7 @@ export default function ProjectTasksPanel({
       router,
       users,
       savingId,
-      memberScopedTasks,
+      currentUserId,
       canApproveAssignments,
       handleApproveAssignment,
       handleRejectAssignment,
@@ -671,8 +705,14 @@ export default function ProjectTasksPanel({
           <span className="text-gray-400">Loading tasks…</span>
         ) : (
           <>
-            Showing <span className="font-semibold text-gray-900">{sortedTableRootTasks.length}</span> result
-            {sortedTableRootTasks.length !== 1 ? 's' : ''}
+            Showing <span className="font-semibold text-gray-900">{totalTableRows}</span> result
+            {totalTableRows !== 1 ? 's' : ''}
+            {totalTableRows > TABLE_PAGE_SIZE ? (
+              <>
+                {' '}
+                (page {tablePage} of {totalTablePages})
+              </>
+            ) : null}
           </>
         )}
       </div>
@@ -686,7 +726,7 @@ export default function ProjectTasksPanel({
           <>
             <Table
               columns={sortableTaskColumns}
-              data={sortedTableRootTasks}
+              data={paginatedTableTasks}
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/tasks/${row.id}`)}
@@ -697,12 +737,15 @@ export default function ProjectTasksPanel({
                   colSpan={sortableTaskColumns.length}
                   users={users}
                   savingId={savingId}
+                  currentUserId={currentUserId}
                   memberScopedTasks={memberScopedTasks}
+                  canAddSubtaskOnTask={canAddSubtaskOnTask}
                   onUpdateTask={updateTask}
                   onOpenTask={(subtask) => router.push(`/tasks/${subtask.id}`)}
                   onEditTask={(subtask) => onEditTask?.(subtask)}
                   onCopyTaskLink={copyTaskLink}
                   onDeleteTask={(subtask) => onDeleteTask?.(subtask)}
+                  onPromoteSubtask={(subtask) => setPromoteModal({ open: true, task: subtask })}
                   onAddSubtask={(r) => onOpenCreateSubtask?.(r)}
                 />
               )}
@@ -724,6 +767,16 @@ export default function ProjectTasksPanel({
                 )}
               </div>
             )}
+            {totalTablePages > 1 ? (
+              <Pagination
+                currentPage={tablePage}
+                totalPages={totalTablePages}
+                totalItems={totalTableRows}
+                itemsPerPage={TABLE_PAGE_SIZE}
+                onPageChange={setTablePage}
+                className="border-t border-gray-200 bg-gray-50"
+              />
+            ) : null}
           </>
         )}
       </div>
@@ -839,6 +892,35 @@ export default function ProjectTasksPanel({
             </div>
           </div>
         </TableRowActionMenuPortal>
+      ) : null}
+
+      {!memberScopedTasks ? (
+        <Modal
+          isOpen={promoteModal.open}
+          onClose={() => setPromoteModal({ open: false, task: null })}
+          title="Make major task"
+          size="sm"
+        >
+          <div className="space-y-5">
+            <p className="text-sm text-gray-700">
+              Convert{' '}
+              <span className="font-semibold text-gray-900">{promoteModal.task?.name || 'this subtask'}</span>{' '}
+              into a standalone major task? It will no longer appear under its parent.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setPromoteModal({ open: false, task: null })}
+                disabled={savingId === promoteModal.task?.id}
+              >
+                Cancel
+              </Button>
+              <Button onClick={confirmPromoteSubtask} disabled={savingId === promoteModal.task?.id}>
+                {savingId === promoteModal.task?.id ? 'Converting...' : 'Make major task'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
       ) : null}
     </div>
   );

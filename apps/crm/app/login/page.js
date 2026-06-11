@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@webfudge/auth';
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
-import { Button, Input } from '@webfudge/ui';
+import {
+  Button,
+  Input,
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+} from '@webfudge/ui';
+import { CRM_SITE } from '../../lib/site';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -63,19 +70,34 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-primary to-orange-600 flex-col justify-center px-16 py-20">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-primary to-orange-600 relative flex-col justify-center px-16 py-20">
+        <LoginBrandCorner
+          brandIconPath={CRM_SITE.brandIconPath}
+          brandName={CRM_SITE.brandName}
+        />
         <div className="max-w-lg">
+          <LoginProductCredit productName={CRM_SITE.name} creatorLine={CRM_SITE.brandName} />
           <h1 className="text-5xl font-bold text-white mb-6">Welcome back</h1>
-          <p className="text-xl text-white/90 mb-4">
-            Webfudge CRM – manage sales, leads, deals, and clients in one place.
-          </p>
-          <p className="text-white/80 leading-relaxed">
-            Sign in to access your pipeline, contacts, and client portal.
-          </p>
+          <p className="text-xl text-white/90 mb-4">{CRM_SITE.loginTagline}</p>
+          <p className="text-white/80 leading-relaxed">{CRM_SITE.loginDetail}</p>
+          <div className="mt-12 grid grid-cols-3 gap-6">
+            {CRM_SITE.loginFeatures.map((item) => (
+              <div key={item.label} className="bg-white/10 rounded-xl p-4 text-center">
+                <p className="text-white font-semibold text-sm">{item.value}</p>
+                <p className="text-white/70 text-xs mt-1">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+
       <div className="w-full lg:w-1/2 flex flex-col justify-center p-8 lg:p-16">
         <div className="w-full max-w-md mx-auto">
+          <LoginMobileBrandHeader
+            logoPath={CRM_SITE.logoPath}
+            productName={CRM_SITE.name}
+            creatorLine={CRM_SITE.brandName}
+          />
           <h2 className="text-3xl font-semibold text-brand-dark mb-2">Sign in</h2>
           <p className="text-gray-600 mb-8">Enter your credentials to access the CRM.</p>
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -89,57 +111,22 @@ export default function LoginPage() {
               </div>
             )}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-brand-dark mb-1.5">
-                Email
-              </label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                error={errors.email}
-                className="w-full"
-              />
+              <label htmlFor="email" className="block text-sm font-medium text-brand-dark mb-1.5">Email</label>
+              <Input id="email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" error={errors.email} className="w-full" />
               {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-brand-dark mb-1.5">
-                Password
-              </label>
+              <label htmlFor="password" className="block text-sm font-medium text-brand-dark mb-1.5">Password</label>
               <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  error={errors.password}
-                  className="w-full pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-dark"
-                >
+                <Input id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" error={errors.password} className="w-full pr-10" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-dark">
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
               {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
             </div>
             <Button type="submit" disabled={isSubmitting} className="w-full" variant="primary">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Signing in...
-                </>
-              ) : (
-                'Sign in'
-              )}
+              {isSubmitting ? <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Signing in...</span> : 'Sign in'}
             </Button>
           </form>
           <p className="mt-6 text-center text-sm text-gray-500">

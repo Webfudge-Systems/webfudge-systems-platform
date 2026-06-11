@@ -20,9 +20,15 @@ Tasks support a **parent → subtasks** hierarchy (`parent` / `subtasks` on `api
 
 ## Behavior
 
-- **List rows**: A task is shown as a top-level row if it has **no parent**, or its **parent id is not** in the loaded task id set (e.g. assignee only on a subtask whose parent is not in your merged list).
+- **List rows (All Tasks, In Progress, Overdue, project tables)**: Only **major** (root) tasks appear as top-level rows. Subtasks are hidden from the flat list and shown only when expanding a parent row.
+- **My Tasks tab + dashboard My Tasks widget**: Tasks assigned to you appear as their own rows — including **subtasks** assigned to you, even when the parent is also in the list. Expanding a parent skips subtasks already shown as root rows (no duplicates).
+- **Counts (KPI cards, tab badges, dashboard stats)**: Total / status / overdue counts use **major tasks only**, except the **My Tasks** badge which includes assigned subtasks.
 - **Expand**: List-tree icon toggles a row below the task with subtask links + **Add subtask** (opens create modal with `parentId`).
+- **Single assignee**: Each subtask may have **one assignee only** (parent tasks still support multiple assignees). Enforced in `TaskAssigneesPicker` (`maxAssignees={1}`), `taskService.normalizeTaskPayload`, and backend `clampSubtaskToSingleAssignee`.
+- **Promote to major task**: Admins/managers can detach a subtask (`parentId: null` via `taskService.promoteSubtaskToMajorTask`) so it appears as a root task in project/My Tasks lists. Action: **Make major task** on inline subtask rows, task detail Subtasks tab, or the task header when viewing a subtask directly.
 - **Backend**: Parent must exist, belong to the same organization, cannot be self, and cannot create a **cycle** when walking `parent` upward from the new parent.
+
+Shared helpers: `apps/pm/lib/taskListUtils.js` — `isMajorTask`, `filterMajorTasks`, `buildChildrenByParentId`.
 
 ## Usage / migration
 

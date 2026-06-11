@@ -3,8 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Button, EmptyState } from '@webfudge/ui';
 import { FolderOpen } from 'lucide-react';
-import DashboardInsightShell, { InsightCountBadge } from './DashboardInsightShell';
-import DashboardProgressRow, { progressBarColorForValue } from './DashboardProgressRow';
+import { DashboardInsightShell, InsightCountBadge, DashboardProgressRow, progressBarColorForValue } from '@webfudge/ui';
 
 const PROJECT_AVATAR_COLORS = [
   'bg-blue-500 text-white',

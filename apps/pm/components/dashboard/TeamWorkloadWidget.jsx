@@ -2,8 +2,7 @@
 
 import { EmptyState } from '@webfudge/ui';
 import { Users } from 'lucide-react';
-import DashboardInsightShell, { InsightCountBadge } from './DashboardInsightShell';
-import DashboardProgressRow from './DashboardProgressRow';
+import { DashboardInsightShell, InsightCountBadge, DashboardProgressRow } from '@webfudge/ui';
 
 const BAR_PALETTE = ['orange', 'green', 'blue', 'purple', 'teal', 'pink', 'indigo'];
 

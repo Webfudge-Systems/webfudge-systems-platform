@@ -24,6 +24,10 @@ import {
   ViewToggleButton,
   ViewToggleGroup,
   ownerDisplayFromUser,
+  TableCellProjectStatusSelect,
+  PROJECT_STATUS_OPTIONS,
+  useTableColumnPreferences,
+  TableColumnPicker,
 } from '@webfudge/ui';
 import { clsx } from 'clsx';
 import {
@@ -35,23 +39,19 @@ import {
   Link2,
   ListTodo,
   MessageSquarePlus,
+  Lock,
   Pencil,
   PlayCircle,
   Plus,
   Table2,
   SendHorizontal,
   Trash2,
-  GripVertical,
   Kanban,
 } from 'lucide-react';
 import PMPageHeader from '../../components/PMPageHeader';
 import { ProgressBar as PMProgress } from '@webfudge/ui';
 import PMRowActions from '../../components/PMRowActions';
 import ProjectsKanbanBoard from '../../components/ProjectsKanbanBoard';
-import {
-  PROJECT_STATUS_OPTIONS,
-  getProjectStatusMeta,
-} from '../../components/PMStatusBadge';
 import { fetchPmAssignableUsers } from '../../lib/api/messageService';
 import {
   addProjectComment,
@@ -126,81 +126,7 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
-function loadColumnVisibility() {
-  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_VISIBILITY };
-  try {
-    const raw = window.localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_COLUMN_VISIBILITY };
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_COLUMN_VISIBILITY, ...parsed };
-  } catch {
-    return { ...DEFAULT_COLUMN_VISIBILITY };
-  }
-}
-
-function loadColumnOrder() {
-  if (typeof window === 'undefined') return [...REORDERABLE_COLUMN_KEYS];
-  try {
-    const raw = window.localStorage.getItem(COLUMN_ORDER_STORAGE_KEY);
-    if (!raw) return [...REORDERABLE_COLUMN_KEYS];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [...REORDERABLE_COLUMN_KEYS];
-    const valid = new Set(REORDERABLE_COLUMN_KEYS);
-    const ordered = parsed.filter((k) => valid.has(k));
-    const missing = REORDERABLE_COLUMN_KEYS.filter((k) => !ordered.includes(k));
-    return [...ordered, ...missing];
-  } catch {
-    return [...REORDERABLE_COLUMN_KEYS];
-  }
-}
-
-function persistColumnOrder(order) {
-  try {
-    window.localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(order));
-  } catch {
-    /* ignore */
-  }
-}
-
-function loadColumnWidths() {
-  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_WIDTHS };
-  try {
-    const raw = window.localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_COLUMN_WIDTHS };
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_COLUMN_WIDTHS };
-    const merged = { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-    for (const [key, min] of Object.entries(MIN_COLUMN_WIDTHS)) {
-      if (typeof merged[key] === 'number' && merged[key] < min) {
-        merged[key] = min;
-      }
-    }
-    return merged;
-  } catch {
-    return { ...DEFAULT_COLUMN_WIDTHS };
-  }
-}
-
-function persistColumnWidths(widths) {
-  try {
-    window.localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(widths));
-  } catch {
-    /* ignore */
-  }
-}
-
 /** Same badge chrome as My Tasks / CRM status selects */
-const STATUS_SELECT_VARIANT_CLASS = {
-  primary: 'border-blue-200 bg-blue-50 text-blue-800',
-  warning: 'border-amber-200 bg-amber-50 text-amber-800',
-  orange: 'border-orange-200 bg-orange-50 text-orange-800',
-  cyan: 'border-cyan-200 bg-cyan-50 text-cyan-800',
-  purple: 'border-purple-200 bg-purple-50 text-purple-800',
-  success: 'border-green-200 bg-green-50 text-green-800',
-  danger: 'border-red-200 bg-red-50 text-red-800',
-  default: 'border-gray-200 bg-gray-50 text-gray-800',
-};
-
 function isProjectOverdue(project) {
   if (!project?.endDate) return false;
   const due = new Date(project.endDate);
@@ -366,12 +292,7 @@ export default function ProjectsPage() {
   const [deleting, setDeleting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalProjects, setTotalProjects] = useState(0);
-  const [columnPickerOpen, setColumnPickerOpen] = useState(false);
   const [sortPickerOpen, setSortPickerOpen] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
-  const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
-  const [columnWidths, setColumnWidths] = useState(() => ({ ...DEFAULT_COLUMN_WIDTHS }));
-  const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const [commentComposerMenu, setCommentComposerMenu] = useState(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [commentsByProject, setCommentsByProject] = useState({});
@@ -380,11 +301,33 @@ export default function ProjectsPage() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
   const [ownerMenuProjectId, setOwnerMenuProjectId] = useState(null);
-  const toolbarRef = useRef(null);
-  const columnDragKeyRef = useRef(null);
-  const columnDropIndicatorRef = useRef(null);
   const projectOwnerMenuRef = useRef(null);
   const pageSize = 12;
+
+  const {
+    columnVisibility,
+    columnOrder,
+    columnPickerOpen,
+    setColumnPickerOpen,
+    columnDropIndicator,
+    toolbarRef,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    tableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  });
 
   const canShowAddProject = useMemo(() => canWritePM('projects') && canCreateProjectsInPm(), []);
 
@@ -495,22 +438,6 @@ export default function ProjectsPage() {
   }, [loadKpiData]);
 
   useEffect(() => {
-    setColumnVisibility(loadColumnVisibility());
-    setColumnOrder(loadColumnOrder());
-    const widths = loadColumnWidths();
-    setColumnWidths(widths);
-    persistColumnWidths(widths);
-  }, []);
-
-  const handleColumnWidthsChange = useCallback((next) => {
-    setColumnWidths(next);
-  }, []);
-
-  const handleColumnResizeEnd = useCallback((next) => {
-    persistColumnWidths(next);
-  }, []);
-
-  useEffect(() => {
     if (!columnPickerOpen && !sortPickerOpen) return;
     const onDocMouseDown = (event) => {
       if (toolbarRef.current && !toolbarRef.current.contains(event.target)) {
@@ -521,97 +448,6 @@ export default function ProjectsPage() {
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [columnPickerOpen, sortPickerOpen]);
-
-  const setColumnVisible = useCallback((key, visible) => {
-    setColumnVisibility((prev) => {
-      const next = { ...prev, [key]: visible };
-      try {
-        window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  }, []);
-
-  const handleColumnDragStart = useCallback((e, key) => {
-    columnDragKeyRef.current = key;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', key);
-    const row = e.currentTarget.closest('[data-column-row]');
-    if (row) row.classList.add('opacity-60');
-  }, []);
-
-  const handleColumnDragEnd = useCallback((e) => {
-    columnDragKeyRef.current = null;
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    const row = e.currentTarget.closest('[data-column-row]');
-    if (row) row.classList.remove('opacity-60');
-  }, []);
-
-  const handleColumnRowDragOver = useCallback((e, key) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const fromKey = columnDragKeyRef.current || e.dataTransfer.getData('text/plain');
-    if (!fromKey || fromKey === key) {
-      columnDropIndicatorRef.current = null;
-      setColumnDropIndicator(null);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const place = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
-    const hint = { targetKey: key, place };
-    columnDropIndicatorRef.current = hint;
-    setColumnDropIndicator(hint);
-  }, []);
-
-  const handleColumnListDragLeave = useCallback((e) => {
-    const related = e.relatedTarget;
-    if (related && e.currentTarget.contains(related)) return;
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-  }, []);
-
-  const handleColumnDrop = useCallback((e, targetKey) => {
-    e.preventDefault();
-    const fromKey = columnDragKeyRef.current || e.dataTransfer.getData('text/plain');
-    const hint = columnDropIndicatorRef.current;
-    const place = hint?.targetKey === targetKey ? hint.place : 'before';
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    if (!fromKey || fromKey === targetKey) return;
-    setColumnOrder((prev) => {
-      const next = [...prev];
-      const fi = next.indexOf(fromKey);
-      const ti0 = next.indexOf(targetKey);
-      if (fi === -1 || ti0 === -1) return prev;
-      next.splice(fi, 1);
-      const ti = next.indexOf(targetKey);
-      const insertAt = place === 'after' ? ti + 1 : ti;
-      next.splice(insertAt, 0, fromKey);
-      persistColumnOrder(next);
-      return next;
-    });
-  }, []);
-
-  const resetColumnTablePreferences = useCallback(() => {
-    const vis = { ...DEFAULT_COLUMN_VISIBILITY };
-    const order = [...REORDERABLE_COLUMN_KEYS];
-    const widths = { ...DEFAULT_COLUMN_WIDTHS };
-    setColumnVisibility(vis);
-    setColumnOrder(order);
-    setColumnWidths(widths);
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    try {
-      window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(vis));
-      persistColumnOrder(order);
-      persistColumnWidths(widths);
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   const tabCounts = useMemo(() => {
     const counts = { all: kpiTotal };
@@ -762,7 +598,14 @@ export default function ProjectsPage() {
                     className="min-w-0 flex-1 text-left hover:text-orange-600"
                   >
                     <TableCellTitleSubtitle
-                      title={row.name}
+                      title={
+                        <span className="inline-flex items-center gap-1.5">
+                          {row.name}
+                          {row.isPrivate && (
+                            <Lock className="inline h-3 w-3 text-gray-400 shrink-0" title="Private project" />
+                          )}
+                        </span>
+                      }
                       subtitle={row.description || row.clientName || 'No description'}
                     />
                   </button>
@@ -806,21 +649,14 @@ export default function ProjectsPage() {
         visibilityKey: 'status',
         label: 'STATUS',
         render: (_, row) => {
-          const meta = getProjectStatusMeta(row.strapiStatus);
-          const chrome = STATUS_SELECT_VARIANT_CLASS[meta.variant] || STATUS_SELECT_VARIANT_CLASS.default;
           const canEditRow = canEditProjectInPm(row, currentUserId);
           return (
-            <div onClick={(event) => event.stopPropagation()}>
-              <Select
-                value={row.strapiStatus}
-                options={PROJECT_STATUS_OPTIONS}
-                onChange={(status) => updateProjectStatus(row, status)}
-                disabled={savingId === row.id || !canEditRow}
-                className={`py-1.5 text-xs font-semibold uppercase tracking-wide ${chrome}`}
-                containerClassName="min-w-[150px]"
-                placeholder="Status"
-              />
-            </div>
+            <TableCellProjectStatusSelect
+              status={row.strapiStatus}
+              onStatusChange={(status) => updateProjectStatus(row, status)}
+              saving={savingId === row.id}
+              canEdit={canEditRow}
+            />
           );
         },
       },
@@ -921,7 +757,7 @@ export default function ProjectsPage() {
               isProjectOverdue(row) ? '[&_.font-semibold]:text-red-700 [&_.text-gray-500]:text-red-600/90' : ''
             }
           >
-            <TableCellCreated dateString={row.endDate} />
+            <TableCellCreated dateString={row.endDate} dateMode="calendar" />
           </div>
         ),
       },
@@ -929,7 +765,7 @@ export default function ProjectsPage() {
         key: 'startDate',
         visibilityKey: 'startDate',
         label: 'START',
-        render: (_, row) => <TableCellCreated dateString={row.startDate} />,
+        render: (_, row) => <TableCellCreated dateString={row.startDate} dateMode="calendar" />,
       },
       {
         key: 'tasks',
@@ -1256,92 +1092,21 @@ export default function ProjectsPage() {
           onClear={clearSort}
           maxRules={sortMaxRules}
         />
-        {columnPickerOpen && activeView === 'list' ? (
-          <div
-            className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl"
-            role="dialog"
-            aria-label="Table columns"
-          >
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">Columns</p>
-            <p className="mb-2 text-xs leading-snug text-gray-500">
-              Project name and actions stay visible. Toggle fields below; drag the grip to reorder. An orange line
-              shows where the row will land.
-            </p>
-            <ul
-              className="max-h-[min(51vh,18.75rem)] space-y-0 overflow-y-auto pr-1"
-              onDragLeave={handleColumnListDragLeave}
-            >
-              <li data-column-row className="relative flex items-stretch rounded-lg border border-transparent">
-                <span className="flex w-8 shrink-0 items-center justify-center text-gray-300" aria-hidden title="Fixed order">
-                  —
-                </span>
-                <div className="flex min-w-0 flex-1 items-center px-2 py-1 text-sm text-gray-700">
-                  <span className="font-medium">Project name</span>
-                  <span className="ml-1.5 text-xs text-gray-500">(always visible)</span>
-                </div>
-              </li>
-              {columnOrder.map((key) => {
-                const def = TOGGLEABLE_COLUMNS.find((c) => c.key === key);
-                if (!def) return null;
-                const showLineBefore =
-                  columnDropIndicator?.targetKey === key && columnDropIndicator.place === 'before';
-                const showLineAfter =
-                  columnDropIndicator?.targetKey === key && columnDropIndicator.place === 'after';
-                return (
-                  <li
-                    key={key}
-                    data-column-row
-                    className="relative flex items-stretch rounded-lg border border-transparent hover:border-gray-100"
-                    onDragOver={(e) => handleColumnRowDragOver(e, key)}
-                    onDrop={(e) => handleColumnDrop(e, key)}
-                  >
-                    {showLineBefore ? (
-                      <div
-                        className="pointer-events-none absolute left-1 right-2 top-0 z-10 h-[3px] -translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <span
-                      draggable
-                      onDragStart={(e) => handleColumnDragStart(e, key)}
-                      onDragEnd={handleColumnDragEnd}
-                      className="flex w-8 shrink-0 cursor-grab items-center justify-center rounded-l-lg text-gray-400 active:cursor-grabbing hover:bg-gray-100 hover:text-gray-600"
-                      aria-label={`Drag to reorder ${def.label}`}
-                    >
-                      <GripVertical className="h-4 w-4" strokeWidth={2} aria-hidden />
-                    </span>
-                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-gray-800 hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 shrink-0 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                        checked={Boolean(columnVisibility[key])}
-                        onChange={(event) => setColumnVisible(key, event.target.checked)}
-                      />
-                      <span>{def.label}</span>
-                    </label>
-                    {showLineAfter ? (
-                      <div
-                        className="pointer-events-none absolute bottom-0 left-1 right-2 z-10 h-[3px] translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                        aria-hidden
-                      />
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="mt-2 border-t border-gray-100 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full text-sm font-medium text-gray-700"
-                onClick={resetColumnTablePreferences}
-              >
-                Reset to default
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        <TableColumnPicker
+          open={columnPickerOpen && activeView === 'list'}
+          description="Project name and actions stay visible. Drag column edges in the table to resize."
+          reorderableRows={TOGGLEABLE_COLUMNS}
+          columnVisibility={columnVisibility}
+          columnOrder={columnOrder}
+          columnDropIndicator={columnDropIndicator}
+          onSetVisible={setColumnVisible}
+          onDragStart={handleColumnDragStart}
+          onDragEnd={handleColumnDragEnd}
+          onRowDragOver={handleColumnRowDragOver}
+          onListDragLeave={handleColumnListDragLeave}
+          onDrop={handleColumnDrop}
+          onReset={resetColumnTablePreferences}
+        />
       </div>
 
       <div className="text-sm text-gray-600">
@@ -1384,10 +1149,7 @@ export default function ProjectsPage() {
               data={sortedProjects}
               keyField="id"
               variant="modern"
-              resizableColumns
-              columnWidths={columnWidths}
-              onColumnWidthsChange={handleColumnWidthsChange}
-              onColumnResizeEnd={handleColumnResizeEnd}
+              {...tableResizeProps}
               onRowClick={(row) => router.push(`/projects/${row.slug || row.id}`)}
             />
             {projects.length === 0 ? (

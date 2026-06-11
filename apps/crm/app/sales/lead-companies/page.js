@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
   Mail,
   Phone,
   PhoneCall,
+  PhoneOff,
   Building2,
   CheckCircle,
   XCircle,
-  ChevronDown,
   MoreHorizontal,
   Pencil,
   Video,
@@ -22,7 +22,10 @@ import {
   SendHorizontal,
   Globe,
   MapPin,
-  GripVertical,
+  Calendar,
+  Table2,
+  Kanban,
+  Users,
 } from 'lucide-react';
 import {
   Button,
@@ -35,27 +38,96 @@ import {
   KPICard,
   Modal,
   Textarea,
+  Input,
   ChatMessageText,
   TableCellCreated,
   TableCellDateOnly,
   TableCellOwner,
-  TableCellLeadStatus,
   TableCellText,
   TableCellOrangePill,
   TableCellSource,
   TableCellMultiline,
   TableRowActionMenuPortal,
+  toDateInputValue,
+  ViewToggleGroup,
+  ViewToggleButton,
+  useTableColumnPreferences,
+  TableColumnPicker,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
+import { LeadsKanbanBoard, LEAD_PIPELINE_STAGES } from '../../../components/LeadsKanbanBoard';
+import { LeadsByMembersView } from '../../../components/LeadsByMembersView';
+import { TableCellLeadStatusSelect } from '@webfudge/ui';
+import { LeadNextConnectCell } from '../../../components/LeadNextConnectCell';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import leadCompanyService from '../../../lib/api/leadCompanyService';
+import strapiClient from '../../../lib/strapiClient';
 import crmActivityService from '../../../lib/api/crmActivityService';
-import { canEditCRMRecord, canManageCRM } from '../../../lib/rbac';
+import { canEditCRMRecord, canManageCRM, currentStrapiUserId, isCrmManagerOrAdmin } from '../../../lib/rbac';
+import { commentTextFromMeta } from '../../../lib/leadCompanyComments';
+import { primaryContactForLeadCompany } from '../../../lib/leadCompanyContacts';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.leadCompanies.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.leadCompanies.tableColumnOrder';
+const COLUMN_WIDTHS_STORAGE_KEY = 'crm.leadCompanies.tableColumnWidths';
 const TABLE_SORT_STORAGE_KEY = 'crm.leadCompanies.tableSort';
+const LEAD_VIEW_STORAGE_KEY = 'crm.leadCompanies.viewMode';
+
+function readStoredLeadView() {
+  if (typeof window === 'undefined') return 'table';
+  try {
+    const v = window.localStorage.getItem(LEAD_VIEW_STORAGE_KEY);
+    if (v === 'table' || v === 'kanban' || v === 'members') return v;
+  } catch {
+    /* ignore */
+  }
+  return 'table';
+}
+
+/** Default pixel widths for resizable table columns (keyed by column `key`). */
+const DEFAULT_COLUMN_WIDTHS = {
+  company: 300,
+  nextConnectDate: 190,
+  primaryContact: 260,
+  status: 170,
+  source: 120,
+  segment: 120,
+  dealValue: 120,
+  contactsCount: 110,
+  assignedTo: 180,
+  createdAt: 150,
+  updatedAt: 130,
+  industry: 140,
+  type: 140,
+  website: 160,
+  companyPhone: 140,
+  companyEmail: 180,
+  address: 200,
+  city: 120,
+  state: 120,
+  country: 120,
+  zipCode: 100,
+  employees: 120,
+  founded: 100,
+  description: 200,
+  linkedIn: 100,
+  twitter: 120,
+  score: 90,
+  healthScore: 100,
+  notes: 180,
+  organization: 160,
+  actions: 220,
+};
+
+/** Enforced minimums when loading saved widths (e.g. after layout updates). */
+const MIN_COLUMN_WIDTHS = {
+  company: 260,
+  nextConnectDate: 110,
+  primaryContact: 220,
+  status: 160,
+  actions: 200,
+};
 
 /** Toggleable column keys and default visibility (extra fields off until user enables them). */
 const TOGGLEABLE_COLUMNS = [
@@ -70,7 +142,6 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'updatedAt', label: 'Updated' },
   { key: 'industry', label: 'Industry' },
   { key: 'type', label: 'Type' },
-  { key: 'subType', label: 'Sub-type' },
   { key: 'website', label: 'Website' },
   { key: 'companyPhone', label: 'Company phone' },
   { key: 'companyEmail', label: 'Company email' },
@@ -108,42 +179,6 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
-function loadColumnVisibility() {
-  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_VISIBILITY };
-  try {
-    const raw = window.localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_COLUMN_VISIBILITY };
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_COLUMN_VISIBILITY, ...parsed };
-  } catch {
-    return { ...DEFAULT_COLUMN_VISIBILITY };
-  }
-}
-
-function loadColumnOrder() {
-  if (typeof window === 'undefined') return [...REORDERABLE_COLUMN_KEYS];
-  try {
-    const raw = window.localStorage.getItem(COLUMN_ORDER_STORAGE_KEY);
-    if (!raw) return [...REORDERABLE_COLUMN_KEYS];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [...REORDERABLE_COLUMN_KEYS];
-    const valid = new Set(REORDERABLE_COLUMN_KEYS);
-    const ordered = parsed.filter((k) => valid.has(k));
-    const missing = REORDERABLE_COLUMN_KEYS.filter((k) => !ordered.includes(k));
-    return [...ordered, ...missing];
-  } catch {
-    return [...REORDERABLE_COLUMN_KEYS];
-  }
-}
-
-function persistColumnOrder(order) {
-  try {
-    window.localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(order));
-  } catch {
-    /* ignore */
-  }
-}
-
 function orgDisplayName(org) {
   if (!org) return '—';
   if (typeof org === 'object') {
@@ -158,22 +193,6 @@ function actorDisplay(actor) {
   if (actor.email) return actor.email;
   if (actor.id != null) return `User ${actor.id}`;
   return 'Unknown user';
-}
-
-function commentTextFromMeta(meta) {
-  if (meta == null) return '';
-  if (typeof meta === 'string') {
-    try {
-      const parsed = JSON.parse(meta);
-      return typeof parsed?.comment === 'string' ? parsed.comment : '';
-    } catch {
-      return '';
-    }
-  }
-  if (typeof meta === 'object' && typeof meta.comment === 'string') {
-    return meta.comment;
-  }
-  return '';
 }
 
 function formatCommentTime(iso) {
@@ -204,7 +223,6 @@ export default function LeadCompaniesPage() {
       status: '',
       source: '',
       type: '',
-      subType: '',
       assignedToId: '',
       companyQuery: '',
       dateRange: '',
@@ -215,7 +233,13 @@ export default function LeadCompaniesPage() {
   const router = useRouter();
   const [leadCompanies, setLeadCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({});
+  const [statsByStatus, setStatsByStatus] = useState({});
+  const [myLeadsCount, setMyLeadsCount] = useState(0);
+  const [filterFacets, setFilterFacets] = useState({ sources: [], types: [] });
+  const [orgUsers, setOrgUsers] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -226,32 +250,71 @@ export default function LeadCompaniesPage() {
   const [converting, setConverting] = useState(false);
   const [convertError, setConvertError] = useState('');
   const [loadingActions, setLoadingActions] = useState({});
-  const [columnPickerOpen, setColumnPickerOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
-  const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
-  const [columnWidths, setColumnWidths] = useState({});
-  const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const [moreActionMenu, setMoreActionMenu] = useState(null);
-  const [statusActionMenu, setStatusActionMenu] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [draftFilters, setDraftFilters] = useState(initialFilters);
   const [commentComposerMenu, setCommentComposerMenu] = useState(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [commentsByCompany, setCommentsByCompany] = useState({});
+  const [nextConnectReasonsByCompany, setNextConnectReasonsByCompany] = useState({});
   const [commentCountsByCompanyId, setCommentCountsByCompanyId] = useState({});
+  const [nextConnectReasonCountsByCompanyId, setNextConnectReasonCountsByCompanyId] = useState({});
   const [commentLoadingCompanyId, setCommentLoadingCompanyId] = useState(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
-  const columnDragKeyRef = useRef(null);
-  const columnDropIndicatorRef = useRef(null);
-  const toolbarRef = useRef(null);
+  const [nextConnectDraft, setNextConnectDraft] = useState('');
+  const [nextConnectSaving, setNextConnectSaving] = useState(false);
+  const [leadViewMode, setLeadViewMode] = useState(() =>
+    typeof window === 'undefined' ? 'table' : readStoredLeadView()
+  );
+  const canShowMembersView = isCrmManagerOrAdmin();
   const itemsPerPage = 15;
 
+  const {
+    columnVisibility,
+    columnOrder,
+    columnPickerOpen,
+    setColumnPickerOpen,
+    columnDropIndicator,
+    toolbarRef,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    tableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  });
+
   useEffect(() => {
-    setColumnVisibility(loadColumnVisibility());
-    setColumnOrder(loadColumnOrder());
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await strapiClient.getXtrawrkxUsers();
+        if (!cancelled) setOrgUsers(Array.isArray(res?.data) ? res.data : []);
+      } catch {
+        if (!cancelled) setOrgUsers([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -266,141 +329,119 @@ export default function LeadCompaniesPage() {
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [columnPickerOpen, sortOpen]);
 
-  const setColumnVisible = useCallback((key, visible) => {
-    setColumnVisibility((prev) => {
-      const next = { ...prev, [key]: visible };
-      try {
-        window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  }, []);
-
-  const handleColumnDragStart = useCallback((e, key) => {
-    columnDragKeyRef.current = key;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', key);
-    const row = e.currentTarget.closest('[data-column-row]');
-    if (row) row.classList.add('opacity-60');
-  }, []);
-
-  const handleColumnDragEnd = useCallback((e) => {
-    columnDragKeyRef.current = null;
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    const row = e.currentTarget.closest('[data-column-row]');
-    if (row) row.classList.remove('opacity-60');
-  }, []);
-
-  const handleColumnRowDragOver = useCallback((e, key) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const fromKey =
-      columnDragKeyRef.current || e.dataTransfer.getData('text/plain');
-    if (!fromKey || fromKey === key) {
-      columnDropIndicatorRef.current = null;
-      setColumnDropIndicator(null);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const place = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
-    const hint = { targetKey: key, place };
-    columnDropIndicatorRef.current = hint;
-    setColumnDropIndicator(hint);
-  }, []);
-
-  const handleColumnListDragLeave = useCallback((e) => {
-    const related = e.relatedTarget;
-    if (related && e.currentTarget.contains(related)) return;
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-  }, []);
-
-  const handleColumnDrop = useCallback((e, targetKey) => {
-    e.preventDefault();
-    const fromKey =
-      columnDragKeyRef.current || e.dataTransfer.getData('text/plain');
-    const hint = columnDropIndicatorRef.current;
-    const place =
-      hint?.targetKey === targetKey ? hint.place : 'before';
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    if (!fromKey || fromKey === targetKey) return;
-    setColumnOrder((prev) => {
-      const next = [...prev];
-      const fi = next.indexOf(fromKey);
-      const ti0 = next.indexOf(targetKey);
-      if (fi === -1 || ti0 === -1) return prev;
-      next.splice(fi, 1);
-      const ti = next.indexOf(targetKey);
-      const insertAt = place === 'after' ? ti + 1 : ti;
-      next.splice(insertAt, 0, fromKey);
-      persistColumnOrder(next);
-      return next;
-    });
-  }, []);
-
-  const resetColumnTablePreferences = useCallback(() => {
-    const vis = { ...DEFAULT_COLUMN_VISIBILITY };
-    const order = [...REORDERABLE_COLUMN_KEYS];
-    setColumnVisibility(vis);
-    setColumnOrder(order);
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    try {
-      window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(vis));
-      persistColumnOrder(order);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const fetchLeadCompanies = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await leadCompanyService.getAll({
-        sort: 'createdAt:desc',
-        'pagination[pageSize]': 100,
-        populate: ['assignedTo', 'organization', 'contacts', 'convertedAccount'],
-        mergeContactsFromContactsApi: true,
-      });
-      setLeadCompanies(response.data || []);
-    } catch (err) {
-      console.error('Error fetching lead companies:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const showTableColumnTools = leadViewMode === 'table' || leadViewMode === 'members';
 
   const fetchStats = useCallback(async () => {
     try {
       const statsData = await leadCompanyService.getStats();
-      setStats(statsData);
+      setStatsByStatus(statsData.byStatus || {});
+      setFilterFacets(statsData.facets || { sources: [], types: [] });
+
+      const userId = currentStrapiUserId();
+      if (userId) {
+        const res = await leadCompanyService.getAll({
+          'pagination[page]': 1,
+          'pagination[pageSize]': 1,
+          'filters[assignedTo][id][$eq]': userId,
+        });
+        setMyLeadsCount(res?.meta?.pagination?.total ?? 0);
+      } else {
+        setMyLeadsCount(0);
+      }
     } catch (err) {
       console.error('Error fetching stats:', err);
     }
   }, []);
 
+  const {
+    sortRules,
+    columnOptions: sortColumnOptions,
+    hasActiveSort,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    bindSortableColumns,
+  } = useCrmTableSort({ entity: 'leadCompany', storageKey: TABLE_SORT_STORAGE_KEY, data: leadCompanies });
+
+  const sortApiParam = useMemo(() => {
+    if (!sortRules?.length) return 'createdAt:desc';
+    const rule = sortRules[0];
+    return `${rule.key}:${rule.direction}`;
+  }, [sortRules]);
+
+  const persistLeadView = useCallback((mode) => {
+    try {
+      window.localStorage.setItem(LEAD_VIEW_STORAGE_KEY, mode);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const handleLeadViewChange = useCallback(
+    (mode) => {
+      if (mode === 'members' && !canShowMembersView) return;
+      setLeadViewMode(mode);
+      persistLeadView(mode);
+      if (mode === 'kanban' || mode === 'members') {
+        setColumnPickerOpen(false);
+        setSortOpen(false);
+        setCurrentPage(1);
+      }
+    },
+    [canShowMembersView, persistLeadView]
+  );
+
+  useEffect(() => {
+    if (leadViewMode === 'members' && !canShowMembersView) {
+      handleLeadViewChange('table');
+    }
+  }, [canShowMembersView, leadViewMode, handleLeadViewChange]);
+
+  const fetchLeadCompanies = useCallback(async () => {
+    try {
+      setLoading(true);
+      const isBulkView = leadViewMode === 'kanban' || leadViewMode === 'members';
+      const params = leadCompanyService.buildListParams({
+        page: isBulkView ? 1 : currentPage,
+        pageSize: isBulkView ? 500 : itemsPerPage,
+        activeTab,
+        searchQuery: debouncedSearch,
+        appliedFilters,
+        sort: sortApiParam,
+        assignedToUserId: activeTab === 'my' ? currentStrapiUserId() : null,
+      });
+      const res = await leadCompanyService.getAll(params);
+      const rows = Array.isArray(res.data) ? res.data : [];
+      setLeadCompanies(rows);
+      const pag = res?.meta?.pagination;
+      setTotalItems(isBulkView ? rows.length : (pag?.total ?? 0));
+      setTotalPages(isBulkView ? 1 : Math.max(pag?.pageCount ?? 1, 1));
+    } catch (err) {
+      console.error('Error fetching lead companies:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, activeTab, debouncedSearch, appliedFilters, sortApiParam, itemsPerPage, leadViewMode]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
   useEffect(() => {
     fetchLeadCompanies();
-    fetchStats();
-  }, [fetchLeadCompanies, fetchStats]);
+  }, [fetchLeadCompanies]);
 
-  // Calculate statistics from visible lead rows to avoid stale server-side aggregates.
-  const leadStats = useMemo(() => {
-    const out = { new: 0, contacted: 0, qualified: 0, lost: 0 };
-    for (const c of leadCompanies) {
-      if (!c) continue;
-      const status = (c.status || '').toString().toUpperCase();
-      if (status === 'NEW') out.new += 1;
-      else if (status === 'CONTACTED') out.contacted += 1;
-      else if (status === 'QUALIFIED') out.qualified += 1;
-      else if (status === 'LOST') out.lost += 1;
-    }
-    return out;
-  }, [leadCompanies]);
+  const leadStats = useMemo(
+    () => ({
+      new: statsByStatus.NEW ?? 0,
+      contacted: statsByStatus.CONTACTED ?? 0,
+      qualified: statsByStatus.QUALIFIED ?? 0,
+      lost: statsByStatus.LOST ?? 0,
+    }),
+    [statsByStatus]
+  );
 
   const statusFilterOptions = useMemo(
     () => [
@@ -414,144 +455,41 @@ export default function LeadCompaniesPage() {
     []
   );
 
-  const sourceFilterOptions = useMemo(() => {
-    const values = new Set();
-    for (const company of leadCompanies) {
-      const src = company?.source;
-      if (src) values.add(String(src).toUpperCase());
-    }
-    return [...values]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value.replace(/_/g, ' ') }));
-  }, [leadCompanies]);
+  const sourceFilterOptions = useMemo(
+    () =>
+      (filterFacets.sources || []).map((value) => ({
+        value,
+        label: value.replace(/_/g, ' '),
+      })),
+    [filterFacets.sources]
+  );
 
-  const companyTypeFilterOptions = useMemo(() => {
-    const values = new Set();
-    for (const company of leadCompanies) {
-      const type = company?.type;
-      if (type) values.add(String(type));
-    }
-    return [...values]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value }));
-  }, [leadCompanies]);
-
-  const subTypeFilterOptions = useMemo(() => {
-    const values = new Set();
-    for (const company of leadCompanies) {
-      const subType = company?.subType;
-      if (!subType) continue;
-      if (
-        draftFilters.type &&
-        String(company?.type || '').toLowerCase() !== draftFilters.type.toLowerCase()
-      ) {
-        continue;
-      }
-      values.add(String(subType));
-    }
-    return [...values]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: value }));
-  }, [leadCompanies, draftFilters.type]);
+  const companyTypeFilterOptions = useMemo(
+    () =>
+      (filterFacets.types || []).map((value) => ({
+        value,
+        label: value,
+      })),
+    [filterFacets.types]
+  );
 
   const assigneeFilterOptions = useMemo(() => {
-    const map = new Map();
-    for (const company of leadCompanies) {
-      const user = company?.assignedTo;
-      if (!user || typeof user !== 'object') continue;
-      const id = user.id ?? user.documentId;
-      if (id == null) continue;
-      const name =
-        user.username ||
-        [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
-        user.email ||
-        `User ${id}`;
-      map.set(String(id), name);
-    }
-    return [...map.entries()]
-      .sort((a, b) => a[1].localeCompare(b[1]))
-      .map(([value, label]) => ({ value, label }));
-  }, [leadCompanies]);
+    return orgUsers
+      .map((user) => {
+        const id = user.id ?? user.documentId;
+        if (id == null) return null;
+        const name =
+          user.username ||
+          [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+          user.email ||
+          `User ${id}`;
+        return { value: String(id), label: name };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [orgUsers]);
 
-  // Filter companies based on search and tab
-  const filteredCompanies = leadCompanies.filter((company) => {
-    if (!company) return false;
-
-    // Search filter
-    const matchesSearch =
-      searchQuery === '' ||
-      company.companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      company.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      company.contacts?.some(
-        (c) =>
-          c.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.lastName?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-
-    // Tab filter
-    const matchesTab = activeTab === 'all' || company.status?.toLowerCase() === activeTab.toLowerCase();
-
-    const status = String(company.status || '').toUpperCase();
-    const source = String(company.source || '').toUpperCase();
-    const companyType = String(company.type || '').toLowerCase();
-    const subType = String(company.subType || '').toLowerCase();
-    const assignedId =
-      company.assignedTo && typeof company.assignedTo === 'object'
-        ? String(company.assignedTo.id ?? company.assignedTo.documentId ?? '')
-        : String(company.assignedTo || '');
-    const companyName = String(company.companyName || '').toLowerCase();
-    const createdAt = company.createdAt ? new Date(company.createdAt) : null;
-    const now = new Date();
-    const daysSinceCreated =
-      createdAt && !Number.isNaN(createdAt.getTime())
-        ? Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
-        : null;
-    const dealValue = Number(company.dealValue || 0);
-
-    const matchesAdvanced =
-      (!appliedFilters.status || status === appliedFilters.status) &&
-      (!appliedFilters.source || source === appliedFilters.source) &&
-      (!appliedFilters.type || companyType === appliedFilters.type.toLowerCase()) &&
-      (!appliedFilters.subType || subType === appliedFilters.subType.toLowerCase()) &&
-      (!appliedFilters.assignedToId || assignedId === appliedFilters.assignedToId) &&
-      (!appliedFilters.companyQuery ||
-        companyName.includes(appliedFilters.companyQuery.toLowerCase())) &&
-      (!appliedFilters.dateRange ||
-        (daysSinceCreated != null &&
-          ((appliedFilters.dateRange === 'last7' && daysSinceCreated <= 7) ||
-            (appliedFilters.dateRange === 'last30' && daysSinceCreated <= 30) ||
-            (appliedFilters.dateRange === 'last90' && daysSinceCreated <= 90) ||
-            (appliedFilters.dateRange === 'thisYear' &&
-              createdAt &&
-              createdAt.getFullYear() === now.getFullYear())))) &&
-      (!appliedFilters.valueRange ||
-        (appliedFilters.valueRange === 'lt100k' && dealValue < 100000) ||
-        (appliedFilters.valueRange === '100k_1m' && dealValue >= 100000 && dealValue <= 1000000) ||
-        (appliedFilters.valueRange === '1m_5m' && dealValue > 1000000 && dealValue <= 5000000) ||
-        (appliedFilters.valueRange === 'gt5m' && dealValue > 5000000));
-
-    return matchesSearch && matchesTab && matchesAdvanced;
-  });
-
-  // Multi-column sort (client-side, applied after filter)
-  const {
-    sortRules,
-    columnOptions: sortColumnOptions,
-    sortedData: sortedCompanies,
-    hasActiveSort,
-    addSortRule,
-    removeSortRule,
-    setRuleDirection,
-    moveSortRule,
-    clearSort,
-    bindSortableColumns,
-  } = useCrmTableSort({ entity: 'leadCompany', storageKey: TABLE_SORT_STORAGE_KEY, data: filteredCompanies });
-
-  // Calculate pagination (after sort)
-  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedCompanies = sortedCompanies.slice(startIndex, endIndex);
+  const paginatedCompanies = leadCompanies;
 
   useEffect(() => {
     if (!paginatedCompanies?.length) return;
@@ -560,9 +498,19 @@ export default function LeadCompaniesPage() {
     let cancelled = false;
     (async () => {
       try {
-        const counts = await crmActivityService.fetchLeadCompanyCommentCounts({ leadCompanyIds: ids });
+        const [generalCounts, reasonCounts] = await Promise.all([
+          crmActivityService.fetchLeadCompanyCommentCounts({
+            leadCompanyIds: ids,
+            commentKind: 'general',
+          }),
+          crmActivityService.fetchLeadCompanyCommentCounts({
+            leadCompanyIds: ids,
+            commentKind: 'next_connect',
+          }),
+        ]);
         if (cancelled) return;
-        setCommentCountsByCompanyId((prev) => ({ ...prev, ...(counts || {}) }));
+        setCommentCountsByCompanyId((prev) => ({ ...prev, ...(generalCounts || {}) }));
+        setNextConnectReasonCountsByCompanyId((prev) => ({ ...prev, ...(reasonCounts || {}) }));
       } catch {
         /* ignore */
       }
@@ -572,10 +520,17 @@ export default function LeadCompaniesPage() {
     };
   }, [paginatedCompanies]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeTab, appliedFilters]);
+  }, [sortApiParam]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, appliedFilters]);
 
   const hasActiveFilters = useMemo(
     () =>
@@ -591,11 +546,13 @@ export default function LeadCompaniesPage() {
   }, [appliedFilters]);
 
   const applyFilters = useCallback(() => {
+    setCurrentPage(1);
     setAppliedFilters(draftFilters);
     setShowFilterModal(false);
   }, [draftFilters]);
 
   const clearAllFilters = useCallback(() => {
+    setCurrentPage(1);
     setDraftFilters(initialFilters);
     setAppliedFilters(initialFilters);
     setShowFilterModal(false);
@@ -603,7 +560,8 @@ export default function LeadCompaniesPage() {
 
   // Tab items
   const tabItems = [
-    { key: 'all', label: 'All Companies', count: leadCompanies.length },
+    { key: 'all', label: 'All Companies', count: statsByStatus.total ?? totalItems },
+    { key: 'my', label: 'My Leads', count: myLeadsCount },
     { key: 'new', label: 'New', count: leadStats.new },
     { key: 'contacted', label: 'Contacted', count: leadStats.contacted },
     { key: 'qualified', label: 'Qualified', count: leadStats.qualified },
@@ -639,6 +597,65 @@ export default function LeadCompaniesPage() {
       }
     },
     [fetchStats, leadCompanies]
+  );
+
+  const kanbanStatusColumns = useMemo(() => {
+    const by = {};
+    LEAD_PIPELINE_STAGES.forEach(({ key }) => {
+      by[key] = [];
+    });
+    leadCompanies.forEach((c) => {
+      const k = (c.status || 'new').toLowerCase();
+      if (!by[k]) by[k] = [];
+      by[k].push(c);
+    });
+    const cols = LEAD_PIPELINE_STAGES.map(({ key, label }) => ({
+      key,
+      label,
+      companies: by[key] || [],
+    }));
+    if (activeTab === 'all' || activeTab === 'my') return cols;
+    if (['new', 'contacted', 'qualified', 'lost', 'converted', 'client'].includes(activeTab)) {
+      return cols.filter((c) => c.key === activeTab);
+    }
+    return cols;
+  }, [leadCompanies, activeTab]);
+
+  const handleKanbanLeadMove = useCallback(
+    async (leadIdStr, newStatus) => {
+      const row = leadCompanies.find((c) => String(c.id) === String(leadIdStr));
+      if (!row) return;
+      await handleStatusUpdate(row.id, newStatus);
+    },
+    [leadCompanies, handleStatusUpdate]
+  );
+
+  const leadsViewSwitcher = (
+    <ViewToggleGroup aria-label="Lead companies layout">
+      <ViewToggleButton
+        active={leadViewMode === 'table'}
+        title="Table view"
+        onClick={() => handleLeadViewChange('table')}
+      >
+        <Table2 className="h-[18px] w-[18px]" strokeWidth={2} />
+      </ViewToggleButton>
+      <ViewToggleButton
+        active={leadViewMode === 'kanban'}
+        title="Kanban view"
+        onClick={() => handleLeadViewChange('kanban')}
+      >
+        <Kanban className="h-[18px] w-[18px]" strokeWidth={2} />
+      </ViewToggleButton>
+      {canShowMembersView ? (
+        <ViewToggleButton
+          active={leadViewMode === 'members'}
+          title="By members"
+          onClick={() => handleLeadViewChange('members')}
+        >
+          <Users className="h-[18px] w-[18px]" strokeWidth={2} />
+        </ViewToggleButton>
+      ) : null}
+    </ViewToggleGroup>
   );
 
   const handleDeleteCompany = async () => {
@@ -698,52 +715,132 @@ export default function LeadCompaniesPage() {
   }, [companyToConvert, converting, fetchStats, router]);
 
   const openCommentComposer = useCallback(async (companyId, anchor) => {
-    setCommentComposerMenu(anchor ? { id: companyId, ...anchor } : { id: companyId });
+    const mode = anchor?.mode === 'nextConnect' ? 'nextConnect' : 'general';
+    const company = leadCompanies.find((c) => c?.id === companyId);
+    if (mode === 'nextConnect') {
+      setNextConnectDraft(toDateInputValue(company?.nextConnectDate) || '');
+    } else {
+      setNextConnectDraft('');
+    }
+    setCommentComposerMenu(
+      anchor ? { id: companyId, mode, ...anchor } : { id: companyId, mode }
+    );
     setCommentDraft('');
     setCommentError('');
     setCommentLoadingCompanyId(companyId);
     try {
-      const res = await crmActivityService.fetchLeadCompanyComments({ leadCompanyId: companyId, limit: 20 });
-      setCommentsByCompany((prev) => ({ ...prev, [companyId]: res?.data || [] }));
+      if (mode === 'nextConnect') {
+        const res = await crmActivityService.fetchLeadCompanyNextConnectReasons({
+          leadCompanyId: companyId,
+          limit: 20,
+        });
+        setNextConnectReasonsByCompany((prev) => ({ ...prev, [companyId]: res?.data || [] }));
+      } else {
+        const res = await crmActivityService.fetchLeadCompanyComments({
+          leadCompanyId: companyId,
+          limit: 20,
+          commentKind: 'general',
+        });
+        setCommentsByCompany((prev) => ({ ...prev, [companyId]: res?.data || [] }));
+      }
     } catch (e) {
-      setCommentError(e?.message || 'Could not load comments');
-      setCommentsByCompany((prev) => ({ ...prev, [companyId]: prev[companyId] || [] }));
+      setCommentError(e?.message || 'Could not load messages');
+      if (mode === 'nextConnect') {
+        setNextConnectReasonsByCompany((prev) => ({ ...prev, [companyId]: prev[companyId] || [] }));
+      } else {
+        setCommentsByCompany((prev) => ({ ...prev, [companyId]: prev[companyId] || [] }));
+      }
     } finally {
       setCommentLoadingCompanyId(null);
     }
-  }, []);
+  }, [leadCompanies]);
+
+  const saveNextConnectDate = useCallback(
+    async (companyId, dateValue) => {
+      const company = leadCompanies.find((c) => c?.id === companyId);
+      if (!company || !canEditCRMRecord('leads', company)) return;
+      const normalized = (dateValue || '').trim();
+      const current = toDateInputValue(company.nextConnectDate) || '';
+      if (normalized === current) return;
+
+      setNextConnectSaving(true);
+      setCommentError('');
+      try {
+        await leadCompanyService.update(companyId, {
+          nextConnectDate: normalized || null,
+        });
+        setLeadCompanies((prev) =>
+          prev.map((c) =>
+            c?.id === companyId ? { ...c, nextConnectDate: normalized || null } : c
+          )
+        );
+        setNextConnectDraft(normalized);
+      } catch (e) {
+        setCommentError(e?.message || 'Could not update next connect date');
+      } finally {
+        setNextConnectSaving(false);
+      }
+    },
+    [leadCompanies]
+  );
 
   const closeCommentComposer = useCallback(() => {
     setCommentComposerMenu(null);
     setCommentDraft('');
     setCommentError('');
+    setNextConnectDraft('');
   }, []);
 
   const submitComment = useCallback(async () => {
     const companyId = commentComposerMenu?.id;
+    const mode = commentComposerMenu?.mode === 'nextConnect' ? 'nextConnect' : 'general';
     const text = commentDraft.trim();
     if (!companyId || !text) return;
     setCommentSubmitting(true);
     setCommentError('');
     try {
-      const res = await crmActivityService.addLeadCompanyComment({
-        leadCompanyId: companyId,
-        comment: text,
-      });
+      const res =
+        mode === 'nextConnect'
+          ? await crmActivityService.addLeadCompanyNextConnectReason({
+              leadCompanyId: companyId,
+              comment: text,
+            })
+          : await crmActivityService.addLeadCompanyComment({
+              leadCompanyId: companyId,
+              comment: text,
+              commentKind: 'general',
+            });
       const newComment = res?.data;
       if (newComment) {
-        setCommentsByCompany((prev) => ({
-          ...prev,
-          [companyId]: [newComment, ...(Array.isArray(prev[companyId]) ? prev[companyId] : [])],
-        }));
+        if (mode === 'nextConnect') {
+          setNextConnectReasonsByCompany((prev) => ({
+            ...prev,
+            [companyId]: [newComment, ...(Array.isArray(prev[companyId]) ? prev[companyId] : [])],
+          }));
+          setNextConnectReasonCountsByCompanyId((prev) => ({
+            ...prev,
+            [String(companyId)]: Math.max(
+              1,
+              (parseInt(prev[String(companyId)] || prev[companyId] || 0, 10) || 0) + 1
+            ),
+          }));
+        } else {
+          setCommentsByCompany((prev) => ({
+            ...prev,
+            [companyId]: [newComment, ...(Array.isArray(prev[companyId]) ? prev[companyId] : [])],
+          }));
+          setCommentCountsByCompanyId((prev) => ({
+            ...prev,
+            [String(companyId)]: Math.max(
+              1,
+              (parseInt(prev[String(companyId)] || prev[companyId] || 0, 10) || 0) + 1
+            ),
+          }));
+        }
       }
-      setCommentCountsByCompanyId((prev) => ({
-        ...prev,
-        [String(companyId)]: Math.max(1, (parseInt(prev[String(companyId)] || prev[companyId] || 0, 10) || 0) + 1),
-      }));
       setCommentDraft('');
     } catch (e) {
-      setCommentError(e?.message || 'Could not post comment');
+      setCommentError(e?.message || 'Could not post message');
     } finally {
       setCommentSubmitting(false);
     }
@@ -755,6 +852,7 @@ export default function LeadCompaniesPage() {
         key: 'company',
         label: 'COMPANY',
         fixed: true,
+        defaultWidth: '300px',
         render: (_, company) => (
           <div className="flex items-start gap-3 min-w-[240px] w-full">
             <Avatar fallback={company.companyName?.[0] || 'C'} alt={company.companyName} size="sm" className="flex-shrink-0" />
@@ -763,9 +861,10 @@ export default function LeadCompaniesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-gray-900 truncate">{company.companyName || 'Unnamed'}</div>
                   <div className="text-sm text-gray-500 truncate">
-                    {company.contacts && company.contacts.length > 0
-                      ? `${company.contacts[0].firstName || ''} ${company.contacts[0].lastName || ''}`.trim()
-                      : 'No primary contact'}
+                    {(() => {
+                      const { name } = primaryContactForLeadCompany(company);
+                      return name || 'No primary contact';
+                    })()}
                   </div>
                 </div>
                 <button
@@ -774,18 +873,17 @@ export default function LeadCompaniesPage() {
                     e.stopPropagation();
                     const r = e.currentTarget.getBoundingClientRect();
                     openCommentComposer(company.id, {
+                      mode: 'general',
                       top: r.bottom + 8,
                       left: r.left,
                       triggerEl: e.currentTarget,
                     });
                   }}
-                  className={`relative mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${
-                    Number(commentCountsByCompanyId[String(company.id)] || 0) > 0
-                      ? 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white hover:border-gray-300'
-                  } ${commentComposerMenu?.id === company.id ? 'bg-white border-gray-300 text-gray-700' : ''} ${
-                    Number(commentCountsByCompanyId[String(company.id)] || 0) > 0 ? '' : 'opacity-0 group-hover:opacity-100'
-                  }`}
+                  className={`relative mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${Number(commentCountsByCompanyId[String(company.id)] || 0) > 0
+                    ? 'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white hover:border-gray-300'
+                    } ${commentComposerMenu?.id === company.id && commentComposerMenu?.mode === 'general' ? 'bg-white border-gray-300 text-gray-700' : ''} ${Number(commentCountsByCompanyId[String(company.id)] || 0) > 0 ? '' : 'opacity-0 group-hover:opacity-100'
+                    }`}
                   aria-label={`Add comment for ${company.companyName || 'company'}`}
                   title="Add comment"
                 >
@@ -803,35 +901,63 @@ export default function LeadCompaniesPage() {
         ),
       },
       {
+        key: 'nextConnectDate',
+        label: 'NEXT CONNECT',
+        fixed: true,
+        defaultWidth: '190px',
+        render: (_, company) => (
+          <LeadNextConnectCell
+            company={company}
+            reasonCount={nextConnectReasonCountsByCompanyId[String(company.id)] || 0}
+            onOpenPopover={openCommentComposer}
+            canEdit={canEditCRMRecord('leads', company)}
+            active={
+              commentComposerMenu?.id === company.id &&
+              commentComposerMenu?.mode === 'nextConnect'
+            }
+          />
+        ),
+      },
+      {
         key: 'primaryContact',
         visibilityKey: 'primaryContact',
         label: 'PRIMARY CONTACT',
-        render: (_, company) => (
+        defaultWidth: '260px',
+        render: (_, company) => {
+          const { email, phone } = primaryContactForLeadCompany(company);
+          return (
           <div className="space-y-1 min-w-[200px]">
             <div className="flex items-center gap-2 text-sm text-gray-900">
               <Mail className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <span className="truncate">
-                {company.contacts && company.contacts.length > 0
-                  ? company.contacts[0].email
-                  : company.email || 'No email'}
-              </span>
+              <span className="truncate">{email || 'No email'}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              <span className="truncate">
-                {company.contacts && company.contacts.length > 0
-                  ? company.contacts[0].phone || 'No contact'
-                  : company.phone || 'No contact'}
-              </span>
+              <span className="truncate">{phone || 'No phone'}</span>
             </div>
           </div>
-        ),
+          );
+        },
       },
       {
         key: 'status',
         visibilityKey: 'status',
         label: 'STATUS',
-        render: (_, company) => <TableCellLeadStatus company={company} />,
+        defaultWidth: '180px',
+        render: (_, company) => {
+          const saving = Object.entries(loadingActions).some(
+            ([key, active]) =>
+              active && key.startsWith(`${company.id}-`) && !key.endsWith('-delete')
+          );
+          return (
+            <TableCellLeadStatusSelect
+              company={company}
+              onStatusChange={handleStatusUpdate}
+              saving={saving}
+              canEdit={canEditCRMRecord('leads', company)}
+            />
+          );
+        },
       },
       {
         key: 'source',
@@ -896,12 +1022,6 @@ export default function LeadCompaniesPage() {
         visibilityKey: 'type',
         label: 'TYPE',
         render: (_, company) => <TableCellText value={company.type} />,
-      },
-      {
-        key: 'subType',
-        visibilityKey: 'subType',
-        label: 'SUB-TYPE',
-        render: (_, company) => <TableCellText value={company.subType} />,
       },
       {
         key: 'website',
@@ -1065,7 +1185,6 @@ export default function LeadCompaniesPage() {
           const canEditLeadCompany = canEditCRMRecord('leads', company);
           const canDeleteLeadCompany = canManageCRM('leads');
           const currentStatus = (company.status || 'NEW').toUpperCase();
-          const statusOptions = ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST'];
           const isClient =
             currentStatus === 'CLIENT' ||
             currentStatus === 'CONVERTED' ||
@@ -1076,7 +1195,7 @@ export default function LeadCompaniesPage() {
               : company?.convertedAccount;
           return (
             <div className="flex min-w-[220px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-              {/* Order matches contacts table: More → (status) → Edit → Mail → Delete */}
+              {/* Order matches contacts table: More → Edit → Mail → Delete */}
               <div className="relative">
                 <Button
                   variant="ghost"
@@ -1091,35 +1210,12 @@ export default function LeadCompaniesPage() {
                         ? null
                         : { id: company.id, top: r.bottom + 4, left: r.left, triggerEl: e.currentTarget }
                     );
-                    setStatusActionMenu(null);
                   }}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </div>
-              {!isClient && canEditLeadCompany ? (
-                <div className="relative">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center gap-1 p-2 text-emerald-600 hover:bg-emerald-50"
-                    title="Change status"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const r = e.currentTarget.getBoundingClientRect();
-                      setStatusActionMenu((prev) =>
-                        prev?.id === company.id
-                          ? null
-                          : { id: company.id, top: r.bottom + 4, left: r.left, triggerEl: e.currentTarget }
-                      );
-                      setMoreActionMenu(null);
-                    }}
-                  >
-                    <Phone className="h-4 w-4" />
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ) : isClient ? (
+              {isClient ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1182,13 +1278,14 @@ export default function LeadCompaniesPage() {
         },
       },
     ],
-    [router, commentComposerMenu, commentCountsByCompanyId, openCommentComposer]
+    [router, commentComposerMenu, commentCountsByCompanyId, nextConnectReasonCountsByCompanyId, openCommentComposer, handleStatusUpdate, loadingActions]
   );
 
   const visibleTableColumns = useMemo(() => {
     const byKey = Object.fromEntries(allTableColumns.map((c) => [c.key, c]));
     const out = [];
     if (byKey.company) out.push(byKey.company);
+    if (byKey.nextConnectDate) out.push(byKey.nextConnectDate);
     if (columnVisibility.primaryContact && byKey.primaryContact) {
       out.push(byKey.primaryContact);
     }
@@ -1198,6 +1295,21 @@ export default function LeadCompaniesPage() {
     if (byKey.actions) out.push(byKey.actions);
     return bindSortableColumns(out);
   }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
+
+  const membersViewColumns = useMemo(
+    () => visibleTableColumns.filter((c) => c.key !== 'assignedTo'),
+    [visibleTableColumns]
+  );
+
+  const membersEmptyMessage = useMemo(() => {
+    if (activeTab === 'my' && !searchQuery && !hasActiveFilters) {
+      return 'No leads are assigned to you yet';
+    }
+    if (searchQuery || activeTab !== 'all' || hasActiveFilters) {
+      return 'Try adjusting your filters';
+    }
+    return 'Add your first lead company to get started';
+  }, [activeTab, hasActiveFilters, searchQuery]);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -1220,9 +1332,9 @@ export default function LeadCompaniesPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
-          title="New Leads"
-          value={leadStats.new}
-          subtitle={leadStats.new === 0 ? 'No leads' : `${leadStats.new} ${leadStats.new === 1 ? 'lead' : 'leads'}`}
+          title="Total Leads"
+          value={leadStats.total}
+          subtitle={leadStats.total === 0 ? 'No leads' : `${leadStats.total} ${leadStats.total === 1 ? 'lead' : 'leads'}`}
           icon={Building2}
           colorScheme="orange"
         />
@@ -1234,10 +1346,14 @@ export default function LeadCompaniesPage() {
           colorScheme="orange"
         />
         <KPICard
-          title="Qualified Leads"
-          value={leadStats.qualified}
-          subtitle={leadStats.qualified === 0 ? 'No leads' : `${leadStats.qualified} ${leadStats.qualified === 1 ? 'lead' : 'leads'}`}
-          icon={CheckCircle}
+          title="Non contacted Leads"
+          value={leadStats.nonContacted}
+          subtitle={
+            leadStats.nonContacted === 0
+              ? 'No leads'
+              : `${leadStats.nonContacted} ${leadStats.nonContacted === 1 ? 'lead' : 'leads'}`
+          }
+          icon={PhoneOff}
           colorScheme="orange"
         />
         <KPICard
@@ -1259,6 +1375,7 @@ export default function LeadCompaniesPage() {
           }))}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          afterTabs={leadsViewSwitcher}
           showSearch={true}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -1268,10 +1385,10 @@ export default function LeadCompaniesPage() {
           addTitle="Add Lead Company"
           showFilter={true}
           onFilterClick={openFilterModal}
-          showColumnVisibility={true}
+          showColumnVisibility={showTableColumnTools}
           onColumnVisibilityClick={() => { setColumnPickerOpen((o) => !o); setSortOpen(false); }}
-          columnVisibilityTitle="Show or hide columns"
-          showSort={true}
+          columnVisibilityTitle="Show, hide, or reorder columns"
+          showSort={leadViewMode === 'table'}
           onSortClick={() => { setSortOpen((o) => !o); setColumnPickerOpen(false); }}
           hasActiveSort={hasActiveSort}
           sortTitle="Sort columns"
@@ -1279,121 +1396,40 @@ export default function LeadCompaniesPage() {
           onExportClick={() => console.log('Export clicked')}
           exportTitle="Export"
         />
-        <CrmTableSortDropdown
-          open={sortOpen}
-          sortRules={sortRules}
-          columnOptions={sortColumnOptions}
-          onAddRule={addSortRule}
-          onRemoveRule={removeSortRule}
-          onSetDirection={setRuleDirection}
-          onMoveRule={moveSortRule}
-          onClear={clearSort}
-        />
-        {columnPickerOpen && (
-          <div
-            className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl"
-            role="dialog"
-            aria-label="Table columns"
-          >
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">Columns</p>
-            <p className="mb-2 text-xs leading-snug text-gray-500">
-              Company and actions stay visible. Primary contact stays first. Drag the grip to reorder; an orange line shows where the row will land.
-            </p>
-            <ul
-              className="max-h-[min(51vh,18.75rem)] space-y-0 overflow-y-auto pr-1"
-              onDragLeave={handleColumnListDragLeave}
-            >
-              <li
-                data-column-row
-                className="relative flex items-stretch rounded-lg border border-transparent"
-              >
-                <span
-                  className="flex w-8 shrink-0 items-center justify-center text-gray-300"
-                  aria-hidden
-                  title="Fixed order"
-                >
-                  —
-                </span>
-                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-gray-800 hover:bg-gray-50">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 shrink-0 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                    checked={Boolean(columnVisibility.primaryContact)}
-                    onChange={(e) => setColumnVisible('primaryContact', e.target.checked)}
-                  />
-                  <span>Primary contact</span>
-                </label>
-              </li>
-              {columnOrder.map((key) => {
-                const def = TOGGLEABLE_COLUMNS.find((c) => c.key === key);
-                if (!def) return null;
-                const showLineBefore =
-                  columnDropIndicator?.targetKey === key &&
-                  columnDropIndicator.place === 'before';
-                const showLineAfter =
-                  columnDropIndicator?.targetKey === key &&
-                  columnDropIndicator.place === 'after';
-                return (
-                  <li
-                    key={key}
-                    data-column-row
-                    className="relative flex items-stretch rounded-lg border border-transparent hover:border-gray-100"
-                    onDragOver={(e) => handleColumnRowDragOver(e, key)}
-                    onDrop={(e) => handleColumnDrop(e, key)}
-                  >
-                    {showLineBefore ? (
-                      <div
-                        className="pointer-events-none absolute left-1 right-2 top-0 z-10 h-[3px] -translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <span
-                      draggable
-                      onDragStart={(e) => handleColumnDragStart(e, key)}
-                      onDragEnd={handleColumnDragEnd}
-                      className="flex w-8 shrink-0 cursor-grab items-center justify-center rounded-l-lg text-gray-400 active:cursor-grabbing hover:bg-gray-100 hover:text-gray-600"
-                      aria-label={`Drag to reorder ${def.label}`}
-                    >
-                      <GripVertical className="h-4 w-4" strokeWidth={2} aria-hidden />
-                    </span>
-                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-gray-800 hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 shrink-0 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                        checked={Boolean(columnVisibility[key])}
-                        onChange={(e) => setColumnVisible(key, e.target.checked)}
-                      />
-                      <span>{def.label}</span>
-                    </label>
-                    {showLineAfter ? (
-                      <div
-                        className="pointer-events-none absolute bottom-0 left-1 right-2 z-10 h-[3px] translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                        aria-hidden
-                      />
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="mt-2 border-t border-gray-100 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full text-sm font-medium text-gray-700"
-                onClick={resetColumnTablePreferences}
-              >
-                Reset to default
-              </Button>
-            </div>
-          </div>
+        {leadViewMode === 'table' && (
+          <CrmTableSortDropdown
+            open={sortOpen}
+            sortRules={sortRules}
+            columnOptions={sortColumnOptions}
+            onAddRule={addSortRule}
+            onRemoveRule={removeSortRule}
+            onSetDirection={setRuleDirection}
+            onMoveRule={moveSortRule}
+            onClear={clearSort}
+          />
         )}
+        <TableColumnPicker
+          open={showTableColumnTools && columnPickerOpen}
+          description="Company and actions stay visible. Primary contact stays first. Drag column edges in the table to resize."
+          pinnedRows={[{ key: 'primaryContact', label: 'Primary contact' }]}
+          reorderableRows={TOGGLEABLE_COLUMNS.filter((c) => c.key !== 'primaryContact')}
+          columnVisibility={columnVisibility}
+          columnOrder={columnOrder}
+          columnDropIndicator={columnDropIndicator}
+          onSetVisible={setColumnVisible}
+          onDragStart={handleColumnDragStart}
+          onDragEnd={handleColumnDragEnd}
+          onRowDragOver={handleColumnRowDragOver}
+          onListDragLeave={handleColumnListDragLeave}
+          onDrop={handleColumnDrop}
+          onReset={resetColumnTablePreferences}
+        />
       </div>
 
       {/* Results Count */}
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{sortedCompanies.length}</span> result
-        {sortedCompanies.length !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{totalItems}</span> result
+        {totalItems !== 1 ? 's' : ''}
       </div>
 
       {/* Table */}
@@ -1402,7 +1438,7 @@ export default function LeadCompaniesPage() {
           <div className="p-12 flex flex-col items-center justify-center">
             <LoadingSpinner size="lg" message="Loading lead companies..." />
           </div>
-        ) : (
+        ) : leadViewMode === 'table' ? (
           <>
             <Table
               columns={visibleTableColumns}
@@ -1410,9 +1446,7 @@ export default function LeadCompaniesPage() {
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/sales/lead-companies/${row.id}`)}
-              resizableColumns
-              columnWidths={columnWidths}
-              onColumnWidthsChange={setColumnWidths}
+              {...tableResizeProps}
             />
             {paginatedCompanies.length === 0 && (
               <div className="p-12 text-center border-t border-gray-200">
@@ -1421,13 +1455,22 @@ export default function LeadCompaniesPage() {
                 </div>
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">No lead companies found</h3>
                 <p className="text-sm text-gray-500 mb-4">
-                  {searchQuery || activeTab !== 'all' ? 'Try adjusting your filters' : 'Add your first lead company to get started'}
+                  {activeTab === 'my' && !searchQuery && !hasActiveFilters
+                    ? 'No leads are assigned to you yet'
+                    : searchQuery || activeTab !== 'all' || hasActiveFilters
+                      ? 'Try adjusting your filters'
+                      : 'Add your first lead company to get started'}
                 </p>
-                {!searchQuery && activeTab === 'all' && (
-                  <Button variant="primary" onClick={() => router.push('/sales/lead-companies/new')}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Lead Company
-                  </Button>
+                {!searchQuery && activeTab === 'all' && !hasActiveFilters && (
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <Button variant="primary" onClick={() => router.push('/sales/lead-companies/new')}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Lead Company
+                    </Button>
+                    <Button variant="outline" onClick={() => handleLeadViewChange('kanban')}>
+                      Board view
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
@@ -1436,14 +1479,48 @@ export default function LeadCompaniesPage() {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={sortedCompanies.length}
+                  totalItems={totalItems}
                   itemsPerPage={itemsPerPage}
                   onPageChange={setCurrentPage}
                 />
               </div>
             )}
           </>
-        )}
+        ) : leadViewMode === 'members' ? (
+          <LeadsByMembersView
+            leads={paginatedCompanies}
+            orgUsers={orgUsers}
+            columns={membersViewColumns}
+            onRowClick={(row) => router.push(`/sales/lead-companies/${row.id}`)}
+            emptyMessage={membersEmptyMessage}
+            tableResizeProps={tableResizeProps}
+          />
+        ) : leadViewMode === 'kanban' && paginatedCompanies.length === 0 ? (
+          <div className="p-12 text-center">
+            <Building2 className="mx-auto mb-3 h-12 w-12 text-gray-400 opacity-50" />
+            <h3 className="mb-2 text-lg font-semibold text-gray-700">No lead companies found</h3>
+            <p className="mb-4 text-sm text-gray-500">{membersEmptyMessage}</p>
+            {!searchQuery && activeTab === 'all' && !hasActiveFilters && (
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button variant="primary" onClick={() => router.push('/sales/lead-companies/new')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Lead Company
+                </Button>
+                <Button variant="outline" onClick={() => handleLeadViewChange('table')}>
+                  Table view
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : leadViewMode === 'kanban' ? (
+          <LeadsKanbanBoard
+            statusColumns={kanbanStatusColumns}
+            leadsLookup={leadCompanies}
+            onMoveLead={handleKanbanLeadMove}
+            getLeadHref={(id) => `/sales/lead-companies/${id}`}
+            canMoveLead={(company) => canEditCRMRecord('leads', company)}
+          />
+        ) : null}
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -1631,28 +1708,11 @@ export default function LeadCompaniesPage() {
               <span className="text-sm font-medium text-gray-700">Company Type</span>
               <select
                 value={draftFilters.type}
-                onChange={(e) =>
-                  setDraftFilters((prev) => ({ ...prev, type: e.target.value, subType: '' }))
-                }
+                onChange={(e) => setDraftFilters((prev) => ({ ...prev, type: e.target.value }))}
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
               >
                 <option value="">Select company type</option>
                 {companyTypeFilterOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-sm font-medium text-gray-700">Sub-Type</span>
-              <select
-                value={draftFilters.subType}
-                onChange={(e) => setDraftFilters((prev) => ({ ...prev, subType: e.target.value }))}
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-              >
-                <option value="">{draftFilters.type ? 'Select sub-type' : 'Select company type first'}</option>
-                {subTypeFilterOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
@@ -1788,54 +1848,18 @@ export default function LeadCompaniesPage() {
           );
         })()}
 
-      {statusActionMenu &&
-        (() => {
-          const company = leadCompanies.find((c) => c.id === statusActionMenu.id);
-          if (!company) return null;
-          const currentStatus = (company.status || 'NEW').toUpperCase();
-          const statusOptions = ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST'];
-          return (
-            <TableRowActionMenuPortal
-              open
-              anchor={{
-                top: statusActionMenu.top,
-                left: statusActionMenu.left,
-                triggerEl: statusActionMenu.triggerEl,
-              }}
-              onClose={() => setStatusActionMenu(null)}
-              menuClassName="w-40"
-              menuWidthPx={160}
-            >
-              {statusOptions.map((status) => {
-                const statusKey = `${company.id}-${status.toLowerCase()}`;
-                const isLoading = Boolean(loadingActions[statusKey]);
-                return (
-                  <button
-                    key={status}
-                    type="button"
-                    disabled={isLoading}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-slate-700 transition-colors hover:bg-emerald-50 hover:text-emerald-800 disabled:opacity-50"
-                    onClick={() => {
-                      setStatusActionMenu(null);
-                      handleStatusUpdate(company.id, status);
-                    }}
-                  >
-                    <span>{status}</span>
-                    {currentStatus === status ? (
-                      <span className="text-xs text-emerald-600">Active</span>
-                    ) : null}
-                  </button>
-                );
-              })}
-            </TableRowActionMenuPortal>
-          );
-        })()}
-
       {commentComposerMenu &&
         (() => {
           const company = leadCompanies.find((c) => c.id === commentComposerMenu.id);
           if (!company) return null;
-          const companyComments = Array.isArray(commentsByCompany[company.id]) ? commentsByCompany[company.id] : [];
+          const isNextConnectMode = commentComposerMenu.mode === 'nextConnect';
+          const threadItems = isNextConnectMode
+            ? Array.isArray(nextConnectReasonsByCompany[company.id])
+              ? nextConnectReasonsByCompany[company.id]
+              : []
+            : Array.isArray(commentsByCompany[company.id])
+              ? commentsByCompany[company.id]
+              : [];
           return (
             <TableRowActionMenuPortal
               open
@@ -1851,27 +1875,69 @@ export default function LeadCompaniesPage() {
               <div className="overflow-hidden rounded-2xl">
                 <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-gray-900">Comments</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {isNextConnectMode ? 'Next connect' : 'Comments'}
+                    </p>
                     <span className="rounded-full bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700">
-                      {companyComments.length}
+                      {threadItems.length}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-gray-500 truncate">{company.companyName || 'Lead company'}</p>
                 </div>
 
+                {isNextConnectMode && canEditCRMRecord('leads', company) ? (
+                  <div className="border-b border-gray-100 bg-white px-4 py-3">
+                    <label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      <Calendar className="h-3.5 w-3.5 text-orange-500" aria-hidden />
+                      Next connect date
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={nextConnectDraft}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setNextConnectDraft(v);
+                          void saveNextConnectDate(company.id, v);
+                        }}
+                        disabled={nextConnectSaving}
+                        className="flex-1 text-sm"
+                        autoFocus={commentComposerMenu?.focus === 'date'}
+                      />
+                      {nextConnectDraft ? (
+                        <Button
+                          type="button"
+                          variant="muted"
+                          size="sm"
+                          disabled={nextConnectSaving}
+                          onClick={() => {
+                            setNextConnectDraft('');
+                            void saveNextConnectDate(company.id, '');
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      ) : null}
+                    </div>
+                    {nextConnectSaving ? (
+                      <p className="mt-1.5 text-xs text-gray-400">Saving date…</p>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <div className="max-h-56 overflow-y-auto bg-gray-50/50 px-4 py-3">
                   {commentLoadingCompanyId === company.id ? (
                     <div className="py-4">
-                      <LoadingSpinner size="sm" message="Loading comments..." />
+                      <LoadingSpinner size="sm" message={isNextConnectMode ? 'Loading reasons...' : 'Loading comments...'} />
                     </div>
-                  ) : companyComments.length > 0 ? (
+                  ) : threadItems.length > 0 ? (
                     <div className="relative">
                       <div
                         className="pointer-events-none absolute left-3 top-3 bottom-3 w-px bg-gradient-to-b from-orange-400/90 via-orange-200 to-gray-200"
                         aria-hidden
                       />
                       <ul className="relative m-0 list-none space-y-3 p-0 pr-1" role="list">
-                        {companyComments.map((row) => (
+                        {threadItems.map((row) => (
                           <li key={row.id} className="relative flex gap-3">
                             <div className="relative z-[1] flex w-6 shrink-0 justify-center pt-0.5">
                               <Avatar
@@ -1896,7 +1962,9 @@ export default function LeadCompaniesPage() {
                     </div>
                   ) : (
                     <p className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-3 text-xs text-gray-500">
-                      No comments yet. Start the thread.
+                      {isNextConnectMode
+                        ? 'No reasons yet. Add why you are scheduling this follow-up.'
+                        : 'No comments yet. Start the thread.'}
                     </p>
                   )}
                 </div>
@@ -1911,8 +1979,12 @@ export default function LeadCompaniesPage() {
                     onChange={(e) => setCommentDraft(e.target.value)}
                     rows={2}
                     resize="none"
-                    autoFocus
-                    placeholder="Add a comment..."
+                    autoFocus={isNextConnectMode ? commentComposerMenu?.focus !== 'date' : true}
+                    placeholder={
+                      isNextConnectMode
+                        ? 'Reason for this follow-up…'
+                        : 'Add a comment…'
+                    }
                     className="rounded-xl text-sm text-gray-900 placeholder:text-gray-400 border-orange-200 focus:ring-orange-500/20"
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') {
@@ -1937,7 +2009,11 @@ export default function LeadCompaniesPage() {
                         size="sm"
                         onClick={submitComment}
                         disabled={!commentDraft.trim() || commentSubmitting}
-                        aria-label={`Send comment for ${company.companyName || 'company'}`}
+                        aria-label={
+                          isNextConnectMode
+                            ? `Add next connect reason for ${company.companyName || 'company'}`
+                            : `Send comment for ${company.companyName || 'company'}`
+                        }
                         className="inline-flex items-center gap-1.5"
                       >
                         <SendHorizontal className="w-3.5 h-3.5" />

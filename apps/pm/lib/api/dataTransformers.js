@@ -1,8 +1,17 @@
+import {
+  formatCalendarRelativeTime,
+  formatCalendarTableDate,
+  isCalendarDateValue,
+  isTaskDueOverdue,
+  parseDisplayDate,
+} from '@webfudge/utils';
+
 // Status mappings
 const STATUS_MAP = {
   SCHEDULED: 'To Do',
   IN_PROGRESS: 'In Progress',
   INTERNAL_REVIEW: 'Internal Review',
+  ON_HOLD: 'On Hold',
   COMPLETED: 'Done',
   CANCELLED: 'Cancelled',
   OVERDUE: 'Overdue',
@@ -12,6 +21,7 @@ const STATUS_REVERSE_MAP = {
   'To Do': 'SCHEDULED',
   'In Progress': 'IN_PROGRESS',
   'Internal Review': 'INTERNAL_REVIEW',
+  'On Hold': 'ON_HOLD',
   'Done': 'COMPLETED',
   'Cancelled': 'CANCELLED',
 };
@@ -64,10 +74,19 @@ export function transformPriorityToStrapi(frontendPriority) {
 
 export function formatDate(dateString, format = 'short') {
   if (!dateString) return null;
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return null;
+  if (isCalendarDateValue(dateString)) {
+    if (format === 'relative') return formatCalendarRelativeTime(dateString);
+    if (format === 'long') {
+      const date = parseDisplayDate(dateString);
+      if (!date) return null;
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    return formatCalendarTableDate(dateString);
+  }
+  const date = parseDisplayDate(dateString);
+  if (!date) return null;
 
-  if (format === 'relative') return formatRelativeDate(date);
+  if (format === 'relative') return formatRelativeDate(dateString);
   if (format === 'long') {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   }
@@ -162,6 +181,7 @@ export function transformProject(strapiProject) {
     clientAccountId: clientAccount?.id || clientAttrs.id || null,
     clientName: clientAttrs.companyName || clientAttrs.name || clientAttrs.title || '',
     icon: p.icon || (p.name ? p.name.charAt(0).toUpperCase() : 'P'),
+    isPrivate: p.isPrivate ?? false,
     createdAt: p.createdAt || null,
     updatedAt: p.updatedAt || null,
   };
@@ -229,12 +249,20 @@ export function transformTask(strapiTask) {
       : [];
   const projects = projectList.map((proj) => {
     const pData = proj.attributes || proj;
+    const pmRaw = pData.projectManager?.data ?? pData.projectManager;
+    const projectManager =
+      pmRaw != null && pmRaw !== ''
+        ? transformUser(typeof pmRaw === 'object' ? pmRaw : { id: pmRaw })
+        : null;
     return {
       id: proj.id || pData.id,
       name: pData.name || pData.title || 'Unknown',
       slug: pData.slug || String(proj.id || pData.id),
+      projectManager,
     };
   });
+  const primaryProject = projects[0] || null;
+  const projectManager = primaryProject?.projectManager || null;
   const collaborators = (t.collaborators?.data || t.collaborators || []).map(transformUser).filter(Boolean);
   const pendingCollaborators = (t.pendingCollaborators?.data || t.pendingCollaborators || [])
     .map(transformUser)
@@ -252,7 +280,20 @@ export function transformTask(strapiTask) {
   if (assignmentPending) {
     assignees = [...pendingCollaborators];
   }
-  const subtasks = (t.subtasks?.data || t.subtasks || []).map(transformSubtask).filter(Boolean);
+  const subtasks = (t.subtasks?.data || t.subtasks || [])
+    .map((st) => {
+      const row = transformSubtask(st);
+      if (!row) return null;
+      const pm = row.projectManager || projectManager;
+      return {
+        ...row,
+        parentId: row.parentId ?? id,
+        projectManager: pm,
+        projectManagerId: pm?.id ?? row.projectManagerId ?? null,
+        projectManagerName: pm?.name || row.projectManagerName || '',
+      };
+    })
+    .filter(Boolean);
 
   const parentRaw = t.parent?.data !== undefined ? t.parent.data : t.parent;
   let parentId = null;
@@ -286,7 +327,7 @@ export function transformTask(strapiTask) {
     effectiveAssignerUser = primaryAssigneeUser;
   }
 
-  const isOverdue = t.scheduledDate && new Date(t.scheduledDate) < new Date() && t.status !== 'COMPLETED';
+  const isOverdue = isTaskDueOverdue(t.scheduledDate, t.status);
 
   return {
     id,
@@ -317,9 +358,12 @@ export function transformTask(strapiTask) {
     assignmentApprovalStatus,
     assignmentPending,
     projects,
-    projectId: projects[0]?.id || null,
-    project: projects[0]?.name || null,
-    projectSlug: projects[0]?.slug || null,
+    projectId: primaryProject?.id || null,
+    project: primaryProject?.name || null,
+    projectSlug: primaryProject?.slug || null,
+    projectManager,
+    projectManagerId: projectManager?.id ?? null,
+    projectManagerName: projectManager?.name || '',
     subtasks,
     subtaskCount: subtasks.length,
     parentId,
@@ -363,12 +407,18 @@ export function transformSubtask(strapiSubtask) {
 
   const collaborators = (s.collaborators?.data || s.collaborators || []).map(transformUser).filter(Boolean);
   const primaryAssigneeUser = assignee && typeof assignee === 'object' ? transformUser(assignee) : null;
-  let assignees = [...collaborators];
-  if (
-    primaryAssigneeUser?.id != null &&
-    !assignees.some((u) => Number(u.id) === Number(primaryAssigneeUser.id))
-  ) {
-    assignees = [primaryAssigneeUser, ...assignees];
+  const singleAssignee = primaryAssigneeUser || collaborators[0] || null;
+  const assignees = singleAssignee ? [singleAssignee] : [];
+
+  const parentRaw = s.parent?.data !== undefined ? s.parent.data : s.parent;
+  let parentId = null;
+  if (parentRaw != null && parentRaw !== '') {
+    if (typeof parentRaw === 'object') {
+      const pFlat = parentRaw.attributes || parentRaw;
+      parentId = parentRaw.id ?? pFlat.id ?? null;
+    } else if (typeof parentRaw === 'number') {
+      parentId = parentRaw;
+    }
   }
 
   const persistedAssignerId =
@@ -402,8 +452,9 @@ export function transformSubtask(strapiSubtask) {
     assignerId: effectiveAssignerId,
     assignerName: effectiveAssignerUser?.name || '',
     assignees,
-    assigneeUserIds: assignees.map((u) => u.id).filter((uid) => uid != null),
-    collaborators,
+    assigneeUserIds: singleAssignee?.id != null ? [singleAssignee.id] : [],
+    collaborators: singleAssignee ? [singleAssignee] : [],
+    parentId,
   };
 }
 

@@ -2,16 +2,21 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import { Card } from '@webfudge/ui'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Sector } from 'recharts'
 import { PieChart as PieChartIcon, ChevronRight } from 'lucide-react'
+import { Card, LoadingSpinner, EmptyState } from '@webfudge/ui'
 import leadCompanyService from '../../lib/api/leadCompanyService'
 import { SOURCE_OPTIONS } from '../../lib/dealFormOptions'
+import {
+  DashboardChartCanvas,
+  PRIMARY_ORANGE_SHADES,
+  DonutChartFrame,
+  DONUT_TOOLTIP_WRAPPER_STYLE,
+} from '@webfudge/ui'
 
-const ACCENT_COLORS = ['#ea580c', '#8b5cf6', '#0f172a', '#14b8a6', '#f59e0b', '#64748b', '#3b82f6']
-
-const scrollbarClass =
-  'max-h-[min(22rem,calc(100vh-12rem))] overflow-y-auto overscroll-contain [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-200'
+const TRACK_FILL = '#ffedd5'
+const CHART_INNER = 54
+const CHART_OUTER = 86
 
 function sourceLabel(key) {
   if (!key || key === 'UNKNOWN') return 'Not set'
@@ -35,37 +40,119 @@ function aggregateBySource(companies) {
   return [...map.entries()].sort((a, b) => b[1] - a[1])
 }
 
-function toPieSlices(entries) {
-  if (entries.length === 0) return []
-  if (entries.length <= 6) {
-    return entries.map(([key, value]) => ({
-      name: sourceLabel(key),
-      value,
-      key,
-    }))
-  }
-  const head = entries.slice(0, 5)
-  const rest = entries.slice(5).reduce((s, [, n]) => s + n, 0)
-  return [
-    ...head.map(([key, value]) => ({ name: sourceLabel(key), value, key })),
-    { name: 'Other', value: rest, key: 'OTHER' },
-  ]
+function shortenSourceLabel(name) {
+  const s = String(name || '').trim()
+  if (!s) return '—'
+  return s.length > 18 ? `${s.slice(0, 16)}…` : s
+}
+
+function ActiveSlice(props) {
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props
+  return (
+    <Sector
+      cx={cx}
+      cy={cy}
+      innerRadius={innerRadius}
+      outerRadius={outerRadius + 5}
+      startAngle={startAngle}
+      endAngle={endAngle}
+      fill={fill}
+      cornerRadius={5}
+    />
+  )
 }
 
 function SourceTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
-  const p = payload[0]
-  const v = typeof p?.value === 'number' ? p.value : p?.payload?.value ?? 0
-  const name = p?.name ?? p?.payload?.name ?? ''
+  const row = payload[0]?.payload
+  if (!row) return null
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-md">
-      <p className="font-medium text-gray-900">{name}</p>
-      <p className="text-gray-600">{v} leads</p>
+    <div className="min-w-[9rem] rounded-xl border border-gray-200/90 bg-white/95 px-3 py-2.5 shadow-lg ring-1 ring-black/5 backdrop-blur-sm">
+      <p className="text-sm font-semibold text-gray-900">{row.name}</p>
+      <p className="mt-1 text-xs text-gray-600">
+        <span className="font-bold tabular-nums text-gray-900">{row.value}</span> lead
+        {row.value === 1 ? '' : 's'}
+        {row.pct != null ? (
+          <>
+            {' '}
+            · <span className="font-semibold text-orange-600">{row.pct}%</span>
+          </>
+        ) : null}
+      </p>
     </div>
   )
 }
 
-export default function LeadSourcesWidget() {
+function SourceDonutChart({ rows, pieData, total }) {
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const trackData = [{ value: 1 }]
+
+  return (
+    <DashboardChartCanvas className="min-h-[15rem] flex-1">
+      <DonutChartFrame total={total}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={trackData}
+              dataKey="value"
+              cx="50%"
+              cy="50%"
+              innerRadius={CHART_INNER}
+              outerRadius={CHART_OUTER}
+              fill={TRACK_FILL}
+              stroke="none"
+              isAnimationActive={false}
+            />
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={CHART_INNER}
+              outerRadius={CHART_OUTER}
+              paddingAngle={rows.length > 1 ? 4 : 0}
+              cornerRadius={5}
+              stroke="#ffffff"
+              strokeWidth={3}
+              activeIndex={activeIndex}
+              activeShape={ActiveSlice}
+              onMouseEnter={(_, index) => setActiveIndex(index)}
+              onMouseLeave={() => setActiveIndex(-1)}
+            >
+              {rows.map((row) => (
+                <Cell key={row.key} fill={row.color} />
+              ))}
+            </Pie>
+            <Tooltip
+              content={<SourceTooltip />}
+              wrapperStyle={DONUT_TOOLTIP_WRAPPER_STYLE}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </DonutChartFrame>
+
+      {rows.length > 0 && rows.length <= 6 ? (
+        <div className="relative mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 border-t border-orange-100/80 pt-4">
+          {rows.map((row) => (
+            <div key={row.key} className="flex max-w-[8.5rem] items-center gap-1.5">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full ring-2 ring-white"
+                style={{ backgroundColor: row.color }}
+              />
+              <span className="truncate text-[11px] font-medium text-gray-600" title={row.label}>
+                {shortenSourceLabel(row.label)}
+              </span>
+              <span className="text-[11px] font-bold tabular-nums text-orange-700">{row.pct}%</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </DashboardChartCanvas>
+  )
+}
+
+export default function LeadSourcesWidget({ className = '', dashboardRow = false }) {
   const [companies, setCompanies] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -88,134 +175,103 @@ export default function LeadSourcesWidget() {
     }
   }, [])
 
-  const { rows, total, pieData } = useMemo(() => {
+  const { rows, total, sourceCount, pieData } = useMemo(() => {
     const entries = aggregateBySource(companies)
     const sum = entries.reduce((s, [, n]) => s + n, 0)
-    const max = entries.reduce((m, [, n]) => Math.max(m, n), 0) || 1
-    const listRows = entries.map(([key, count], i) => ({
-      key: String(key),
-      label: sourceLabel(key),
-      count,
-      color: ACCENT_COLORS[i % ACCENT_COLORS.length],
-      barPct: max > 0 ? Math.round((count / max) * 100) : 0,
-    }))
+
+    const rows = entries.slice(0, 8).map(([key, count], i) => {
+      const pct = sum > 0 ? Math.round((count / sum) * 1000) / 10 : 0
+      return {
+        key: String(key),
+        label: sourceLabel(key),
+        value: count,
+        pct,
+        color: PRIMARY_ORANGE_SHADES[i % PRIMARY_ORANGE_SHADES.length],
+      }
+    })
+
+    const pieData = rows.map((r) => ({ name: r.label, value: r.value, pct: r.pct, key: r.key }))
+
     return {
-      rows: listRows,
+      rows,
       total: sum,
-      pieData: toPieSlices(entries),
+      sourceCount: entries.length,
+      pieData,
     }
   }, [companies])
 
+  const shellClass = dashboardRow
+    ? `flex h-full min-h-0 flex-col rounded-xl border border-gray-200 bg-gradient-to-br from-white to-gray-50/60 p-5 shadow-md ${className}`
+    : `flex flex-col p-6 shadow-lg ${className}`
+
   return (
-    <Card className="p-6 shadow-lg">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <Card className={shellClass}>
+      <div className={`flex shrink-0 items-start justify-between gap-4 ${dashboardRow ? 'mb-4' : 'mb-5'}`}>
         <div className="min-w-0 flex-1">
-          <h2 className="text-xl font-semibold text-gray-900">Lead sources</h2>
+          <h2 className={`font-semibold text-gray-900 ${dashboardRow ? 'text-lg' : 'text-xl'}`}>
+            Lead sources
+          </h2>
           <p className="mt-0.5 text-sm text-gray-600">Where your lead companies originate</p>
         </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-200 bg-orange-50 shadow-sm">
-          <PieChartIcon className="h-[22px] w-[22px] text-orange-600" aria-hidden />
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="mx-auto h-36 max-w-[200px] rounded-full bg-gray-100" />
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-14 rounded-xl bg-gray-100" />
-          ))}
-        </div>
-      ) : total === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-10 text-center">
-          <p className="text-sm text-gray-500">No lead companies yet. Add leads to see source mix.</p>
-          <Link
-            href="/sales/lead-companies/new"
-            className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:text-orange-700"
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <div
+            className={`flex items-center justify-center border border-orange-200 bg-orange-50 shadow-sm ${
+              dashboardRow ? 'h-10 w-10 rounded-lg' : 'h-11 w-11 rounded-xl'
+            }`}
           >
-            Add a lead
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_160px] xl:items-start">
-          <div className={`min-w-0 space-y-5 ${scrollbarClass}`}>
-            {rows.map((row) => (
-              <div key={row.key} className="min-w-0">
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="truncate text-xs font-medium uppercase tracking-wide text-gray-500">
-                    {row.label}
-                  </p>
-                  <span className="shrink-0 text-xs tabular-nums text-gray-400">
-                    {total > 0 ? `${Math.round((row.count / total) * 100)}%` : ''}
-                  </span>
-                </div>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{row.count}</p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full transition-[width] duration-300"
-                    style={{
-                      width: `${row.barPct}%`,
-                      backgroundColor: row.color,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+            <PieChartIcon
+              className={dashboardRow ? 'h-5 w-5 text-orange-600' : 'h-[22px] w-[22px] text-orange-600'}
+              aria-hidden
+            />
           </div>
-
-          <div className="flex flex-col items-center justify-start xl:pt-2">
-            <div className="h-[160px] w-full max-w-[180px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={46}
-                    outerRadius={72}
-                    paddingAngle={2}
-                    strokeWidth={0}
-                  >
-                    {pieData.map((_, i) => (
-                      <Cell key={`cell-${i}`} fill={ACCENT_COLORS[i % ACCENT_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<SourceTooltip />} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <ul className="mt-3 w-full space-y-1.5 text-xs text-gray-600">
-              {pieData.slice(0, 6).map((slice, i) => (
-                <li key={`${slice.key}-${i}`} className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: ACCENT_COLORS[i % ACCENT_COLORS.length] }}
-                  />
-                  <span className="min-w-0 truncate">{slice.name}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {!loading && total > 0 ? (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-4">
-          <p className="text-xs text-gray-500">
-            <span className="mr-1 inline-block h-2 w-2 rounded-full bg-orange-500 align-middle" />
-            {total} total lead{total === 1 ? '' : 's'}
-          </p>
           <Link
             href="/sales/lead-companies"
             className="inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:text-orange-700"
           >
-            View all leads
-            <ChevronRight className="h-4 w-4" />
+            View all
+            <ChevronRight className="h-4 w-4" aria-hidden />
           </Link>
         </div>
-      ) : null}
+      </div>
+
+      {loading ? (
+        <div className={`space-y-4 animate-pulse ${dashboardRow ? 'min-h-[15rem] flex-1' : ''}`}>
+          <div className="flex gap-2">
+            <div className="h-8 w-24 rounded-full bg-gray-100" />
+            <div className="h-8 w-20 rounded-full bg-gray-100" />
+          </div>
+          <div className="mx-auto h-40 w-40 rounded-full bg-gray-100" />
+        </div>
+      ) : total === 0 ? (
+        <EmptyState
+          icon={PieChartIcon}
+          title="No lead sources yet"
+          description="Add lead companies to see where they come from."
+          className={dashboardRow ? 'min-h-[15rem] flex-1 py-10' : 'py-10'}
+          action={
+            <Link
+              href="/sales/lead-companies/new"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-orange-600 hover:text-orange-700"
+            >
+              Add a lead
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          }
+        />
+      ) : (
+        <div className={`flex min-h-0 flex-col gap-4 ${dashboardRow ? 'flex-1' : ''}`}>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-800 ring-1 ring-orange-200/80">
+              <span className="tabular-nums">{total}</span> total lead{total === 1 ? '' : 's'}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200/90">
+              <span className="tabular-nums">{sourceCount}</span> source{sourceCount === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <SourceDonutChart rows={rows} pieData={pieData} total={total} />
+        </div>
+      )}
     </Card>
   )
 }

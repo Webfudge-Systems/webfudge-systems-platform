@@ -11,6 +11,7 @@ import {
   Modal,
   FormSectionCard,
   Badge,
+  useIndustrySelectOptions,
 } from '@webfudge/ui';
 import PMPageHeader from '../../../../components/PMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
@@ -20,11 +21,11 @@ import strapiClient from '../../../../lib/strapiClient';
 import { canWriteClientAccounts } from '../../../../lib/rbac';
 import { useAuth } from '@webfudge/auth';
 import {
-  industryOptions,
   companyTypes,
   INDUSTRY_OTHER_VALUE,
   resolveIndustryForSave,
 } from '@webfudge/utils';
+import { fetchStoredIndustriesForPm } from '../../../../lib/industryOptionsLoader';
 import {
   Building2,
   Globe,
@@ -114,6 +115,10 @@ export default function NewClientAccountPage() {
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const canCreateClientAccounts = canWriteClientAccounts();
+
+  const { options: industrySelectOptions, onIndustrySaved } = useIndustrySelectOptions({
+    fetchStoredIndustries: fetchStoredIndustriesForPm,
+  });
 
   const [form, setForm] = useState({
     companyName: '',
@@ -342,7 +347,9 @@ export default function NewClientAccountPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await clientAccountService.create(buildPayload());
+      const payload = buildPayload();
+      const res = await clientAccountService.create(payload);
+      onIndustrySaved(payload.industry);
       const newId = res?.id ?? res?.data?.id;
 
       if (newId && contactService?.create) {
@@ -558,10 +565,13 @@ export default function NewClientAccountPage() {
                   label="Industry *"
                   value={form.industry}
                   onChange={(value) => handleChange('industry', value)}
-                  options={industryOptions}
+                  options={industrySelectOptions}
                   error={errors.industry}
                   placeholder="Select industry"
                   icon={Building2}
+                  allowCustom
+                  onCustomAdd={onIndustrySaved}
+                  searchable
                 />
               </div>
               {form.industry === INDUSTRY_OTHER_VALUE ? (

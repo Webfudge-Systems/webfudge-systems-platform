@@ -65,11 +65,17 @@ class StrapiClient {
     const orgId = this.getCurrentOrgId();
     const { headers: optionHeaders, body, ...rest } = options;
 
+    const isFormData =
+      body !== undefined &&
+      body !== null &&
+      typeof FormData !== 'undefined' &&
+      body instanceof FormData;
+
     const config = {
       method: 'GET',
       ...rest,
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token && { Authorization: `Bearer ${token}` }),
         ...(orgId && { 'X-Organization-Id': orgId }),
         ...(optionHeaders && typeof optionHeaders === 'object' ? optionHeaders : {}),
@@ -77,7 +83,6 @@ class StrapiClient {
     };
 
     if (body !== undefined && body !== null) {
-      const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
       const isUrlParams = typeof URLSearchParams !== 'undefined' && body instanceof URLSearchParams;
       if (typeof body === 'string' || isFormData || isUrlParams) {
         config.body = body;
@@ -187,13 +192,26 @@ class StrapiClient {
       .map((row) => {
         const raw = row?.user ?? row?.attributes?.user ?? row;
         if (raw == null) return null;
+        const roleRaw = row?.role ?? row?.attributes?.role;
+        const orgRoleName =
+          typeof roleRaw === 'string'
+            ? roleRaw
+            : roleRaw?.name ?? roleRaw?.attributes?.name ?? row?.roleName ?? null;
+        const orgRoleCode =
+          row?.roleCode ??
+          (typeof roleRaw === 'object' ? roleRaw?.code ?? roleRaw?.attributes?.code : null);
+        let user = null;
         if (typeof raw === 'object' && raw.attributes) {
-          return { id: raw.id, documentId: raw.documentId ?? raw.id, ...raw.attributes };
+          user = { id: raw.id, documentId: raw.documentId ?? raw.id, ...raw.attributes };
+        } else if (typeof raw === 'object' && raw.id != null) {
+          user = { ...raw };
         }
-        if (typeof raw === 'object' && raw.id != null) {
-          return { ...raw };
-        }
-        return null;
+        if (!user) return null;
+        return {
+          ...user,
+          orgRoleName: orgRoleName || undefined,
+          orgRoleCode: orgRoleCode || undefined,
+        };
       })
       .filter(Boolean);
   }

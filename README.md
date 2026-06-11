@@ -1,253 +1,213 @@
 # Webfudge Platform
 
-A comprehensive multi-tenant SaaS platform built with Next.js, Tailwind CSS, and Strapi CMS.
+**The operating system for modern businesses** — built by [Webfudge Systems](https://webfudgesystems.in).
 
-## 🏗️ Project Structure
+Webfudge Systems builds custom software and productized business tools: CRM, project management, finance, automation, ERP-style workflows, and admin panels. This monorepo is the shared codebase for that platform—multiple Next.js apps, one Strapi API, and reusable packages used across products.
 
-This is a monorepo managed with Turborepo and npm workspaces.
+---
+
+## About Webfudge Systems
+
+**Webfudge Systems** is a software company focused on helping businesses run on fewer, better-connected tools instead of a patchwork of disconnected apps.
+
+We design and ship:
+
+- **CRM & sales** — leads, contacts, deals, proposals, invoices, pipelines
+- **Project management** — projects, tasks, timelines, team workload
+- **Accounts & billing** — organizations, users, roles, subscriptions
+- **Finance (Books)** — sales, purchases, accounting workflows
+- **Custom solutions** — dashboards, ERP-style modules, automation, and industry-specific apps (e.g. automobile / VLM)
+
+**Vision:** A future where operations, data, and teams live on one central platform—not scattered across dozens of SaaS logins.
+
+**Mission:** Build a flexible business operating system that lets companies manage workflows, data, and teams through one integrated, modular stack.
+
+**Website:** [webfudgesystems.in](https://webfudgesystems.in)  
+**Contact:** [webfudgesystems@gmail.com](mailto:webfudgesystems@gmail.com)
+
+---
+
+## Platform products (apps)
+
+| App | Package | Default port | Role |
+| --- | --- | ---: | --- |
+| Landing | `apps/landing` | 3000 | Marketing site, signup, product pages |
+| CRM | `apps/crm` | 3001 | Sales, leads, deals, clients, proposals |
+| PM | `apps/pm` | 3002 | Projects, tasks, delivery |
+| Accounts | `apps/accounts` | 3003 | Orgs, users, billing, RBAC |
+| Vendor | `apps/vendor` | 3004 | Vendor / license oversight |
+| Books | `apps/books` | 3005 | Finance & accounting UI |
+| Backend | `apps/backend` | 1337 | Strapi CMS & REST API |
+| VLM (automobile) | `apps/(automobile)/vlm` | — | Vehicle / warranty vertical |
+
+All frontends share **`@webfudge/ui`**, **`@webfudge/auth`**, and the same Tailwind preset; the backend is the single source of truth for content and auth.
+
+---
+
+## Repository structure
+
+Monorepo: **Turborepo** + **npm workspaces**.
 
 ```
 webfudge-platform/
 ├── apps/
-│   ├── landing/         # Landing page (Port: 3000)
-│   ├── crm/            # CRM Application (Port: 3001)
-│   ├── pm/             # Project Management (Port: 3002)
-│   ├── accounts/       # Account Management (Port: 3003)
-│   ├── vendor/         # Vendor Portal (Port: 3004)
-│   └── backend/        # Strapi API (Port: 1337)
+│   ├── landing/              # Public site (webfudgesystems.in)
+│   ├── crm/                  # CRM workspace
+│   ├── pm/                   # Project management
+│   ├── accounts/             # Account & org admin
+│   ├── vendor/               # Vendor portal
+│   ├── books/                # Finance / Books
+│   ├── backend/              # Strapi API
+│   └── (automobile)/vlm/     # Vertical: vehicle lifecycle
 ├── packages/
-│   ├── ui/             # Shared UI components
-│   ├── auth/           # Authentication utilities
-│   ├── billing/        # Billing utilities
-│   ├── config/         # Shared configurations
-│   └── utils/          # Shared utilities
-└── tooling/
-    ├── tsconfig/       # TypeScript configurations
-    ├── eslint/         # ESLint configurations
-    ├── prettier/       # Prettier configurations
-    └── env/            # Environment configurations
+│   ├── ui/                   # Shared components (tables, charts, layout)
+│   ├── auth/                 # Auth provider & helpers
+│   ├── billing/              # Billing utilities
+│   ├── config/               # Tailwind preset, brand tokens
+│   ├── hooks/                # Shared React hooks
+│   └── utils/                # Shared utilities
+├── docs/                     # Architecture, features, change logs
+└── tooling/                  # ESLint, Prettier, TS config
 ```
 
-## 🚀 Getting Started
+---
+
+## Tech stack
+
+| Layer | Stack |
+| --- | --- |
+| Frontend | Next.js 14 (App Router), React, Tailwind CSS |
+| UI | `@webfudge/ui` component library |
+| Backend | Strapi 4, REST API, JWT auth |
+| Data | SQLite (dev) / PostgreSQL (production) |
+| Tooling | Turborepo, npm workspaces, ESLint, Prettier |
+
+---
+
+## Getting started
 
 ### Prerequisites
 
-- Node.js >= 18.0.0
-- npm >= 9.0.0
+- Node.js **>= 18**
+- npm **>= 9**
 
-### Installation
-
-Install all dependencies:
+### Install
 
 ```bash
 npm install
 ```
 
-This will install dependencies for all apps and packages in the monorepo.
-
 ### Development
 
-Start all applications in development mode:
+Run the whole workspace (excluding backend and automobile apps by default):
 
 ```bash
 npm run dev
 ```
 
-Or run specific applications:
+Run individual products:
 
 ```bash
-# Landing page
-cd apps/landing && npm run dev
+npm run dev:crm
+npm run dev:pm
+npm run dev:books
+npm run dev:backend
+```
 
-# CRM
+Or from an app directory:
+
+```bash
 cd apps/crm && npm run dev
-
-# Project Management
-cd apps/pm && npm run dev
-
-# Accounts
-cd apps/accounts && npm run dev
-
-# Vendor Portal
-cd apps/vendor && npm run dev
-
-# Backend API
 cd apps/backend && npm run develop
 ```
 
-### Building
+Strapi admin: `http://localhost:1337/admin`
 
-Build all applications:
+### Build & production
 
 ```bash
-npm run build
+npm run build          # all apps
+npm run build:accounts # single app filter examples in package.json
+npm run start          # production (per turbo config)
 ```
 
-### Production
+### Environment
 
-Start all applications in production mode:
-
-```bash
-npm run start
-```
-
-## 📦 Applications
-
-### Frontend Apps (Next.js + Tailwind CSS)
-
-#### Landing (Port 3000)
-- Public-facing landing page
-- Marketing content
-- Lead generation
-
-#### CRM (Port 3001)
-- Customer Relationship Management
-- Leads, Contacts, Deals
-- Sales pipeline management
-
-#### Project Management (Port 3002)
-- Project tracking
-- Task management
-- Team collaboration
-- Progress reports
-
-#### Accounts (Port 3003)
-- User management
-- Organization settings
-- Billing & subscriptions
-- Invoices & audit logs
-- Roles & permissions
-
-#### Vendor Portal (Port 3004)
-- Vendor dashboard
-- License management
-- Organization oversight
-- Revenue tracking
-
-### Backend API (Strapi - Port 1337)
-
-- RESTful API
-- Content management
-- User authentication
-- Database management
-
-Access the Strapi admin panel at: `http://localhost:1337/admin`
-
-## 🎨 Tech Stack
-
-### Frontend
-- **Framework**: Next.js 14 (App Router)
-- **Styling**: Tailwind CSS
-- **Language**: JavaScript/TypeScript
-- **UI Components**: Custom component library
-
-### Backend
-- **CMS**: Strapi 4
-- **Database**: SQLite (development) / PostgreSQL (production)
-- **API**: REST API
-
-### DevOps
-- **Monorepo**: Turborepo
-- **Package Manager**: npm workspaces
-- **Code Quality**: ESLint, Prettier
-- **Version Control**: Git
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Each application requires its own environment variables. Copy the example files:
+Each app has its own `.env.example`. Copy and fill before running:
 
 ```bash
-# Backend
 cp apps/backend/.env.example apps/backend/.env
-
-# Frontend apps (if needed)
-cp apps/landing/.env.example apps/landing/.env
 cp apps/crm/.env.example apps/crm/.env
 cp apps/pm/.env.example apps/pm/.env
-cp apps/accounts/.env.example apps/accounts/.env
-cp apps/vendor/.env.example apps/vendor/.env
+# … same pattern for landing, accounts, books, vendor
 ```
 
-## 📝 Scripts
+See **[docs/ENVIRONMENT.md](./docs/ENVIRONMENT.md)** for variable details.
 
-### Root Level
-- `npm run dev` - Start all apps in development
-- `npm run build` - Build all apps
-- `npm run start` - Start all apps in production
-- `npm run lint` - Lint all apps
-- `npm run format` - Format code with Prettier
-- `npm run clean` - Clean all build artifacts and node_modules
+### Root scripts
 
-### Individual Apps
-Each app has its own scripts defined in its `package.json`.
-
-## 🏢 Shared Packages
-
-### @webfudge/ui
-Shared UI components used across all applications.
-
-### @webfudge/auth
-Authentication utilities and helpers.
-
-### @webfudge/billing
-Billing and subscription management utilities.
-
-### @webfudge/utils
-Common utility functions.
-
-### @webfudge/config
-Shared configuration files.
-
-## 🔐 Authentication
-
-The platform uses JWT-based authentication managed by Strapi.
-
-## 📚 API Documentation
-
-API documentation is available in the Strapi admin panel.
-
-## 🧪 Testing
-
-(To be implemented)
-
-## 🚢 Deployment
-
-(To be implemented)
-
-## 🤝 Contributing
-
-(To be defined)
-
-## 📄 License
-
-(To be defined)
-
-## 📖 Documentation
-
-Comprehensive documentation is available:
-
-### 🚀 Start Here
-- **[Getting Started Guide](./GETTING_STARTED.md)** - Your first stop
-- **[Installation Guide](./INSTALLATION.md)** - Detailed installation steps
-- **[Quick Start Guide](./QUICKSTART.md)** - Get up and running quickly
-
-### 📚 Complete Documentation
-- **[Documentation Index](./DOCUMENTATION_INDEX.md)** - 📑 Complete guide to all documentation
-- **[Project Overview](./PROJECT_OVERVIEW.md)** - High-level project overview
-- **[Architecture Documentation](./ARCHITECTURE.md)** - System design and architecture
-- **[Commands Reference](./COMMANDS.md)** - All available commands
-- **[Environment Variables](./ENVIRONMENT.md)** - Configuration guide
-- **[Setup Summary](./SETUP_SUMMARY.md)** - What's been initialized
-- **[Project Checklist](./PROJECT_CHECKLIST.md)** - Track implementation progress
-- **[Completion Report](./COMPLETION_REPORT.md)** - Initialization completion details
-
-## 📞 Support
-
-For support, please contact: support@webfudge.com
+| Script | Description |
+| --- | --- |
+| `npm run dev` | Dev mode for frontends (turbo filters) |
+| `npm run build` | Production build for all apps |
+| `npm run lint` | Lint across the monorepo |
+| `npm run format` | Prettier on TS/JS/MD/JSON |
+| `npm run clean` | Remove build artifacts & `node_modules` |
 
 ---
 
-Built with ❤️ by Webfudge Systems
+## Shared packages
 
+- **`@webfudge/ui`** — Buttons, tables, dashboard charts, layout shells, feedback loaders
+- **`@webfudge/auth`** — Session/org context for workspace apps
+- **`@webfudge/billing`** — Subscription and billing helpers
+- **`@webfudge/config`** — Brand colors and Tailwind preset
+- **`@webfudge/utils`** — Calendar, formatting, API helpers
+- **`@webfudge/hooks`** — Shared React hooks
+
+Import example:
+
+```js
+import { Button, LoadingSpinner } from '@webfudge/ui'
+import { useAuth } from '@webfudge/auth'
+```
+
+---
+
+## Documentation
+
+Technical docs live under **`docs/`**:
+
+| Doc | Purpose |
+| --- | --- |
+| **[docs/DOCUMENTATION_INDEX.md](./docs/DOCUMENTATION_INDEX.md)** | Full index of guides and change summaries |
+| **[docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md)** | Onboarding and learning path |
+| **[docs/INSTALLATION.md](./docs/INSTALLATION.md)** | Detailed install & troubleshooting |
+| **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** | System design and diagrams |
+| **[docs/COMMANDS.md](./docs/COMMANDS.md)** | Command reference |
+| **[docs/ENVIRONMENT.md](./docs/ENVIRONMENT.md)** | Environment variables |
+
+Feature-specific notes (CRM dashboards, PM tasks, Books UI, shared component refactors, etc.) are also listed in the documentation index.
+
+---
+
+## Authentication
+
+JWT-based auth is issued and validated through **Strapi** (`apps/backend`). Workspace apps use **`@webfudge/auth`** for client-side session and organization context.
+
+---
+
+## Contributing & license
+
+Internal Webfudge Systems codebase. Contribution and license terms are defined by the organization—contact the team before external use or distribution.
+
+---
+
+## Support
+
+- **Email:** [webfudgesystems@gmail.com](mailto:webfudgesystems@gmail.com)
+- **Site:** [https://webfudgesystems.in](https://webfudgesystems.in)
+
+---
+
+Built with care by **Webfudge Systems**.

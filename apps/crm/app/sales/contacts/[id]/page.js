@@ -42,6 +42,7 @@ import contactService from '../../../../lib/api/contactService';
 import { fetchActivityTimeline, fetchContactComments, addContactComment } from '../../../../lib/api/crmActivityService';
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
+import { entityChatMediaProps } from '../../../../lib/entityMedia';
 
 function formatDate(dateString) {
   if (!dateString) return '—';
@@ -1293,10 +1294,11 @@ export default function ContactDetailPage() {
                   fetchCommentsFn={({ entityId }) =>
                     fetchContactComments({ contactId: entityId, limit: 80 })
                   }
-                  addCommentFn={({ entityId, comment }) =>
-                    addContactComment({ contactId: entityId, comment })
+                  addCommentFn={({ entityId, comment, attachments }) =>
+                    addContactComment({ contactId: entityId, comment, attachments })
                   }
                   fetchMentionUsers={fetchChatMentionUsers}
+                  {...entityChatMediaProps}
                 />
               </div>
             </div>

@@ -16,13 +16,32 @@ function orgIdFromRelation(rel) {
  * @param {import('koa').Context} ctx
  * @param {{ maxPageSize?: number, defaultPageSize?: number, defaultSort?: string }} [opts]
  */
+/**
+ * Normalize Strapi REST filters from ctx.query (nested `filters` object or bracket keys).
+ * @param {Record<string, unknown>} query
+ */
+function extractQueryFilters(query = {}) {
+  if (query.filters && typeof query.filters === 'object' && !Array.isArray(query.filters)) {
+    return query.filters;
+  }
+  return {};
+}
+
 function readListQuery(ctx, opts = {}) {
   const query = ctx.query || {};
   const maxPageSize = opts.maxPageSize ?? 100;
-  const page = parseInt(query['pagination[page]'] || query.page || '1', 10);
+  const defaultPageSize = opts.defaultPageSize ?? 25;
+  const pag = query.pagination && typeof query.pagination === 'object' ? query.pagination : null;
+  const page = parseInt(
+    query['pagination[page]'] || pag?.page || query.page || '1',
+    10
+  );
   const pageSize = Math.min(
     parseInt(
-      query['pagination[pageSize]'] || query.pageSize || String(opts.defaultPageSize ?? 25),
+      query['pagination[pageSize]'] ||
+        pag?.pageSize ||
+        query.pageSize ||
+        String(defaultPageSize),
       10
     ),
     maxPageSize
@@ -117,6 +136,7 @@ async function resolveEntityPkForRouteParam(strapi, uid, param) {
 
 module.exports = {
   orgIdFromRelation,
+  extractQueryFilters,
   readListQuery,
   createPopulateSanitizer,
   safeCount,

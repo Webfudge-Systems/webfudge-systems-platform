@@ -10,7 +10,6 @@
     "clean": "rm -rf .next node_modules"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
     "@webfudge/auth": "*",
     "@webfudge/config": "*",
     "@webfudge/hooks": "*",

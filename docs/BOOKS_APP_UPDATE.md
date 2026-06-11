@@ -5,13 +5,13 @@ Added a new app at `apps/books` to scaffold a Zoho Books-inspired accounting pro
 
 ## Scope
 - New app: `apps/books`
-- Shared integrations: `@webfudge/ui`, `@webfudge/auth`, `@webfudge/utils`, `@webfudge/hooks`, `@supabase/supabase-js`
+- Shared integrations: `@webfudge/ui`, `@webfudge/auth`, `@webfudge/utils`, `@webfudge/hooks`
 - Root update: `package.json` script `dev:books`
 
 ## Details
 - Added full app shell:
   - `app/layout.tsx`, `components/layout/Sidebar.tsx`, `components/layout/Topbar.tsx`, `components/layout/LayoutContent.tsx`
-  - `components/configure-features/ConfigureFeaturesModal.tsx` with local + Supabase persistence hook
+  - `components/configure-features/ConfigureFeaturesModal.tsx` with localStorage feature preferences
 - Added all requested primary routes and sub-routes under:
   - Home dashboard
   - Items, Banking
@@ -26,8 +26,6 @@ Added a new app at `apps/books` to scaffold a Zoho Books-inspired accounting pro
 - Added typed data layer:
   - `lib/types.ts` for all core domain entities
   - `lib/api.ts` with typed Strapi wrappers and per-entity helpers
-  - `lib/supabase.ts` client singleton for storage/preferences use cases
-
 ## Strapi Content Type Spec
 Implement the following collection types in Strapi (`apps/backend/src/api/...`), matching names used in `apps/books/lib/api.ts`:
 - `books-customer`: customer profile, client type, receivables, credits, addresses
@@ -46,7 +44,5 @@ Implement the following collection types in Strapi (`apps/backend/src/api/...`),
 ## Usage / Migration
 - Run `npm run dev:books` from the repo root to start the Books app.
 - Required environment variables:
-  - `NEXT_PUBLIC_STRAPI_URL`
-  - `STRAPI_API_TOKEN` (for server contexts)
-  - `NEXT_PUBLIC_SUPABASE_URL`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `NEXT_PUBLIC_API_URL` or `NEXT_PUBLIC_STRAPI_URL`
+  - `STRAPI_API_TOKEN` (for server contexts, optional)

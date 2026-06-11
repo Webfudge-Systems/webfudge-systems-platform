@@ -16,6 +16,7 @@ export { Card } from './Card';
 export { Badge } from './Badge';
 export { Avatar } from './Avatar';
 export { Table } from './Table';
+export { TableColumnPicker } from './TableColumnPicker';
 export { TableSortPanel } from './TableSortPanel';
 export { Pagination } from './Pagination';
 export { EmptyState } from './EmptyState';
@@ -25,6 +26,13 @@ export { FormSectionCard } from './FormSectionCard';
 export { SidebarTrialUpsell } from './SidebarTrialUpsell';
 export { PwaInstallPrompt } from './PwaInstallPrompt';
 export { WorkspaceHeader } from './WorkspaceHeader';
+export {
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+  SidebarProductBranding,
+} from './LoginBrandCorner';
+export { WorkspaceBackButton, workspaceBackButtonClassName } from './WorkspaceBackButton';
 export {
   TableCellCreated,
   TableCellDateOnly,
@@ -39,10 +47,48 @@ export {
   TableCellPrimaryContact,
   TableCellTitleSubtitle,
   TableCellProbability,
+  TableCellNextConnect,
   formatRelativeTime,
   formatTableDate,
   ownerDisplayFromUser,
+  LEAD_STATUS_OPTIONS,
+  TASK_STATUS_OPTIONS,
+  DEAL_STAGE_OPTIONS,
+  ACCOUNT_STATUS_OPTIONS,
+  PM_TASK_STATUS_OPTIONS,
+  PROJECT_STATUS_OPTIONS,
+  PROPOSAL_STATUS_OPTIONS,
+  INVOICE_STATUS_OPTIONS,
+  crmLeadTableSelectFillProps,
+  crmTaskTableSelectFillProps,
+  crmDealStageTableSelectFillProps,
+  crmAccountTableSelectFillProps,
+  crmPmTaskTableSelectFillProps,
+  crmProjectTableSelectFillProps,
+  crmProposalTableSelectFillProps,
+  crmInvoiceTableSelectFillProps,
+  TableCellTaskStatus,
+  TableCellDealStage,
+  TableCellProjectStatus,
+  TableCellProposalStatus,
+  TableCellInvoiceStatus,
+  TableCellLeadStatusSelect,
+  TableCellTaskStatusSelect,
+  TableCellAccountStatusSelect,
+  TableCellProjectStatusSelect,
+  TableCellDealStageSelect,
+  TableCellProposalStatusSelect,
+  TableCellInvoiceStatusSelect,
+  TableCellCrmRowActions,
+  crmTableActionsColumn,
 } from './TableCrmCells';
+export { crmTableCellTheme } from '../utils/crmTableCellTheme';
+export {
+  NextConnectFlag,
+  getNextConnectFlagVariant,
+  getNextConnectFlagLabel,
+  toDateInputValue,
+} from './NextConnectFlag';
 export { TableRowActionMenuPortal } from './TableRowActionMenuPortal';
 
 // NAVIGATION COMPONENTS
@@ -74,9 +120,36 @@ export {
 // CRM / entity activity (timeline + chats panel)
 export { ActivitiesTimeline } from './ActivitiesTimeline';
 export { EntityActivityPanel } from './EntityActivityPanel';
+export { EntityFilesPanel } from './EntityFilesPanel';
+export { ChatMessageAttachments } from './ChatMessageAttachments';
 export { LinkifiedText } from './LinkifiedText';
 export { ChatMessageText } from './ChatMessageText';
 export { MentionComposer } from './MentionComposer';
 
 // Workspace calendar (CRM + PM — meetings, tasks, project timelines)
 export { UnifiedWorkspaceCalendar } from './UnifiedWorkspaceCalendar';
+
+// DASHBOARD CHARTS — shared across CRM, PM, and beyond
+export {
+  GradientStackedBarChart,
+  DonutChartFrame,
+  DonutChartCenterLabel,
+  DONUT_TOOLTIP_WRAPPER_STYLE,
+  DashboardChartPanel,
+  DashboardChartEmpty,
+  DASHBOARD_CHART_ACCENT,
+  DashboardBarTooltip,
+  DASHBOARD_BAR_TOOLTIP_CURSOR,
+  DashboardChartCanvas,
+  PRIMARY_ORANGE_SHADES,
+  STACK_SERIES,
+  STACK_ORDER,
+  DashboardKpiRow,
+  DashboardInsightShell,
+  InsightCountBadge,
+  DashboardProgressRow,
+  progressBarColorForValue,
+} from './DashboardCharts';
+
+// QUICK ACTIONS FAB — shared floating action button base
+export { QuickActionsFab } from './QuickActionsFab';

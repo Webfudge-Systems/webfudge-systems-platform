@@ -19,6 +19,7 @@ export {
   Badge,
   Avatar,
   Table,
+  TableColumnPicker,
   TableSortPanel,
   Pagination,
   EmptyState,
@@ -28,7 +29,13 @@ export {
   FormSectionCard,
   SidebarTrialUpsell,
   PwaInstallPrompt,
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+  SidebarProductBranding,
   WorkspaceHeader,
+  WorkspaceBackButton,
+  workspaceBackButtonClassName,
   TableCellCreated,
   TableCellDateOnly,
   TableCellOwner,
@@ -45,6 +52,42 @@ export {
   formatRelativeTime,
   formatTableDate,
   ownerDisplayFromUser,
+  NextConnectFlag,
+  TableCellNextConnect,
+  getNextConnectFlagVariant,
+  getNextConnectFlagLabel,
+  toDateInputValue,
+  LEAD_STATUS_OPTIONS,
+  TASK_STATUS_OPTIONS,
+  DEAL_STAGE_OPTIONS,
+  ACCOUNT_STATUS_OPTIONS,
+  PM_TASK_STATUS_OPTIONS,
+  PROJECT_STATUS_OPTIONS,
+  PROPOSAL_STATUS_OPTIONS,
+  INVOICE_STATUS_OPTIONS,
+  crmLeadTableSelectFillProps,
+  crmTaskTableSelectFillProps,
+  crmDealStageTableSelectFillProps,
+  crmAccountTableSelectFillProps,
+  crmPmTaskTableSelectFillProps,
+  crmProjectTableSelectFillProps,
+  crmProposalTableSelectFillProps,
+  crmInvoiceTableSelectFillProps,
+  TableCellTaskStatus,
+  TableCellDealStage,
+  TableCellProjectStatus,
+  TableCellProposalStatus,
+  TableCellInvoiceStatus,
+  TableCellLeadStatusSelect,
+  TableCellTaskStatusSelect,
+  TableCellAccountStatusSelect,
+  TableCellProjectStatusSelect,
+  TableCellDealStageSelect,
+  TableCellProposalStatusSelect,
+  TableCellInvoiceStatusSelect,
+  TableCellCrmRowActions,
+  crmTableActionsColumn,
+  crmTableCellTheme,
   TableRowActionMenuPortal,
   // Navigation Components
   Tabs,
@@ -58,6 +101,8 @@ export {
   WorkflowStatusBadge,
   ActivitiesTimeline,
   EntityActivityPanel,
+  EntityFilesPanel,
+  ChatMessageAttachments,
   LinkifiedText,
   ChatMessageText,
   MentionComposer,
@@ -74,6 +119,27 @@ export {
   DetailColumnHeading,
   InfoRow,
   SidebarCardTitle,
+  // Dashboard charts
+  GradientStackedBarChart,
+  DonutChartFrame,
+  DonutChartCenterLabel,
+  DONUT_TOOLTIP_WRAPPER_STYLE,
+  DashboardChartPanel,
+  DashboardChartEmpty,
+  DASHBOARD_CHART_ACCENT,
+  DashboardBarTooltip,
+  DASHBOARD_BAR_TOOLTIP_CURSOR,
+  DashboardChartCanvas,
+  PRIMARY_ORANGE_SHADES,
+  STACK_SERIES,
+  STACK_ORDER,
+  DashboardKpiRow,
+  DashboardInsightShell,
+  InsightCountBadge,
+  DashboardProgressRow,
+  progressBarColorForValue,
+  // Quick Actions FAB
+  QuickActionsFab,
 } from '../components';
 
 // LAYOUTS - Page structure and containers
@@ -99,6 +165,11 @@ export {
 
 // HOOKS
 export { useTableSort } from '../hooks/useTableSort';
+export { useTableColumnPreferences } from '../hooks/useTableColumnPreferences';
+export {
+  useIndustrySelectOptions,
+  collectDistinctIndustriesFromList,
+} from '../hooks/useIndustrySelectOptions';
 
 // UTILS
 export {
@@ -109,6 +180,7 @@ export {
   readStoredSortRules,
   writeStoredSortRules,
 } from '../utils/tableSort';
+export { userSelectLabel, buildUserSelectOptions } from '../utils/userSelectOptions';
 
 // THEME - Design tokens and configuration
 export { theme, colors, spacing, borderRadius, shadows, typography } from '../themes';

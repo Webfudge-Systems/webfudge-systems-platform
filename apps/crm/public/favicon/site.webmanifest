@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Webfudge CRM",
-  "short_name": "CRM",
-  "description": "Webfudge CRM for leads, deals, client accounts, and collaboration.",
+  "name": "Fudge Grow",
+  "short_name": "Grow",
+  "description": "Fudge Grow for leads, deals, client accounts, and collaboration.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

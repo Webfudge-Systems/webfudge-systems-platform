@@ -67,6 +67,16 @@ module.exports = {
       }
     },
     {
+      method: 'DELETE',
+      path: '/organizations/:id/users/:membershipId',
+      handler: 'organization.deleteUserMembership',
+      config: {
+        auth: false, // Use custom JWT middleware
+        policies: [],
+        middlewares: [],
+      }
+    },
+    {
       method: 'POST',
       path: '/organizations/:id/add-app',
       handler: 'organization.addApp',
@@ -110,6 +120,26 @@ module.exports = {
       method: 'DELETE',
       path: '/organizations/:id/roles/:roleId',
       handler: 'organization.deleteOrganizationRole',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      }
+    },
+    {
+      method: 'GET',
+      path: '/organizations/:id/security-settings',
+      handler: 'organization.getSecuritySettings',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      }
+    },
+    {
+      method: 'PATCH',
+      path: '/organizations/:id/security-settings',
+      handler: 'organization.updateSecuritySettings',
       config: {
         auth: false,
         policies: [],

@@ -11,19 +11,20 @@ import {
   Select,
   Textarea,
   FormSectionCard,
+  useIndustrySelectOptions,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../../lib/api/clientAccountService';
 import strapiClient from '../../../../../lib/strapiClient';
 import { canWriteCRM } from '../../../../../lib/rbac';
 import {
-  industryOptions,
   companyTypes,
   INDUSTRY_OTHER_VALUE,
   industryFormFromStored,
   resolveIndustryForSave,
   canonicalCompanyTypeValue,
 } from '@webfudge/utils';
+import { fetchStoredIndustriesForCrm } from '../../../../../lib/industryOptionsLoader';
 import {
   ArrowLeft,
   AtSign,
@@ -121,6 +122,10 @@ export default function EditClientAccountPage() {
   const router = useRouter();
   const id = params?.id;
   const canEditClientAccount = canWriteCRM('client_accounts');
+
+  const { options: industrySelectOptions, onIndustrySaved } = useIndustrySelectOptions({
+    fetchStoredIndustries: fetchStoredIndustriesForCrm,
+  });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -325,7 +330,9 @@ export default function EditClientAccountPage() {
 
     setSaving(true);
     try {
-      await clientAccountService.update(id, buildPayload());
+      const payload = buildPayload();
+      await clientAccountService.update(id, payload);
+      onIndustrySaved(payload.industry);
       setShowSuccess(true);
       window.setTimeout(() => {
         router.push(`/clients/accounts/${id}`);
@@ -457,9 +464,12 @@ export default function EditClientAccountPage() {
                   label="Industry *"
                   value={form.industry}
                   onChange={(v) => handleChange('industry', v)}
-                  options={industryOptions}
+                  options={industrySelectOptions}
                   placeholder="Select industry"
                   icon={Building2}
+                  allowCustom
+                  onCustomAdd={onIndustrySaved}
+                  searchable
                 />
                 {form.industry === INDUSTRY_OTHER_VALUE ? (
                   <Input

@@ -25,6 +25,7 @@ import {
   resolveUserRole,
 } from '@webfudge/auth'
 import { Avatar, Card } from '../index'
+import { WorkspaceBackButton } from '../WorkspaceBackButton'
 import { LoadingSpinner } from '../../feedback'
 
 export function WorkspaceHeader({
@@ -50,6 +51,10 @@ export function WorkspaceHeader({
   actionButtonClassName,
   notificationDropdownClassName,
   profileDropdownClassName,
+  showBack = false,
+  onBack,
+  backLabel = 'Back',
+  titleClassName,
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -227,11 +232,17 @@ export function WorkspaceHeader({
   const profileMenuItemClass =
     'w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-brand-foreground transition-colors hover:bg-brand-hover'
   const profileMenuIconClass = 'h-[18px] w-[18px] shrink-0 text-brand-text-light stroke-[2.2]'
+  const handleBack = onBack ?? (() => router.back())
 
   return (
     <Card glass className="relative z-[40]">
       <div className="flex items-center justify-between">
         <div className="flex-1">
+          {showBack ? (
+            <div className="mb-1">
+              <WorkspaceBackButton onClick={handleBack} label={backLabel} />
+            </div>
+          ) : null}
           {breadcrumbItems.length > 0 && (
             <div className="flex items-center gap-2 text-sm text-brand-text-light mb-2">
               {breadcrumbItems.map((item, index) => (
@@ -253,7 +264,12 @@ export function WorkspaceHeader({
               ))}
             </div>
           )}
-          <h1 className="text-xl sm:text-4xl font-normal text-brand-foreground mb-0.5 tracking-tight leading-snug">
+          <h1
+            className={
+              titleClassName ||
+              'text-xl sm:text-4xl font-normal text-brand-foreground mb-0.5 tracking-tight leading-snug'
+            }
+          >
             {title}
           </h1>
           {subtitle ? <p className="text-brand-text-light leading-relaxed">{subtitle}</p> : null}

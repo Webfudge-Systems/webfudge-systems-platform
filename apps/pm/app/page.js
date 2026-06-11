@@ -1,7 +1,7 @@
 'use client'
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@webfudge/auth'
 import { KPICard, EmptyState } from '@webfudge/ui'
 import { CheckSquare, Clock, CheckCircle2, AlertCircle } from 'lucide-react'
@@ -19,12 +19,19 @@ import taskService from '../lib/api/taskService'
 import strapiClient from '../lib/strapiClient'
 import { canReadPM } from '../lib/rbac'
 import { transformTask, transformUser, transformProject } from '../lib/api/dataTransformers'
+import { filterMajorTasks } from '../lib/taskListUtils'
 
 /**
  * Shared height for My Tasks + Upcoming Deadlines.
  * Sized for: card header + 3 deadline rows (~56px each) + compact calendar + ~10 task table rows.
  */
 const DASHBOARD_MAIN_ROW_CLASS = 'h-[min(680px,72vh)] min-h-[600px]'
+
+const OPEN_TASK_STATUSES = new Set(['COMPLETED', 'CANCELLED'])
+
+function isOpenAssignedTask(task) {
+  return task && !OPEN_TASK_STATUSES.has(task.strapiStatus)
+}
 
 function getGreeting() {
   const hour = new Date().getHours()
@@ -48,7 +55,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [projects, setProjects] = useState([])
   const [allTasks, setAllTasks] = useState([])
-  const [collaboratorTasks, setCollaboratorTasks] = useState([])
   const [assigneeTasks, setAssigneeTasks] = useState([])
   const [people, setPeople] = useState([])
   const [stats, setStats] = useState({ todo: 0, inProgress: 0, done: 0, overdue: 0 })
@@ -66,6 +72,13 @@ export default function DashboardPage() {
   const canViewProjects = canReadPM('projects')
   const canViewTasks = canReadPM('tasks') || canReadPM('my_tasks')
 
+  const openAssigneeTasks = useMemo(
+    () => assigneeTasks.filter(isOpenAssignedTask),
+    [assigneeTasks]
+  )
+
+  const majorTasks = useMemo(() => filterMajorTasks(allTasks), [allTasks])
+
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -76,7 +89,7 @@ export default function DashboardPage() {
           canViewProjects
             ? projectService.getAllProjects({ pageSize: 10, sort: 'updatedAt:desc' })
             : Promise.resolve({ data: [] }),
-          canViewTasks ? taskService.getAllTasks({ pageSize: 200 }) : Promise.resolve({ data: [] }),
+          canViewTasks ? taskService.fetchAllTasks({ pageSize: 500, sort: 'updatedAt:desc' }).then((data) => ({ data })) : Promise.resolve({ data: [] }),
           strapiClient.getXtrawrkxUsers({ pageSize: 200 }),
         ])
 
@@ -88,12 +101,13 @@ export default function DashboardPage() {
         if (allTasksRes.status === 'fulfilled') {
           const rawTasks = allTasksRes.value?.data || []
           const transformed = rawTasks.map(transformTask).filter(Boolean)
+          const majorTasks = filterMajorTasks(transformed)
           const now = new Date()
           setStats({
-            todo: transformed.filter((t) => t.strapiStatus === 'SCHEDULED').length,
-            inProgress: transformed.filter((t) => t.strapiStatus === 'IN_PROGRESS').length,
-            done: transformed.filter((t) => t.strapiStatus === 'COMPLETED').length,
-            overdue: transformed.filter(
+            todo: majorTasks.filter((t) => t.strapiStatus === 'SCHEDULED').length,
+            inProgress: majorTasks.filter((t) => t.strapiStatus === 'IN_PROGRESS').length,
+            done: majorTasks.filter((t) => t.strapiStatus === 'COMPLETED').length,
+            overdue: majorTasks.filter(
               (t) => t.dueDate && new Date(t.dueDate) < now && t.strapiStatus !== 'COMPLETED'
             ).length,
           })
@@ -102,10 +116,19 @@ export default function DashboardPage() {
 
         if (canViewTasks && userId) {
           try {
-            const mineRes = await taskService.getPMTasksByAssignee(userId, { pageSize: 100 })
-            setAssigneeTasks((mineRes?.data || []).map(transformTask).filter(Boolean))
+            const mineRaw = await taskService.fetchPMTasksByAssignee(userId, { pageSize: 500, sort: 'updatedAt:desc' });
+            const uid = String(userId);
+            const mine = mineRaw
+              .map(transformTask)
+              .filter(Boolean)
+              .filter(
+                (task) =>
+                  (task.assigneeUserIds || []).map(String).includes(uid) ||
+                  (task.assignees || []).some((a) => a?.id != null && String(a.id) === uid)
+              );
+            setAssigneeTasks(mine);
           } catch {
-            setAssigneeTasks([])
+            setAssigneeTasks([]);
           }
         } else {
           setAssigneeTasks([])
@@ -123,16 +146,6 @@ export default function DashboardPage() {
           setPeople(transformed)
         }
 
-        if (userId) {
-          try {
-            const collabRes = await taskService.getCollaboratorTasks(userId, {
-              pageSize: 100,
-              sort: 'updatedAt:desc',
-              openOnly: true,
-            })
-            setCollaboratorTasks((collabRes?.data || []).map(transformTask).filter(Boolean))
-          } catch { }
-        }
       } catch (error) {
         console.error('Dashboard load error:', error)
       } finally {
@@ -220,8 +233,8 @@ export default function DashboardPage() {
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-stretch">
         <div className={`lg:col-span-3 ${DASHBOARD_MAIN_ROW_CLASS}`}>
           <DashboardMyTasksWidget
-            tasks={collaboratorTasks}
-            totalCount={collaboratorTasks.length}
+            tasks={openAssigneeTasks}
+            totalCount={openAssigneeTasks.length}
             loading={false}
             className="w-full"
           />
@@ -236,8 +249,8 @@ export default function DashboardPage() {
 
       {/* Task overview, team workload, projects overview — content-sized, no min-height stretch */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <TaskOverviewWidget stats={stats} tasks={allTasks} />
-        <TeamWorkloadWidget people={people} tasks={allTasks} />
+        <TaskOverviewWidget stats={stats} tasks={majorTasks} />
+        <TeamWorkloadWidget people={people} tasks={majorTasks} />
         <ProjectsOverviewWidget projects={projects} canViewProjects={canViewProjects} />
       </div>
       </>

@@ -11,6 +11,7 @@ import {
   KPICard,
   LoadingSpinner,
   Modal,
+  Pagination,
   Select,
   Table,
   TableCellCreated,
@@ -22,6 +23,10 @@ import {
   ViewToggleGroup,
   ViewToggleButton,
   ownerDisplayFromUser,
+  TableCellTaskStatusSelect,
+  PM_TASK_STATUS_OPTIONS,
+  useTableColumnPreferences,
+  TableColumnPicker,
 } from '@webfudge/ui';
 import {
   CheckSquare,
@@ -45,7 +50,6 @@ import {
   Table2,
   Trash2,
   CheckCircle,
-  GripVertical,
 } from 'lucide-react';
 import PMPageHeader from '../../components/PMPageHeader';
 import PMRowActions from '../../components/PMRowActions';
@@ -61,7 +65,6 @@ import TaskAssigneesPicker from '../../components/TaskAssigneesPicker';
 import {
   pmTableSelectFillProps,
   PRIORITY_OPTIONS,
-  TASK_STATUS_OPTIONS,
 } from '../../components/PMStatusBadge';
 import projectService from '../../lib/api/projectService';
 import { fetchPmAssignableUsers } from '../../lib/api/messageService';
@@ -70,8 +73,22 @@ import taskCommentService from '../../lib/api/taskCommentService';
 import { transformProject, transformTask, transformUser } from '../../lib/api/dataTransformers';
 import { usePmTableSort } from '../../hooks/usePmTableSort';
 import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
+import {
+  buildChildrenByParentId,
+  enrichTasksWithProjectManager,
+  filterMajorTasks,
+  isMajorTask,
+  mergeTasksById,
+} from '../../lib/taskListUtils';
+import {
+  canCreateSubtaskOnTask,
+  canDeleteTaskInPm,
+  canEditTaskInPm,
+  getPmOrgRoleKind,
+} from '../../lib/pmOrgRoles';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.myTasks.tableSort';
+const TABLE_PAGE_SIZE = 12;
 
 const STATUS_TABS = [
   { id: 'MY_TASKS', label: 'My Tasks' },
@@ -129,7 +146,7 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'project', label: 'Project' },
   { key: 'status', label: 'Status' },
   { key: 'priority', label: 'Priority' },
-  { key: 'assigner', label: 'Assigner' },
+  { key: 'assigner', label: 'Reporter' },
   { key: 'assignees', label: 'Assignees' },
   { key: 'startDate', label: 'Start date' },
   { key: 'dueDate', label: 'Due date' },
@@ -156,69 +173,6 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   acc[key] = DEFAULT_ON_COLUMN_KEYS.has(key);
   return acc;
 }, {});
-
-function loadColumnVisibility() {
-  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_VISIBILITY };
-  try {
-    const raw = window.localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_COLUMN_VISIBILITY };
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_COLUMN_VISIBILITY, ...parsed };
-  } catch {
-    return { ...DEFAULT_COLUMN_VISIBILITY };
-  }
-}
-
-function loadColumnOrder() {
-  if (typeof window === 'undefined') return [...REORDERABLE_COLUMN_KEYS];
-  try {
-    const raw = window.localStorage.getItem(COLUMN_ORDER_STORAGE_KEY);
-    if (!raw) return [...REORDERABLE_COLUMN_KEYS];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [...REORDERABLE_COLUMN_KEYS];
-    const valid = new Set(REORDERABLE_COLUMN_KEYS);
-    const ordered = parsed.filter((k) => valid.has(k));
-    const missing = REORDERABLE_COLUMN_KEYS.filter((k) => !ordered.includes(k));
-    return [...ordered, ...missing];
-  } catch {
-    return [...REORDERABLE_COLUMN_KEYS];
-  }
-}
-
-function persistColumnOrder(order) {
-  try {
-    window.localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(order));
-  } catch {
-    /* ignore */
-  }
-}
-
-function loadColumnWidths() {
-  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_WIDTHS };
-  try {
-    const raw = window.localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_COLUMN_WIDTHS };
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_COLUMN_WIDTHS };
-    const merged = { ...DEFAULT_COLUMN_WIDTHS, ...parsed };
-    for (const [key, min] of Object.entries(MIN_COLUMN_WIDTHS)) {
-      if (typeof merged[key] === 'number' && merged[key] < min) {
-        merged[key] = min;
-      }
-    }
-    return merged;
-  } catch {
-    return { ...DEFAULT_COLUMN_WIDTHS };
-  }
-}
-
-function persistColumnWidths(widths) {
-  try {
-    window.localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(widths));
-  } catch {
-    /* ignore */
-  }
-}
 
 function assignerStrapiShape(row, users) {
   const u = users.find((x) => Number(x.id) === Number(row.assignerId));
@@ -288,6 +242,7 @@ export default function MyTasksPage() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
   const openedCreateFromQuery = useRef(false);
+  const loadTasksRequestIdRef = useRef(0);
   const [allTasks, setAllTasks] = useState([]);
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
@@ -304,12 +259,8 @@ export default function MyTasksPage() {
   const [taskModal, setTaskModal] = useState({ open: false, task: null, parentContext: null });
   const [expandedSubtaskParents, setExpandedSubtaskParents] = useState(() => new Set());
   const [deleteModal, setDeleteModal] = useState({ open: false, task: null });
-  const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [promoteModal, setPromoteModal] = useState({ open: false, task: null });
   const [sortPickerOpen, setSortPickerOpen] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
-  const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
-  const [columnWidths, setColumnWidths] = useState(() => ({ ...DEFAULT_COLUMN_WIDTHS }));
-  const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   const [commentComposerMenu, setCommentComposerMenu] = useState(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [commentsByTask, setCommentsByTask] = useState({});
@@ -317,32 +268,65 @@ export default function MyTasksPage() {
   const [commentLoadingTaskId, setCommentLoadingTaskId] = useState(null);
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
-  const toolbarRef = useRef(null);
-  const columnDragKeyRef = useRef(null);
-  const columnDropIndicatorRef = useRef(null);
+  const [tablePage, setTablePage] = useState(1);
+
+  const {
+    columnVisibility,
+    columnOrder,
+    columnPickerOpen,
+    setColumnPickerOpen,
+    columnDropIndicator,
+    toolbarRef,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    tableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  });
 
   const getUserId = useCallback(() => {
     const u = user?.attributes || user;
     return u?.id || user?.id || null;
   }, [user]);
 
-  const loadTasks = useCallback(async () => {
+  const pmOrgRoleKind = useMemo(() => getPmOrgRoleKind(), []);
+  const memberScopedTasks = pmOrgRoleKind === 'member';
+
+  const loadTasks = useCallback(async ({ silent = false, mergeWithPrevious = false } = {}) => {
+    const requestId = ++loadTasksRequestIdRef.current;
     try {
-      setLoading(true);
-      const params = { pageSize: 200, sort: 'updatedAt:desc' };
+      if (!silent) setLoading(true);
+      const params = { pageSize: 500, sort: 'updatedAt:desc' };
       if (filters.priority) params.priority = filters.priority;
       if (filters.projectId) params.projectId = filters.projectId;
 
-      const res = await taskService.getAllTasks(params);
-      const list = (res?.data || []).map(transformTask).filter(Boolean);
-      setAllTasks(list);
+      const rawList = await taskService.fetchAllTasks(params);
+      if (requestId !== loadTasksRequestIdRef.current) return;
+      const list = rawList.map(transformTask).filter(Boolean);
+      if (mergeWithPrevious) {
+        setAllTasks((prev) => mergeTasksById(list, prev));
+      } else {
+        setAllTasks(list);
+      }
     } catch (error) {
       console.error('Load tasks error:', error);
-      setAllTasks([]);
+      if (requestId !== loadTasksRequestIdRef.current) return;
+      if (!silent) setAllTasks([]);
     } finally {
-      setLoading(false);
+      if (requestId === loadTasksRequestIdRef.current && !silent) setLoading(false);
     }
-  }, [filters.priority, filters.projectId, getUserId]);
+  }, [filters.priority, filters.projectId]);
 
   const currentUserId = useMemo(() => {
     const id = getUserId();
@@ -368,8 +352,15 @@ export default function MyTasksPage() {
     [isMyTask]
   );
 
+  const allTasksEnriched = useMemo(
+    () => enrichTasksWithProjectManager(allTasks, projects),
+    [allTasks, projects]
+  );
+
+  const majorTasks = useMemo(() => filterMajorTasks(allTasksEnriched), [allTasksEnriched]);
+
   const filteredTasks = useMemo(() => {
-    let list = [...allTasks];
+    let list = [...allTasksEnriched];
     if (activeTab !== 'all') {
       if (activeTab === 'MY_TASKS') list = list.filter(isActiveMyTask);
       else if (activeTab === 'OVERDUE') list = list.filter(isTaskOverdue);
@@ -385,12 +376,13 @@ export default function MyTasksPage() {
       });
     }
     return list;
-  }, [allTasks, activeTab, searchQuery, isActiveMyTask]);
+  }, [allTasksEnriched, activeTab, searchQuery, isActiveMyTask]);
 
+  /** My Tasks: assigned subtasks as their own rows; other tabs: major tasks only. */
   const tableRootTasks = useMemo(() => {
-    const idSet = new Set(allTasks.map((t) => t.id).filter((x) => x != null));
-    return filteredTasks.filter((t) => !t.parentId || !idSet.has(t.parentId));
-  }, [allTasks, filteredTasks]);
+    if (activeTab === 'MY_TASKS') return filteredTasks;
+    return filteredTasks.filter((task) => isMajorTask(task, allTasksEnriched));
+  }, [filteredTasks, activeTab, allTasksEnriched]);
 
   const {
     sortedData: sortedTableRootTasks,
@@ -410,15 +402,19 @@ export default function MyTasksPage() {
     data: tableRootTasks,
   });
 
+  const totalTableRows = sortedTableRootTasks.length;
+  const totalTablePages = Math.max(1, Math.ceil(totalTableRows / TABLE_PAGE_SIZE));
+  const paginatedTableTasks = useMemo(() => {
+    if (taskViewMode !== 'table') return sortedTableRootTasks;
+    const start = (tablePage - 1) * TABLE_PAGE_SIZE;
+    return sortedTableRootTasks.slice(start, start + TABLE_PAGE_SIZE);
+  }, [sortedTableRootTasks, tablePage, taskViewMode]);
+
   const childrenByParentId = useMemo(() => {
-    const map = {};
-    for (const task of allTasks) {
-      if (!task?.parentId) continue;
-      if (!map[task.parentId]) map[task.parentId] = [];
-      map[task.parentId].push(task);
-    }
-    return map;
-  }, [allTasks]);
+    const excludeIds =
+      activeTab === 'MY_TASKS' ? new Set(filteredTasks.map((t) => t?.id).filter(Boolean)) : undefined;
+    return buildChildrenByParentId(allTasksEnriched, { excludeTaskIds: excludeIds });
+  }, [allTasksEnriched, activeTab, filteredTasks]);
 
   const toggleSubtaskExpand = useCallback((taskId) => {
     setExpandedSubtaskParents((prev) => {
@@ -447,14 +443,14 @@ export default function MyTasksPage() {
   }, [tableRootTasks]);
 
   const taskKpis = useMemo(() => {
-    const out = { total: allTasks.length, todo: 0, inProgress: 0, completed: 0 };
-    for (const task of allTasks) {
+    const out = { total: majorTasks.length, todo: 0, inProgress: 0, completed: 0 };
+    for (const task of majorTasks) {
       if (task.strapiStatus === 'SCHEDULED') out.todo += 1;
       if (task.strapiStatus === 'IN_PROGRESS') out.inProgress += 1;
       if (task.strapiStatus === 'COMPLETED') out.completed += 1;
     }
     return out;
-  }, [allTasks]);
+  }, [majorTasks]);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -474,24 +470,17 @@ export default function MyTasksPage() {
   }, [loadTasks]);
 
   useEffect(() => {
-    loadLookups();
-  }, [loadLookups]);
+    setTablePage(1);
+  }, [activeTab, searchQuery, filters.priority, filters.projectId, taskViewMode]);
 
   useEffect(() => {
-    setColumnVisibility(loadColumnVisibility());
-    setColumnOrder(loadColumnOrder());
-    const widths = loadColumnWidths();
-    setColumnWidths(widths);
-    persistColumnWidths(widths);
-  }, []);
+    const maxPage = Math.max(1, Math.ceil(sortedTableRootTasks.length / TABLE_PAGE_SIZE));
+    setTablePage((prev) => Math.min(prev, maxPage));
+  }, [sortedTableRootTasks.length]);
 
-  const handleColumnWidthsChange = useCallback((next) => {
-    setColumnWidths(next);
-  }, []);
-
-  const handleColumnResizeEnd = useCallback((next) => {
-    persistColumnWidths(next);
-  }, []);
+  useEffect(() => {
+    loadLookups();
+  }, [loadLookups]);
 
   const persistTaskView = useCallback((mode) => {
     try {
@@ -522,97 +511,6 @@ export default function MyTasksPage() {
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [columnPickerOpen, sortPickerOpen]);
 
-  const setColumnVisible = useCallback((key, visible) => {
-    setColumnVisibility((prev) => {
-      const next = { ...prev, [key]: visible };
-      try {
-        window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  }, []);
-
-  const handleColumnDragStart = useCallback((e, key) => {
-    columnDragKeyRef.current = key;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', key);
-    const row = e.currentTarget.closest('[data-column-row]');
-    if (row) row.classList.add('opacity-60');
-  }, []);
-
-  const handleColumnDragEnd = useCallback((e) => {
-    columnDragKeyRef.current = null;
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    const row = e.currentTarget.closest('[data-column-row]');
-    if (row) row.classList.remove('opacity-60');
-  }, []);
-
-  const handleColumnRowDragOver = useCallback((e, key) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const fromKey = columnDragKeyRef.current || e.dataTransfer.getData('text/plain');
-    if (!fromKey || fromKey === key) {
-      columnDropIndicatorRef.current = null;
-      setColumnDropIndicator(null);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const place = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
-    const hint = { targetKey: key, place };
-    columnDropIndicatorRef.current = hint;
-    setColumnDropIndicator(hint);
-  }, []);
-
-  const handleColumnListDragLeave = useCallback((e) => {
-    const related = e.relatedTarget;
-    if (related && e.currentTarget.contains(related)) return;
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-  }, []);
-
-  const handleColumnDrop = useCallback((e, targetKey) => {
-    e.preventDefault();
-    const fromKey = columnDragKeyRef.current || e.dataTransfer.getData('text/plain');
-    const hint = columnDropIndicatorRef.current;
-    const place = hint?.targetKey === targetKey ? hint.place : 'before';
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    if (!fromKey || fromKey === targetKey) return;
-    setColumnOrder((prev) => {
-      const next = [...prev];
-      const fi = next.indexOf(fromKey);
-      const ti0 = next.indexOf(targetKey);
-      if (fi === -1 || ti0 === -1) return prev;
-      next.splice(fi, 1);
-      const ti = next.indexOf(targetKey);
-      const insertAt = place === 'after' ? ti + 1 : ti;
-      next.splice(insertAt, 0, fromKey);
-      persistColumnOrder(next);
-      return next;
-    });
-  }, []);
-
-  const resetColumnTablePreferences = useCallback(() => {
-    const vis = { ...DEFAULT_COLUMN_VISIBILITY };
-    const order = [...REORDERABLE_COLUMN_KEYS];
-    const widths = { ...DEFAULT_COLUMN_WIDTHS };
-    setColumnVisibility(vis);
-    setColumnOrder(order);
-    setColumnWidths(widths);
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    try {
-      window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(vis));
-      persistColumnOrder(order);
-      persistColumnWidths(widths);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
   useEffect(() => {
     const create = searchParams.get('createTask');
     if (create !== '1' && create !== 'true') {
@@ -626,14 +524,16 @@ export default function MyTasksPage() {
   }, [router, searchParams]);
 
   const tabsWithBadges = useMemo(() => {
-    const counts = { all: allTasks.length, MY_TASKS: 0, IN_PROGRESS: 0, OVERDUE: 0 };
+    const counts = { all: majorTasks.length, MY_TASKS: 0, IN_PROGRESS: 0, OVERDUE: 0 };
     for (const task of allTasks) {
       if (isActiveMyTask(task)) counts.MY_TASKS += 1;
+    }
+    for (const task of majorTasks) {
       if (task.strapiStatus === 'IN_PROGRESS') counts.IN_PROGRESS += 1;
-      if (isTaskOverdue(task)) counts.OVERDUE = (counts.OVERDUE || 0) + 1;
+      if (isTaskOverdue(task)) counts.OVERDUE += 1;
     }
     return STATUS_TABS.map((tab) => ({ ...tab, badge: counts[tab.id] || 0 }));
-  }, [allTasks, isActiveMyTask]);
+  }, [allTasks, majorTasks, isActiveMyTask]);
 
   const updateTask = useCallback(
     async (task, patch) => {
@@ -653,13 +553,19 @@ export default function MyTasksPage() {
   const handleSaveTask = async (payload) => {
     try {
       setSaving(true);
+      let savedTask = null;
       if (taskModal.task) {
-        await taskService.updateTask(taskModal.task.id, payload);
+        const res = await taskService.updateTask(taskModal.task.id, payload);
+        savedTask = transformTask(res?.data);
       } else {
-        await taskService.createTask(payload);
+        const res = await taskService.createTask(payload);
+        savedTask = transformTask(res?.data);
       }
       setTaskModal({ open: false, task: null, parentContext: null });
-      await loadTasks();
+      if (savedTask?.id) {
+        setAllTasks((prev) => mergeTasksById([savedTask], prev));
+      }
+      await loadTasks({ silent: true, mergeWithPrevious: true });
     } catch (error) {
       console.error('Save task error:', error);
     } finally {
@@ -668,7 +574,7 @@ export default function MyTasksPage() {
   };
 
   const handleDeleteTask = async () => {
-    if (!deleteModal.task) return;
+    if (!deleteModal.task || !canDeleteTaskInPm(deleteModal.task, getUserId())) return;
     try {
       setSaving(true);
       await taskService.deleteTask(deleteModal.task.id);
@@ -676,6 +582,21 @@ export default function MyTasksPage() {
       await loadTasks();
     } catch (error) {
       console.error('Delete task error:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePromoteSubtask = async () => {
+    const st = promoteModal.task;
+    if (!st?.id || memberScopedTasks) return;
+    try {
+      setSaving(true);
+      await taskService.promoteSubtaskToMajorTask(st.id);
+      setPromoteModal({ open: false, task: null });
+      await loadTasks();
+    } catch (error) {
+      console.error('Promote subtask error:', error);
     } finally {
       setSaving(false);
     }
@@ -843,17 +764,13 @@ export default function MyTasksPage() {
       visibilityKey: 'status',
       label: 'STATUS',
       render: (_, row) => (
-        <div onClick={(event) => event.stopPropagation()}>
-          <Select
-            value={row.strapiStatus}
-            options={TASK_STATUS_OPTIONS}
-            onChange={(status) => updateTask(row, { status })}
-            disabled={savingId === row.id}
-            {...pmTableSelectFillProps(row.strapiStatus, 'status')}
-            containerClassName="min-w-[150px]"
-            placeholder="Status"
-          />
-        </div>
+        <TableCellTaskStatusSelect
+          status={row.strapiStatus}
+          onStatusChange={(status) => updateTask(row, { status })}
+          saving={savingId === row.id}
+          options={PM_TASK_STATUS_OPTIONS}
+          fillStyle="pm"
+        />
       ),
     },
     {
@@ -877,7 +794,7 @@ export default function MyTasksPage() {
     {
       key: 'assigner',
       visibilityKey: 'assigner',
-      label: 'ASSIGNER',
+      label: 'REPORTER',
       render: (_, row) => {
         const assignerUser = row.assigner || assignerStrapiShape(row, users);
         const derived = ownerDisplayFromUser(assignerUser);
@@ -887,12 +804,12 @@ export default function MyTasksPage() {
           <div
             className="flex min-w-[180px] max-w-[min(280px,22vw)] items-center gap-2.5 py-0.5"
             onClick={(event) => event.stopPropagation()}
-            title={label || 'No assigner'}
+            title={label || 'No reporter'}
           >
             <Avatar
               src={assignerUser?.avatar || undefined}
               fallback={empty ? '?' : derived.avatarFallback}
-              alt={label || 'Assigner'}
+              alt={label || 'Reporter'}
               size="sm"
               className={`flex-shrink-0 text-white ${empty ? 'bg-gray-300 text-gray-600' : 'bg-gray-600'}`}
             />
@@ -924,7 +841,7 @@ export default function MyTasksPage() {
       key: 'startDate',
       visibilityKey: 'startDate',
       label: 'START DATE',
-      render: (_, row) => <TableCellCreated dateString={row.startDate} />,
+      render: (_, row) => <TableCellCreated dateString={row.startDate} dateMode="calendar" />,
     },
     {
       key: 'dueDate',
@@ -932,7 +849,7 @@ export default function MyTasksPage() {
       label: 'DUE DATE',
       render: (_, row) => (
         <div className={isTaskOverdue(row) ? '[&_.font-semibold]:text-red-700 [&_.text-gray-500]:text-red-600/90' : ''}>
-          <TableCellCreated dateString={row.dueDate} />
+          <TableCellCreated dateString={row.dueDate} dateMode="calendar" />
         </div>
       ),
     },
@@ -1006,11 +923,16 @@ export default function MyTasksPage() {
             triggerClassName="inline-flex h-9 w-9 items-center justify-center rounded-md p-2 text-teal-600 transition hover:bg-teal-50"
             items={[
               { label: 'View', icon: Eye, onClick: () => router.push(`/tasks/${row.id}`) },
-              { label: 'Edit', icon: Edit3, onClick: () => setTaskModal({ open: true, task: row, parentContext: null }) },
+              ...(canEditTaskInPm(row, getUserId())
+                ? [{ label: 'Edit', icon: Edit3, onClick: () => setTaskModal({ open: true, task: row, parentContext: null }) }]
+                : []),
               { label: 'Copy link', icon: Copy, onClick: () => copyTaskLink(row) },
-              { label: 'Delete', icon: Trash2, danger: true, onClick: () => setDeleteModal({ open: true, task: row }) },
+              ...(canDeleteTaskInPm(row, getUserId())
+                ? [{ label: 'Delete', icon: Trash2, danger: true, onClick: () => setDeleteModal({ open: true, task: row }) }]
+                : []),
             ]}
           />
+          {canEditTaskInPm(row, getUserId()) ? (
           <Button
             variant="ghost"
             size="sm"
@@ -1023,6 +945,7 @@ export default function MyTasksPage() {
           >
             <Pencil className="h-4 w-4" />
           </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="sm"
@@ -1035,6 +958,7 @@ export default function MyTasksPage() {
           >
             <Link2 className="h-4 w-4" />
           </Button>
+          {canDeleteTaskInPm(row, getUserId()) ? (
           <Button
             variant="ghost"
             size="sm"
@@ -1047,6 +971,7 @@ export default function MyTasksPage() {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+          ) : null}
         </div>
       ),
     },
@@ -1193,96 +1118,32 @@ export default function MyTasksPage() {
           onClear={clearSort}
           maxRules={sortMaxRules}
         />
-        {columnPickerOpen ? (
-          <div
-            className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl"
-            role="dialog"
-            aria-label="Table columns"
-          >
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">Columns</p>
-            <p className="mb-2 text-xs leading-snug text-gray-500">
-              Task name and actions stay visible. Toggle fields below; drag the grip to reorder. An orange line shows where the row will land.
-            </p>
-            <ul
-              className="max-h-[min(51vh,18.75rem)] space-y-0 overflow-y-auto pr-1"
-              onDragLeave={handleColumnListDragLeave}
-            >
-              <li data-column-row className="relative flex items-stretch rounded-lg border border-transparent">
-                <span className="flex w-8 shrink-0 items-center justify-center text-gray-300" aria-hidden title="Fixed order">
-                  —
-                </span>
-                <div className="flex min-w-0 flex-1 items-center px-2 py-1 text-sm text-gray-700">
-                  <span className="font-medium">Task name</span>
-                  <span className="ml-1.5 text-xs text-gray-500">(always visible)</span>
-                </div>
-              </li>
-              {columnOrder.map((key) => {
-                const def = TOGGLEABLE_COLUMNS.find((c) => c.key === key);
-                if (!def) return null;
-                const showLineBefore =
-                  columnDropIndicator?.targetKey === key && columnDropIndicator.place === 'before';
-                const showLineAfter =
-                  columnDropIndicator?.targetKey === key && columnDropIndicator.place === 'after';
-                return (
-                  <li
-                    key={key}
-                    data-column-row
-                    className="relative flex items-stretch rounded-lg border border-transparent hover:border-gray-100"
-                    onDragOver={(e) => handleColumnRowDragOver(e, key)}
-                    onDrop={(e) => handleColumnDrop(e, key)}
-                  >
-                    {showLineBefore ? (
-                      <div
-                        className="pointer-events-none absolute left-1 right-2 top-0 z-10 h-[3px] -translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <span
-                      draggable
-                      onDragStart={(e) => handleColumnDragStart(e, key)}
-                      onDragEnd={handleColumnDragEnd}
-                      className="flex w-8 shrink-0 cursor-grab items-center justify-center rounded-l-lg text-gray-400 active:cursor-grabbing hover:bg-gray-100 hover:text-gray-600"
-                      aria-label={`Drag to reorder ${def.label}`}
-                    >
-                      <GripVertical className="h-4 w-4" strokeWidth={2} aria-hidden />
-                    </span>
-                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-gray-800 hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 shrink-0 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                        checked={Boolean(columnVisibility[key])}
-                        onChange={(e) => setColumnVisible(key, e.target.checked)}
-                      />
-                      <span>{def.label}</span>
-                    </label>
-                    {showLineAfter ? (
-                      <div
-                        className="pointer-events-none absolute bottom-0 left-1 right-2 z-10 h-[3px] translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                        aria-hidden
-                      />
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="mt-2 border-t border-gray-100 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full text-sm font-medium text-gray-700"
-                onClick={resetColumnTablePreferences}
-              >
-                Reset to default
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        <TableColumnPicker
+          open={columnPickerOpen && taskViewMode === 'table'}
+          description="Task name and actions stay visible. Drag column edges in the table to resize."
+          reorderableRows={TOGGLEABLE_COLUMNS}
+          columnVisibility={columnVisibility}
+          columnOrder={columnOrder}
+          columnDropIndicator={columnDropIndicator}
+          onSetVisible={setColumnVisible}
+          onDragStart={handleColumnDragStart}
+          onDragEnd={handleColumnDragEnd}
+          onRowDragOver={handleColumnRowDragOver}
+          onListDragLeave={handleColumnListDragLeave}
+          onDrop={handleColumnDrop}
+          onReset={resetColumnTablePreferences}
+        />
       </div>
 
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{sortedTableRootTasks.length}</span> result
-        {sortedTableRootTasks.length !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{totalTableRows}</span> result
+        {totalTableRows !== 1 ? 's' : ''}
+        {taskViewMode === 'table' && totalTableRows > TABLE_PAGE_SIZE ? (
+          <>
+            {' '}
+            (page {tablePage} of {totalTablePages})
+          </>
+        ) : null}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -1294,13 +1155,10 @@ export default function MyTasksPage() {
           <>
             <Table
               columns={visibleTableColumns}
-              data={sortedTableRootTasks}
+              data={paginatedTableTasks}
               keyField="id"
               variant="modernEmbedded"
-              resizableColumns
-              columnWidths={columnWidths}
-              onColumnWidthsChange={handleColumnWidthsChange}
-              onColumnResizeEnd={handleColumnResizeEnd}
+              {...tableResizeProps}
               onRowClick={(row) => router.push(`/tasks/${row.id}`)}
               renderAfterRow={(row) => (
                 <TaskSubtasksAfterRow
@@ -1315,6 +1173,10 @@ export default function MyTasksPage() {
                   onEditTask={(subtask) => setTaskModal({ open: true, task: subtask, parentContext: null })}
                   onCopyTaskLink={copyTaskLink}
                   onDeleteTask={(subtask) => setDeleteModal({ open: true, task: subtask })}
+                  onPromoteSubtask={(subtask) => setPromoteModal({ open: true, task: subtask })}
+                  currentUserId={getUserId()}
+                  memberScopedTasks={memberScopedTasks}
+                  canAddSubtaskOnTask={(r) => canCreateSubtaskOnTask(r, getUserId())}
                   onAddSubtask={(r) =>
                     setTaskModal({
                       open: true,
@@ -1348,6 +1210,16 @@ export default function MyTasksPage() {
                 )}
               </div>
             )}
+            {totalTablePages > 1 ? (
+              <Pagination
+                currentPage={tablePage}
+                totalPages={totalTablePages}
+                totalItems={totalTableRows}
+                itemsPerPage={TABLE_PAGE_SIZE}
+                onPageChange={setTablePage}
+                className="border-t border-gray-200 bg-gray-50"
+              />
+            ) : null}
           </>
         ) : taskViewMode === 'list' ? (
           <MyTasksListByStatus
@@ -1413,6 +1285,8 @@ export default function MyTasksPage() {
         users={users}
         defaultAssignerId={getUserId() ? String(getUserId()) : ''}
         defaultStatus={activeTab === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'SCHEDULED'}
+        assigneePickerScopedToProject
+        requiresAssignmentApproval={memberScopedTasks}
         saving={saving}
       />
 
@@ -1431,6 +1305,31 @@ export default function MyTasksPage() {
           </div>
         </div>
       </Modal>
+
+      {!memberScopedTasks ? (
+        <Modal
+          isOpen={promoteModal.open}
+          onClose={() => setPromoteModal({ open: false, task: null })}
+          title="Make major task"
+          size="sm"
+        >
+          <div className="space-y-5">
+            <p className="text-sm text-gray-700">
+              Convert{' '}
+              <span className="font-semibold text-gray-900">{promoteModal.task?.name || 'this subtask'}</span>{' '}
+              into a standalone major task? It will no longer appear under its parent.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setPromoteModal({ open: false, task: null })} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={handlePromoteSubtask} disabled={saving}>
+                {saving ? 'Converting...' : 'Make major task'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
 
       {commentComposerMenu &&
         (() => {

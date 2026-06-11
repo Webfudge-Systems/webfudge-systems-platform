@@ -12,11 +12,17 @@ const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../
 const { emitUpdateNotifications, assignedStakeholderIds } = require('../../../utils/notification-emitter');
 const {
   orgIdFromRelation,
+  extractQueryFilters,
   readListQuery,
   createPopulateSanitizer,
   safeCount,
 } = require('../../../utils/content-api-helpers');
 const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
+const {
+  attachRelationsToLeadCompanies,
+  assignedToUserIdFromFilters,
+  leadCompanyIdsForAssignedUser,
+} = require('../../../utils/crm-relation-attach');
 
 const UID = 'api::lead-company.lead-company';
 const CONTACT_UID = 'api::contact.contact';
@@ -52,83 +58,57 @@ function validateAndApplyLeadStatus(ctx, data) {
   return null;
 }
 
-function leadCompanyIdFromContact(c) {
-  if (c == null || c.leadCompany == null) return null;
-  const lc = c.leadCompany;
-  return typeof lc === 'object' ? lc.id ?? lc.documentId ?? null : lc;
-}
-
-/** Match contact → lead row when ids differ by type (number vs string) or documentId is used in URLs. */
-function leadKeySetForRows(leadCompanies) {
-  const keys = new Set();
-  for (const row of leadCompanies) {
-    if (row?.id != null) keys.add(String(row.id));
-    if (row?.documentId != null) keys.add(String(row.documentId));
-  }
-  return keys;
-}
-
-function contactsForLeadKeys(contacts, keySet) {
-  return (contacts || []).filter((c) => {
-    const lid = leadCompanyIdFromContact(c);
-    return lid != null && keySet.has(String(lid));
-  });
-}
-
 function canManageLeadCompanies(ctx) {
   return canAccess(ctx, 'crm', 'leads', 'manage');
 }
 
-/**
- * Strapi 5 populate on inverse oneToMany (mappedBy) often omits `contacts` on findMany/findOne.
- * Load org contacts and attach by leadCompany id (no `$in` on relation — unreliable in some setups).
- */
-async function attachContactsToLeadCompanies(strapi, orgId, leadCompanies) {
-  const keySet = leadKeySetForRows(leadCompanies);
-  if (!keySet.size) return leadCompanies;
+/** Merge client filters while always enforcing tenant org scope. */
+function buildLeadListFilters(orgId, extra) {
+  const orgFilter = { organization: orgId };
+  if (!extra || typeof extra !== 'object' || Array.isArray(extra)) return orgFilter;
 
-  let contacts = [];
-  try {
-    contacts = await strapi.entityService.findMany(CONTACT_UID, {
-      filters: { organization: orgId },
-      limit: 5000,
-    });
-  } catch (err) {
-    strapi.log.warn(
-      'lead-company attachContactsToLeadCompanies: %s',
-      err?.message || String(err)
-    );
-    return leadCompanies;
+  const merged = { ...extra };
+  delete merged.organization;
+
+  const keys = Object.keys(merged).filter((k) => merged[k] != null && merged[k] !== '');
+  if (!keys.length) return orgFilter;
+
+  if (!merged.$or && !merged.$and && keys.length <= 6) {
+    return { ...orgFilter, ...merged };
   }
 
-  contacts = contactsForLeadKeys(contacts, keySet);
-
-  const byLead = new Map();
-  for (const c of contacts) {
-    const lid = leadCompanyIdFromContact(c);
-    if (lid == null) continue;
-    const k = String(lid);
-    if (!byLead.has(k)) byLead.set(k, []);
-    byLead.get(k).push(c);
-  }
-  for (const list of byLead.values()) {
-    list.sort((a, b) => Number(!!b.isPrimaryContact) - Number(!!a.isPrimaryContact));
-  }
-
-  return leadCompanies.map((row) => {
-    for (const rid of [row.id, row.documentId]) {
-      if (rid == null) continue;
-      const list = byLead.get(String(rid));
-      if (list?.length) return { ...row, contacts: list };
-    }
-    return row;
-  });
+  return { $and: [orgFilter, merged] };
 }
 
-async function attachContactsToLeadCompany(strapi, orgId, entry) {
-  if (entry?.id == null && entry?.documentId == null) return entry;
-  const [withContacts] = await attachContactsToLeadCompanies(strapi, orgId, [entry]);
-  return withContacts;
+/** Apply assignedTo filter via link table when present (Strapi 5 relation filter is unreliable). */
+async function buildLeadListFiltersResolved(strapi, orgId, extra) {
+  const assignedUserId = assignedToUserIdFromFilters(extra);
+  if (assignedUserId == null) return buildLeadListFilters(orgId, extra);
+
+  const { assignedTo, ...rest } = extra || {};
+  const uid = parseInt(assignedUserId, 10);
+
+  const [linkIds, entityRows] = await Promise.all([
+    leadCompanyIdsForAssignedUser(strapi, assignedUserId),
+    Number.isNaN(uid)
+      ? []
+      : strapi.entityService
+          .findMany(UID, {
+            filters: buildLeadListFilters(orgId, { assignedTo: { id: uid } }),
+            fields: ['id'],
+            limit: 5000,
+          })
+          .catch(() => []),
+  ]);
+
+  const leadIds = [
+    ...new Set([
+      ...linkIds,
+      ...(entityRows || []).map((row) => row.id).filter((id) => id != null),
+    ]),
+  ];
+  const idFilter = leadIds.length ? { id: { $in: leadIds } } : { id: { $in: [-1] } };
+  return buildLeadListFilters(orgId, { ...rest, ...idFilter });
 }
 
 module.exports = createCoreController(UID, ({ strapi }) => ({
@@ -145,15 +125,63 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     };
   },
 
+  async stats(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'read');
+    if (denied) return denied;
+
+    const orgId = ctx.state.orgId;
+    const base = { organization: orgId };
+    const byStatus = {};
+
+    await Promise.all(
+      LEAD_STATUSES.map(async (status) => {
+        byStatus[status] = await safeCount(strapi, UID, { ...base, status }, 0);
+      })
+    );
+    byStatus.total = await safeCount(strapi, UID, base, 0);
+
+    let facets = { sources: [], types: [] };
+    try {
+      const rows = await strapi.entityService.findMany(UID, {
+        filters: base,
+        fields: ['source', 'type'],
+        limit: 5000,
+      });
+      const sources = new Set();
+      const types = new Set();
+      for (const row of rows || []) {
+        if (row?.source) sources.add(String(row.source).toUpperCase());
+        if (row?.type) types.add(String(row.type));
+      }
+      facets = {
+        sources: [...sources].sort((a, b) => a.localeCompare(b)),
+        types: [...types].sort((a, b) => a.localeCompare(b)),
+      };
+    } catch (err) {
+      strapi.log.warn('lead-company stats facets: %s', err?.message || String(err));
+    }
+
+    return { data: { byStatus, facets } };
+  },
+
   async find(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const denied = requireModuleAccess(ctx, 'crm', 'leads', 'read');
     if (denied) return denied;
 
-    const { query, page, pageSize, sort } = readListQuery(ctx);
+    const { query, page, pageSize, sort } = readListQuery(ctx, {
+      maxPageSize: 500,
+      defaultPageSize: 100,
+    });
 
-    const filters = { organization: ctx.state.orgId };
+    const filters = await buildLeadListFiltersResolved(
+      strapi,
+      ctx.state.orgId,
+      extractQueryFilters(query)
+    );
 
     const pop = sanitizePopulate(query.populate);
     let results = await strapi.entityService.findMany(UID, {
@@ -164,8 +192,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       populate: pop,
     });
 
-    if (pop.includes('contacts') && results.length > 0) {
-      results = await attachContactsToLeadCompanies(strapi, ctx.state.orgId, results);
+    if (results.length > 0) {
+      results = await attachRelationsToLeadCompanies(strapi, ctx.state.orgId, results);
     }
 
     const total = await safeCount(strapi, UID, filters, results.length);
@@ -188,9 +216,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (orgIdFromRelation(entry.organization) !== ctx.state.orgId) {
       return ctx.forbidden('Access denied');
     }
-    if (pop.includes('contacts')) {
-      entry = await attachContactsToLeadCompany(strapi, ctx.state.orgId, entry);
-    }
+    entry = await attachRelationsToLeadCompanies(strapi, ctx.state.orgId, [entry]).then(
+      (rows) => rows[0]
+    );
     return { data: entry };
   },
 

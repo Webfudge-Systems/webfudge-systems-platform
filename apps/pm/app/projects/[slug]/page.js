@@ -12,6 +12,7 @@ import {
   Card,
   EmptyState,
   EntityActivityPanel,
+  EntityFilesPanel,
   Input,
   KPICard,
   LoadingSpinner,
@@ -59,13 +60,17 @@ import {
 import taskService from '../../../lib/api/taskService';
 import { fetchPmAssignableUsers } from '../../../lib/api/messageService';
 import { fetchChatMentionUsers } from '../../../lib/api/chatMentionUsers';
+import { entityChatMediaProps, entityFilesPanelProps } from '../../../lib/entityMedia';
+import { countEntityAttachments } from '../../../lib/api/entityAttachmentService';
 import { formatDate, transformProject, transformTask, transformUser } from '../../../lib/api/dataTransformers';
+import { enrichTasksWithProjectManager, filterMajorTasks, mergeTasksById } from '../../../lib/taskListUtils';
 import {
   collectTaskAssigneeUsers,
   usersForProjectTaskAssignment,
 } from '../../../lib/api/projectAssignableUsers';
 import {
   canApproveTaskAssignmentsInPm,
+  canCreateSubtaskOnTask,
   canCreateTaskInProject,
   canEditProjectInPm,
   getPmOrgRoleKind,
@@ -217,6 +222,7 @@ export default function ProjectDetailPage() {
     return id != null ? String(id) : '';
   }, [authUser]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [fileCount, setFileCount] = useState(0);
   const [project, setProject] = useState(null);
   const canEditThisProject = useMemo(
     () => (project ? canEditProjectInPm(project, currentUserId) : false),
@@ -227,6 +233,10 @@ export default function ProjectDetailPage() {
     [project, currentUserId],
   );
   const [tasks, setTasks] = useState([]);
+  const displayTasks = useMemo(
+    () => enrichTasksWithProjectManager(tasks, project ? [project] : []),
+    [tasks, project]
+  );
   const [users, setUsers] = useState([]);
   const [clientOptions, setClientOptions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -263,19 +273,24 @@ export default function ProjectDetailPage() {
     }
   }, [slug]);
 
-  const loadTasks = useCallback(async () => {
+  const loadTasks = useCallback(async ({ silent = false, mergeWithPrevious = false } = {}) => {
     if (!project?.id) return;
     const pid = Number(project.id);
     if (Number.isNaN(pid)) return;
     try {
-      setTasksLoading(true);
-      const res = await taskService.getTasksByProject(pid, { pageSize: 100, sort: 'updatedAt:desc' });
-      setTasks((res?.data || []).map(transformTask).filter(Boolean));
+      if (!silent) setTasksLoading(true);
+      const rawList = await taskService.fetchAllTasksByProject(pid, { pageSize: 500, sort: 'updatedAt:desc' });
+      const list = rawList.map(transformTask).filter(Boolean);
+      if (mergeWithPrevious) {
+        setTasks((prev) => mergeTasksById(list, prev));
+      } else {
+        setTasks(list);
+      }
     } catch (error) {
       console.error('Load project tasks error:', error);
-      setTasks([]);
+      if (!silent) setTasks([]);
     } finally {
-      setTasksLoading(false);
+      if (!silent) setTasksLoading(false);
     }
   }, [project?.id]);
 
@@ -309,6 +324,25 @@ export default function ProjectDetailPage() {
   }, [loadProject]);
 
   useEffect(() => {
+    if (!project?.id) {
+      setFileCount(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const count = await countEntityAttachments({ subjectType: 'project', subjectId: project.id });
+        if (!cancelled) setFileCount(count);
+      } catch {
+        if (!cancelled) setFileCount(0);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project?.id]);
+
+  useEffect(() => {
     loadUsers();
   }, [loadUsers]);
 
@@ -320,16 +354,18 @@ export default function ProjectDetailPage() {
     loadTasks();
   }, [loadTasks]);
 
+  const majorProjectTasks = useMemo(() => filterMajorTasks(tasks), [tasks]);
+
   const taskStats = useMemo(() => {
     if (!project) return { total: 0, completed: 0, progress: 0 };
-    const total = tasks.length > 0 ? tasks.length : project.totalTasks ?? 0;
+    const total = majorProjectTasks.length > 0 ? majorProjectTasks.length : project.totalTasks ?? 0;
     const completed =
-      tasks.length > 0
-        ? tasks.filter((t) => t.strapiStatus === 'COMPLETED').length
+      majorProjectTasks.length > 0
+        ? majorProjectTasks.filter((t) => t.strapiStatus === 'COMPLETED').length
         : project.completedTasks ?? 0;
     const progress = total > 0 ? Math.round((completed / total) * 100) : project.progress ?? 0;
     return { total, completed, progress };
-  }, [tasks, project]);
+  }, [majorProjectTasks, project]);
 
   /** Task assignee picker: project team only (keeps existing assignees when editing). */
   const projectTaskUsers = useMemo(() => {
@@ -385,20 +421,28 @@ export default function ProjectDetailPage() {
         ...tab,
         badge:
           tab.key === 'tasks'
-            ? tasks.length
+            ? majorProjectTasks.length
             : tab.key === 'files'
-              ? 0
+              ? fileCount || undefined
               : tab.key === 'activity'
                 ? activityCount || undefined
                 : undefined,
       })),
-    [tasks.length, activityCount]
+    [majorProjectTasks.length, activityCount, fileCount]
   );
 
   const handleAddProjectComment = useCallback(
-    async ({ entityId, comment }) => {
-      const res = await addProjectComment({ projectId: entityId, comment });
+    async ({ entityId, comment, attachments }) => {
+      const res = await addProjectComment({ projectId: entityId, comment, attachments });
       await reloadProjectTimeline({ silent: true });
+      if (attachments?.length) {
+        try {
+          const count = await countEntityAttachments({ subjectType: 'project', subjectId: entityId });
+          setFileCount(count);
+        } catch {
+          /* optional */
+        }
+      }
       return res;
     },
     [reloadProjectTimeline]
@@ -434,6 +478,10 @@ export default function ProjectDetailPage() {
     if (!project || !projectInfoDraft || !canEditThisProject) return;
     if (!projectInfoDraft.name.trim()) {
       setProjectInfoSaveError('Project name is required.');
+      return;
+    }
+    if (projectInfoDraft.clientId === undefined || projectInfoDraft.clientId === null) {
+      setProjectInfoSaveError('Client is required.');
       return;
     }
     if (projectInfoDraft.startDate && projectInfoDraft.endDate && projectInfoDraft.endDate < projectInfoDraft.startDate) {
@@ -490,10 +538,19 @@ export default function ProjectDetailPage() {
     try {
       setSaving(true);
       const nextPayload = { ...payload, projectId: payload.projectId || project.id };
-      if (taskModal.task) await taskService.updateTask(taskModal.task.id, nextPayload);
-      else await taskService.createTask(nextPayload);
+      let savedTask = null;
+      if (taskModal.task) {
+        const res = await taskService.updateTask(taskModal.task.id, nextPayload);
+        savedTask = transformTask(res?.data);
+      } else {
+        const res = await taskService.createTask(nextPayload);
+        savedTask = transformTask(res?.data);
+      }
       setTaskModal({ open: false, task: null, parentContext: null });
-      await loadTasks();
+      if (savedTask?.id) {
+        setTasks((prev) => mergeTasksById([savedTask], prev));
+      }
+      await loadTasks({ silent: true, mergeWithPrevious: true });
       await loadProject();
     } catch (error) {
       console.error('Save task error:', error);
@@ -750,11 +807,13 @@ export default function ProjectDetailPage() {
                         />
                         <Select
                           label="Client"
+                          required
                           value={projectInfoDraft.clientId}
-                          options={[{ value: '', label: 'None' }, ...clientOptions]}
-                          onChange={(v) => setProjectInfoField('clientId', v)}
+                          options={[{ value: '', label: 'No client' }, ...clientOptions]}
+                          onChange={(v) => setProjectInfoField('clientId', v ?? '')}
                           disabled={saving}
-                          placeholder="Link client"
+                          placeholder="No client"
+                          allowEmpty={false}
                           searchable
                           searchPlaceholder="Search clients…"
                         />
@@ -990,7 +1049,7 @@ export default function ProjectDetailPage() {
 
       {activeTab === 'tasks' ? (
         <ProjectTasksPanel
-          tasks={tasks}
+          tasks={displayTasks}
           tasksLoading={tasksLoading}
           users={projectTaskUsers}
           onRefresh={refreshTasksAndProject}
@@ -1009,7 +1068,9 @@ export default function ProjectDetailPage() {
           onEditTask={(task) => setTaskModal({ open: true, task, parentContext: null })}
           onDeleteTask={(task) => setDeleteTaskModal({ open: true, task })}
           memberScopedTasks={memberScopedTasks}
+          currentUserId={currentUserId}
           canCreateProjectTasks={canCreateProjectTasks}
+          canAddSubtaskOnTask={(row) => canCreateSubtaskOnTask(row, currentUserId)}
           canApproveAssignments={canApproveAssignments}
         />
       ) : null}
@@ -1053,19 +1114,22 @@ export default function ProjectDetailPage() {
               mentionUsers={projectTaskUsers}
               fetchMentionUsers={fetchChatMentionUsers}
               chatFooterBadgeText="Messages are saved on this project for your team."
+              {...entityChatMediaProps}
             />
           </div>
         </div>
       ) : null}
 
       {activeTab === 'files' ? (
-        <Card variant="elevated" className="rounded-xl">
-          <EmptyState
-            icon={FileText}
-            title="No files attached"
-            description="The files tab is ready for the CRM-style attachments experience once backend file relations are added."
-          />
-        </Card>
+        <EntityFilesPanel
+          subjectType="project"
+          subjectId={project.id}
+          canEdit={canEditThisProject}
+          title="Project files"
+          emptyDescription="Upload specs, designs, contracts, or other files for this project."
+          onRowsChange={(rows) => setFileCount(rows?.length ?? 0)}
+          {...entityFilesPanelProps}
+        />
       ) : null}
 
       <QuickCreateTaskModal

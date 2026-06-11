@@ -10,8 +10,13 @@ const {
   canAccess,
   canManageAppSettings,
   canManageOrganizationProfile,
+  canManageOrganizationSecurity,
   relationId,
 } = require('../../../utils/rbac');
+const {
+  transferUserAssignments,
+  removeUserFromOrgStructure,
+} = require('../../../utils/user-assignment-transfer');
 const {
   resolveOrganizationRoleIdForOrg,
   validateOrganizationRoleId,
@@ -19,6 +24,11 @@ const {
 } = require('../../../utils/organization-role');
 const { logAccountsActivity, actorDisplayName } = require('../../../utils/crm-activity-log');
 const { usernameExists } = require('../../../utils/user-username');
+const {
+  applyMembershipDepartments,
+  departmentsPayload,
+  normalizeIdList,
+} = require('../../../utils/department-membership');
 
 function getRolesAdminError(ctx, orgIdFromParams) {
   if (!ctx.state.user) return 'Missing or invalid credentials';
@@ -177,6 +187,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
 
       if (!organization) return ctx.notFound('Organization not found');
       const canEditOrganizationSettings = await resolveCanEditOrganizationSettings(strapi, ctx, orgId);
+      const canManageSecuritySettings = canManageOrganizationSecurity(ctx);
       return ctx.send({
         success: true,
         data: {
@@ -185,6 +196,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
           currentRoleCode: ctx.state.orgRoleCode || 'member',
           permissions: ctx.state.effectivePermissions || ctx.state.orgPermissions || rbac.normalizePermissions({}),
           canEditOrganizationSettings,
+          canManageSecuritySettings,
         },
       });
     } catch (error) {
@@ -366,6 +378,8 @@ module.exports = createCoreController('api::organization.organization', ({ strap
         populate: {
           user: true,
           role: true,
+          departments: { fields: ['id', 'name', 'isActive'] },
+          primaryDepartment: { fields: ['id', 'name'] },
         }
       });
 
@@ -376,6 +390,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
         const memberAny = member;
         const userData = memberAny?.user || {};
         const roleData = memberAny?.role || {};
+        const deptInfo = departmentsPayload(memberAny);
 
         return {
           id: userData?.id || memberAny?.id,
@@ -393,6 +408,9 @@ module.exports = createCoreController('api::organization.organization', ({ strap
           membershipId: memberAny?.id,
           joinedAt: memberAny?.joinedAt,
           lastAccessAt: memberAny?.lastAccessAt,
+          departments: deptInfo.departments,
+          departmentIds: deptInfo.departments.map((d) => d.id),
+          primaryDepartmentId: deptInfo.primaryDepartmentId,
         };
       });
 
@@ -417,6 +435,8 @@ module.exports = createCoreController('api::organization.organization', ({ strap
       directAdd = false,
       directPassword,
       sendWelcomeEmail = true,
+      departmentIds,
+      primaryDepartmentId,
     } = ctx.request.body;
 
     try {
@@ -435,6 +455,8 @@ module.exports = createCoreController('api::organization.organization', ({ strap
           customPermissions: permissions || {},
           password: directPassword,
           sendWelcomeEmail: sendWelcomeEmail !== false,
+          departmentIds: normalizeIdList(departmentIds),
+          primaryDepartmentId,
         });
         return ctx.send({
           success: true,
@@ -466,7 +488,19 @@ module.exports = createCoreController('api::organization.organization', ({ strap
   async updateUserMembership(ctx) {
     const { id, membershipId } = ctx.params;
     const user = ctx.state.user;
-    const { roleId, roleCode, roleName, isActive, status, email, username } = ctx.request.body || {};
+    const {
+      roleId,
+      roleCode,
+      roleName,
+      isActive,
+      status,
+      email,
+      username,
+      password,
+      transferToUserId,
+      departmentIds,
+      primaryDepartmentId,
+    } = ctx.request.body || {};
 
     if (!user) {
       return ctx.unauthorized('Missing or invalid credentials');
@@ -480,7 +514,12 @@ module.exports = createCoreController('api::organization.organization', ({ strap
 
       const memberships = await strapi.entityService.findMany('api::organization-user.organization-user', {
         filters: { id: membershipId, organization: id },
-        populate: { user: true, role: true },
+        populate: {
+          user: true,
+          role: true,
+          departments: { fields: ['id', 'name'] },
+          primaryDepartment: { fields: ['id', 'name'] },
+        },
         limit: 1,
       });
 
@@ -508,8 +547,33 @@ module.exports = createCoreController('api::organization.organization', ({ strap
         });
       }
 
+      if (departmentIds !== undefined) {
+        await applyMembershipDepartments(strapi, membership.id, id, {
+          departmentIds: normalizeIdList(departmentIds),
+          primaryDepartmentId,
+        });
+      }
+
       const targetUserId = membership?.user?.id;
       const userUpdate = {};
+      let passwordChanged = false;
+      let transferCounts = null;
+      const wasSuspended = Boolean(membership?.user?.blocked);
+      const isSuspending = status === 'suspended' && !wasSuspended;
+
+      if (isSuspending && targetUserId) {
+        if (transferToUserId == null || String(transferToUserId).trim() === '') {
+          return ctx.badRequest('Select a user to receive open assignments before suspending');
+        }
+        if (Number(transferToUserId) === Number(targetUserId)) {
+          return ctx.badRequest('Cannot transfer assignments to the same user');
+        }
+        transferCounts = await transferUserAssignments(strapi, {
+          organizationId: id,
+          fromUserId: targetUserId,
+          toUserId: transferToUserId,
+        });
+      }
 
       if (status === 'suspended' || status === 'active') {
         if (targetUserId) {
@@ -551,6 +615,23 @@ module.exports = createCoreController('api::organization.organization', ({ strap
             data: userUpdate,
           });
         }
+
+        if (password != null && String(password).trim() !== '') {
+          if (!canManageOrganizationSecurity(ctx)) {
+            return ctx.forbidden('Only organization admins can change user passwords');
+          }
+
+          const minLen = 8;
+          const normalizedPassword = String(password).trim();
+          if (normalizedPassword.length < minLen) {
+            return ctx.badRequest(`Password must be at least ${minLen} characters`);
+          }
+
+          await strapi.plugins['users-permissions'].services.user.edit(targetUserId, {
+            password: normalizedPassword,
+          });
+          passwordChanged = true;
+        }
       }
 
       try {
@@ -590,6 +671,22 @@ module.exports = createCoreController('api::organization.organization', ({ strap
             after: userUpdate.username,
           });
         }
+        if (passwordChanged) {
+          changes.push({
+            key: 'password',
+            label: 'Password',
+            before: '—',
+            after: 'Updated',
+          });
+        }
+        if (transferCounts) {
+          changes.push({
+            key: 'assignmentsTransferred',
+            label: 'Assignments transferred',
+            before: '—',
+            after: 'Yes',
+          });
+        }
         if (membershipUpdate.role != null) {
           const prevRoleName = membership?.role?.name || membership?.role?.code || '—';
           const newRole = await strapi.entityService.findOne(ORG_ROLE_UID, membershipUpdate.role, {
@@ -606,7 +703,8 @@ module.exports = createCoreController('api::organization.organization', ({ strap
         if (
           changes.length > 0 ||
           Object.keys(membershipUpdate).length > 0 ||
-          Object.keys(userUpdate).length > 0
+          Object.keys(userUpdate).length > 0 ||
+          passwordChanged
         ) {
           const parts = changes.map((c) => c.label).join(', ');
           const summary =
@@ -623,6 +721,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
             meta: {
               email: targetEmail,
               module: 'accounts',
+              ...(transferCounts ? { transferCounts } : {}),
               ...(changes.length > 0 ? { changes } : {}),
             },
           });
@@ -631,10 +730,96 @@ module.exports = createCoreController('api::organization.organization', ({ strap
         /* logging is best-effort */
       }
 
-      return ctx.send({ success: true });
+      return ctx.send({ success: true, ...(transferCounts ? { transferCounts } : {}) });
     } catch (error) {
       console.error('Error updating organization membership:', error);
       return ctx.badRequest(error.message || 'Failed to update membership');
+    }
+  },
+
+  async deleteUserMembership(ctx) {
+    const { id, membershipId } = ctx.params;
+    const user = ctx.state.user;
+    const transferToUserId = ctx.query?.transferToUserId ?? ctx.request.body?.transferToUserId;
+
+    if (!user) {
+      return ctx.unauthorized('Missing or invalid credentials');
+    }
+    if (!canManageOrganizationSecurity(ctx)) {
+      return ctx.forbidden('Only organization admins can remove users');
+    }
+
+    try {
+      const hasAccess = await strapi.service('api::organization.organization').checkUserAccess(id, user.id);
+      if (!hasAccess) {
+        return ctx.forbidden('You do not have access to this organization');
+      }
+
+      const memberships = await strapi.entityService.findMany('api::organization-user.organization-user', {
+        filters: { id: membershipId, organization: id, isActive: true },
+        populate: { user: true },
+        limit: 1,
+      });
+
+      if (!memberships.length) {
+        return ctx.notFound('Membership not found');
+      }
+
+      /** @type {any} */
+      const membership = memberships[0];
+      const targetUserId = membership?.user?.id;
+      if (!targetUserId) {
+        return ctx.badRequest('User account not found for this membership');
+      }
+      if (Number(targetUserId) === Number(user.id)) {
+        return ctx.badRequest('You cannot remove your own account');
+      }
+      if (transferToUserId == null || String(transferToUserId).trim() === '') {
+        return ctx.badRequest('Select a user to receive open assignments before removing this user');
+      }
+      if (Number(transferToUserId) === Number(targetUserId)) {
+        return ctx.badRequest('Cannot transfer assignments to the same user');
+      }
+
+      const transferCounts = await transferUserAssignments(strapi, {
+        organizationId: id,
+        fromUserId: targetUserId,
+        toUserId: transferToUserId,
+      });
+      await removeUserFromOrgStructure(strapi, {
+        organizationId: id,
+        userId: targetUserId,
+      });
+
+      await strapi.entityService.update('api::organization-user.organization-user', membership.id, {
+        data: { isActive: false },
+      });
+
+      try {
+        const targetEmail =
+          membership?.user?.email || membership?.user?.username || `member #${membershipId}`;
+        const actorName = await actorDisplayName(strapi, user.id);
+        await logAccountsActivity(strapi, {
+          organizationId: id,
+          actorUserId: user.id,
+          action: 'delete',
+          subjectType: 'organization_user',
+          subjectId: membership.id,
+          summary: `${actorName} removed ${targetEmail} from the organization`,
+          meta: {
+            email: targetEmail,
+            module: 'accounts',
+            transferCounts,
+          },
+        });
+      } catch (_) {
+        /* logging is best-effort */
+      }
+
+      return ctx.send({ success: true, transferCounts });
+    } catch (error) {
+      console.error('Error removing organization membership:', error);
+      return ctx.badRequest(error.message || 'Failed to remove user');
     }
   },
 
@@ -913,6 +1098,108 @@ module.exports = createCoreController('api::organization.organization', ({ strap
     } catch (error) {
       console.error('Error deleting organization role:', error);
       return ctx.badRequest(error.message || 'Failed to delete role');
+    }
+  },
+
+  async getSecuritySettings(ctx) {
+    const { id } = ctx.params;
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized('Missing or invalid credentials');
+    if (String(ctx.state.orgId || '') !== String(id)) {
+      return ctx.forbidden('Select this organization before viewing security settings');
+    }
+    if (!canManageOrganizationSecurity(ctx)) {
+      return ctx.forbidden('Only organization admins can view security settings');
+    }
+
+    try {
+      const hasAccess = await strapi.service('api::organization.organization').checkUserAccess(id, user.id);
+      if (!hasAccess) return ctx.forbidden('You do not have access to this organization');
+
+      const org = await strapi.entityService.findOne('api::organization.organization', id, {
+        fields: ['securitySettings'],
+      });
+      const defaults = {
+        requireMfa: false,
+        sessionTimeoutMinutes: 480,
+        passwordMinLength: 8,
+        allowPasswordLogin: true,
+        allowedEmailDomains: [],
+      };
+      return ctx.send({
+        success: true,
+        data: { ...defaults, ...(org?.securitySettings || {}) },
+      });
+    } catch (error) {
+      console.error('Error loading security settings:', error);
+      return ctx.badRequest(error.message || 'Failed to load security settings');
+    }
+  },
+
+  async updateSecuritySettings(ctx) {
+    const { id } = ctx.params;
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized('Missing or invalid credentials');
+    if (String(ctx.state.orgId || '') !== String(id)) {
+      return ctx.forbidden('Select this organization before updating security settings');
+    }
+    if (!canManageOrganizationSecurity(ctx)) {
+      return ctx.forbidden('Only organization admins can update security settings');
+    }
+
+    try {
+      const hasAccess = await strapi.service('api::organization.organization').checkUserAccess(id, user.id);
+      if (!hasAccess) return ctx.forbidden('You do not have access to this organization');
+
+      const body = ctx.request.body || {};
+      const incoming = body.securitySettings || body;
+      const allowedKeys = [
+        'requireMfa',
+        'sessionTimeoutMinutes',
+        'passwordMinLength',
+        'allowPasswordLogin',
+        'allowedEmailDomains',
+      ];
+      const patch = {};
+      allowedKeys.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(incoming, key)) {
+          patch[key] = incoming[key];
+        }
+      });
+      if (Object.keys(patch).length === 0) {
+        return ctx.badRequest('No supported security settings were provided');
+      }
+
+      if (Object.prototype.hasOwnProperty.call(patch, 'passwordMinLength')) {
+        const minLen = Number(patch.passwordMinLength);
+        patch.passwordMinLength = Math.min(128, Math.max(6, Number.isFinite(minLen) ? minLen : 8));
+      }
+      if (Object.prototype.hasOwnProperty.call(patch, 'sessionTimeoutMinutes')) {
+        const timeout = Number(patch.sessionTimeoutMinutes);
+        patch.sessionTimeoutMinutes = Number.isFinite(timeout) && timeout > 0 ? timeout : 480;
+      }
+      if (Object.prototype.hasOwnProperty.call(patch, 'allowedEmailDomains')) {
+        const raw = patch.allowedEmailDomains;
+        patch.allowedEmailDomains = Array.isArray(raw)
+          ? raw.map((d) => String(d).trim().toLowerCase()).filter(Boolean)
+          : String(raw || '')
+              .split(',')
+              .map((d) => d.trim().toLowerCase())
+              .filter(Boolean);
+      }
+
+      const org = await strapi.entityService.findOne('api::organization.organization', id, {
+        fields: ['securitySettings'],
+      });
+      const merged = { ...(org?.securitySettings || {}), ...patch };
+
+      const updated = await strapi.entityService.update('api::organization.organization', id, {
+        data: { securitySettings: merged },
+      });
+      return ctx.send({ success: true, data: updated.securitySettings });
+    } catch (error) {
+      console.error('Error updating security settings:', error);
+      return ctx.badRequest(error.message || 'Failed to update security settings');
     }
   },
 }));

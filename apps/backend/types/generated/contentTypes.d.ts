@@ -756,7 +756,7 @@ export interface ApiContactContact extends Struct.CollectionTypeSchema {
     creditLimit: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
     department: Schema.Attribute.String
-    email: Schema.Attribute.Email & Schema.Attribute.Required
+    email: Schema.Attribute.Email
     firstName: Schema.Attribute.String & Schema.Attribute.Required
     isCustomer: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     isPrimaryContact: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
@@ -951,6 +951,39 @@ export interface ApiDeliveryChallanDeliveryChallan extends Struct.CollectionType
   }
 }
 
+export interface ApiDepartmentDepartment extends Struct.CollectionTypeSchema {
+  collectionName: 'departments'
+  info: {
+    description: 'Organization departments'
+    displayName: 'Department'
+    pluralName: 'departments'
+    singularName: 'department'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    lead: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::department.department'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUsers: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::organization-user.organization-user'
+    >
+    parent: Schema.Attribute.Relation<'manyToOne', 'api::department.department'>
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiDirectMessageDirectMessage extends Struct.CollectionTypeSchema {
   collectionName: 'direct_messages'
   info: {
@@ -1015,6 +1048,45 @@ export interface ApiDocumentDocument extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime
     status: Schema.Attribute.Enumeration<['processing', 'processed', 'unreadable']> &
       Schema.Attribute.DefaultTo<'processing'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    uploadedBy: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+  }
+}
+
+export interface ApiEntityAttachmentEntityAttachment extends Struct.CollectionTypeSchema {
+  collectionName: 'entity_attachments'
+  info: {
+    description: 'Files linked to CRM/PM entities (chat or files tab)'
+    displayName: 'Entity Attachment'
+    pluralName: 'entity-attachments'
+    singularName: 'entity-attachment'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    crmActivity: Schema.Attribute.Relation<'manyToOne', 'api::crm-activity.crm-activity'>
+    file: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'> &
+      Schema.Attribute.Required
+    fileName: Schema.Attribute.String
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::entity-attachment.entity-attachment'
+    > &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    source: Schema.Attribute.Enumeration<['files_tab', 'chat']> &
+      Schema.Attribute.DefaultTo<'files_tab'>
+    subjectId: Schema.Attribute.Integer & Schema.Attribute.Required
+    subjectType: Schema.Attribute.Enumeration<
+      ['contact', 'deal', 'lead_company', 'client_account', 'task', 'project', 'meeting']
+    > &
+      Schema.Attribute.Required
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     uploadedBy: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
@@ -1387,6 +1459,7 @@ export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::lead-company.lead-company'> &
       Schema.Attribute.Private
+    nextConnectDate: Schema.Attribute.Date
     notes: Schema.Attribute.Text
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
     phone: Schema.Attribute.String
@@ -1396,7 +1469,6 @@ export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
     source: Schema.Attribute.String & Schema.Attribute.DefaultTo<'WEBSITE'>
     state: Schema.Attribute.String
     status: Schema.Attribute.String & Schema.Attribute.DefaultTo<'NEW'>
-    subType: Schema.Attribute.String
     twitter: Schema.Attribute.String
     type: Schema.Attribute.String
     updatedAt: Schema.Attribute.DateTime
@@ -1657,6 +1729,7 @@ export interface ApiOrganizationUserOrganizationUser extends Struct.CollectionTy
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     customPermissions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    departments: Schema.Attribute.Relation<'manyToMany', 'api::department.department'>
     isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
     joinedAt: Schema.Attribute.DateTime
     lastAccessAt: Schema.Attribute.DateTime
@@ -1667,6 +1740,7 @@ export interface ApiOrganizationUserOrganizationUser extends Struct.CollectionTy
     > &
       Schema.Attribute.Private
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    primaryDepartment: Schema.Attribute.Relation<'manyToOne', 'api::department.department'>
     publishedAt: Schema.Attribute.DateTime
     role: Schema.Attribute.Relation<'manyToOne', 'api::organization-role.organization-role'>
     updatedAt: Schema.Attribute.DateTime
@@ -1740,6 +1814,14 @@ export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema
     poSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     publishedAt: Schema.Attribute.DateTime
     retainerSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    securitySettings: Schema.Attribute.JSON &
+      Schema.Attribute.DefaultTo<{
+        allowedEmailDomains: []
+        allowPasswordLogin: true
+        passwordMinLength: 8
+        requireMfa: false
+        sessionTimeoutMinutes: 480
+      }>
     size: Schema.Attribute.Enumeration<
       ['size_1_10', 'size_11_50', 'size_51_200', 'size_201_500', 'size_500_plus']
     >
@@ -1873,6 +1955,7 @@ export interface ApiProjectProject extends Struct.CollectionTypeSchema {
     endDate: Schema.Attribute.DateTime
     hourlyRate: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     icon: Schema.Attribute.String
+    isPrivate: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::project.project'> &
       Schema.Attribute.Private
@@ -1917,6 +2000,8 @@ export interface ApiProposalProposal extends Struct.CollectionTypeSchema {
     clientPhone: Schema.Attribute.String
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    creationMode: Schema.Attribute.Enumeration<['BUILDER', 'UPLOAD']> &
+      Schema.Attribute.DefaultTo<'BUILDER'>
     currency: Schema.Attribute.String & Schema.Attribute.DefaultTo<'INR'>
     date: Schema.Attribute.Date
     deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
@@ -1942,6 +2027,7 @@ export interface ApiProposalProposal extends Struct.CollectionTypeSchema {
     preparedByPhone: Schema.Attribute.String
     projectName: Schema.Attribute.String
     projectOverview: Schema.Attribute.Text
+    proposalFile: Schema.Attribute.Media<'files'>
     proposalNumber: Schema.Attribute.String
     publishedAt: Schema.Attribute.DateTime
     securityItems: Schema.Attribute.JSON
@@ -2317,7 +2403,15 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     startDate: Schema.Attribute.DateTime
     startTime: Schema.Attribute.String
     status: Schema.Attribute.Enumeration<
-      ['SCHEDULED', 'IN_PROGRESS', 'INTERNAL_REVIEW', 'COMPLETED', 'CANCELLED', 'OVERDUE']
+      [
+        'SCHEDULED',
+        'IN_PROGRESS',
+        'INTERNAL_REVIEW',
+        'ON_HOLD',
+        'COMPLETED',
+        'CANCELLED',
+        'OVERDUE',
+      ]
     > &
       Schema.Attribute.DefaultTo<'SCHEDULED'>
     subtasks: Schema.Attribute.Relation<'oneToMany', 'api::task.task'>
@@ -2962,8 +3056,10 @@ declare module '@strapi/strapi' {
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity
       'api::deal.deal': ApiDealDeal
       'api::delivery-challan.delivery-challan': ApiDeliveryChallanDeliveryChallan
+      'api::department.department': ApiDepartmentDepartment
       'api::direct-message.direct-message': ApiDirectMessageDirectMessage
       'api::document.document': ApiDocumentDocument
+      'api::entity-attachment.entity-attachment': ApiEntityAttachmentEntityAttachment
       'api::estimate-line-item.estimate-line-item': ApiEstimateLineItemEstimateLineItem
       'api::estimate.estimate': ApiEstimateEstimate
       'api::expense.expense': ApiExpenseExpense

@@ -1,7 +1,10 @@
 /**
  * Tasks — Strapi /tasks; dashboard My work uses GET /tasks/my-work.
+ * CRM list/summary calls pass scope=crm so PM project-only tasks are excluded.
  */
 import strapiClient from '../strapiClient';
+import { listCacheBust, paginateStrapiList } from '@webfudge/utils';
+import { filterCrmTasks, filterCrmMyWorkSummary } from '../crmTasks';
 import {
   buildListQuery,
   normalizeStrapiEntry,
@@ -10,6 +13,7 @@ import {
 } from './strapiContentApi';
 
 const ENDPOINT = '/tasks';
+const CRM_SCOPE = { scope: 'crm' };
 
 function normalizeEntry(entry) {
   return normalizeStrapiEntry(entry);
@@ -71,21 +75,65 @@ async function getByDealId(dealId, options = {}) {
  * @returns {Promise<{ overdue: { count: number, items: object[] }, today: object, upcoming: object }>}
  */
 export async function fetchMyWorkSummary() {
-  const res = await strapiClient.get(`${ENDPOINT}/my-work`);
+  const res = await strapiClient.get(`${ENDPOINT}/my-work`, CRM_SCOPE);
   const data = res?.data;
   if (!data || typeof data !== 'object') {
-    return {
-      overdue: { count: 0, items: [] },
-      today: { count: 0, items: [] },
-      upcoming: { count: 0, items: [] },
-    };
+    return filterCrmMyWorkSummary(null);
   }
-  return data;
+  return filterCrmMyWorkSummary(data);
 }
 
 async function getAll(params = {}) {
-  const response = await strapiClient.get(ENDPOINT, buildListQuery(params));
-  return normalizeListResponse(response);
+  const response = await strapiClient.get(
+    ENDPOINT,
+    buildListQuery({ ...params, ...CRM_SCOPE })
+  );
+  const normalized = normalizeListResponse(response);
+  normalized.data = filterCrmTasks(normalized.data);
+  return normalized;
+}
+
+/**
+ * Paginate through every CRM-scoped task page (list views, dashboards).
+ * @returns {Promise<{ data: object[], meta: { pagination: object } }>}
+ */
+async function fetchAll(params = {}) {
+  const cacheBust = listCacheBust(params);
+  const pageSize = Math.min(
+    Number(params['pagination[pageSize]'] ?? params.pageSize) || 100,
+    500
+  );
+  const rows = await paginateStrapiList(
+    (page, ps) =>
+      strapiClient
+        .get(
+          ENDPOINT,
+          buildListQuery({
+            ...params,
+            ...CRM_SCOPE,
+            'pagination[page]': page,
+            'pagination[pageSize]': ps,
+            _: cacheBust,
+          })
+        )
+        .then((response) => {
+          const normalized = normalizeListResponse(response);
+          normalized.data = filterCrmTasks(normalized.data);
+          return normalized;
+        }),
+    { ...params, pageSize, cacheBust }
+  );
+  return {
+    data: rows,
+    meta: {
+      pagination: {
+        page: 1,
+        pageSize: rows.length,
+        pageCount: 1,
+        total: rows.length,
+      },
+    },
+  };
 }
 
 async function getOne(id, options = {}) {
@@ -124,6 +172,7 @@ const taskService = {
   fetchMyWorkSummary,
   getByDealId,
   getAll,
+  fetchAll,
   getOne,
   create,
   update,

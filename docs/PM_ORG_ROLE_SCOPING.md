@@ -6,7 +6,7 @@ PM row-level rules now align with organization roles from **organization-user �
 
 - **Admin** (`admin`): unchanged — full project and task CRUD within org RBAC.
 - **Manager** (`manager`): **read all projects** in the org; **create** projects; **update/delete** only projects where they are the assigned **project manager** (`project.projectManager`).
-- **Member** (any other org role, including the default **Member** template): **only projects** where they are project manager or **team member**; **no project create** or **project settings** edits; **tasks** limited to visibility rules below; **task updates** limited to **status** only; **no task create/delete**.
+- **Member** (any other org role, including the default **Member** template): **only projects** where they are project manager or **team member**; **no project create** or **project settings** edits; **tasks** limited to visibility rules below; **task updates**: full edit on tasks where they are **assignee, collaborator, or reporter** (creator); **status only** on other visible tasks; **may create tasks** on projects they belong to (assignees pending approval) and **subtasks** on tasks assigned to them; **task delete** only for tasks they created (reporter).
 
 There is **no** separate “task request / approval” workflow in code (none was implemented).
 

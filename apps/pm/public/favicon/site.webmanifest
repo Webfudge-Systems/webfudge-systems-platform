@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Webfudge PM",
-  "short_name": "PM",
-  "description": "Webfudge Project Management for projects, tasks, teams, messages, and delivery.",
+  "name": "Fudge Work",
+  "short_name": "Work",
+  "description": "Fudge Work for projects, tasks, teams, messages, and delivery.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

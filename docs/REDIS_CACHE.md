@@ -2,7 +2,7 @@
 
 ## Summary
 
-When `REDIS_URL` is set, the API caches **GET** responses for almost all `/api/*` routes — including CRM/PM “big data” such as contacts, lead companies, deals, tasks, projects, meetings, proposals, invoices, notifications, and related list/detail endpoints. **POST/PUT/PATCH/DELETE** clears that organization’s cache so lists stay fresh.
+When `REDIS_URL` is set, the API caches **GET** responses for most `/api/*` routes — contacts, lead companies, deals, projects, meetings, proposals, invoices, notifications, etc. **Task endpoints are excluded** (see below). **POST/PUT/PATCH/DELETE** clears that organization’s cache so other lists stay fresh.
 
 ## Scope
 
@@ -21,7 +21,6 @@ All authenticated (or public) **GET** requests under `/api/*`, for example:
 - `GET /api/contacts` (+ pagination/filters)
 - `GET /api/lead-companies`
 - `GET /api/deals`
-- `GET /api/tasks`
 - `GET /api/projects`
 - `GET /api/meetings`
 - `GET /api/notifications`
@@ -36,6 +35,7 @@ Cache keys include **user id**, **organization id**, **org role**, and a hash of
 | `/api/auth/*` | Login/signup must never be cached |
 | `/api/health/*` | Ops/diagnostics |
 | `/api/upload`, `/admin/*` | Uploads / admin |
+| **`GET /api/tasks` and `/api/tasks/*`** | Paginated, high-churn; cached pages caused My Tasks to show stale partial lists (see [TASK_LIST_CACHE_FIX.md](./TASK_LIST_CACHE_FIX.md)) |
 | POST, PUT, PATCH, DELETE | Writes; they **invalidate** org cache instead |
 
 ## Invalidation
@@ -46,7 +46,7 @@ Any successful mutation (`2xx`) on `/api/*` deletes Redis keys matching:
 cache:*:o:<organizationId>:*
 ```
 
-So creating/updating a contact, task, project, etc. refreshes list data on the next GET (after cache miss).
+So creating/updating a contact, task, project, etc. refreshes cached list data on the next GET (after cache miss). Task **writes** always trigger invalidation (including `POST /api/tasks`).
 
 ## Response headers
 

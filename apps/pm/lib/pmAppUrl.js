@@ -1,14 +1,17 @@
 /**
- * PM app base URL for cross-app links from CRM (projects, calendar).
- * Set NEXT_PUBLIC_PM_APP_URL in apps/crm/.env.local (e.g. http://localhost:3006).
+ * PM app base URL for in-app links. Defaults to same-origin relative paths.
+ * Set NEXT_PUBLIC_PM_APP_URL only when an absolute base is required (e.g. emails).
  */
 export function getPmAppBaseUrl() {
-  return (process.env.NEXT_PUBLIC_PM_APP_URL || 'http://localhost:3006').replace(/\/$/, '');
+  const fromEnv = process.env.NEXT_PUBLIC_PM_APP_URL;
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  return '';
 }
 
 export function pmProjectDetailUrl(slugOrId) {
-  if (slugOrId == null || slugOrId === '') return getPmAppBaseUrl();
-  return `${getPmAppBaseUrl()}/projects/${encodeURIComponent(String(slugOrId))}`;
+  const base = getPmAppBaseUrl();
+  if (slugOrId == null || slugOrId === '') return base || '/';
+  return `${base}/projects/${encodeURIComponent(String(slugOrId))}`;
 }
 
 export function pmAddProjectUrl(clientAccountId) {

@@ -28,7 +28,31 @@ const allowedOriginPatterns = [
 module.exports = [
   'strapi::logger',
   'strapi::errors',
-  'strapi::security',
+  {
+    name: 'strapi::security',
+    config: {
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          'connect-src': ["'self'", 'https:'],
+          'img-src': [
+            "'self'",
+            'data:',
+            'blob:',
+            'https://*.amazonaws.com',
+            'https://*.cloudfront.net',
+          ],
+          'media-src': [
+            "'self'",
+            'data:',
+            'blob:',
+            'https://*.amazonaws.com',
+            'https://*.cloudfront.net',
+          ],
+        },
+      },
+    },
+  },
   {
     name: 'strapi::cors',
     config: {

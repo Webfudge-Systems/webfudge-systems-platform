@@ -1,6 +1,7 @@
 import './globals.css';
 import { AuthProvider } from '@webfudge/auth';
 import LayoutContent from '../components/LayoutContent';
+import { CRM_SITE } from '../lib/site';
 
 export const viewport = {
   themeColor: '#F5630F',
@@ -15,16 +16,15 @@ const shareDescription =
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Webfudge CRM',
-    template: '%s | Webfudge CRM',
+    default: CRM_SITE.name,
+    template: `%s | ${CRM_SITE.name}`,
   },
-  description:
-    'Webfudge CRM for lead management, deals, accounts, projects, invoices, and team collaboration.',
-  applicationName: 'Webfudge CRM',
+  description: CRM_SITE.description,
+  applicationName: CRM_SITE.name,
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Webfudge CRM',
+    title: CRM_SITE.name,
   },
   formatDetection: {
     telephone: false,
@@ -34,7 +34,7 @@ export const metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'Webfudge CRM',
+    title: CRM_SITE.name,
     description: shareDescription,
     type: 'website',
     images: [
@@ -42,13 +42,13 @@ export const metadata = {
         url: '/favicon/web-app-manifest-512x512.png',
         width: 512,
         height: 512,
-        alt: 'Webfudge CRM',
+        alt: CRM_SITE.name,
       },
     ],
   },
   twitter: {
     card: 'summary',
-    title: 'Webfudge CRM',
+    title: CRM_SITE.name,
     description: shareDescription,
     images: ['/favicon/web-app-manifest-512x512.png'],
   },

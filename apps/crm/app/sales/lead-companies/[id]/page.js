@@ -13,11 +13,8 @@ import {
   MapPin,
   Users,
   Briefcase,
-  IndianRupee,
-  TrendingUp,
   CheckCircle2,
   User,
-  Star,
   Activity,
   FileText,
   Video,
@@ -38,7 +35,6 @@ import {
   Card,
   Badge,
   Avatar,
-  KPICard,
   TabsWithActions,
   EmptyState,
   LoadingSpinner,
@@ -50,8 +46,11 @@ import {
   TableRowActionMenuPortal,
   ActivitiesTimeline,
   EntityActivityPanel,
+  useIndustrySelectOptions,
+  TableCellNextConnect,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
+import { InlineEditableNextConnect } from '../../../../components/InlineEditableNextConnect';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import contactService from '../../../../lib/api/contactService';
 import dealService from '../../../../lib/api/dealService';
@@ -61,13 +60,13 @@ import strapiClient from '../../../../lib/strapiClient';
 import { MeetingsEmbedList } from '@webfudge/ui';
 import meetingService from '../../../../lib/api/meetingService';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
+import { entityChatMediaProps } from '../../../../lib/entityMedia';
 import {
-  industryOptions,
   companyTypeSelectOptions,
-  getSubTypeOptionsForType,
   canonicalIndustryValue,
   canonicalCompanyTypeValue,
 } from '@webfudge/utils';
+import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 
 function formatCurrency(value) {
@@ -299,12 +298,18 @@ export default function LeadCompanyDetailPage() {
   const [addContactSubmitting, setAddContactSubmitting] = useState(false);
   const [contactActionMenu, setContactActionMenu] = useState(null);
 
+  const { options: industrySelectOptions, onIndustrySaved } = useIndustrySelectOptions({
+    fetchStoredIndustries: fetchStoredIndustriesForCrm,
+    seedIndustries: lead?.industry ? [lead.industry] : [],
+  });
+
   const [assigneeModalOpen, setAssigneeModalOpen] = useState(false);
   const [assigneeUsers, setAssigneeUsers] = useState([]);
   const [assigneeUsersLoading, setAssigneeUsersLoading] = useState(false);
   const [assigneePickUserId, setAssigneePickUserId] = useState('');
   const [assigneeModalError, setAssigneeModalError] = useState('');
   const [savingAssignee, setSavingAssignee] = useState(false);
+  const [savingNextConnect, setSavingNextConnect] = useState(false);
 
   const [crmTimeline, setCrmTimeline] = useState([]);
   const [crmTimelineTotal, setCrmTimelineTotal] = useState(0);
@@ -734,6 +739,32 @@ export default function LeadCompanyDetailPage() {
     }
   }, [assigneePickUserId, canManageLeadCompanies, id, reloadCrmTimeline]);
 
+  const saveNextConnectDate = useCallback(
+    async (value) => {
+      if (!id || !canEditLeadCompany || savingNextConnect) return;
+      setSavingNextConnect(true);
+      try {
+        const payload =
+          value && String(value).trim()
+            ? { nextConnectDate: String(value).trim() }
+            : { nextConnectDate: null };
+        const res = await leadCompanyService.update(id, payload);
+        if (res?.data) {
+          setLead((prev) => (prev ? { ...prev, ...res.data } : res.data));
+        } else {
+          setLead((prev) => (prev ? { ...prev, nextConnectDate: payload.nextConnectDate } : prev));
+        }
+        void reloadCrmTimeline({ silent: true });
+      } catch (e) {
+        console.error(e);
+        alert(e?.message || 'Failed to update next connect date.');
+      } finally {
+        setSavingNextConnect(false);
+      }
+    },
+    [canEditLeadCompany, id, reloadCrmTimeline, savingNextConnect]
+  );
+
   const handleShare = async () => {
     const url = typeof window !== 'undefined' ? window.location.href : '';
     try {
@@ -763,7 +794,6 @@ export default function LeadCompanyDetailPage() {
     setCompanyInfoDraft({
       industry: canonicalIndustryValue(lead.industry ?? ''),
       type: canonicalCompanyTypeValue(lead.type ?? ''),
-      subType: lead.subType ?? '',
       employees: lead.employees != null ? String(lead.employees) : '',
       founded: lead.founded != null ? String(lead.founded) : '',
       city: lead.city ?? '',
@@ -782,20 +812,8 @@ export default function LeadCompanyDetailPage() {
   };
 
   const setDraftField = (field, value) => {
-    setCompanyInfoDraft((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, [field]: value };
-      if (field === 'type' && value !== prev.type) next.subType = '';
-      return next;
-    });
+    setCompanyInfoDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
-
-  const industrySelectOptions = useMemo(() => {
-    const v = companyInfoDraft?.industry?.trim();
-    if (!v) return industryOptions;
-    if (industryOptions.some((o) => o.value === v)) return industryOptions;
-    return [{ value: v, label: humanizeSource(v) }, ...industryOptions];
-  }, [companyInfoDraft?.industry]);
 
   const typeSelectOptions = useMemo(() => {
     const v = companyInfoDraft?.type?.trim();
@@ -803,15 +821,6 @@ export default function LeadCompanyDetailPage() {
     if (companyTypeSelectOptions.some((o) => o.value === v)) return companyTypeSelectOptions;
     return [{ value: v, label: humanizeSource(v) }, ...companyTypeSelectOptions];
   }, [companyInfoDraft?.type]);
-
-  const subTypeSelectOptions = useMemo(() => {
-    const t = companyInfoDraft?.type || '';
-    const base = getSubTypeOptionsForType(t);
-    const v = companyInfoDraft?.subType?.trim();
-    if (!v) return base;
-    if (base.some((o) => o.value === v)) return base;
-    return [{ value: v, label: v }, ...base];
-  }, [companyInfoDraft?.type, companyInfoDraft?.subType]);
 
   const saveCompanyInfo = async () => {
     if (!id || !companyInfoDraft) return;
@@ -822,7 +831,6 @@ export default function LeadCompanyDetailPage() {
       const payload = {
         industry: companyInfoDraft.industry.trim(),
         type: companyInfoDraft.type.trim(),
-        subType: companyInfoDraft.subType.trim(),
         employees: companyInfoDraft.employees.trim(),
         founded: companyInfoDraft.founded.trim(),
         city: companyInfoDraft.city.trim(),
@@ -831,6 +839,7 @@ export default function LeadCompanyDetailPage() {
         description: companyInfoDraft.description.trim(),
       };
       const res = await leadCompanyService.update(id, payload);
+      onIndustrySaved(payload.industry);
       if (res?.data) {
         setLead((prev) => (prev ? { ...prev, ...res.data } : res.data));
       }
@@ -1498,37 +1507,6 @@ export default function LeadCompanyDetailPage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-            <KPICard
-              compact
-              title="Total Contacts"
-              value={contactsCount}
-              icon={Users}
-              colorScheme="orange"
-            />
-            <KPICard
-              compact
-              title="Active Deals"
-              value={linkedDeals.filter((d) => d.stage !== 'won' && d.stage !== 'lost').length}
-              icon={Briefcase}
-              colorScheme="orange"
-            />
-            <KPICard
-              compact
-              title="Deal Value"
-              value={formatCurrency(lead.dealValue)}
-              icon={IndianRupee}
-              colorScheme="orange"
-            />
-            <KPICard
-              compact
-              title="Lead Score"
-              value={lead.score ?? 0}
-              icon={TrendingUp}
-              colorScheme="orange"
-            />
-          </div>
-
           <TabsWithActions
             variant="pill"
             tabs={detailTabs}
@@ -1552,6 +1530,12 @@ export default function LeadCompanyDetailPage() {
                       role="group"
                       aria-label="Lead source and status"
                     >
+                      <InlineEditableNextConnect
+                        date={lead.nextConnectDate}
+                        canEdit={canEditLeadCompany}
+                        saving={savingNextConnect}
+                        onSave={saveNextConnectDate}
+                      />
                       <span
                         className="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-300/90 bg-gradient-to-br from-orange-50 via-orange-50 to-orange-100/90 px-4 py-2.5 text-sm font-bold uppercase tracking-widest text-orange-900 shadow-md ring-2 ring-orange-200/70"
                         title="Lead source"
@@ -1597,6 +1581,9 @@ export default function LeadCompanyDetailPage() {
                             options={industrySelectOptions}
                             placeholder="Select industry"
                             icon={Building2}
+                            allowCustom
+                            onCustomAdd={onIndustrySaved}
+                            searchable
                           />
                           <Select
                             label="Company type"
@@ -1604,17 +1591,6 @@ export default function LeadCompanyDetailPage() {
                             onChange={(value) => setDraftField('type', value)}
                             options={typeSelectOptions}
                             placeholder="Select company type"
-                            icon={Layers}
-                          />
-                          <Select
-                            label="Sub-type"
-                            value={companyInfoDraft.subType}
-                            onChange={(value) => setDraftField('subType', value)}
-                            options={subTypeSelectOptions}
-                            placeholder={
-                              companyInfoDraft.type ? 'Select sub-type' : 'Select company type first'
-                            }
-                            disabled={!companyInfoDraft.type}
                             icon={Layers}
                           />
                           <Input
@@ -1706,11 +1682,6 @@ export default function LeadCompanyDetailPage() {
                           {
                             label: 'Company type',
                             value: lead.type ? humanizeSource(lead.type) : '',
-                            icon: Layers,
-                          },
-                          {
-                            label: 'Sub-type',
-                            value: lead.subType ? humanizeSource(lead.subType) : '',
                             icon: Layers,
                           },
                           {
@@ -1942,10 +1913,6 @@ export default function LeadCompanyDetailPage() {
                           {assigneeName(lead.assignedTo)}
                         </p>
                         <p className="text-sm text-gray-500">{assigneeRole(lead.assignedTo)}</p>
-                        <div className="mt-0.5 flex items-center gap-1 text-sm text-gray-600">
-                          <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
-                          <span className="font-medium">4.9 rating</span>
-                        </div>
                       </div>
                     </div>
                     {canManageLeadCompanies ? (
@@ -2042,6 +2009,16 @@ export default function LeadCompanyDetailPage() {
                         Record & segment
                       </h3>
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
+                          <p className="text-xs font-medium text-gray-500">Next connect</p>
+                          <div className="mt-1.5">
+                            {lead.nextConnectDate ? (
+                              <TableCellNextConnect date={lead.nextConnectDate} />
+                            ) : (
+                              <span className="text-sm font-semibold text-gray-400">Not scheduled</span>
+                            )}
+                          </div>
+                        </div>
                         <div className="rounded-lg border border-gray-100 bg-white px-3.5 py-3 shadow-sm">
                           <p className="text-xs font-medium text-gray-500">Created</p>
                           <p className="mt-1 text-sm font-semibold text-gray-900">
@@ -2203,10 +2180,11 @@ export default function LeadCompanyDetailPage() {
                   fetchCommentsFn={({ entityId }) =>
                     fetchLeadCompanyComments({ leadCompanyId: entityId, limit: 80 })
                   }
-                  addCommentFn={({ entityId, comment }) =>
-                    addLeadCompanyComment({ leadCompanyId: entityId, comment })
+                  addCommentFn={({ entityId, comment, attachments }) =>
+                    addLeadCompanyComment({ leadCompanyId: entityId, comment, attachments })
                   }
                   fetchMentionUsers={fetchChatMentionUsers}
+                  {...entityChatMediaProps}
                 />
               </div>
             </div>

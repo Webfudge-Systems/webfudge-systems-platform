@@ -7,6 +7,7 @@ import { useAuth } from '@webfudge/auth'
 import {
   Card,
   Button,
+  Checkbox,
   Input,
   Textarea,
   Select,
@@ -25,7 +26,7 @@ import projectService from '../../../lib/api/projectService'
 import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions'
 import { fetchProjectDirectoryUsers } from '../../../lib/api/messageService'
 import { transformUser } from '../../../lib/api/dataTransformers'
-import { getPmOrgRoleKind } from '../../../lib/pmOrgRoles'
+import { getPmOrgRoleKind, canToggleProjectPrivacy } from '../../../lib/pmOrgRoles'
 
 const STATUS_OPTIONS = [
   { value: 'PLANNING', label: 'Planning' },
@@ -62,6 +63,7 @@ export default function AddProjectPage() {
     clientId: '',
     projectManagerId: '',
     teamMemberIds: [],
+    isPrivate: false,
   })
 
   /** Org directory + current user if missing from roster (edge cases). */
@@ -128,6 +130,9 @@ export default function AddProjectPage() {
   const validate = () => {
     const errs = {}
     if (!form.name.trim()) errs.name = 'Project name is required'
+    if (form.clientId === undefined || form.clientId === null) {
+      errs.clientId = 'Client is required'
+    }
     if (form.startDate && form.endDate && form.endDate < form.startDate) {
       errs.endDate = 'End date must be after start date'
     }
@@ -154,6 +159,7 @@ export default function AddProjectPage() {
       if (form.projectManagerId) payload.projectManager = Number(form.projectManagerId)
 
       payload.teamMembers = form.teamMemberIds.map(Number)
+      if (canToggleProjectPrivacy()) payload.isPrivate = form.isPrivate
 
       const result = await projectService.createProject(payload)
       const newId = result?.data?.id || result?.id
@@ -294,13 +300,16 @@ export default function AddProjectPage() {
             />
             <Select
               label="Client"
+              required
               value={form.clientId}
               options={[{ value: '', label: 'No client' }, ...clientOptions]}
-              onChange={(val) => setForm((p) => ({ ...p, clientId: val }))}
-              placeholder={clientsLoading ? 'Loading clients…' : 'Select a client (optional)'}
+              onChange={(val) => setForm((p) => ({ ...p, clientId: val ?? '' }))}
+              placeholder={clientsLoading ? 'Loading clients…' : 'No client'}
+              allowEmpty={false}
               disabled={clientsLoading}
               searchable
               searchPlaceholder="Search clients…"
+              error={errors.clientId}
             />
             {!clientsLoading && clientOptions.length === 0 ? (
               <p className="text-xs text-gray-500">
@@ -342,6 +351,20 @@ export default function AddProjectPage() {
                 <p className="text-sm text-gray-500">Loading organization members…</p>
               )}
             </div>
+            {canToggleProjectPrivacy() && (
+              <label className="flex items-center gap-3 cursor-pointer select-none pt-1">
+                <Checkbox
+                  checked={form.isPrivate}
+                  onChange={(e) => setForm((p) => ({ ...p, isPrivate: e.target.checked }))}
+                />
+                <span className="text-sm font-medium text-gray-800">
+                  Private project
+                  <span className="ml-1 text-xs font-normal text-gray-500">
+                    — hidden from managers not on the team; admins can always see it
+                  </span>
+                </span>
+              </label>
+            )}
           </div>
         </Card>
 

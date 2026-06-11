@@ -131,14 +131,14 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
     },
     {
       type: 'link',
-      href: '/sales',
+      href: '/sales/customers',
       icon: Receipt,
       label: 'Sales',
       isActive: (p) => p.startsWith('/sales'),
     },
     {
       type: 'link',
-      href: '/purchases',
+      href: '/purchases/vendors',
       icon: Briefcase,
       label: 'Purchases',
       isActive: (p) => p.startsWith('/purchases'),
@@ -152,7 +152,7 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
     },
     {
       type: 'link',
-      href: '/accountant',
+      href: '/accountant/manual-journals',
       icon: Calculator,
       label: 'Accountant',
       isActive: (p) => p.startsWith('/accountant'),
@@ -247,12 +247,12 @@ export default function Sidebar({ onConfigureFeatures }: SidebarProps) {
       <Link
         href="/home"
         className="flex w-full shrink-0 items-center justify-center"
-        title="Books home"
-        aria-label="Books home"
+        title="Fudge Books home"
+        aria-label="Fudge Books home"
       >
         <Image
           src={booksLogoSrc}
-          alt="Webfudge Books"
+          alt="Fudge Books"
           width={40}
           height={32}
           className="h-8 w-auto max-w-[2.5rem] object-contain"

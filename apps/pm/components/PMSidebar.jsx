@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { LoadingSpinner } from '@webfudge/ui'
+import { LoadingSpinner, SidebarProductBranding } from '@webfudge/ui'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -15,8 +15,8 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
-  ChevronLeft,
   ChevronUp,
+  PanelLeftClose,
   FileText,
   Calendar,
   Target,
@@ -28,9 +28,7 @@ import { transformProject } from '../lib/api/dataTransformers'
 import { canReadPM, canWritePM, canReadClientAccounts } from '../lib/rbac'
 import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 import { usePmSidebarBadges } from '../lib/usePmSidebarBadges'
-
-/** Orange W mark — `public/logo/pm-vertical-logo.png` (from Vertical logo 1 bg removed.png) */
-const PM_SIDEBAR_LOGO = '/logo/pm-vertical-logo.png'
+import { PM_SITE } from '../lib/site'
 
 export default function PMSidebar({ collapsed = false, onToggle }) {
   const pathname = usePathname()
@@ -214,10 +212,10 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           }`}
         >
           {collapsed ? (
-            <Link href="/" className="flex shrink-0" aria-label="Webfudge PM home">
+            <Link href="/" className="flex shrink-0" aria-label={`${PM_SITE.name} home`}>
               <Image
-                src={PM_SIDEBAR_LOGO}
-                alt="Webfudge"
+                src={PM_SITE.logoPath}
+                alt={PM_SITE.brandName}
                 width={32}
                 height={32}
                 className="h-8 w-8 object-contain"
@@ -228,32 +226,29 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
             <Link
               href="/"
               className="flex min-w-0 flex-1 items-center gap-2.5"
-              aria-label="Webfudge PM home"
+              aria-label={`${PM_SITE.name} home`}
             >
               <Image
-                src={PM_SIDEBAR_LOGO}
-                alt="Webfudge"
+                src={PM_SITE.logoPath}
+                alt={PM_SITE.brandName}
                 width={44}
                 height={44}
                 className="h-11 w-11 shrink-0 object-contain"
                 priority
               />
-              <span className="min-w-0 font-bold text-xl tracking-tight bg-gradient-to-r from-orange-700 via-orange-500 to-amber-400 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(249,115,22,0.35)]">
-                Webfudge PM
-              </span>
+              <SidebarProductBranding
+                productName={PM_SITE.name}
+                companyName={PM_SITE.brandName}
+              />
             </Link>
           )}
           <button
             type="button"
             onClick={onToggle}
             className="shrink-0 p-2 rounded-lg hover:bg-gray-50 transition-colors"
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label="Hide sidebar"
           >
-            {collapsed ? (
-              <ChevronRight className="w-5 h-5 text-brand-foreground" />
-            ) : (
-              <ChevronLeft className="w-5 h-5 text-brand-foreground" />
-            )}
+            <PanelLeftClose className="w-5 h-5 text-brand-foreground" strokeWidth={1.75} />
           </button>
         </div>
         {!collapsed ? (

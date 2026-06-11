@@ -1,7 +1,7 @@
 {
-  "name": "Webfudge Accounts",
-  "short_name": "Accounts",
-  "description": "Webfudge Accounts for users, roles, teams, security, billing, app access, and audit logs.",
+  "name": "Fudge Base",
+  "short_name": "Base",
+  "description": "Fudge Base for users, roles, departments, teams, security, app access, and audit logs.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

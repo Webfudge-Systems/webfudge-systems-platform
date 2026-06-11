@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
@@ -14,7 +14,6 @@ import {
   Link2,
   Pencil,
   Trash2,
-  GripVertical,
 } from 'lucide-react';
 import {
   Button,
@@ -31,11 +30,14 @@ import {
   TableCellRole,
   TableRowActionMenuPortal,
   Modal,
+  useTableColumnPreferences,
+  TableColumnPicker,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import contactService from '../../../lib/api/contactService';
+import strapiClient from '../../../lib/strapiClient';
 import { canEditCRMRecord, canManageCRM } from '../../../lib/rbac';
 
 function contactDisplayName(contact) {
@@ -93,6 +95,7 @@ function truncateText(text, max = 100) {
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.contacts.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.contacts.tableColumnOrder';
+const COLUMN_WIDTHS_STORAGE_KEY = 'crm.contacts.tableColumnWidths';
 const TABLE_SORT_STORAGE_KEY = 'crm.contacts.tableSort';
 
 const TOGGLEABLE_COLUMNS = [
@@ -131,42 +134,6 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
-function loadColumnVisibility() {
-  if (typeof window === 'undefined') return { ...DEFAULT_COLUMN_VISIBILITY };
-  try {
-    const raw = window.localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_COLUMN_VISIBILITY };
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_COLUMN_VISIBILITY, ...parsed };
-  } catch {
-    return { ...DEFAULT_COLUMN_VISIBILITY };
-  }
-}
-
-function loadColumnOrder() {
-  if (typeof window === 'undefined') return [...REORDERABLE_COLUMN_KEYS];
-  try {
-    const raw = window.localStorage.getItem(COLUMN_ORDER_STORAGE_KEY);
-    if (!raw) return [...REORDERABLE_COLUMN_KEYS];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [...REORDERABLE_COLUMN_KEYS];
-    const valid = new Set(REORDERABLE_COLUMN_KEYS);
-    const ordered = parsed.filter((k) => valid.has(k));
-    const missing = REORDERABLE_COLUMN_KEYS.filter((k) => !ordered.includes(k));
-    return [...ordered, ...missing];
-  } catch {
-    return [...REORDERABLE_COLUMN_KEYS];
-  }
-}
-
-function persistColumnOrder(order) {
-  try {
-    window.localStorage.setItem(COLUMN_ORDER_STORAGE_KEY, JSON.stringify(order));
-  } catch {
-    /* ignore */
-  }
-}
-
 export default function ContactsPage() {
   const initialFilters = useMemo(
     () => ({
@@ -187,31 +154,71 @@ export default function ContactsPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [deleteContactId, setDeleteContactId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [columnPickerOpen, setColumnPickerOpen] = useState(false);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [contactStats, setContactStats] = useState({
+    all: 0,
+    withEmail: 0,
+    withPhone: 0,
+    withCompany: 0,
+  });
+  const [filterFacets, setFilterFacets] = useState({
+    sources: [],
+    preferredContactMethods: [],
+  });
+  const [orgUsers, setOrgUsers] = useState([]);
   const [sortOpen, setSortOpen] = useState(false);
-  const [columnVisibility, setColumnVisibility] = useState(() => ({ ...DEFAULT_COLUMN_VISIBILITY }));
-  const [columnOrder, setColumnOrder] = useState(() => [...REORDERABLE_COLUMN_KEYS]);
-  const [columnWidths, setColumnWidths] = useState({});
-  const [columnDropIndicator, setColumnDropIndicator] = useState(null);
   /** More-options menu; portal anchor so dropdown is not clipped by table overflow */
   const [actionMenu, setActionMenu] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [draftFilters, setDraftFilters] = useState(initialFilters);
-  const columnDragKeyRef = useRef(null);
-  const columnDropIndicatorRef = useRef(null);
-  const toolbarRef = useRef(null);
   const itemsPerPage = 15;
 
-  useEffect(() => {
-    fetchContacts();
-  }, []);
+  const {
+    columnVisibility,
+    columnOrder,
+    columnPickerOpen,
+    setColumnPickerOpen,
+    columnDropIndicator,
+    toolbarRef,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    tableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REORDERABLE_COLUMN_KEYS,
+  });
 
   useEffect(() => {
-    setColumnVisibility(loadColumnVisibility());
-    setColumnOrder(loadColumnOrder());
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await strapiClient.getXtrawrkxUsers();
+        if (!cancelled) setOrgUsers(Array.isArray(res?.data) ? res.data : []);
+      } catch {
+        if (!cancelled) setOrgUsers([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -226,117 +233,69 @@ export default function ContactsPage() {
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [columnPickerOpen, sortOpen]);
 
-  const setColumnVisible = useCallback((key, visible) => {
-    setColumnVisibility((prev) => {
-      const next = { ...prev, [key]: visible };
-      try {
-        window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
-  }, []);
-
-  const handleColumnDragStart = useCallback((e, key) => {
-    columnDragKeyRef.current = key;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', key);
-    const row = e.currentTarget.closest('[data-column-row]');
-    if (row) row.classList.add('opacity-60');
-  }, []);
-
-  const handleColumnDragEnd = useCallback((e) => {
-    columnDragKeyRef.current = null;
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    const row = e.currentTarget.closest('[data-column-row]');
-    if (row) row.classList.remove('opacity-60');
-  }, []);
-
-  const handleColumnRowDragOver = useCallback((e, key) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const fromKey = columnDragKeyRef.current || e.dataTransfer.getData('text/plain');
-    if (!fromKey || fromKey === key) {
-      columnDropIndicatorRef.current = null;
-      setColumnDropIndicator(null);
-      return;
-    }
-    const rect = e.currentTarget.getBoundingClientRect();
-    const place = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
-    const hint = { targetKey: key, place };
-    columnDropIndicatorRef.current = hint;
-    setColumnDropIndicator(hint);
-  }, []);
-
-  const handleColumnListDragLeave = useCallback((e) => {
-    const related = e.relatedTarget;
-    if (related && e.currentTarget.contains(related)) return;
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-  }, []);
-
-  const handleColumnDrop = useCallback((e, targetKey) => {
-    e.preventDefault();
-    const fromKey = columnDragKeyRef.current || e.dataTransfer.getData('text/plain');
-    const hint = columnDropIndicatorRef.current;
-    const place = hint?.targetKey === targetKey ? hint.place : 'before';
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
-    if (!fromKey || fromKey === targetKey) return;
-    setColumnOrder((prev) => {
-      const next = [...prev];
-      const fi = next.indexOf(fromKey);
-      const ti0 = next.indexOf(targetKey);
-      if (fi === -1 || ti0 === -1) return prev;
-      next.splice(fi, 1);
-      const ti = next.indexOf(targetKey);
-      const insertAt = place === 'after' ? ti + 1 : ti;
-      next.splice(insertAt, 0, fromKey);
-      persistColumnOrder(next);
-      return next;
-    });
-  }, []);
-
-  const resetColumnTablePreferences = useCallback(() => {
-    const vis = { ...DEFAULT_COLUMN_VISIBILITY };
-    const order = [...REORDERABLE_COLUMN_KEYS];
-    setColumnVisibility(vis);
-    setColumnOrder(order);
-    columnDropIndicatorRef.current = null;
-    setColumnDropIndicator(null);
+  const fetchStats = useCallback(async () => {
     try {
-      window.localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(vis));
-      persistColumnOrder(order);
-    } catch {
-      /* ignore */
+      const stats = await contactService.getStats();
+      setContactStats({
+        all: stats.total ?? 0,
+        withEmail: stats.withEmail ?? 0,
+        withPhone: stats.withPhone ?? 0,
+        withCompany: stats.withCompany ?? 0,
+      });
+      setFilterFacets(stats.facets || { sources: [], preferredContactMethods: [] });
+    } catch (err) {
+      console.error('Error fetching contact stats:', err);
     }
   }, []);
 
-  const fetchContacts = async () => {
+  const {
+    sortRules,
+    columnOptions: sortColumnOptions,
+    hasActiveSort,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    bindSortableColumns,
+  } = useCrmTableSort({ entity: 'contact', storageKey: TABLE_SORT_STORAGE_KEY, data: contacts });
+
+  const sortApiParam = useMemo(() => {
+    if (!sortRules?.length) return 'createdAt:desc';
+    const rule = sortRules[0];
+    return `${rule.key}:${rule.direction}`;
+  }, [sortRules]);
+
+  const fetchContacts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await contactService.getAll({
-        sort: 'createdAt:desc',
-        'pagination[pageSize]': 100,
-        populate: ['leadCompany', 'assignedTo'],
+      const params = contactService.buildListParams({
+        page: currentPage,
+        pageSize: itemsPerPage,
+        activeTab,
+        searchQuery: debouncedSearch,
+        appliedFilters,
+        sort: sortApiParam,
       });
+      const res = await contactService.getAll(params);
       setContacts(Array.isArray(res.data) ? res.data : []);
+      const pag = res?.meta?.pagination;
+      setTotalItems(pag?.total ?? 0);
+      setTotalPages(Math.max(pag?.pageCount ?? 1, 1));
     } catch (err) {
       console.error('Error fetching contacts:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, activeTab, debouncedSearch, appliedFilters, sortApiParam, itemsPerPage]);
 
-  // Calculate statistics
-  const contactStats = {
-    all: contacts.length,
-    withEmail: contacts.filter((c) => c.email).length,
-    withPhone: contacts.filter((c) => c.phone).length,
-    withCompany: contacts.filter((c) => c.companyName || c.company || c.leadCompany).length,
-  };
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
 
   const statusFilterOptions = useMemo(
     () => [
@@ -347,134 +306,45 @@ export default function ContactsPage() {
     []
   );
 
-  const sourceFilterOptions = useMemo(() => {
-    const values = new Set();
-    for (const contact of contacts) {
-      const src = contact?.source;
-      if (src) values.add(String(src).toUpperCase());
-    }
-    return [...values]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: humanizeField(value) }));
-  }, [contacts]);
+  const sourceFilterOptions = useMemo(
+    () =>
+      (filterFacets.sources || []).map((value) => ({
+        value,
+        label: humanizeField(value),
+      })),
+    [filterFacets.sources]
+  );
 
-  const preferredContactOptions = useMemo(() => {
-    const values = new Set();
-    for (const contact of contacts) {
-      const method = contact?.preferredContactMethod || contact?.preferredChannel;
-      if (method) values.add(String(method).toUpperCase());
-    }
-    return [...values]
-      .sort((a, b) => a.localeCompare(b))
-      .map((value) => ({ value, label: humanizeField(value) }));
-  }, [contacts]);
+  const preferredContactOptions = useMemo(
+    () =>
+      (filterFacets.preferredContactMethods || []).map((value) => ({
+        value,
+        label: humanizeField(value),
+      })),
+    [filterFacets.preferredContactMethods]
+  );
 
   const assigneeFilterOptions = useMemo(() => {
-    const map = new Map();
-    for (const contact of contacts) {
-      const user = contact?.assignedTo;
-      if (!user || typeof user !== 'object') continue;
-      const id = user.id ?? user.documentId;
-      if (id == null) continue;
-      const name =
-        user.username ||
-        [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
-        user.email ||
-        `User ${id}`;
-      map.set(String(id), name);
-    }
-    return [...map.entries()]
-      .sort((a, b) => a[1].localeCompare(b[1]))
-      .map(([value, label]) => ({ value, label }));
-  }, [contacts]);
+    return orgUsers
+      .map((user) => {
+        const id = user.id ?? user.documentId;
+        if (id == null) return null;
+        const name =
+          user.username ||
+          [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+          user.email ||
+          `User ${id}`;
+        return { value: String(id), label: name };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [orgUsers]);
 
-  // Filter contacts
-  const filteredContacts = contacts.filter((contact) => {
-    if (!contact) return false;
-
-    // Search filter
-    const matchesSearch =
-      searchQuery === '' ||
-      `${contact.firstName} ${contact.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (contact.companyName || contact.company)?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    // Tab filter
-    let matchesTab = true;
-    if (activeTab === 'withEmail') {
-      matchesTab = !!contact.email;
-    } else if (activeTab === 'withPhone') {
-      matchesTab = !!contact.phone;
-    } else if (activeTab === 'withCompany') {
-      matchesTab = !!(contact.companyName || contact.company || contact.leadCompany);
-    }
-    // 'all' tab shows everything
-
-    const status = String(contact.status || '').toUpperCase();
-    const source = String(contact.source || '').toUpperCase();
-    const preferredMethod = String(
-      contact.preferredContactMethod || contact.preferredChannel || ''
-    ).toUpperCase();
-    const assignedId =
-      contact.assignedTo && typeof contact.assignedTo === 'object'
-        ? String(contact.assignedTo.id ?? contact.assignedTo.documentId ?? '')
-        : String(contact.assignedTo || '');
-    const company = String(companyLabel(contact) || '').toLowerCase();
-    const createdAt = contact.createdAt ? new Date(contact.createdAt) : null;
-    const now = new Date();
-    const daysSinceCreated =
-      createdAt && !Number.isNaN(createdAt.getTime())
-        ? Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24))
-        : null;
-
-    const matchesAdvanced =
-      (!appliedFilters.status || status === appliedFilters.status) &&
-      (!appliedFilters.source || source === appliedFilters.source) &&
-      (!appliedFilters.preferredContactMethod ||
-        preferredMethod === appliedFilters.preferredContactMethod) &&
-      (!appliedFilters.assignedToId || assignedId === appliedFilters.assignedToId) &&
-      (!appliedFilters.companyQuery ||
-        company.includes(appliedFilters.companyQuery.toLowerCase())) &&
-      (!appliedFilters.hasEmail ||
-        (appliedFilters.hasEmail === 'yes' ? Boolean(contact.email) : !contact.email)) &&
-      (!appliedFilters.hasPhone ||
-        (appliedFilters.hasPhone === 'yes' ? Boolean(contact.phone) : !contact.phone)) &&
-      (!appliedFilters.dateRange ||
-        (daysSinceCreated != null &&
-          ((appliedFilters.dateRange === 'last7' && daysSinceCreated <= 7) ||
-            (appliedFilters.dateRange === 'last30' && daysSinceCreated <= 30) ||
-            (appliedFilters.dateRange === 'last90' && daysSinceCreated <= 90) ||
-            (appliedFilters.dateRange === 'thisYear' &&
-              createdAt &&
-              createdAt.getFullYear() === now.getFullYear()))));
-
-    return matchesSearch && matchesTab && matchesAdvanced;
-  });
-
-  // Multi-column sort
-  const {
-    sortRules,
-    columnOptions: sortColumnOptions,
-    sortedData: sortedContacts,
-    hasActiveSort,
-    addSortRule,
-    removeSortRule,
-    setRuleDirection,
-    moveSortRule,
-    clearSort,
-    bindSortableColumns,
-  } = useCrmTableSort({ entity: 'contact', storageKey: TABLE_SORT_STORAGE_KEY, data: filteredContacts });
-
-  // Pagination (after sort)
-  const totalPages = Math.ceil(sortedContacts.length / itemsPerPage);
-  const paginatedContacts = sortedContacts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const paginatedContacts = contacts;
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeTab, appliedFilters]);
+  }, [debouncedSearch, activeTab, appliedFilters, sortApiParam]);
 
   const openFilterModal = useCallback(() => {
     setDraftFilters(appliedFilters);
@@ -512,14 +382,14 @@ export default function ContactsPage() {
     try {
       setDeletingId(deleteContactId);
       await contactService.delete(deleteContactId);
-      setContacts((prev) => prev.filter((c) => c.id !== deleteContactId));
       setDeleteContactId(null);
+      await Promise.all([fetchStats(), fetchContacts()]);
     } catch (err) {
       console.error('Error deleting contact:', err);
     } finally {
       setDeletingId(null);
     }
-  }, [deleteContactId, deletingId]);
+  }, [deleteContactId, deletingId, fetchStats, fetchContacts]);
 
   const allTableColumns = useMemo(
     () => [
@@ -890,89 +760,27 @@ export default function ContactsPage() {
           onMoveRule={moveSortRule}
           onClear={clearSort}
         />
-        {columnPickerOpen && (
-          <div
-            className="absolute right-0 top-full z-40 mt-2 w-[min(100vw-2rem,20rem)] rounded-xl border border-gray-200 bg-white p-2.5 shadow-xl"
-            role="dialog"
-            aria-label="Table columns"
-          >
-            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">Columns</p>
-            <p className="mb-2 text-xs leading-snug text-gray-500">
-              Contact and company stay visible. Actions stay visible. Toggle other fields; drag the grip to reorder.
-              An orange line shows where the row will land.
-            </p>
-            <ul
-              className="max-h-[min(51vh,18.75rem)] space-y-0 overflow-y-auto pr-1"
-              onDragLeave={handleColumnListDragLeave}
-            >
-              {columnOrder.map((key) => {
-                const def = TOGGLEABLE_COLUMNS.find((c) => c.key === key);
-                if (!def) return null;
-                const showLineBefore =
-                  columnDropIndicator?.targetKey === key && columnDropIndicator.place === 'before';
-                const showLineAfter =
-                  columnDropIndicator?.targetKey === key && columnDropIndicator.place === 'after';
-                return (
-                  <li
-                    key={key}
-                    data-column-row
-                    className="relative flex items-stretch rounded-lg border border-transparent hover:border-gray-100"
-                    onDragOver={(e) => handleColumnRowDragOver(e, key)}
-                    onDrop={(e) => handleColumnDrop(e, key)}
-                  >
-                    {showLineBefore ? (
-                      <div
-                        className="pointer-events-none absolute left-1 right-2 top-0 z-10 h-[3px] -translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                        aria-hidden
-                      />
-                    ) : null}
-                    <span
-                      draggable
-                      onDragStart={(e) => handleColumnDragStart(e, key)}
-                      onDragEnd={handleColumnDragEnd}
-                      className="flex w-8 shrink-0 cursor-grab items-center justify-center rounded-l-lg text-gray-400 active:cursor-grabbing hover:bg-gray-100 hover:text-gray-600"
-                      aria-label={`Drag to reorder ${def.label}`}
-                    >
-                      <GripVertical className="h-4 w-4" strokeWidth={2} aria-hidden />
-                    </span>
-                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-2 py-1 text-sm text-gray-800 hover:bg-gray-50">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 shrink-0 rounded border-gray-300 text-orange-500 focus:ring-orange-500"
-                        checked={Boolean(columnVisibility[key])}
-                        onChange={(e) => setColumnVisible(key, e.target.checked)}
-                      />
-                      <span>{def.label}</span>
-                    </label>
-                    {showLineAfter ? (
-                      <div
-                        className="pointer-events-none absolute bottom-0 left-1 right-2 z-10 h-[3px] translate-y-1 rounded-full bg-orange-500 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
-                        aria-hidden
-                      />
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="mt-2 border-t border-gray-100 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full text-sm font-medium text-gray-700"
-                onClick={resetColumnTablePreferences}
-              >
-                Reset to default
-              </Button>
-            </div>
-          </div>
-        )}
+        <TableColumnPicker
+          open={columnPickerOpen}
+          description="Contact and company stay visible. Actions stay visible. Toggle other fields; drag column edges in the table to resize."
+          reorderableRows={TOGGLEABLE_COLUMNS}
+          columnVisibility={columnVisibility}
+          columnOrder={columnOrder}
+          columnDropIndicator={columnDropIndicator}
+          onSetVisible={setColumnVisible}
+          onDragStart={handleColumnDragStart}
+          onDragEnd={handleColumnDragEnd}
+          onRowDragOver={handleColumnRowDragOver}
+          onListDragLeave={handleColumnListDragLeave}
+          onDrop={handleColumnDrop}
+          onReset={resetColumnTablePreferences}
+        />
       </div>
 
       {/* Results Count */}
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredContacts.length}</span> result
-        {filteredContacts.length !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{totalItems}</span> result
+        {totalItems !== 1 ? 's' : ''}
       </div>
 
       {/* Table */}
@@ -989,9 +797,7 @@ export default function ContactsPage() {
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/sales/contacts/${row.id}`)}
-              resizableColumns
-              columnWidths={columnWidths}
-              onColumnWidthsChange={setColumnWidths}
+              {...tableResizeProps}
             />
             {paginatedContacts.length === 0 && (
               <div className="p-12 text-center border-t border-gray-200">
@@ -1015,7 +821,7 @@ export default function ContactsPage() {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={filteredContacts.length}
+                  totalItems={totalItems}
                   itemsPerPage={itemsPerPage}
                   onPageChange={setCurrentPage}
                 />

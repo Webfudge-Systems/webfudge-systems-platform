@@ -11,8 +11,10 @@ import {
   Table,
   TableCellCreated,
   formatRelativeTime,
+  formatTableDate,
 } from '@webfudge/ui'
 import { CheckSquare, ChevronRight, FolderKanban } from 'lucide-react'
+import { isTaskDueOverdue, parseDisplayDate } from '@webfudge/utils'
 import { PMStatusBadge } from '../PMStatusBadge'
 import { usePmTableSort } from '../../hooks/usePmTableSort'
 
@@ -24,15 +26,17 @@ export function isOpenDashboardTask(task) {
   return task && !TERMINAL_STATUSES.has(task.strapiStatus)
 }
 
-/** Open collaborator tasks only — overdue first, then due date, then recently updated. */
+/** Open tasks assigned to the user — overdue first, then due date, then recently updated. */
 export function sortDashboardMyTasks(tasks) {
   const list = (tasks || []).filter(isOpenDashboardTask)
   list.sort((a, b) => {
     const aOver = isTaskOverdue(a)
     const bOver = isTaskOverdue(b)
     if (aOver !== bOver) return aOver ? -1 : 1
-    const aDue = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY
-    const bDue = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY
+    const aParsed = a.dueDate ? parseDisplayDate(a.dueDate) : null
+    const bParsed = b.dueDate ? parseDisplayDate(b.dueDate) : null
+    const aDue = aParsed ? aParsed.getTime() : Number.POSITIVE_INFINITY
+    const bDue = bParsed ? bParsed.getTime() : Number.POSITIVE_INFINITY
     if (aDue !== bDue) return aDue - bDue
     const aUpd = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
     const bUpd = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
@@ -42,10 +46,7 @@ export function sortDashboardMyTasks(tasks) {
 }
 
 function isTaskOverdue(task) {
-  if (!task?.dueDate) return false
-  const due = new Date(task.dueDate)
-  if (Number.isNaN(due.getTime())) return false
-  return due < new Date() && task.strapiStatus !== 'COMPLETED' && task.strapiStatus !== 'CANCELLED'
+  return isTaskDueOverdue(task?.dueDate, task?.strapiStatus)
 }
 
 function taskSubtitle(row) {
@@ -128,18 +129,16 @@ function DashboardDueDateCell({ row }) {
     return <span className="text-sm font-medium text-gray-400">—</span>
   }
 
-  const d = new Date(row.dueDate)
-  const dateLabel = Number.isNaN(d.getTime())
-    ? '—'
-    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-  const relative = formatRelativeTime(row.dueDate)
+  const dateLabel = formatTableDate(row.dueDate, { dateMode: 'calendar' })
+  const displayDate = dateLabel === 'N/A' ? '—' : dateLabel
+  const relative = formatRelativeTime(row.dueDate, { dateMode: 'calendar' })
 
   return (
     <div className="text-right sm:text-left">
       <p
         className={`text-sm font-semibold tabular-nums ${overdue ? 'text-red-700' : 'text-gray-900'}`}
       >
-        {dateLabel}
+        {displayDate}
       </p>
       {relative ? (
         <p className={`mt-0.5 text-xs font-medium ${overdue ? 'text-red-600' : 'text-gray-500'}`}>
@@ -232,7 +231,7 @@ export default function DashboardMyTasksWidget({
               </span>
             ) : null}
           </div>
-          <p className="mt-0.5 text-xs text-gray-500">Open tasks where you are a collaborator</p>
+          <p className="mt-0.5 text-xs text-gray-500">Open tasks assigned to you</p>
         </div>
         <Button
           variant="ghost"

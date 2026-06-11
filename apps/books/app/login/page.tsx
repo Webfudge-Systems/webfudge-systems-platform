@@ -4,13 +4,23 @@ import type { ChangeEvent } from 'react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
-import { AlertCircle, BookOpen, Eye, EyeOff, Loader2 } from 'lucide-react'
-import { Button, Input } from '@webfudge/ui'
+import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
+import {
+  Button,
+  Input,
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+} from '@webfudge/ui'
+import { BOOKS_SITE } from '@/lib/site'
 
 type FormErrors = {
   email?: string
   password?: string
 }
+
+const loginInputClassName =
+  'border-[color:var(--books-input-border)] bg-[var(--books-input-bg)] text-[var(--books-input-text)] placeholder:text-[var(--books-input-placeholder)] focus:ring-orange-500/30'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -60,60 +70,64 @@ export default function LoginPage() {
 
   if (loading && !isSubmitting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-brand-light">
-        <div className="flex items-center gap-3 bg-white px-6 py-4 rounded-2xl shadow-lg border border-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--books-bg-page)]">
+        <div className="flex items-center gap-3 rounded-2xl border border-[var(--books-border)] bg-[var(--books-bg-card)] px-6 py-4 shadow-[var(--books-shell-shadow)]">
           <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-          <span className="font-medium text-brand-dark">Loading...</span>
+          <span className="font-medium text-[var(--books-text-primary)]">Loading...</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-primary to-orange-600 flex-col justify-center px-16 py-20">
+    <div className="min-h-screen flex bg-[var(--books-bg-page)]">
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-center bg-gradient-to-br from-brand-primary via-orange-500 to-orange-700 px-16 py-20 dark:from-[#431407] dark:via-[#c2410c] dark:to-[#9a3412]">
+        <LoginBrandCorner
+          brandIconPath={BOOKS_SITE.brandIconPath}
+          brandName={BOOKS_SITE.brandName}
+        />
         <div className="max-w-lg">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-white font-semibold text-lg">Webfudge Books</span>
-          </div>
+          <LoginProductCredit productName={BOOKS_SITE.name} creatorLine={BOOKS_SITE.brandName} />
           <h1 className="text-5xl font-bold text-white mb-6">Welcome back</h1>
-          <p className="text-xl text-white/90 mb-4">
-            Finance and accounting for service agencies and modern teams.
-          </p>
-          <p className="text-white/80 leading-relaxed">
-            Sign in to manage receivables, payables, projects, time tracking, and documents.
-          </p>
+          <p className="text-xl text-white/90 mb-4">{BOOKS_SITE.loginTagline}</p>
+          <p className="text-white/80 leading-relaxed">{BOOKS_SITE.loginDetail}</p>
+          <div className="mt-12 grid grid-cols-3 gap-6">
+            {BOOKS_SITE.loginFeatures.map((item) => (
+              <div key={item.label} className="bg-white/10 rounded-xl p-4 text-center">
+                <p className="text-white font-semibold text-sm">{item.value}</p>
+                <p className="text-white/70 text-xs mt-1">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex flex-col justify-center p-8 lg:p-16">
-        <div className="w-full max-w-md mx-auto">
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-semibold text-brand-foreground">Webfudge Books</span>
-          </div>
+      <div className="flex w-full flex-col justify-center bg-[var(--books-bg-page)] p-8 lg:w-1/2 lg:p-16">
+        <div className="mx-auto w-full max-w-md">
+          <LoginMobileBrandHeader
+            logoPath={BOOKS_SITE.logoPath}
+            productName={BOOKS_SITE.name}
+            creatorLine={BOOKS_SITE.brandName}
+          />
 
-          <h2 className="text-3xl font-semibold text-brand-dark mb-2">Sign in</h2>
-          <p className="text-gray-600 mb-8">Enter your credentials to access Books.</p>
+          <h2 className="mb-2 text-3xl font-semibold text-[var(--books-text-primary)]">Sign in</h2>
+          <p className="mb-8 text-[var(--books-text-secondary)]">
+            Enter your credentials to access Books.
+          </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {loginError && (
-              <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/40">
+                <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-red-500" />
                 <div>
-                  <p className="text-sm font-medium text-red-800">Login failed</p>
-                  <p className="text-sm text-red-700 mt-1">{loginError}</p>
+                  <p className="text-sm font-medium text-red-800 dark:text-red-200">Login failed</p>
+                  <p className="mt-1 text-sm text-red-700 dark:text-red-300">{loginError}</p>
                 </div>
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-brand-dark mb-1.5">
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[var(--books-text-primary)]">
                 Email
               </label>
               <Input
@@ -125,12 +139,12 @@ export default function LoginPage() {
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 error={errors.email}
-                className="w-full"
+                className={loginInputClassName}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-brand-dark mb-1.5">
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[var(--books-text-primary)]">
                 Password
               </label>
               <div className="relative">
@@ -143,12 +157,12 @@ export default function LoginPage() {
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   error={errors.password}
-                  className="w-full pr-10"
+                  className={`${loginInputClassName} pr-10`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-dark"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--books-text-tertiary)] hover:text-[var(--books-text-primary)]"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -167,7 +181,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-sm text-[var(--books-text-tertiary)]">
             Don&apos;t have an account? Contact your administrator.
           </p>
         </div>

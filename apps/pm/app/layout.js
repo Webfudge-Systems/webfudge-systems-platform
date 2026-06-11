@@ -1,6 +1,7 @@
 import './globals.css';
 import { AuthProvider } from '@webfudge/auth';
 import LayoutContent from '../components/LayoutContent';
+import { PM_SITE } from '../lib/site';
 
 export const viewport = {
   themeColor: '#F5630F',
@@ -15,16 +16,15 @@ const shareDescription =
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Webfudge PM',
-    template: '%s | Webfudge PM',
+    default: PM_SITE.name,
+    template: `%s | ${PM_SITE.name}`,
   },
-  description:
-    'Webfudge Project Management for tracking projects, tasks, teams, messages, and delivery.',
-  applicationName: 'Webfudge PM',
+  description: PM_SITE.description,
+  applicationName: PM_SITE.name,
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Webfudge PM',
+    title: PM_SITE.name,
   },
   formatDetection: {
     telephone: false,
@@ -41,7 +41,7 @@ export const metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'Webfudge PM',
+    title: PM_SITE.name,
     description: shareDescription,
     type: 'website',
     images: [
@@ -49,13 +49,13 @@ export const metadata = {
         url: '/favicon/web-app-manifest-512x512.png',
         width: 512,
         height: 512,
-        alt: 'Webfudge PM',
+        alt: PM_SITE.name,
       },
     ],
   },
   twitter: {
     card: 'summary',
-    title: 'Webfudge PM',
+    title: PM_SITE.name,
     description: shareDescription,
     images: ['/favicon/web-app-manifest-512x512.png'],
   },

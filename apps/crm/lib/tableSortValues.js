@@ -59,8 +59,6 @@ export function getLeadCompanySortValue(row, key) {
       );
     case 'type':
       return stringValue(row.type);
-    case 'subType':
-      return stringValue(row.subType);
     case 'industry':
       return stringValue(row.industry);
     case 'score':

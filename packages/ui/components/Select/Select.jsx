@@ -4,7 +4,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { createPortal } from 'react-dom'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { ChevronDown, Search } from 'lucide-react'
+import { Check, ChevronDown, Plus, Search, X } from 'lucide-react'
 
 const SEARCHABLE_OPTION_THRESHOLD = 8
 const DEFAULT_LIST_MAX_HEIGHT = 'max-h-52'
@@ -41,6 +41,10 @@ function SearchableSelect({
   listClassName,
   menuPortal = true,
   chevronClassName,
+  /** When true, shows "Add …" when search text does not match an existing option. */
+  allowCustom = false,
+  /** Called when the user adds a new custom option (plus button or "Add …" row). */
+  onCustomAdd,
   id: idProp,
   ...props
 }) {
@@ -53,6 +57,9 @@ function SearchableSelect({
   const searchRef = useRef(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [addMode, setAddMode] = useState(false)
+  const [addInput, setAddInput] = useState('')
+  const addInputRef = useRef(null)
   const [menuCoords, setMenuCoords] = useState({
     top: undefined,
     bottom: undefined,
@@ -82,6 +89,18 @@ function SearchableSelect({
     if (!q) return allOptions
     return allOptions.filter((row) => row.label.toLowerCase().includes(q))
   }, [allOptions, query])
+
+  const customAddLabel = useMemo(() => {
+    const q = query.trim()
+    if (!allowCustom || !q) return null
+    const lower = q.toLowerCase()
+    const exists = allOptions.some(
+      (row) =>
+        row.label.toLowerCase() === lower ||
+        row.value.toLowerCase() === lower
+    )
+    return exists ? null : q
+  }, [allowCustom, allOptions, query])
 
   const selectedOption = useMemo(
     () => allOptions.find((row) => row.value === normalizedValue),
@@ -163,12 +182,12 @@ function SearchableSelect({
       if (rootRef.current?.contains(target)) return
       if (menuRef.current?.contains(target)) return
       setOpen(false)
-      setQuery('')
+      resetMenuState()
     }
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
         setOpen(false)
-        setQuery('')
+        resetMenuState()
       }
     }
     document.addEventListener('mousedown', onPointerDown)
@@ -180,17 +199,41 @@ function SearchableSelect({
   }, [open])
 
   useEffect(() => {
-    if (open) {
-      const t = window.setTimeout(() => searchRef.current?.focus(), 0)
-      return () => window.clearTimeout(t)
-    }
-    return undefined
-  }, [open])
+    if (!open) return undefined
+    const t = window.setTimeout(() => {
+      if (addMode) addInputRef.current?.focus()
+      else searchRef.current?.focus()
+    }, 0)
+    return () => window.clearTimeout(t)
+  }, [open, addMode])
 
-  const pick = (nextValue) => {
-    if (onChange) onChange(nextValue)
-    setOpen(false)
+  const resetMenuState = () => {
     setQuery('')
+    setAddMode(false)
+    setAddInput('')
+  }
+
+  const pick = (nextValue, { isCustom = false } = {}) => {
+    if (onChange) onChange(nextValue)
+    if (isCustom && onCustomAdd) onCustomAdd(nextValue)
+    setOpen(false)
+    resetMenuState()
+  }
+
+  const confirmCustomAdd = (rawValue) => {
+    const v = (rawValue || '').trim()
+    if (!v) return
+    const lower = v.toLowerCase()
+    const existing = allOptions.find(
+      (row) =>
+        row.label.toLowerCase() === lower ||
+        row.value.toLowerCase() === lower
+    )
+    if (existing && !existing.disabled) {
+      pick(existing.value)
+      return
+    }
+    pick(v, { isCustom: true })
   }
 
   const triggerClasses = twMerge(
@@ -233,18 +276,80 @@ function SearchableSelect({
       onMouseDown={(event) => event.stopPropagation()}
     >
       <div className="shrink-0 border-b border-gray-100 p-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            ref={searchRef}
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={searchPlaceholder}
-            className="w-full rounded-md border border-gray-200 py-2 pl-8 pr-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-500"
-            onKeyDown={(event) => event.stopPropagation()}
-          />
-        </div>
+        {addMode ? (
+          <div className="flex items-center gap-2">
+            <input
+              ref={addInputRef}
+              type="text"
+              value={addInput}
+              onChange={(event) => setAddInput(event.target.value)}
+              placeholder="Enter industry name"
+              className="min-w-0 flex-1 rounded-md border border-gray-200 py-2 px-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-500"
+              onKeyDown={(event) => {
+                event.stopPropagation()
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  confirmCustomAdd(addInput)
+                }
+                if (event.key === 'Escape') {
+                  event.preventDefault()
+                  setAddMode(false)
+                  setAddInput('')
+                }
+              }}
+            />
+            <button
+              type="button"
+              title="Add industry"
+              aria-label="Add industry"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-orange-600 text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              onClick={() => confirmCustomAdd(addInput)}
+            >
+              <Check className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              title="Cancel"
+              aria-label="Cancel add industry"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              onClick={() => {
+                setAddMode(false)
+                setAddInput('')
+              }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                ref={searchRef}
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={searchPlaceholder}
+                className="w-full rounded-md border border-gray-200 py-2 pl-8 pr-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-orange-500"
+                onKeyDown={(event) => event.stopPropagation()}
+              />
+            </div>
+            {allowCustom ? (
+              <button
+                type="button"
+                title="Add industry"
+                aria-label="Add industry"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-gray-200 text-orange-600 hover:border-orange-200 hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                onClick={() => {
+                  setAddMode(true)
+                  setQuery('')
+                }}
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
+        )}
       </div>
       <ul
         id={listboxId}
@@ -257,7 +362,7 @@ function SearchableSelect({
             : undefined
         }
       >
-        {filteredOptions.length === 0 ? (
+        {filteredOptions.length === 0 && !customAddLabel ? (
           <li className="px-3 py-2 text-sm text-gray-500">No matches</li>
         ) : (
           filteredOptions.map((row) => {
@@ -287,6 +392,19 @@ function SearchableSelect({
             )
           })
         )}
+        {customAddLabel ? (
+          <li role="presentation" className="border-t border-gray-100">
+            <button
+              type="button"
+              role="option"
+              aria-selected={normalizedValue === customAddLabel}
+              className="flex w-full px-3 py-2 text-left text-sm font-medium text-orange-700 hover:bg-orange-50"
+              onClick={() => pick(customAddLabel, { isCustom: true })}
+            >
+              <span className="min-w-0 truncate">Add &ldquo;{customAddLabel}&rdquo;</span>
+            </button>
+          </li>
+        ) : null}
       </ul>
     </div>
   )
@@ -317,7 +435,7 @@ function SearchableSelect({
           onClick={() => {
             if (disabled) return
             setOpen((prev) => !prev)
-            if (open) setQuery('')
+            if (open) resetMenuState()
           }}
         >
           <span className="min-w-0 flex-1 truncate">{displayLabel}</span>
@@ -360,6 +478,8 @@ export function Select({
   listClassName,
   menuPortal = true,
   chevronClassName,
+  allowCustom = false,
+  onCustomAdd,
   value,
   disabled,
   ...props
@@ -387,6 +507,8 @@ export function Select({
         listClassName={listClassName}
         menuPortal={menuPortal}
         chevronClassName={chevronClassName}
+        allowCustom={allowCustom}
+        onCustomAdd={onCustomAdd}
         {...props}
       />
     )

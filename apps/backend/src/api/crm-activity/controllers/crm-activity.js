@@ -17,6 +17,12 @@ const {
   projectStakeholderIds,
   assignedStakeholderIds,
 } = require('../../../utils/notification-emitter');
+const {
+  normalizeAttachmentsPayload,
+  enrichAttachments,
+  buildCommentMeta,
+  syncChatAttachments,
+} = require('../../../utils/entity-attachments');
 
 async function notifyAfterComment(strapi, {
   organizationId,
@@ -52,6 +58,50 @@ function orgIdFromRelation(rel) {
   if (rel == null) return null;
   if (typeof rel === 'object') return rel.id ?? null;
   return rel;
+}
+
+function commentKindFromMeta(meta) {
+  if (!meta || typeof meta !== 'object') return 'general';
+  return meta.commentKind === 'next_connect' ? 'next_connect' : 'general';
+}
+
+function normalizeCommentKind(raw) {
+  const value = String(raw || 'general').trim().toLowerCase();
+  return value === 'next_connect' ? 'next_connect' : 'general';
+}
+
+function filterActivitiesByCommentKind(rows, commentKind) {
+  if (!commentKind || commentKind === 'all') return rows;
+  if (commentKind === 'next_connect') {
+    return rows.filter((row) => commentKindFromMeta(row.meta) === 'next_connect');
+  }
+  if (commentKind === 'general') {
+    return rows.filter((row) => commentKindFromMeta(row.meta) !== 'next_connect');
+  }
+  return rows;
+}
+
+async function countLeadCompanyComments(strapi, orgId, leadCompanyId, commentKind) {
+  if (!commentKind || commentKind === 'all') {
+    return strapi.db.query(UID).count({
+      where: {
+        organization: orgId,
+        leadCompany: leadCompanyId,
+        action: 'comment',
+      },
+    });
+  }
+
+  const rows = await strapi.entityService.findMany(UID, {
+    filters: {
+      organization: orgId,
+      leadCompany: leadCompanyId,
+      action: 'comment',
+    },
+    fields: ['meta'],
+    limit: 500,
+  });
+  return filterActivitiesByCommentKind(rows, commentKind).length;
 }
 
 module.exports = createCoreController(UID, ({ strapi }) => ({
@@ -106,6 +156,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const limit = Math.min(parseInt(q.limit || q['limit'] || '50', 10), 100);
     const type = String(q.type || q['type'] || '').trim().toLowerCase();
+    const commentKind = String(q.commentKind || q['commentKind'] || '').trim().toLowerCase();
 
     let filters;
 
@@ -248,7 +299,12 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       populate: ['actor'],
     });
 
-    return { data: results, meta: { total } };
+    const filtered =
+      type === 'comment' && commentKind
+        ? filterActivitiesByCommentKind(results, commentKind)
+        : results;
+
+    return { data: filtered, meta: { total: filtered.length } };
   },
 
   /**
@@ -347,8 +403,15 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
 
     const comment = String(commentRaw || '').trim();
-    if (!comment) return ctx.badRequest('Comment is required');
+    const rawAttachments = normalizeAttachmentsPayload(payload);
+    const attachments = await enrichAttachments(strapi, rawAttachments);
+    if (!comment && !attachments.length) {
+      return ctx.badRequest('Comment or attachment is required');
+    }
     if (comment.length > 5000) return ctx.badRequest('Comment is too long');
+    const commentKind = hasLead ? normalizeCommentKind(payload?.commentKind) : 'general';
+    const notifyComment =
+      comment || (attachments.length ? `[${attachments.length} file(s) attached]` : '');
 
     const actorName =
       ctx.state.user?.username ||
@@ -386,10 +449,21 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
           subjectId: dealId,
           leadCompany: lcId,
           summary: `${actorName} commented on deal "${dealName}"`,
-          meta: { comment },
+          meta: buildCommentMeta({ comment, attachments }),
         },
         populate: ['actor'],
       });
+
+      if (attachments.length) {
+        await syncChatAttachments(strapi, {
+          organizationId: ctx.state.orgId,
+          userId: ctx.state.user?.id,
+          subjectType: 'deal',
+          subjectId: dealId,
+          attachments,
+          crmActivityId: entry.id,
+        });
+      }
 
       await notifyAfterComment(strapi, {
         organizationId: ctx.state.orgId,
@@ -398,7 +472,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'deal',
         subjectId: dealId,
         entityName: dealName,
-        comment,
+        comment: notifyComment,
         entity: deal,
       });
 
@@ -430,10 +504,21 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
           subjectType: 'contact',
           subjectId: contactId,
           summary: `${actorName} commented on contact "${contactName}"`,
-          meta: { comment },
+          meta: buildCommentMeta({ comment, attachments }),
         },
         populate: ['actor'],
       });
+
+      if (attachments.length) {
+        await syncChatAttachments(strapi, {
+          organizationId: ctx.state.orgId,
+          userId: ctx.state.user?.id,
+          subjectType: 'contact',
+          subjectId: contactId,
+          attachments,
+          crmActivityId: entry.id,
+        });
+      }
 
       await notifyAfterComment(strapi, {
         organizationId: ctx.state.orgId,
@@ -442,7 +527,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'contact',
         subjectId: contactId,
         entityName: contactName,
-        comment,
+        comment: notifyComment,
         entity: contact,
       });
 
@@ -474,10 +559,21 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
           subjectType: 'client_account',
           subjectId: clientAccountId,
           summary: `${actorName} commented on "${accountName}"`,
-          meta: { comment },
+          meta: buildCommentMeta({ comment, attachments }),
         },
         populate: ['actor'],
       });
+
+      if (attachments.length) {
+        await syncChatAttachments(strapi, {
+          organizationId: ctx.state.orgId,
+          userId: ctx.state.user?.id,
+          subjectType: 'client_account',
+          subjectId: clientAccountId,
+          attachments,
+          crmActivityId: entry.id,
+        });
+      }
 
       await notifyAfterComment(strapi, {
         organizationId: ctx.state.orgId,
@@ -486,7 +582,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'client_account',
         subjectId: clientAccountId,
         entityName: accountName,
-        comment,
+        comment: notifyComment,
         entity: clientAccount,
       });
 
@@ -516,10 +612,21 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
           subjectType: 'task',
           subjectId: taskId,
           summary: `${actorName} commented on task "${taskName}"`,
-          meta: { comment },
+          meta: buildCommentMeta({ comment, attachments }),
         },
         populate: ['actor'],
       });
+
+      if (attachments.length) {
+        await syncChatAttachments(strapi, {
+          organizationId: ctx.state.orgId,
+          userId: ctx.state.user?.id,
+          subjectType: 'task',
+          subjectId: taskId,
+          attachments,
+          crmActivityId: entry.id,
+        });
+      }
 
       await notifyAfterComment(strapi, {
         organizationId: ctx.state.orgId,
@@ -528,7 +635,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'task',
         subjectId: taskId,
         entityName: taskName,
-        comment,
+        comment: notifyComment,
         entity: task,
       });
 
@@ -558,10 +665,21 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
           subjectType: 'project',
           subjectId: projectId,
           summary: `${actorName} commented on project "${projectName}"`,
-          meta: { comment },
+          meta: buildCommentMeta({ comment, attachments }),
         },
         populate: ['actor'],
       });
+
+      if (attachments.length) {
+        await syncChatAttachments(strapi, {
+          organizationId: ctx.state.orgId,
+          userId: ctx.state.user?.id,
+          subjectType: 'project',
+          subjectId: projectId,
+          attachments,
+          crmActivityId: entry.id,
+        });
+      }
 
       await notifyAfterComment(strapi, {
         organizationId: ctx.state.orgId,
@@ -570,7 +688,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'project',
         subjectId: projectId,
         entityName: projectName,
-        comment,
+        comment: notifyComment,
         entity: proj,
       });
 
@@ -602,11 +720,25 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'lead_company',
         subjectId: leadCompanyId,
         leadCompany: leadCompanyId,
-        summary: `${actorName} commented on "${leadName}"`,
-        meta: { comment },
+        summary:
+          commentKind === 'next_connect'
+            ? `${actorName} added a next connect reason on "${leadName}"`
+            : `${actorName} commented on "${leadName}"`,
+        meta: buildCommentMeta({ comment, commentKind, attachments }),
       },
       populate: ['actor'],
     });
+
+    if (attachments.length) {
+      await syncChatAttachments(strapi, {
+        organizationId: ctx.state.orgId,
+        userId: ctx.state.user?.id,
+        subjectType: 'lead_company',
+        subjectId: leadCompanyId,
+        attachments,
+        crmActivityId: entry.id,
+      });
+    }
 
     await notifyAfterComment(strapi, {
       organizationId: ctx.state.orgId,
@@ -615,7 +747,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       subjectType: 'lead_company',
       subjectId: leadCompanyId,
       entityName: leadName,
-      comment,
+      comment: notifyComment,
       entity: lead,
     });
 
@@ -804,17 +936,18 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     if (!ids.length) return { data: {} };
 
+    const commentKind = String(q.commentKind || q['commentKind'] || '').trim().toLowerCase();
+
     const pairs = await Promise.all(
       ids.map(async (leadCompanyId) => {
         let count = 0;
         try {
-          count = await strapi.db.query(UID).count({
-            where: {
-              organization: ctx.state.orgId,
-              leadCompany: leadCompanyId,
-              action: 'comment',
-            },
-          });
+          count = await countLeadCompanyComments(
+            strapi,
+            ctx.state.orgId,
+            leadCompanyId,
+            commentKind
+          );
         } catch (_) {
           count = 0;
         }
