@@ -35,6 +35,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Layers,
+  Linkedin,
 } from 'lucide-react';
 import { companyTypes } from '@webfudge/utils';
 import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
@@ -87,6 +88,7 @@ export default function AddLeadCompanyPage() {
       phone: '',
       jobTitle: '',
       department: '',
+      linkedinUrl: '',
       role: 'PRIMARY_CONTACT',
       isPrimary: true,
     },
@@ -214,6 +216,7 @@ export default function AddLeadCompanyPage() {
         phone: '',
         jobTitle: '',
         department: '',
+        linkedinUrl: '',
         role: 'CONTACT',
         isPrimary: false,
       },
@@ -324,6 +327,9 @@ export default function AddLeadCompanyPage() {
           };
           if (contact.email?.trim()) {
             contactData.email = contact.email.trim();
+          }
+          if (contact.linkedinUrl?.trim()) {
+            contactData.linkedinUrl = contact.linkedinUrl.trim();
           }
           if (companyData.assignedTo) {
             contactData.assignedTo = parseInt(companyData.assignedTo, 10);
@@ -788,6 +794,18 @@ export default function AddLeadCompanyPage() {
                           handleContactChange(contact.id, 'department', e.target.value)
                         }
                         placeholder="Sales, Marketing, IT, etc."
+                      />
+                    </div>
+                    <div>
+                      <Input
+                        label="LinkedIn URL"
+                        type="url"
+                        value={contact.linkedinUrl}
+                        onChange={(e) =>
+                          handleContactChange(contact.id, 'linkedinUrl', e.target.value)
+                        }
+                        placeholder="https://www.linkedin.com/in/..."
+                        icon={Linkedin}
                       />
                     </div>
                     <div className="md:col-span-2 lg:col-span-1">

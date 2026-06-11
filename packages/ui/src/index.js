@@ -19,6 +19,7 @@ export {
   Badge,
   Avatar,
   Table,
+  TableColumnPicker,
   TableSortPanel,
   Pagination,
   EmptyState,
@@ -28,7 +29,13 @@ export {
   FormSectionCard,
   SidebarTrialUpsell,
   PwaInstallPrompt,
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+  SidebarProductBranding,
   WorkspaceHeader,
+  WorkspaceBackButton,
+  workspaceBackButtonClassName,
   TableCellCreated,
   TableCellDateOnly,
   TableCellOwner,
@@ -158,6 +165,7 @@ export {
 
 // HOOKS
 export { useTableSort } from '../hooks/useTableSort';
+export { useTableColumnPreferences } from '../hooks/useTableColumnPreferences';
 export {
   useIndustrySelectOptions,
   collectDistinctIndustriesFromList,

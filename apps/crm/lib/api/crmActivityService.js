@@ -3,6 +3,9 @@
  */
 import strapiClient from '../strapiClient';
 
+/** CRM entity subject types (excludes PM project/task and org admin rows). */
+export const CRM_SUBJECT_TYPES = 'contact,lead_company,deal,meeting,client_account';
+
 function commentPayload(fields) {
   const { attachments, ...rest } = fields;
   if (Array.isArray(attachments) && attachments.length) {
@@ -13,12 +16,13 @@ function commentPayload(fields) {
 
 /**
  * Organization-wide activity (GET /crm-activities/feed).
- * @param {{ limit?: number, start?: number, type?: string }} opts
+ * @param {{ limit?: number, start?: number, type?: string, subjectTypes?: string }} opts
  * @returns {Promise<{ data: object[], total: number, start: number, limit: number }>}
  */
-export async function fetchGlobalActivityFeed({ limit = 20, start = 0, type } = {}) {
+export async function fetchGlobalActivityFeed({ limit = 20, start = 0, type, subjectTypes } = {}) {
   const params = { limit, start };
   if (type) params.type = type;
+  if (subjectTypes) params.subjectTypes = subjectTypes;
   const res = await strapiClient.get('/crm-activities/feed', params);
   const data = Array.isArray(res?.data) ? res.data : [];
   const meta = res?.meta && typeof res.meta === 'object' ? res.meta : {};
@@ -26,6 +30,15 @@ export async function fetchGlobalActivityFeed({ limit = 20, start = 0, type } = 
   const startOut = typeof meta.start === 'number' ? meta.start : start;
   const limitOut = typeof meta.limit === 'number' ? meta.limit : limit;
   return { data, total, start: startOut, limit: limitOut };
+}
+
+/**
+ * CRM-scoped org feed (contacts, leads, deals, meetings, client accounts).
+ * @param {{ limit?: number, start?: number, type?: string }} opts
+ * @returns {Promise<{ data: object[], total: number, start: number, limit: number }>}
+ */
+export async function fetchCrmActivityFeed(opts = {}) {
+  return fetchGlobalActivityFeed({ ...opts, subjectTypes: CRM_SUBJECT_TYPES });
 }
 
 /**
@@ -314,7 +327,9 @@ export async function fetchTaskCommentCounts({ taskIds } = {}) {
 }
 
 export default {
+  CRM_SUBJECT_TYPES,
   fetchGlobalActivityFeed,
+  fetchCrmActivityFeed,
   fetchGlobalCommentsFeed,
   fetchActivityTimeline,
   fetchMeetingTimeline,

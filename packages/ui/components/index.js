@@ -16,6 +16,7 @@ export { Card } from './Card';
 export { Badge } from './Badge';
 export { Avatar } from './Avatar';
 export { Table } from './Table';
+export { TableColumnPicker } from './TableColumnPicker';
 export { TableSortPanel } from './TableSortPanel';
 export { Pagination } from './Pagination';
 export { EmptyState } from './EmptyState';
@@ -25,6 +26,13 @@ export { FormSectionCard } from './FormSectionCard';
 export { SidebarTrialUpsell } from './SidebarTrialUpsell';
 export { PwaInstallPrompt } from './PwaInstallPrompt';
 export { WorkspaceHeader } from './WorkspaceHeader';
+export {
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+  SidebarProductBranding,
+} from './LoginBrandCorner';
+export { WorkspaceBackButton, workspaceBackButtonClassName } from './WorkspaceBackButton';
 export {
   TableCellCreated,
   TableCellDateOnly,

@@ -221,6 +221,12 @@ function canManageOrganizationProfile(ctx) {
   return canManageAppSettings(ctx) || isAdminRole(orgRoleFromCtx(ctx));
 }
 
+/** Organization security policies — org Admin (or platform admin context) only. */
+function canManageOrganizationSecurity(ctx) {
+  if (ctx?.state?.platformAdminContext) return true;
+  return isAdminRole(orgRoleFromCtx(ctx));
+}
+
 function requireAppSettingsManage(ctx) {
   if (canManageAppSettings(ctx)) return null;
   return ctx.forbidden('You need manage access to CRM or PM settings');
@@ -248,6 +254,7 @@ module.exports = {
   canAccessPermissions,
   canManageAppSettings,
   canManageOrganizationProfile,
+  canManageOrganizationSecurity,
   getAccess,
   isAdminRole,
   isAssignedToCurrentUser,

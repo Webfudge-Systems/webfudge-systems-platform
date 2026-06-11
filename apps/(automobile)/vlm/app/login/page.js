@@ -3,8 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@webfudge/auth';
-import { AlertCircle, Car, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { Button, Input } from '@webfudge/ui';
+import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
+import {
+  Button,
+  Input,
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+} from '@webfudge/ui';
+import { VLM_SITE } from '../../lib/site';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -67,31 +74,33 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-primary to-orange-600 flex-col justify-center px-16 py-20">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-primary to-orange-600 relative flex-col justify-center px-16 py-20">
+        <LoginBrandCorner
+          brandIconPath={VLM_SITE.brandIconPath}
+          brandName={VLM_SITE.brandName}
+        />
         <div className="max-w-lg">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <Car className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-white font-semibold text-lg">Webfudge VLM</span>
-          </div>
+          <LoginProductCredit productName={VLM_SITE.name} />
           <h1 className="text-5xl font-bold text-white mb-6">Welcome back</h1>
-          <p className="text-xl text-white/90 mb-4">
-            Vehicle Lifecycle Management for fleets, dealers, and service teams.
-          </p>
-          <p className="text-white/80 leading-relaxed">
-            Sign in to manage vehicles, allocations, service history, and warranty records.
-          </p>
+          <p className="text-xl text-white/90 mb-4">{VLM_SITE.loginTagline}</p>
+          <p className="text-white/80 leading-relaxed">{VLM_SITE.loginDetail}</p>
+          <div className="mt-12 grid grid-cols-3 gap-6">
+            {VLM_SITE.loginFeatures.map((item) => (
+              <div key={item.label} className="bg-white/10 rounded-xl p-4 text-center">
+                <p className="text-white font-semibold text-sm">{item.value}</p>
+                <p className="text-white/70 text-xs mt-1">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       <div className="w-full lg:w-1/2 flex flex-col justify-center p-8 lg:p-16">
         <div className="w-full max-w-md mx-auto">
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div className="w-8 h-8 bg-brand-primary rounded-lg flex items-center justify-center">
-              <Car className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-semibold text-brand-foreground">Webfudge VLM</span>
-          </div>
+          <LoginMobileBrandHeader
+            brandIconPath={VLM_SITE.logoPath}
+            brandName={VLM_SITE.brandName}
+            productName={VLM_SITE.name}
+          />
           <h2 className="text-3xl font-semibold text-brand-dark mb-2">Sign in</h2>
           <p className="text-gray-600 mb-8">Enter your credentials to access the VLM dashboard.</p>
 

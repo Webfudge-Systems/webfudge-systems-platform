@@ -26,6 +26,15 @@ export function canManageCRM(moduleKey) {
   return authService.canManage('crm', moduleKey)
 }
 
+/** Whether the current org role is manager or admin (team oversight views). */
+export function isCrmManagerOrAdmin() {
+  const role = authService.getCurrentOrgRole()
+  const code = String(role?.code || role?.name || '').toLowerCase().trim()
+  if (code === 'admin' || code.endsWith('-admin') || code === 'administrator') return true
+  if (code === 'manager' || code.includes('manager')) return true
+  return false
+}
+
 export function currentUserIds() {
   const user = authService.getStoredUser()
   return [

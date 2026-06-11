@@ -4,8 +4,15 @@ import type { ChangeEvent } from 'react'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
-import { AlertCircle, BookOpen, Eye, EyeOff, Loader2 } from 'lucide-react'
-import { Button, Input } from '@webfudge/ui'
+import { AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
+import {
+  Button,
+  Input,
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+} from '@webfudge/ui'
+import { BOOKS_SITE } from '@/lib/site'
 
 type FormErrors = {
   email?: string
@@ -74,32 +81,34 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex bg-[var(--books-bg-page)]">
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center bg-gradient-to-br from-brand-primary via-orange-500 to-orange-700 px-16 py-20 dark:from-[#431407] dark:via-[#c2410c] dark:to-[#9a3412]">
+      <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-center bg-gradient-to-br from-brand-primary via-orange-500 to-orange-700 px-16 py-20 dark:from-[#431407] dark:via-[#c2410c] dark:to-[#9a3412]">
+        <LoginBrandCorner
+          brandIconPath={BOOKS_SITE.brandIconPath}
+          brandName={BOOKS_SITE.brandName}
+        />
         <div className="max-w-lg">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-white font-semibold text-lg">Webfudge Books</span>
-          </div>
+          <LoginProductCredit productName={BOOKS_SITE.name} creatorLine={BOOKS_SITE.brandName} />
           <h1 className="text-5xl font-bold text-white mb-6">Welcome back</h1>
-          <p className="text-xl text-white/90 mb-4">
-            Finance and accounting for service agencies and modern teams.
-          </p>
-          <p className="text-white/80 leading-relaxed">
-            Sign in to manage receivables, payables, projects, time tracking, and documents.
-          </p>
+          <p className="text-xl text-white/90 mb-4">{BOOKS_SITE.loginTagline}</p>
+          <p className="text-white/80 leading-relaxed">{BOOKS_SITE.loginDetail}</p>
+          <div className="mt-12 grid grid-cols-3 gap-6">
+            {BOOKS_SITE.loginFeatures.map((item) => (
+              <div key={item.label} className="bg-white/10 rounded-xl p-4 text-center">
+                <p className="text-white font-semibold text-sm">{item.value}</p>
+                <p className="text-white/70 text-xs mt-1">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="flex w-full flex-col justify-center bg-[var(--books-bg-page)] p-8 lg:w-1/2 lg:p-16">
         <div className="mx-auto w-full max-w-md">
-          <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-primary">
-              <BookOpen className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-semibold text-[var(--books-text-primary)]">Webfudge Books</span>
-          </div>
+          <LoginMobileBrandHeader
+            logoPath={BOOKS_SITE.logoPath}
+            productName={BOOKS_SITE.name}
+            creatorLine={BOOKS_SITE.brandName}
+          />
 
           <h2 className="mb-2 text-3xl font-semibold text-[var(--books-text-primary)]">Sign in</h2>
           <p className="mb-8 text-[var(--books-text-secondary)]">
@@ -118,10 +127,7 @@ export default function LoginPage() {
             )}
 
             <div>
-              <label
-                htmlFor="email"
-                className="mb-1.5 block text-sm font-medium text-[var(--books-text-primary)]"
-              >
+              <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-[var(--books-text-primary)]">
                 Email
               </label>
               <Input
@@ -138,10 +144,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="mb-1.5 block text-sm font-medium text-[var(--books-text-primary)]"
-              >
+              <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-[var(--books-text-primary)]">
                 Password
               </label>
               <div className="relative">

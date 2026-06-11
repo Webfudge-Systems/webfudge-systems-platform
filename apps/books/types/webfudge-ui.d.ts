@@ -11,7 +11,17 @@ declare module '@webfudge/ui' {
   export const FormSectionCard: any
   export const Badge: any
   export const Avatar: any
+  export const LoginBrandCorner: any
+  export const LoginProductCredit: any
+  export const LoginMobileBrandHeader: any
+  export const SidebarProductBranding: any
   export const WorkspaceHeader: any
+  export const WorkspaceBackButton: React.ComponentType<{
+    onClick?: () => void
+    label?: string
+    className?: string
+  }>
+  export const workspaceBackButtonClassName: string
   export const Table: any
   export const TableSortDropdown: React.ComponentType<{
     open: boolean

@@ -28,6 +28,21 @@ class OrganizationService {
     if (!orgId) throw new Error('No active organization selected')
     return strapiClient.post(`/organizations/${orgId}/add-app`, payload)
   }
+
+  async getSecuritySettings() {
+    if (typeof window === 'undefined') return null
+    const orgId = localStorage.getItem('current-org-id')
+    if (!orgId) return null
+    const response = await strapiClient.get(`/organizations/${orgId}/security-settings`)
+    return response?.data || response
+  }
+
+  async updateSecuritySettings(securitySettings) {
+    if (typeof window === 'undefined') throw new Error('Organization API is browser-only')
+    const orgId = localStorage.getItem('current-org-id')
+    if (!orgId) throw new Error('No active organization selected')
+    return strapiClient.patch(`/organizations/${orgId}/security-settings`, { securitySettings })
+  }
 }
 
 const organizationService = new OrganizationService()

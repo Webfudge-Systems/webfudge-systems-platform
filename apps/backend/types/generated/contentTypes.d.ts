@@ -951,6 +951,39 @@ export interface ApiDeliveryChallanDeliveryChallan extends Struct.CollectionType
   }
 }
 
+export interface ApiDepartmentDepartment extends Struct.CollectionTypeSchema {
+  collectionName: 'departments'
+  info: {
+    description: 'Organization departments'
+    displayName: 'Department'
+    pluralName: 'departments'
+    singularName: 'department'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    description: Schema.Attribute.Text
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    lead: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::department.department'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUsers: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::organization-user.organization-user'
+    >
+    parent: Schema.Attribute.Relation<'manyToOne', 'api::department.department'>
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiDirectMessageDirectMessage extends Struct.CollectionTypeSchema {
   collectionName: 'direct_messages'
   info: {
@@ -1696,6 +1729,7 @@ export interface ApiOrganizationUserOrganizationUser extends Struct.CollectionTy
     createdAt: Schema.Attribute.DateTime
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     customPermissions: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    departments: Schema.Attribute.Relation<'manyToMany', 'api::department.department'>
     isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
     joinedAt: Schema.Attribute.DateTime
     lastAccessAt: Schema.Attribute.DateTime
@@ -1706,6 +1740,7 @@ export interface ApiOrganizationUserOrganizationUser extends Struct.CollectionTy
     > &
       Schema.Attribute.Private
     organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    primaryDepartment: Schema.Attribute.Relation<'manyToOne', 'api::department.department'>
     publishedAt: Schema.Attribute.DateTime
     role: Schema.Attribute.Relation<'manyToOne', 'api::organization-role.organization-role'>
     updatedAt: Schema.Attribute.DateTime
@@ -1779,6 +1814,14 @@ export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema
     poSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     publishedAt: Schema.Attribute.DateTime
     retainerSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    securitySettings: Schema.Attribute.JSON &
+      Schema.Attribute.DefaultTo<{
+        allowedEmailDomains: []
+        allowPasswordLogin: true
+        passwordMinLength: 8
+        requireMfa: false
+        sessionTimeoutMinutes: 480
+      }>
     size: Schema.Attribute.Enumeration<
       ['size_1_10', 'size_11_50', 'size_51_200', 'size_201_500', 'size_500_plus']
     >
@@ -3013,6 +3056,7 @@ declare module '@strapi/strapi' {
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity
       'api::deal.deal': ApiDealDeal
       'api::delivery-challan.delivery-challan': ApiDeliveryChallanDeliveryChallan
+      'api::department.department': ApiDepartmentDepartment
       'api::direct-message.direct-message': ApiDirectMessageDirectMessage
       'api::document.document': ApiDocumentDocument
       'api::entity-attachment.entity-attachment': ApiEntityAttachmentEntityAttachment

@@ -63,42 +63,44 @@ function AssignedLeadsTable({ rows, onStatusChange, savingByLeadId, router }) {
 
   return (
     <div className="w-full overflow-x-auto overflow-y-hidden rounded-xl border border-gray-100 bg-white">
-      <table className="w-full min-w-[720px] border-collapse text-sm">
-        <thead className="border-b border-gray-200 bg-gray-50">
-          <tr>
+      <table className="w-full table-fixed border-collapse text-sm">
+        <colgroup>
+          <col />
+          <col />
+          <col style={{ width: '158px' }} />
+          <col style={{ width: '112px' }} />
+          <col style={{ width: '116px' }} />
+          <col style={{ width: '132px' }} />
+        </colgroup>
+        <thead>
+          <tr className="border-b border-gray-200 bg-gray-50">
             <th
-              className={`text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
-              style={{ width: '28%' }}
+              className={`bg-gray-50 text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
             >
               Company
             </th>
             <th
-              className={`text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
-              style={{ width: '22%' }}
+              className={`bg-gray-50 text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
             >
               Contact
             </th>
             <th
-              className={`text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
-              style={{ width: '14%' }}
+              className={`bg-gray-50 text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
             >
               Status
             </th>
             <th
-              className={`text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
-              style={{ width: '14%' }}
+              className={`bg-gray-50 text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
             >
               Next connect
             </th>
             <th
-              className={`text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
-              style={{ width: '12%' }}
+              className={`bg-gray-50 text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
             >
               Updated
             </th>
             <th
-              className={`text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
-              style={{ width: '10%' }}
+              className={`bg-gray-50 text-left text-xs font-bold uppercase tracking-wide text-gray-700 ${COMPACT_HEADER}`}
             >
               Actions
             </th>
@@ -153,7 +155,7 @@ function AssignedLeadsTable({ rows, onStatusChange, savingByLeadId, router }) {
                     onStatusChange={onStatusChange}
                     saving={saving}
                     canEdit={canEdit}
-                    containerClassName="w-full min-w-0 max-w-full"
+                    containerClassName="w-full min-w-0"
                   />
                 </td>
                 <td className={COMPACT_CELL}>
@@ -167,7 +169,7 @@ function AssignedLeadsTable({ rows, onStatusChange, savingByLeadId, router }) {
                   />
                 </td>
                 <td className={COMPACT_CELL} onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center gap-0.5">
+                  <div className="flex items-center justify-start gap-0.5">
                     <Button
                       variant="ghost"
                       size="sm"

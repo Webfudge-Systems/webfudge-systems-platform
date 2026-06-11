@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Webfudge CRM",
-  "short_name": "CRM",
-  "description": "Webfudge CRM for leads, deals, client accounts, and collaboration.",
+  "name": "Fudge Books",
+  "short_name": "Books",
+  "description": "Fudge Books for finance, accounting, invoicing, and reporting.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
