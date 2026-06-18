@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Clock,
@@ -11,26 +11,39 @@ import {
   Calendar,
   FileText,
   Palmtree,
+  Eye,
+  Trash2,
+  Check,
+  X,
 } from 'lucide-react'
 import {
   Button,
   Table,
   KPICard,
   TabsWithActions,
-  Avatar,
-  TableCellText,
-  TableCellDateOnly,
+  Select,
+  TableCellCreated,
   TableCellOrangePill,
+  TableEmptyBelow,
+  TableColumnPicker,
+  TableSortDropdown,
+  useTableColumnPreferences,
+  useTableSort,
   Card,
-  TableResultsCount,
+  Modal,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
 import HRSectionCard from '../../../components/shared/HRSectionCard'
-import HRDataTableCard from '../../../components/shared/HRDataTableCard'
-import HRTableRowActions from '../../../components/shared/HRTableRowActions'
-import HRStatusBadge from '../../../components/shared/HRStatusBadge'
+import HRDataTableCard, { HRListResultsCount } from '../../../components/shared/HRDataTableCard'
+import {
+  LeaveEmployeeCell,
+  LeaveBalanceEmployeeCell,
+  LeaveTypeCell,
+  LeaveTextCell,
+  LeaveStatusPill,
+} from '../../../components/leave/LeaveTableCells'
 import { LEAVE_REQUESTS, LEAVE_BALANCES, LEAVE_POLICIES } from '../../../lib/mock-data/leave'
 import {
   computeLeaveStats,
@@ -40,8 +53,55 @@ import {
 } from '../../../lib/leavePage'
 import { useHRQuickActions } from '../../../components/quick-actions/HRQuickActionsContext'
 import { HR_QUICK_ACTION_IDS } from '../../../lib/quickActions'
+import { HR_ROOT_BREADCRUMB } from '../../../lib/pageHeader'
 
-const STATUS_FILTERS = ['', 'Pending', 'Approved', 'Rejected']
+const TABLE_SORT_STORAGE_KEY = 'hr.leave.requests.tableSort'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'hr.leave.requests.tableColumnVisibility'
+const COLUMN_ORDER_STORAGE_KEY = 'hr.leave.requests.tableColumnOrder'
+const COLUMN_WIDTHS_STORAGE_KEY = 'hr.leave.requests.tableColumnWidths'
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'Pending', label: 'Pending' },
+  { value: 'Approved', label: 'Approved' },
+  { value: 'Rejected', label: 'Rejected' },
+]
+
+const DEFAULT_COLUMN_WIDTHS = {
+  employee: 260,
+  type: 150,
+  from: 130,
+  to: 130,
+  days: 90,
+  status: 130,
+  actions: 160,
+}
+
+const MIN_COLUMN_WIDTHS = {
+  actions: 140,
+}
+
+const TOGGLEABLE_COLUMNS = [
+  { key: 'type', label: 'Leave type' },
+  { key: 'from', label: 'From date' },
+  { key: 'to', label: 'To date' },
+  { key: 'days', label: 'Days' },
+  { key: 'status', label: 'Status' },
+]
+
+const DEFAULT_ON_COLUMN_KEYS = new Set(['type', 'from', 'to', 'days', 'status'])
+const REORDERABLE_COLUMN_KEYS = TOGGLEABLE_COLUMNS.map((c) => c.key)
+const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
+  acc[key] = DEFAULT_ON_COLUMN_KEYS.has(key)
+  return acc
+}, {})
+
+const SORT_COLUMN_OPTIONS = [
+  { key: 'employee', label: 'Employee' },
+  ...TOGGLEABLE_COLUMNS,
+]
+
+const SORTABLE_KEYS = SORT_COLUMN_OPTIONS.map((c) => c.key)
 
 const ON_LEAVE_THIS_WEEK = [
   { name: 'Sneha Reddy', detail: 'PL until Jun 24' },
@@ -49,19 +109,83 @@ const ON_LEAVE_THIS_WEEK = [
   { name: 'Divya Menon', detail: 'PL from Jun 15' },
 ]
 
+function getLeaveSortValue(row, key) {
+  switch (key) {
+    case 'employee':
+      return row.employeeName || ''
+    case 'type':
+      return row.type || ''
+    case 'from':
+      return row.from || ''
+    case 'to':
+      return row.to || ''
+    case 'days':
+      return row.days ?? 0
+    case 'status':
+      return row.status || ''
+    default:
+      return row[key]
+  }
+}
+
 export default function LeavePage() {
   const router = useRouter()
   const { openQuickAction } = useHRQuickActions()
   const [activeTab, setActiveTab] = useState('requests')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [sortPickerOpen, setSortPickerOpen] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
 
   const stats = useMemo(() => computeLeaveStats(LEAVE_REQUESTS), [])
   const tabItems = useMemo(() => getLeaveTabItems(), [])
 
+  const {
+    columnVisibility,
+    columnOrder,
+    columnPickerOpen,
+    setColumnPickerOpen,
+    columnDropIndicator,
+    toolbarRef,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    tableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  })
+
+  const {
+    sortRules,
+    sortData,
+    bindSortableColumns,
+    hasActiveSort,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    maxRules: sortMaxRules,
+  } = useTableSort({ storageKey: TABLE_SORT_STORAGE_KEY })
+
   const requestRows = useMemo(
     () => filterLeaveRequests(LEAVE_REQUESTS, { search: searchQuery, statusFilter }),
     [searchQuery, statusFilter]
+  )
+
+  const sortedRequestRows = useMemo(
+    () => sortData(requestRows, (row, key) => getLeaveSortValue(row, key)),
+    [requestRows, sortData, sortRules]
   )
 
   const balanceRows = useMemo(
@@ -69,71 +193,122 @@ export default function LeavePage() {
     [searchQuery]
   )
 
-  const requestColumns = useMemo(
+  useEffect(() => {
+    if (!columnPickerOpen && !sortPickerOpen) return
+    const onDocMouseDown = (event) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(event.target)) {
+        setColumnPickerOpen(false)
+        setSortPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [columnPickerOpen, sortPickerOpen, setColumnPickerOpen])
+
+  const requestTableColumns = useMemo(
     () => [
       {
         key: 'employee',
         label: 'EMPLOYEE',
         fixed: true,
-        render: (_, row) => (
-          <div className="flex min-w-[180px] items-center gap-3">
-            <Avatar alt={row.employeeName} fallback={row.employeeName?.charAt(0) || '?'} size="sm" />
-            <div className="min-w-0">
-              <div className="truncate font-medium text-gray-900">{row.employeeName}</div>
-              <div className="truncate text-sm text-gray-500">{row.employeeId}</div>
-            </div>
-          </div>
-        ),
+        render: (_, row) => <LeaveEmployeeCell row={row} />,
       },
       {
         key: 'type',
+        visibilityKey: 'type',
         label: 'TYPE',
-        render: (_, row) => <TableCellOrangePill value={row.type} />,
+        render: (_, row) => <LeaveTypeCell type={row.type} />,
       },
       {
         key: 'from',
+        visibilityKey: 'from',
         label: 'FROM',
-        render: (_, row) => <TableCellDateOnly dateString={row.from} />,
+        render: (_, row) => <TableCellCreated dateString={row.from} dateMode="calendar" />,
       },
       {
         key: 'to',
+        visibilityKey: 'to',
         label: 'TO',
-        render: (_, row) => <TableCellDateOnly dateString={row.to} />,
+        render: (_, row) => <TableCellCreated dateString={row.to} dateMode="calendar" />,
       },
       {
         key: 'days',
+        visibilityKey: 'days',
         label: 'DAYS',
-        render: (_, row) => <TableCellText value={String(row.days)} emphasized />,
+        render: (_, row) => <LeaveTextCell value={String(row.days)} emphasized />,
       },
       {
         key: 'status',
+        visibilityKey: 'status',
         label: 'STATUS',
-        render: (_, row) => <HRStatusBadge status={row.status} />,
+        render: (_, row) => <LeaveStatusPill status={row.status} />,
       },
       {
         key: 'actions',
         label: 'ACTIONS',
         fixed: true,
+        resizable: false,
+        width: 160,
+        defaultWidth: '160px',
+        headerClassName: 'whitespace-nowrap text-right',
+        className: 'whitespace-nowrap text-right align-middle',
         render: (_, row) => (
-          <div className="flex min-w-[160px] items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex min-w-[140px] shrink-0 items-center justify-end gap-0.5"
+            onClick={(event) => event.stopPropagation()}
+          >
             {row.status === 'Pending' ? (
               <>
-                <Button variant="primary" size="sm" onClick={() => console.log('Approve', row.id)}>
-                  Approve
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 text-emerald-600 hover:bg-emerald-50"
+                  title="Approve"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    console.log('Approve', row.id)
+                  }}
+                >
+                  <Check className="h-4 w-4" />
                 </Button>
-                <Button variant="secondary" size="sm" onClick={() => console.log('Reject', row.id)}>
-                  Reject
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-2 text-red-600 hover:bg-red-50"
+                  title="Reject"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    console.log('Reject', row.id)
+                  }}
+                >
+                  <X className="h-4 w-4" />
                 </Button>
               </>
-            ) : (
-              <HRTableRowActions
-                onEdit={() => router.push(`/employees/${row.employeeId}`)}
-                editTitle="View employee"
-                onDelete={() => console.log('Delete leave request', row.id)}
-                deleteTitle="Delete request"
-                itemName={row.employee}
-              />
-            )}
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-emerald-600 hover:bg-emerald-50"
+              title="View employee"
+              onClick={(event) => {
+                event.stopPropagation()
+                router.push(`/employees/${row.employeeId}`)
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-red-600 hover:bg-red-50"
+              title="Delete request"
+              onClick={(event) => {
+                event.stopPropagation()
+                console.log('Delete leave request', row.id)
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         ),
       },
@@ -141,47 +316,58 @@ export default function LeavePage() {
     [router]
   )
 
+  const visibleRequestColumns = useMemo(() => {
+    const byKey = Object.fromEntries(requestTableColumns.map((c) => [c.key, c]))
+    const out = []
+    if (byKey.employee) out.push(byKey.employee)
+    for (const key of columnOrder) {
+      const col = byKey[key]
+      if (!col?.visibilityKey) continue
+      if (!columnVisibility[col.visibilityKey]) continue
+      out.push(col)
+    }
+    if (byKey.actions) out.push(byKey.actions)
+    return activeTab === 'requests' ? bindSortableColumns(out, SORTABLE_KEYS) : out
+  }, [columnOrder, columnVisibility, requestTableColumns, activeTab, bindSortableColumns])
+
   const balanceColumns = useMemo(
     () => [
       {
         key: 'employee',
         label: 'EMPLOYEE',
         fixed: true,
-        render: (_, row) => (
-          <div className="min-w-[160px]">
-            <div className="font-medium text-gray-900">{row.employeeName}</div>
-            <div className="text-sm text-gray-500">{row.department}</div>
-          </div>
-        ),
+        render: (_, row) => <LeaveBalanceEmployeeCell row={row} />,
       },
       {
         key: 'cl',
         label: 'CL',
-        render: (_, row) => <TableCellText value={String(row.cl)} emphasized />,
+        render: (_, row) => <LeaveTextCell value={String(row.cl)} emphasized />,
       },
       {
         key: 'sl',
         label: 'SL',
-        render: (_, row) => <TableCellText value={String(row.sl)} />,
+        render: (_, row) => <LeaveTextCell value={String(row.sl)} />,
       },
       {
         key: 'pl',
         label: 'PL',
-        render: (_, row) => <TableCellText value={String(row.pl)} />,
+        render: (_, row) => <LeaveTextCell value={String(row.pl)} />,
       },
       {
         key: 'compOff',
         label: 'COMP-OFF',
-        render: (_, row) => <TableCellText value={String(row.compOff)} />,
+        render: (_, row) => <LeaveTextCell value={String(row.compOff)} />,
       },
       {
         key: 'lop',
         label: 'LOP',
-        render: (_, row) => <TableCellText value={String(row.lop)} />,
+        render: (_, row) => <LeaveTextCell value={String(row.lop)} />,
       },
     ],
     []
   )
+
+  const showTableToolbar = activeTab === 'requests'
 
   const resultCount =
     activeTab === 'requests'
@@ -192,17 +378,33 @@ export default function LeavePage() {
           ? LEAVE_POLICIES.length
           : 0
 
+  const emptyRequests = {
+    icon: Palmtree,
+    title: 'No leave requests found',
+    description: 'Try adjusting your search or status filter.',
+    action: (
+      <Button variant="primary" onClick={() => openQuickAction(HR_QUICK_ACTION_IDS.APPLY_LEAVE)}>
+        <Plus className="mr-2 h-4 w-4" />
+        Apply Leave
+      </Button>
+    ),
+  }
+
+  const emptyBalances = {
+    icon: CalendarDays,
+    title: 'No balance records found',
+    description: 'Try adjusting your search.',
+    action: null,
+  }
+
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
-        title="Leave Management"
-        subtitle={`${stats.pending} pending approval${stats.pending === 1 ? '' : 's'} · ${stats.total} total requests`}
-        breadcrumb={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Leave', href: '/leave' },
-        ]}
+        title="Leave"
+        subtitle="Manage leave requests, balances, policies, and team availability across your organization"
+        breadcrumb={[HR_ROOT_BREADCRUMB, { label: 'Leave', href: '/leave' }]}
+        showProfile
         showActions
-        showSearch
         onImportClick={() => console.log('Import leave')}
         onExportClick={() => console.log('Export leave')}
       />
@@ -211,109 +413,154 @@ export default function LeavePage() {
         <KPICard
           title="Pending"
           value={stats.pending}
-          subtitle={stats.pending === 0 ? 'All caught up' : 'Awaiting approval'}
+          subtitle={
+            stats.pending === 0
+              ? 'All caught up'
+              : stats.pending === 1
+                ? '1 request pending'
+                : `${stats.pending} requests pending`
+          }
           icon={Clock}
           colorScheme="orange"
         />
         <KPICard
           title="Approved"
           value={stats.approved}
-          subtitle={`${stats.approved} approved requests`}
+          subtitle={
+            stats.approved === 0
+              ? 'No approvals'
+              : stats.approved === 1
+                ? '1 approved request'
+                : `${stats.approved} approved requests`
+          }
           icon={CheckCircle}
           colorScheme="orange"
         />
         <KPICard
           title="Rejected"
           value={stats.rejected}
-          subtitle={stats.rejected === 0 ? 'No rejections' : `${stats.rejected} declined`}
+          subtitle={
+            stats.rejected === 0
+              ? 'No rejections'
+              : stats.rejected === 1
+                ? '1 rejected request'
+                : `${stats.rejected} rejected requests`
+          }
           icon={XCircle}
           colorScheme="orange"
         />
         <KPICard
           title="Total Requests"
           value={stats.total}
-          subtitle="All leave applications"
+          subtitle={
+            stats.total === 0
+              ? 'No requests'
+              : stats.total === 1
+                ? '1 request'
+                : `${stats.total} requests`
+          }
           icon={CalendarDays}
           colorScheme="orange"
         />
       </HRKpiRow>
 
-      <TabsWithActions
-        tabs={tabItems.map((item) => ({
-          key: item.key,
-          label: item.label,
-          badge: String(item.count),
-        }))}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        showSearch
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search..."
-        showAdd
-        onAddClick={() => openQuickAction(HR_QUICK_ACTION_IDS.APPLY_LEAVE)}
-        addTitle="Apply Leave"
-        showFilter
-        onFilterClick={() => console.log('Filter leave')}
-        showExport
-        onExportClick={() => console.log('Export leave')}
-        exportTitle="Export"
-        afterTabs={
-          activeTab === 'requests' ? (
-            <div className="hidden items-center gap-2 sm:flex">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by status"
-              >
-                <option value="">All statuses</option>
-                {STATUS_FILTERS.filter(Boolean).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null
-        }
-      />
+      <div className="relative" ref={toolbarRef}>
+        <TabsWithActions
+          tabs={tabItems.map((item) => ({
+            key: item.key,
+            label: item.label,
+            badge: String(item.count),
+          }))}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          showSearch
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search leave..."
+          showAdd
+          onAddClick={() => openQuickAction(HR_QUICK_ACTION_IDS.APPLY_LEAVE)}
+          addTitle="Apply Leave"
+          showFilter
+          onFilterClick={() => setFilterOpen(true)}
+          hasActiveFilters={Boolean(statusFilter)}
+          filterTitle={statusFilter ? 'Status filter active' : 'Filter leave'}
+          showColumnVisibility={showTableToolbar}
+          onColumnVisibilityClick={() => {
+            setSortPickerOpen(false)
+            setColumnPickerOpen((open) => !open)
+          }}
+          columnVisibilityTitle="Show or hide columns"
+          showSort={showTableToolbar}
+          onSortClick={() => {
+            setColumnPickerOpen(false)
+            setSortPickerOpen((open) => !open)
+          }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort leave requests (Shift+click headers for multi-sort)"
+          variant="glass"
+        />
+        <TableSortDropdown
+          open={sortPickerOpen && showTableToolbar}
+          sortRules={sortRules}
+          columnOptions={SORT_COLUMN_OPTIONS}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
+          maxRules={sortMaxRules}
+        />
+        <TableColumnPicker
+          open={columnPickerOpen && showTableToolbar}
+          description="Employee name and actions stay visible. Drag column edges in the table to resize."
+          reorderableRows={TOGGLEABLE_COLUMNS}
+          columnVisibility={columnVisibility}
+          columnOrder={columnOrder}
+          columnDropIndicator={columnDropIndicator}
+          onSetVisible={setColumnVisible}
+          onDragStart={handleColumnDragStart}
+          onDragEnd={handleColumnDragEnd}
+          onRowDragOver={handleColumnRowDragOver}
+          onListDragLeave={handleColumnListDragLeave}
+          onDrop={handleColumnDrop}
+          onReset={resetColumnTablePreferences}
+        />
+      </div>
 
-      <TableResultsCount count={resultCount} />
+      <HRListResultsCount count={resultCount} />
 
       {activeTab === 'requests' && (
         <HRDataTableCard>
           <Table
-            columns={requestColumns}
-            data={requestRows}
+            columns={visibleRequestColumns}
+            data={sortedRequestRows}
             keyField="id"
-            variant="modern"
+            variant="modernEmbedded"
+            {...tableResizeProps}
             onRowClick={(row) => router.push(`/employees/${row.employeeId}`)}
           />
-          {requestRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <Palmtree className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No leave requests found</h3>
-              <p className="mb-4 text-sm text-gray-500">Try adjusting your search or status filter.</p>
-              <Button variant="primary" onClick={() => openQuickAction(HR_QUICK_ACTION_IDS.APPLY_LEAVE)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Apply Leave
-              </Button>
-            </div>
-          )}
+          {requestRows.length === 0 ? (
+            <TableEmptyBelow
+              icon={emptyRequests.icon}
+              title={emptyRequests.title}
+              description={emptyRequests.description}
+              action={emptyRequests.action}
+            />
+          ) : null}
         </HRDataTableCard>
       )}
 
       {activeTab === 'balances' && (
         <HRDataTableCard>
-          <Table columns={balanceColumns} data={balanceRows} keyField="employeeId" variant="modern" />
-          {balanceRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <CalendarDays className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No balance records found</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search.</p>
-            </div>
-          )}
+          <Table columns={balanceColumns} data={balanceRows} keyField="employeeId" variant="modernEmbedded" />
+          {balanceRows.length === 0 ? (
+            <TableEmptyBelow
+              icon={emptyBalances.icon}
+              title={emptyBalances.title}
+              description={emptyBalances.description}
+              action={emptyBalances.action}
+            />
+          ) : null}
         </HRDataTableCard>
       )}
 
@@ -373,6 +620,24 @@ export default function LeavePage() {
           </Button>
         </div>
       )}
+
+      <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter Leave" size="md">
+        <div className="space-y-5">
+          <Select
+            label="Status"
+            value={statusFilter}
+            options={STATUS_OPTIONS}
+            onChange={setStatusFilter}
+            placeholder="All statuses"
+          />
+          <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
+            <Button variant="outline" onClick={() => setStatusFilter('')}>
+              Clear
+            </Button>
+            <Button onClick={() => setFilterOpen(false)}>Apply Filters</Button>
+          </div>
+        </div>
+      </Modal>
     </HRModulePage>
   )
 }

@@ -1,0 +1,38 @@
+---
+description: Do not change shared @webfudge/ui component visuals unless explicitly requested
+alwaysApply: true
+---
+
+# Protect Shared UI Components
+
+`packages/ui/` is the shared design system for PM, CRM, Books, Accounts, HR, and other apps.
+
+## UI changes — do not modify by default
+
+- **Do not change** shared component **visuals** (layout, spacing, colors, typography, shadows, icons) while building or updating an app-specific feature.
+- **Only change shared component UI** when the user **explicitly asks** to update that shared component's design.
+
+## What is allowed without explicit UI approval
+
+- **Functionality**: non-visual behavior (props, callbacks, data wiring, a11y fixes that do not alter appearance).
+- **New shared components**: add new exports under `packages/ui/` when reuse across apps is intended.
+- **App-local components**: put app-specific UI in `apps/<app>/components/` (e.g. `HRDashboardKpiRow`, `HRDashboardInsightShell`).
+
+## When an app needs different UI
+
+1. Create or extend a component in the app folder (`apps/hr/components/...`).
+2. Compose shared primitives (`KPICard`, `Card`, `DashboardInsightShell`) without editing their styles.
+3. Pass `className` from the app layer only when the shared component already supports it.
+
+## Examples
+
+```jsx
+// ❌ BAD — changing KPICard icon layout in packages/ui for HR dashboard
+// packages/ui/components/KPICard/KPICard.jsx
+
+// ✅ GOOD — HR wrapper with extra props/behavior, shared KPICard unchanged
+// apps/hr/components/dashboard/HRDashboardKpiRow.jsx
+import { KPICard } from '@webfudge/ui'
+```
+
+Before editing any file under `packages/ui/components/`, ask: *Is this a visual change driven by one app?* If yes, implement it in that app instead.

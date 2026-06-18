@@ -19,7 +19,7 @@ export default function HRDashboardTile({
       subtitle={subtitle}
       action={action}
       panelClassName={panelClassName}
-      className={`min-h-[280px] sm:min-h-[300px] ${className}`}
+      className={`flex h-full min-h-[280px] flex-col sm:min-h-[300px] ${className}`}
     >
       {children}
     </HRDashboardInsightShell>

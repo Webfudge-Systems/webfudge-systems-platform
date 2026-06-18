@@ -1,34 +1,44 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   UserCheck,
   UserX,
   Home,
   Clock,
-  CalendarClock,
-  MapPin,
   FileSpreadsheet,
   Users,
+  Eye,
+  Trash2,
 } from 'lucide-react'
 import {
   Button,
   Table,
   KPICard,
   TabsWithActions,
-  Avatar,
-  TableCellText,
+  Select,
+  TableCellCreated,
+  TableEmptyBelow,
+  TableColumnPicker,
+  TableSortDropdown,
+  useTableColumnPreferences,
+  useTableSort,
   Card,
-  TableResultsCount,
+  Modal,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
 import HRSectionCard from '../../../components/shared/HRSectionCard'
-import HRDataTableCard from '../../../components/shared/HRDataTableCard'
-import HRTableRowActions from '../../../components/shared/HRTableRowActions'
-import HRStatusBadge from '../../../components/shared/HRStatusBadge'
+import HRDataTableCard, { HRListResultsCount } from '../../../components/shared/HRDataTableCard'
+import {
+  AttendanceEmployeeCell,
+  AttendanceTextCell,
+  AttendanceStatusPill,
+  AttendanceLocationCell,
+  AttendancePersonCell,
+} from '../../../components/attendance/AttendanceTableCells'
 import { EMPLOYEES } from '../../../lib/mock-data/employees'
 import { ATTENDANCE_LOG, SHIFTS, OVERTIME_RECORDS } from '../../../lib/mock-data/attendance'
 import { buildAttendanceSnapshot } from '../../../lib/attendanceSnapshot'
@@ -36,16 +46,84 @@ import {
   filterAttendanceLog,
   filterOvertimeRecords,
   getAttendanceTabItems,
-  todayDateLabel,
 } from '../../../lib/attendancePage'
+import { HR_ROOT_BREADCRUMB } from '../../../lib/pageHeader'
 
-const STATUS_FILTERS = ['', 'Present', 'On Leave', 'WFH', 'Absent']
+const TABLE_SORT_STORAGE_KEY = 'hr.attendance.today.tableSort'
+const COLUMN_VISIBILITY_STORAGE_KEY = 'hr.attendance.today.tableColumnVisibility'
+const COLUMN_ORDER_STORAGE_KEY = 'hr.attendance.today.tableColumnOrder'
+const COLUMN_WIDTHS_STORAGE_KEY = 'hr.attendance.today.tableColumnWidths'
+
+const STATUS_OPTIONS = [
+  { value: '', label: 'All statuses' },
+  { value: 'Present', label: 'Present' },
+  { value: 'On Leave', label: 'On Leave' },
+  { value: 'WFH', label: 'WFH' },
+  { value: 'Absent', label: 'Absent' },
+]
+
+const DEFAULT_COLUMN_WIDTHS = {
+  employee: 260,
+  clockIn: 100,
+  clockOut: 100,
+  duration: 110,
+  status: 130,
+  location: 160,
+  actions: 120,
+}
+
+const MIN_COLUMN_WIDTHS = {
+  actions: 120,
+}
+
+const TOGGLEABLE_COLUMNS = [
+  { key: 'clockIn', label: 'Clock in' },
+  { key: 'clockOut', label: 'Clock out' },
+  { key: 'duration', label: 'Duration' },
+  { key: 'status', label: 'Status' },
+  { key: 'location', label: 'Location' },
+]
+
+const DEFAULT_ON_COLUMN_KEYS = new Set(['clockIn', 'clockOut', 'duration', 'status', 'location'])
+const REORDERABLE_COLUMN_KEYS = TOGGLEABLE_COLUMNS.map((c) => c.key)
+const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
+  acc[key] = DEFAULT_ON_COLUMN_KEYS.has(key)
+  return acc
+}, {})
+
+const SORT_COLUMN_OPTIONS = [
+  { key: 'employee', label: 'Employee' },
+  ...TOGGLEABLE_COLUMNS,
+]
+
+const SORTABLE_KEYS = SORT_COLUMN_OPTIONS.map((c) => c.key)
+
+function getAttendanceSortValue(row, key) {
+  switch (key) {
+    case 'employee':
+      return row.name || ''
+    case 'clockIn':
+      return row.clockIn || ''
+    case 'clockOut':
+      return row.clockOut || ''
+    case 'duration':
+      return row.duration || ''
+    case 'status':
+      return row.status || ''
+    case 'location':
+      return row.location || ''
+    default:
+      return row[key]
+  }
+}
 
 export default function AttendancePage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('today')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [sortPickerOpen, setSortPickerOpen] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
 
   const activeRoster = useMemo(
     () => EMPLOYEES.filter((e) => e.status !== 'Exited').length,
@@ -54,9 +132,52 @@ export default function AttendancePage() {
   const snapshot = useMemo(() => buildAttendanceSnapshot(activeRoster), [activeRoster])
   const tabItems = useMemo(() => getAttendanceTabItems(), [])
 
+  const {
+    columnVisibility,
+    columnOrder,
+    columnPickerOpen,
+    setColumnPickerOpen,
+    columnDropIndicator,
+    toolbarRef,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    tableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  })
+
+  const {
+    sortRules,
+    sortData,
+    bindSortableColumns,
+    hasActiveSort,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    maxRules: sortMaxRules,
+  } = useTableSort({ storageKey: TABLE_SORT_STORAGE_KEY })
+
   const todayRows = useMemo(
     () => filterAttendanceLog(ATTENDANCE_LOG, { search: searchQuery, statusFilter }),
     [searchQuery, statusFilter]
+  )
+
+  const sortedTodayRows = useMemo(
+    () => sortData(todayRows, (row, key) => getAttendanceSortValue(row, key)),
+    [todayRows, sortData, sortRules]
   )
 
   const overtimeRows = useMemo(
@@ -68,107 +189,150 @@ export default function AttendancePage() {
     [searchQuery]
   )
 
-  const todayColumns = useMemo(
+  useEffect(() => {
+    if (!columnPickerOpen && !sortPickerOpen) return
+    const onDocMouseDown = (event) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(event.target)) {
+        setColumnPickerOpen(false)
+        setSortPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [columnPickerOpen, sortPickerOpen, setColumnPickerOpen])
+
+  const todayTableColumns = useMemo(
     () => [
       {
         key: 'employee',
         label: 'EMPLOYEE',
         fixed: true,
-        render: (_, row) => (
-          <div className="flex min-w-[200px] items-center gap-3">
-            <Avatar alt={row.name} fallback={row.name?.charAt(0) || '?'} size="sm" className="flex-shrink-0" />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="truncate font-medium text-gray-900">{row.name}</span>
-                {row.late ? (
-                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-800">
-                    Late
-                  </span>
-                ) : null}
-              </div>
-              <div className="truncate text-sm text-gray-500">{row.employeeId}</div>
-            </div>
-          </div>
-        ),
+        render: (_, row) => <AttendanceEmployeeCell row={row} />,
       },
       {
         key: 'clockIn',
+        visibilityKey: 'clockIn',
         label: 'IN',
-        render: (_, row) => <TableCellText value={row.clockIn} emphasized />,
+        render: (_, row) => <AttendanceTextCell value={row.clockIn} emphasized />,
       },
       {
         key: 'clockOut',
+        visibilityKey: 'clockOut',
         label: 'OUT',
-        render: (_, row) => <TableCellText value={row.clockOut} />,
+        render: (_, row) => <AttendanceTextCell value={row.clockOut} />,
       },
       {
         key: 'duration',
+        visibilityKey: 'duration',
         label: 'DURATION',
-        render: (_, row) => <TableCellText value={row.duration} />,
+        render: (_, row) => <AttendanceTextCell value={row.duration} />,
       },
       {
         key: 'status',
+        visibilityKey: 'status',
         label: 'STATUS',
-        render: (_, row) => <HRStatusBadge status={row.status} />,
+        render: (_, row) => <AttendanceStatusPill status={row.status} />,
       },
       {
         key: 'location',
+        visibilityKey: 'location',
         label: 'LOCATION',
-        render: (_, row) => (
-          <div className="flex min-w-[120px] items-center gap-2 text-sm text-gray-600">
-            <MapPin className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />
-            <span className="truncate">{row.location || '—'}</span>
-          </div>
-        ),
+        render: (_, row) => <AttendanceLocationCell location={row.location} />,
       },
       {
         key: 'actions',
         label: 'ACTIONS',
         fixed: true,
+        resizable: false,
+        width: 120,
+        defaultWidth: '120px',
+        headerClassName: 'whitespace-nowrap text-right',
+        className: 'whitespace-nowrap text-right align-middle',
         render: (_, row) => (
-          <HRTableRowActions
-            onEdit={() => router.push(`/employees/${row.employeeId}`)}
-            editTitle="View employee"
-            onDelete={() => console.log('Delete attendance record', row.id)}
-            deleteTitle="Delete record"
-            itemName={row.employee}
-          />
+          <div
+            className="flex min-w-[100px] shrink-0 items-center justify-end gap-0.5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-emerald-600 hover:bg-emerald-50"
+              title="View employee"
+              onClick={(event) => {
+                event.stopPropagation()
+                router.push(`/employees/${row.employeeId}`)
+              }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-red-600 hover:bg-red-50"
+              title="Delete record"
+              onClick={(event) => {
+                event.stopPropagation()
+                console.log('Delete attendance record', row.employeeId)
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         ),
       },
     ],
     [router]
   )
 
+  const visibleTodayColumns = useMemo(() => {
+    const byKey = Object.fromEntries(todayTableColumns.map((c) => [c.key, c]))
+    const out = []
+    if (byKey.employee) out.push(byKey.employee)
+    for (const key of columnOrder) {
+      const col = byKey[key]
+      if (!col?.visibilityKey) continue
+      if (!columnVisibility[col.visibilityKey]) continue
+      out.push(col)
+    }
+    if (byKey.actions) out.push(byKey.actions)
+    return activeTab === 'today' ? bindSortableColumns(out, SORTABLE_KEYS) : out
+  }, [columnOrder, columnVisibility, todayTableColumns, activeTab, bindSortableColumns])
+
   const overtimeColumns = useMemo(
     () => [
       {
         key: 'employee',
         label: 'EMPLOYEE',
-        render: (_, row) => <TableCellText value={row.employee} emphasized />,
+        fixed: true,
+        render: (_, row) => <AttendancePersonCell name={row.employee} />,
       },
       {
         key: 'date',
         label: 'DATE',
-        render: (_, row) => <TableCellText value={row.date} />,
+        render: (_, row) => <TableCellCreated dateString={row.date} dateMode="calendar" />,
       },
       {
         key: 'ot',
         label: 'OT HRS',
-        render: (_, row) => <TableCellText value={String(row.ot)} />,
+        render: (_, row) => <AttendanceTextCell value={String(row.ot)} emphasized />,
       },
       {
         key: 'amount',
         label: 'AMOUNT',
-        render: (_, row) => <TableCellText value={`₹${row.amount.toLocaleString('en-IN')}`} emphasized />,
+        render: (_, row) => (
+          <AttendanceTextCell value={`₹${row.amount.toLocaleString('en-IN')}`} emphasized />
+        ),
       },
       {
         key: 'status',
         label: 'STATUS',
-        render: (_, row) => <HRStatusBadge status={row.status} />,
+        render: (_, row) => <AttendanceStatusPill status={row.status} />,
       },
     ],
     []
   )
+
+  const showTableToolbar = activeTab === 'today'
 
   const resultCount =
     activeTab === 'today'
@@ -179,115 +343,167 @@ export default function AttendancePage() {
           ? SHIFTS.length
           : 0
 
+  const emptyToday = {
+    icon: UserCheck,
+    title: 'No attendance records found',
+    description: 'Try adjusting your search or status filter.',
+    action: null,
+  }
+
+  const emptyOvertime = {
+    icon: Clock,
+    title: 'No overtime records found',
+    description: 'Try adjusting your search.',
+    action: null,
+  }
+
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
         title="Attendance"
-        subtitle={`Today: ${todayDateLabel()} · ${snapshot.markedPct}% marked in`}
-        breadcrumb={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Attendance', href: '/attendance' },
-        ]}
+        subtitle="Track daily attendance, shifts, overtime, and workforce presence across your organization"
+        breadcrumb={[HR_ROOT_BREADCRUMB, { label: 'Attendance', href: '/attendance' }]}
+        showProfile
         showActions
-        showSearch
         onImportClick={() => console.log('Import attendance')}
         onExportClick={() => console.log('Export attendance')}
       />
 
-      <HRKpiRow columns={5}>
+      <HRKpiRow>
         <KPICard
           title="Present"
           value={snapshot.present}
-          subtitle={snapshot.present === 1 ? '1 employee' : `${snapshot.present} employees`}
+          subtitle={
+            snapshot.present === 0
+              ? 'No employees'
+              : snapshot.present === 1
+                ? '1 employee'
+                : `${snapshot.present} employees`
+          }
           icon={UserCheck}
           colorScheme="orange"
         />
         <KPICard
           title="On Leave"
           value={snapshot.onLeave}
-          subtitle={snapshot.onLeave === 0 ? 'None on leave' : `${snapshot.onLeave} on leave`}
+          subtitle={
+            snapshot.onLeave === 0
+              ? 'None on leave'
+              : snapshot.onLeave === 1
+                ? '1 on leave'
+                : `${snapshot.onLeave} on leave`
+          }
           icon={Clock}
           colorScheme="orange"
         />
         <KPICard
           title="Absent"
           value={snapshot.absent}
-          subtitle={snapshot.absent === 0 ? 'No absences' : `${snapshot.absent} absent`}
+          subtitle={
+            snapshot.absent === 0
+              ? 'No absences'
+              : snapshot.absent === 1
+                ? '1 absent'
+                : `${snapshot.absent} absent`
+          }
           icon={UserX}
           colorScheme="orange"
         />
         <KPICard
           title="WFH"
           value={snapshot.wfh}
-          subtitle={snapshot.wfh === 0 ? 'None remote' : `${snapshot.wfh} working remotely`}
+          subtitle={
+            snapshot.wfh === 0
+              ? 'None remote'
+              : snapshot.wfh === 1
+                ? '1 remote'
+                : `${snapshot.wfh} working remotely`
+          }
           icon={Home}
-          colorScheme="orange"
-        />
-        <KPICard
-          title="Not Marked"
-          value={snapshot.notMarked}
-          subtitle={snapshot.notMarked === 0 ? 'All marked' : `${snapshot.notMarked} pending`}
-          icon={CalendarClock}
           colorScheme="orange"
         />
       </HRKpiRow>
 
-      <TabsWithActions
-        tabs={tabItems.map((item) => ({
-          key: item.key,
-          label: item.label,
-          badge: String(item.count),
-        }))}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        showSearch
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        searchPlaceholder="Search..."
-        showFilter
-        onFilterClick={() => console.log('Filter attendance')}
-        showExport
-        onExportClick={() => console.log('Export attendance')}
-        exportTitle="Export"
-        afterTabs={
-          activeTab === 'today' ? (
-            <div className="hidden items-center gap-2 sm:flex">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by status"
-              >
-                <option value="">All statuses</option>
-                {STATUS_FILTERS.filter(Boolean).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null
-        }
-      />
+      <div className="relative" ref={toolbarRef}>
+        <TabsWithActions
+          tabs={tabItems.map((item) => ({
+            key: item.key,
+            label: item.label,
+            badge: String(item.count),
+          }))}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          showSearch
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search attendance..."
+          showFilter
+          onFilterClick={() => setFilterOpen(true)}
+          hasActiveFilters={Boolean(statusFilter)}
+          filterTitle={statusFilter ? 'Status filter active' : 'Filter attendance'}
+          showColumnVisibility={showTableToolbar}
+          onColumnVisibilityClick={() => {
+            setSortPickerOpen(false)
+            setColumnPickerOpen((open) => !open)
+          }}
+          columnVisibilityTitle="Show or hide columns"
+          showSort={showTableToolbar}
+          onSortClick={() => {
+            setColumnPickerOpen(false)
+            setSortPickerOpen((open) => !open)
+          }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort attendance (Shift+click headers for multi-sort)"
+          variant="glass"
+        />
+        <TableSortDropdown
+          open={sortPickerOpen && showTableToolbar}
+          sortRules={sortRules}
+          columnOptions={SORT_COLUMN_OPTIONS}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
+          maxRules={sortMaxRules}
+        />
+        <TableColumnPicker
+          open={columnPickerOpen && showTableToolbar}
+          description="Employee name and actions stay visible. Drag column edges in the table to resize."
+          reorderableRows={TOGGLEABLE_COLUMNS}
+          columnVisibility={columnVisibility}
+          columnOrder={columnOrder}
+          columnDropIndicator={columnDropIndicator}
+          onSetVisible={setColumnVisible}
+          onDragStart={handleColumnDragStart}
+          onDragEnd={handleColumnDragEnd}
+          onRowDragOver={handleColumnRowDragOver}
+          onListDragLeave={handleColumnListDragLeave}
+          onDrop={handleColumnDrop}
+          onReset={resetColumnTablePreferences}
+        />
+      </div>
 
-      <TableResultsCount count={resultCount} />
+      <HRListResultsCount count={resultCount} />
 
       {activeTab === 'today' && (
         <HRDataTableCard>
           <Table
-            columns={todayColumns}
-            data={todayRows}
+            columns={visibleTodayColumns}
+            data={sortedTodayRows}
             keyField="employeeId"
-            variant="modern"
+            variant="modernEmbedded"
+            {...tableResizeProps}
             onRowClick={(row) => router.push(`/employees/${row.employeeId}`)}
           />
-          {todayRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <UserCheck className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No attendance records found</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search or status filter.</p>
-            </div>
-          )}
+          {todayRows.length === 0 ? (
+            <TableEmptyBelow
+              icon={emptyToday.icon}
+              title={emptyToday.title}
+              description={emptyToday.description}
+              action={emptyToday.action}
+            />
+          ) : null}
         </HRDataTableCard>
       )}
 
@@ -327,14 +543,15 @@ export default function AttendancePage() {
 
       {activeTab === 'overtime' && (
         <HRDataTableCard>
-          <Table columns={overtimeColumns} data={overtimeRows} keyField="id" variant="modern" />
-          {overtimeRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <Clock className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No overtime records found</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search.</p>
-            </div>
-          )}
+          <Table columns={overtimeColumns} data={overtimeRows} keyField="id" variant="modernEmbedded" />
+          {overtimeRows.length === 0 ? (
+            <TableEmptyBelow
+              icon={emptyOvertime.icon}
+              title={emptyOvertime.title}
+              description={emptyOvertime.description}
+              action={emptyOvertime.action}
+            />
+          ) : null}
         </HRDataTableCard>
       )}
 
@@ -352,6 +569,24 @@ export default function AttendancePage() {
           </div>
         </HRSectionCard>
       )}
+
+      <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter Attendance" size="md">
+        <div className="space-y-5">
+          <Select
+            label="Status"
+            value={statusFilter}
+            options={STATUS_OPTIONS}
+            onChange={setStatusFilter}
+            placeholder="All statuses"
+          />
+          <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
+            <Button variant="outline" onClick={() => setStatusFilter('')}>
+              Clear
+            </Button>
+            <Button onClick={() => setFilterOpen(false)}>Apply Filters</Button>
+          </div>
+        </div>
+      </Modal>
     </HRModulePage>
   )
 }

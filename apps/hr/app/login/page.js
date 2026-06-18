@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
-import { Button, Input } from '@webfudge/ui'
+import {
+  Button,
+  Input,
+  LoginBrandCorner,
+  LoginProductCredit,
+  LoginMobileBrandHeader,
+} from '@webfudge/ui'
+import { HR_SITE } from '../../lib/site'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -56,14 +63,32 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-orange-500 to-orange-600 flex-col justify-center px-16">
-        <h1 className="text-5xl font-bold text-white mb-6">WF People</h1>
-        <p className="text-xl text-white/90">HRMS for your entire workforce — payroll, leave, attendance, and more.</p>
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-primary to-orange-600 relative flex-col justify-center px-16 py-20">
+        <LoginBrandCorner brandIconPath={HR_SITE.brandIconPath} brandName={HR_SITE.brandName} />
+        <div className="max-w-lg">
+          <LoginProductCredit productName={HR_SITE.name} creatorLine={HR_SITE.brandName} />
+          <h1 className="text-5xl font-bold text-white mb-6">Welcome back</h1>
+          <p className="text-xl text-white/90 mb-4">{HR_SITE.loginTagline}</p>
+          <p className="text-white/80 leading-relaxed">{HR_SITE.loginDetail}</p>
+          <div className="mt-12 grid grid-cols-3 gap-6">
+            {HR_SITE.loginFeatures.map((item) => (
+              <div key={item.label} className="bg-white/10 rounded-xl p-4 text-center">
+                <p className="text-white font-semibold text-sm">{item.value}</p>
+                <p className="text-white/70 text-xs mt-1">{item.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="w-full lg:w-1/2 flex flex-col justify-center p-8 lg:p-16">
         <div className="w-full max-w-md mx-auto">
+          <LoginMobileBrandHeader
+            logoPath={HR_SITE.logoPath}
+            productName={HR_SITE.name}
+            creatorLine={HR_SITE.brandName}
+          />
           <h2 className="text-3xl font-semibold text-brand-dark mb-2">Sign in</h2>
-          <p className="text-gray-600 mb-8">Enter your credentials to access HR.</p>
+          <p className="text-gray-600 mb-8">Enter your credentials to access {HR_SITE.name}.</p>
           <form onSubmit={handleSubmit} className="space-y-5">
             {loginError && (
               <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">

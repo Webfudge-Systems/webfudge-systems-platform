@@ -7,6 +7,7 @@ import { canReadCurrentHRPath } from '../lib/rbac'
 import { HRQuickActionsProvider } from './quick-actions/HRQuickActionsContext'
 import HRQuickActionDrawer from './quick-actions/HRQuickActionDrawer'
 import HRQuickActionsFab from './quick-actions/HRQuickActionsFab'
+import { HR_SITE } from '../lib/site'
 
 const PUBLIC_PATHS = ['/login', '/unauthorized', '/coming-soon']
 
@@ -20,10 +21,17 @@ export default function LayoutContent({ children }) {
     <HRQuickActionsProvider>
       <WorkspaceLayoutContent
         sidebar={HRSidebar}
-        appName="Webfudge HR"
+        sidebarBehavior="hide"
+        sidebarBranding={{
+          logoPath: HR_SITE.logoPath,
+          productName: HR_SITE.name,
+          companyName: HR_SITE.brandName,
+          homeHref: '/dashboard',
+        }}
+        appName={HR_SITE.name}
         pwaStorageKey="hr"
         canView={canView}
-        deniedTitle="This HR module is not available for your role."
+        deniedTitle="This module is not available for your role."
         deniedDescription="Your current permissions do not include read access for this area. Contact an admin if you need access."
         deniedVariant="card"
         extras={!isPublic ? <HRQuickActionsFab /> : null}

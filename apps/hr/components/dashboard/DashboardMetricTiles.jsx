@@ -1,14 +1,20 @@
 'use client'
 
-import { WorkforceStatusPanel } from './sidebar/DashboardSidebarPanels'
-import AttendanceSnapshotPanel from './AttendanceSnapshotPanel'
+import WorkforceStatusWidget from './WorkforceStatusWidget'
+import AttendanceSnapshotWidget from './AttendanceSnapshotWidget'
+import PendingApprovalsWidget from './PendingApprovalsWidget'
+import RecruitmentPipelineWidget from './RecruitmentPipelineWidget'
 
-/** Two equal square tiles — each ~sidebar width when stacked in the main column */
+const TILE_CLASS = 'h-full min-h-0'
+
+/** Four equal insight cards in a 2×2 grid below department distribution */
 export default function DashboardMetricTiles({ activeEmployeeCount }) {
   return (
-    <div className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2">
-      <WorkforceStatusPanel activeEmployeeCount={activeEmployeeCount} />
-      <AttendanceSnapshotPanel activeEmployeeCount={activeEmployeeCount} />
+    <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
+      <WorkforceStatusWidget activeEmployeeCount={activeEmployeeCount} className={TILE_CLASS} />
+      <AttendanceSnapshotWidget activeEmployeeCount={activeEmployeeCount} className={TILE_CLASS} />
+      <PendingApprovalsWidget className={TILE_CLASS} />
+      <RecruitmentPipelineWidget className={TILE_CLASS} />
     </div>
   )
 }

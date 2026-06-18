@@ -170,7 +170,7 @@ export default function SettingsPage() {
                   </div>
                   <h3 className="mb-2 font-semibold text-gray-900">Workspace settings</h3>
                   <p className="text-sm leading-relaxed text-gray-600">
-                    CRM Settings is a lightweight placeholder; WF People uses this page for HR-specific
+                    CRM Settings is a lightweight placeholder; Fudge People uses this page for HR-specific
                     configuration. Connect to Strapi for live org data.
                   </p>
                 </div>

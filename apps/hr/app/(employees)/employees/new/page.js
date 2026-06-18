@@ -1,29 +1,99 @@
 'use client'
 
 import { useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@webfudge/ui'
 import HRPageHeader from '../../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../../components/layout/HRModulePage'
 import EmployeeForm, { employeeToForm } from '../../../../components/employees/EmployeeForm'
+import { createEmployeeFromForm, listDepartmentCatalog, listRoleCatalog } from '../../../../lib/employeeSyncService'
+import { listSalaryStructures, upsertEmployeeProfileByMembership } from '../../../../lib/payrollSyncService'
 import { Save, ArrowLeft } from 'lucide-react'
 
 export default function AddEmployeePage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [form, setForm] = useState(() => employeeToForm(null))
+  const [departmentCatalog, setDepartmentCatalog] = useState([])
+  const [managerRoleOptions, setManagerRoleOptions] = useState([
+    { value: 'admin', label: 'Admin' },
+    { value: 'manager', label: 'Manager' },
+  ])
+  const [salaryStructureOptions, setSalaryStructureOptions] = useState([{ value: '', label: 'Unassigned' }])
+  const [submitError, setSubmitError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [departmentRows, roleRows, structureRows] = await Promise.all([
+          listDepartmentCatalog(),
+          listRoleCatalog(),
+          listSalaryStructures(),
+        ])
+        if (cancelled) return
+        setDepartmentCatalog(departmentRows)
+        const managerRoles = roleRows
+          .map((r) => ({
+            value: String(r.code || r.name || '').toLowerCase(),
+            label: r.name || r.code,
+          }))
+          .filter((r) => r.value === 'admin' || r.value === 'manager')
+        if (managerRoles.length) setManagerRoleOptions(managerRoles)
+        setSalaryStructureOptions([
+          { value: '', label: 'Unassigned' },
+          ...structureRows.map((s) => ({ value: String(s.id), label: s.name })),
+        ])
+      } catch {
+        if (!cancelled) {
+          setDepartmentCatalog([])
+          setManagerRoleOptions([
+            { value: 'admin', label: 'Admin' },
+            { value: 'manager', label: 'Manager' },
+          ])
+          setSalaryStructureOptions([{ value: '', label: 'Unassigned' }])
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setIsSubmitting(true)
-    setTimeout(() => {
+    try {
+      setIsSubmitting(true)
+      setSubmitError('')
+      const created = await createEmployeeFromForm(form, departmentCatalog)
+      if (created?.membershipId) {
+        await upsertEmployeeProfileByMembership(created.membershipId, {
+          employeeCode: created.employeeKey || `WF-${1000 + Number(created.membershipId || 0)}`,
+          annualCtc: Number(form.annualCtc || 0) || 0,
+          designation: form.designation || '',
+          employmentType: form.employmentType || 'Full-time',
+          joinDate: form.joinDate || null,
+          workLocation: form.location || '',
+          phone: form.phone || '',
+          reportingRole: form.reportingRole || 'manager',
+          status: form.status || 'Probation',
+          bankAccountNumber: form.bankAccountNumber || '',
+          bankIfsc: form.bankIfsc || '',
+          bankName: form.bankName || '',
+          salaryStructure: form.salaryStructureId ? Number(form.salaryStructureId) : null,
+        })
+      }
       setIsSubmitting(false)
       router.push('/employees')
-    }, 600)
+    } catch (error) {
+      setIsSubmitting(false)
+      setSubmitError(error?.message || 'Failed to create employee')
+    }
   }
 
   return (
@@ -41,7 +111,14 @@ export default function AddEmployeePage() {
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <EmployeeForm form={form} onChange={handleChange} />
+        <EmployeeForm
+          form={form}
+          onChange={handleChange}
+          departments={departmentCatalog.map((d) => d.name)}
+          managerRoleOptions={managerRoleOptions}
+          salaryStructureOptions={salaryStructureOptions}
+        />
+        {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
 
         <div className="flex items-center justify-between border-t border-gray-200 pt-6">
           <Button type="button" variant="outline" onClick={() => router.back()} className="flex items-center gap-2">

@@ -12,9 +12,9 @@ const siteUrl = (process.env.NEXT_PUBLIC_HR_APP_URL || 'http://localhost:3008').
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: 'WF People', template: '%s | WF People' },
-  description: 'Webfudge HRMS — employees, payroll, attendance, leave, and workforce analytics.',
-  applicationName: 'WF People',
+  title: { default: 'Fudge People', template: '%s | Fudge People' },
+  description: 'Fudge People — employees, payroll, attendance, leave, and workforce analytics.',
+  applicationName: 'Fudge People',
   robots: { index: false, follow: false },
   icons: {
     icon: [{ url: '/favicon/favicon.svg', type: 'image/svg+xml' }],

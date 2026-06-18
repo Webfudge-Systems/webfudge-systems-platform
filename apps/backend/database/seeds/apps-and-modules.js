@@ -154,6 +154,56 @@ const seedData = {
           features: ['Invoice Generation', 'Payment History', 'Payment Methods', 'Tax Management']
         }
       ]
+    },
+    {
+      name: 'HR',
+      slug: 'hr',
+      description: 'Human resources and payroll management',
+      category: 'People Operations',
+      basePrice: 35.00,
+      icon: '🧑‍💼',
+      color: 'orange',
+      order: 4,
+      isActive: true,
+      features: [
+        'Employee Directory',
+        'Attendance',
+        'Leave',
+        'Payroll Runs',
+        'Salary Structures'
+      ],
+      modules: [
+        {
+          name: 'Core Features',
+          slug: 'hr-core',
+          description: 'Essential HR workspace features',
+          pricePerUser: 10.00,
+          isCore: true,
+          order: 1,
+          icon: '⚙️',
+          features: ['Dashboard', 'Global Search', 'Permissions']
+        },
+        {
+          name: 'Employees',
+          slug: 'hr-employees',
+          description: 'Employee directory and profile management',
+          pricePerUser: 8.00,
+          isCore: true,
+          order: 2,
+          icon: '👥',
+          features: ['Employee CRUD', 'Department Assignment', 'Status Tracking']
+        },
+        {
+          name: 'Payroll',
+          slug: 'hr-payroll',
+          description: 'Salary structures, payroll runs, and payslips',
+          pricePerUser: 12.00,
+          isCore: true,
+          order: 3,
+          icon: '💸',
+          features: ['Run Payroll', 'Payslips', 'Payroll History']
+        }
+      ]
     }
   ]
 };

@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "salary_structures",
+  "info": {
+    "singularName": "salary-structure",
+    "pluralName": "salary-structures",
+    "displayName": "Salary Structure",
+    "description": "Reusable salary structures assigned to employees"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "ctc": { "type": "integer", "required": true, "default": 0 },
+    "basicPercent": { "type": "decimal", "default": 40 },
+    "hraPercent": { "type": "decimal", "default": 20 },
+    "specialAllowancePercent": { "type": "decimal", "default": 30 },
+    "fbpPercent": { "type": "decimal", "default": 10 },
+    "isActive": { "type": "boolean", "default": true },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "components": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::salary-component.salary-component",
+      "mappedBy": "salaryStructure"
+    }
+  }
+}

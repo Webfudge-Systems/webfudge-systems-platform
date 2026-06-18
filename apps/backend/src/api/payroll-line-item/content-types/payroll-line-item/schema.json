@@ -1,0 +1,62 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payroll_line_items",
+  "info": {
+    "singularName": "payroll-line-item",
+    "pluralName": "payroll-line-items",
+    "displayName": "Payroll Line Item",
+    "description": "Per employee payroll calculation row within a run"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "gross": { "type": "integer", "default": 0 },
+    "basic": { "type": "integer", "default": 0 },
+    "hra": { "type": "integer", "default": 0 },
+    "specialAllowance": { "type": "integer", "default": 0 },
+    "fbp": { "type": "integer", "default": 0 },
+    "pf": { "type": "integer", "default": 0 },
+    "esi": { "type": "integer", "default": 0 },
+    "pt": { "type": "integer", "default": 0 },
+    "tds": { "type": "integer", "default": 0 },
+    "net": { "type": "integer", "default": 0 },
+    "deductionsTotal": { "type": "integer", "default": 0 },
+    "missingSalaryStructure": { "type": "boolean", "default": false },
+    "missingBankDetails": { "type": "boolean", "default": false },
+    "tdsEstimate": { "type": "boolean", "default": true },
+    "payslipGeneratedAt": { "type": "datetime" },
+    "payrollRun": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::payroll-run.payroll-run",
+      "inversedBy": "lineItems"
+    },
+    "organizationUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization-user.organization-user"
+    },
+    "employeeProfile": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::employee-profile.employee-profile"
+    },
+    "salaryStructure": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::salary-structure.salary-structure"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -1,15 +1,22 @@
 'use client'
 
-import { History } from 'lucide-react'
 import { ActivitiesTimeline } from '@webfudge/ui'
-import HRGlassCard from '../shared/HRGlassCard'
-import HRPanelHeader from '../shared/HRPanelHeader'
+import HRDashboardInsightShell, { HRInsightCountBadge } from './HRDashboardInsightShell'
 
-export default function RecentActivityPanel({ items }) {
+export default function RecentActivityPanel({ items, className = '' }) {
   return (
-    <HRGlassCard>
-      <HRPanelHeader title="Recent activity" subtitle="Latest updates across HR" icon={History} />
+    <HRDashboardInsightShell
+      className={className}
+      title="Recent activity"
+      badge={
+        items.length > 0 ? (
+          <HRInsightCountBadge tone="blue">{items.length}</HRInsightCountBadge>
+        ) : null
+      }
+      subtitle="Latest updates across HR"
+      panelClassName="p-3"
+    >
       <ActivitiesTimeline items={items} />
-    </HRGlassCard>
+    </HRDashboardInsightShell>
   )
 }

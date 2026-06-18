@@ -14,6 +14,8 @@ HR Analytics is routed to a PM-style coming-soon page. Employee list actions inc
 - `apps/hr/app/(employees)/employees/new/page.js` — create page
 - `apps/hr/app/(employees)/employees/[id]/edit/page.js` — edit page
 - `apps/hr/app/(employees)/employees/[id]/page.js` — detail with header actions + tabs
+- `apps/hr/components/employees/EmployeeDetailTabPanels.jsx` — tab panels using `@webfudge/ui` (`InfoSection`, `Table`, `Badge`, `EmptyState`, etc.)
+- `apps/hr/lib/employeeStatus.js` — status → shared `Badge` variant mapping
 
 ## Usage
 

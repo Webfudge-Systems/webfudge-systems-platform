@@ -93,12 +93,9 @@ const KPICard = ({
       : 'p-6 pb-0 pr-0'
   const showFooter = !compact && (change || (!change && subtitle))
 
-  const iconBoxClass = compact
-    ? 'relative h-20 w-20 shrink-0 self-start overflow-hidden rounded-xl rounded-bl-[0] rounded-tr-[0]'
-    : 'relative h-28 w-28 shrink-0 self-start overflow-hidden rounded-2xl rounded-bl-[0] rounded-tr-[0] sm:h-32 sm:w-32'
-  const iconImgClass = compact
-    ? 'absolute bottom-0 right-0 h-16 w-16'
-    : 'absolute bottom-0 right-0 h-24 w-24 sm:h-28 sm:w-28'
+  const iconBoxClass =
+    'relative h-32 w-32 shrink-0 self-start overflow-hidden rounded-2xl rounded-bl-[0] rounded-tr-[0]'
+  const iconImgClass = 'absolute -bottom-7 -right-7 h-32 w-32'
 
   const titleClass = isBooks
     ? 'mb-2 text-sm font-medium text-[var(--books-text-secondary,#6b7280)]'
@@ -139,7 +136,7 @@ const KPICard = ({
       onClick={onClick}
     >
       <div className="flex justify-between items-start">
-        <div className={clsx('relative z-10 min-w-0 flex-1', Icon && (compact ? 'pr-3' : 'pr-4 sm:pr-6'))}>
+        <div className="min-w-0 flex-1 pr-2">
           <p className={titleClass}>{title}</p>
           <p className={valueClass} title={valueTitle || undefined}>
             {value}

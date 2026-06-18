@@ -1,0 +1,47 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payroll_runs",
+  "info": {
+    "singularName": "payroll-run",
+    "pluralName": "payroll-runs",
+    "displayName": "Payroll Run",
+    "description": "Monthly payroll processing runs"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "runNumber": { "type": "string", "required": true },
+    "month": { "type": "integer", "required": true, "min": 1, "max": 12 },
+    "year": { "type": "integer", "required": true },
+    "status": {
+      "type": "enumeration",
+      "enum": ["draft", "review", "locked", "disbursed"],
+      "default": "draft"
+    },
+    "totalEmployees": { "type": "integer", "default": 0 },
+    "totalGross": { "type": "integer", "default": 0 },
+    "totalDeductions": { "type": "integer", "default": 0 },
+    "totalNet": { "type": "integer", "default": 0 },
+    "pfLiability": { "type": "integer", "default": 0 },
+    "lockedAt": { "type": "datetime" },
+    "disbursedAt": { "type": "datetime" },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "lineItems": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payroll-line-item.payroll-line-item",
+      "mappedBy": "payrollRun"
+    }
+  }
+}

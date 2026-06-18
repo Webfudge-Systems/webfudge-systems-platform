@@ -1,8 +1,7 @@
 'use client'
 
 import { Input, Select, FormSectionCard } from '@webfudge/ui'
-import { DEPARTMENTS } from '../../lib/mock-data/employees'
-import { User, Briefcase, Mail, Phone, MapPin, Building2 } from 'lucide-react'
+import { User, Briefcase, Mail, Phone, MapPin, Building2, Landmark } from 'lucide-react'
 
 const EMPLOYMENT_TYPES = [
   { value: 'Full-time', label: 'Full-time' },
@@ -13,11 +12,29 @@ const EMPLOYMENT_TYPES = [
 const STATUS_OPTIONS = [
   { value: 'Active', label: 'Active' },
   { value: 'Probation', label: 'Probation' },
-  { value: 'On Notice', label: 'On Notice' },
+  { value: 'Notice', label: 'On Notice' },
   { value: 'Exited', label: 'Exited' },
 ]
 
-export default function EmployeeForm({ form, onChange }) {
+const DEFAULT_MANAGER_ROLE_OPTIONS = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'manager', label: 'Manager' },
+]
+
+export default function EmployeeForm({
+  form,
+  onChange,
+  departments = [],
+  managerRoleOptions = DEFAULT_MANAGER_ROLE_OPTIONS,
+  salaryStructureOptions = [],
+}) {
+  const uniqueDepartments = Array.from(new Set((departments || []).filter(Boolean)))
+  const departmentOptions = uniqueDepartments.map((d) => ({ value: d, label: d }))
+  const reportingRoleOptions = managerRoleOptions.map((role) => ({
+    value: String(role.value || '').toLowerCase(),
+    label: role.label,
+  }))
+
   const handleChange = (field, value) => {
     onChange(field, value)
   }
@@ -91,10 +108,7 @@ export default function EmployeeForm({ form, onChange }) {
               label="Department *"
               value={form.department}
               onChange={(value) => handleChange('department', value)}
-              options={[
-                { value: '', label: 'Select department' },
-                ...DEPARTMENTS.map((d) => ({ value: d, label: d })),
-              ]}
+              options={departmentOptions}
               placeholder="Select department"
               icon={Building2}
             />
@@ -109,11 +123,15 @@ export default function EmployeeForm({ form, onChange }) {
             />
           </div>
           <div>
-            <Input
+            <Select
               label="Reporting manager"
-              value={form.manager}
-              onChange={(e) => handleChange('manager', e.target.value)}
-              placeholder="Manager name"
+              value={form.reportingRole}
+              onChange={(value) => {
+                handleChange('reportingRole', value)
+                handleChange('manager', value === 'admin' ? 'Admin' : 'Manager')
+              }}
+              options={reportingRoleOptions}
+              placeholder="Select reporting manager role"
             />
           </div>
           <div>
@@ -126,10 +144,62 @@ export default function EmployeeForm({ form, onChange }) {
           </div>
           <div>
             <Select
+              label="Salary structure"
+              value={form.salaryStructureId || ''}
+              onChange={(value) => handleChange('salaryStructureId', value)}
+              options={salaryStructureOptions}
+              placeholder="Select salary structure"
+            />
+          </div>
+          <div>
+            <Input
+              label="Annual CTC (₹)"
+              type="number"
+              min="0"
+              value={form.annualCtc || ''}
+              onChange={(e) => handleChange('annualCtc', e.target.value)}
+              placeholder="e.g. 1200000"
+            />
+          </div>
+          <div>
+            <Select
               label="Status"
               value={form.status}
               onChange={(value) => handleChange('status', value)}
               options={STATUS_OPTIONS}
+            />
+          </div>
+        </div>
+      </FormSectionCard>
+
+      <FormSectionCard
+        icon={Landmark}
+        title="Payroll and bank details"
+        description="Required before a payroll run can be locked"
+      >
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <Input
+              label="Bank account number"
+              value={form.bankAccountNumber || ''}
+              onChange={(e) => handleChange('bankAccountNumber', e.target.value)}
+              placeholder="Account number"
+            />
+          </div>
+          <div>
+            <Input
+              label="IFSC"
+              value={form.bankIfsc || ''}
+              onChange={(e) => handleChange('bankIfsc', e.target.value)}
+              placeholder="IFSC code"
+            />
+          </div>
+          <div>
+            <Input
+              label="Bank name"
+              value={form.bankName || ''}
+              onChange={(e) => handleChange('bankName', e.target.value)}
+              placeholder="Bank name"
             />
           </div>
         </div>
@@ -147,10 +217,16 @@ export function employeeToForm(employee) {
       department: '',
       designation: '',
       manager: '',
+      reportingRole: 'manager',
+      salaryStructureId: '',
+      annualCtc: '',
       employmentType: 'Full-time',
       status: 'Probation',
       joinDate: '',
       location: '',
+      bankAccountNumber: '',
+      bankIfsc: '',
+      bankName: '',
     }
   }
 
@@ -160,10 +236,16 @@ export function employeeToForm(employee) {
     phone: employee.phone || '',
     department: employee.department || '',
     designation: employee.designation || '',
-    manager: employee.manager || '',
+    manager: employee.reportingRole || String(employee.manager || 'manager').toLowerCase(),
+    reportingRole: employee.reportingRole || 'manager',
+    salaryStructureId: employee.salaryStructureId ? String(employee.salaryStructureId) : '',
+    annualCtc: employee.annualCtc ? String(employee.annualCtc) : '',
     employmentType: employee.employmentType || 'Full-time',
     status: employee.status || 'Active',
     joinDate: employee.joinDate || '',
     location: employee.workLocation || employee.location || '',
+    bankAccountNumber: employee.bankAccountNumber || '',
+    bankIfsc: employee.bankIfsc || '',
+    bankName: employee.bankName || '',
   }
 }

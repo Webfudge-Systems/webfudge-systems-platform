@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payslips",
+  "info": {
+    "singularName": "payslip",
+    "pluralName": "payslips",
+    "displayName": "Payslip",
+    "description": "Generated employee payslips by payroll run"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "payslipNumber": { "type": "string", "required": true },
+    "generatedAt": { "type": "datetime" },
+    "payrollRun": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::payroll-run.payroll-run"
+    },
+    "payrollLineItem": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::payroll-line-item.payroll-line-item"
+    },
+    "organizationUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization-user.organization-user"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

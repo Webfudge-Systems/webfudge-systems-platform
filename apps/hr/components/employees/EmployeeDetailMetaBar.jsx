@@ -1,7 +1,7 @@
 'use client'
 
 import { Briefcase, User, Hash, Calendar } from 'lucide-react'
-import HRStatusBadge from '../shared/HRStatusBadge'
+import { EmployeeStatusPill } from './EmployeeTableCells'
 
 function MetaDivider() {
   return <span className="hidden h-5 w-px shrink-0 bg-gray-200 sm:block" aria-hidden />
@@ -33,7 +33,7 @@ export default function EmployeeDetailMetaBar({ employee, className = '' }) {
       <MetaDivider />
 
       <MetaSegment>
-        <HRStatusBadge status={employee.status} />
+        <EmployeeStatusPill status={employee.status} />
       </MetaSegment>
 
       <MetaDivider />

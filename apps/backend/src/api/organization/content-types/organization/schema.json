@@ -185,6 +185,14 @@
         "retainerSequence": {
             "type": "integer",
             "default": 0
+        },
+        "payrollSequence": {
+            "type": "integer",
+            "default": 0
+        },
+        "payslipSequence": {
+            "type": "integer",
+            "default": 0
         }
     }
 }
