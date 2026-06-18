@@ -1,0 +1,48 @@
+{
+  "kind": "collectionType",
+  "collectionName": "employee_profiles",
+  "info": {
+    "singularName": "employee-profile",
+    "pluralName": "employee-profiles",
+    "displayName": "Employee Profile",
+    "description": "HR profile fields mapped to organization users"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "employeeCode": { "type": "string", "required": true },
+    "annualCtc": { "type": "integer", "default": 0 },
+    "designation": { "type": "string" },
+    "employmentType": { "type": "enumeration", "enum": ["Full-time", "Contract", "Intern"], "default": "Full-time" },
+    "joinDate": { "type": "date" },
+    "workLocation": { "type": "string" },
+    "phone": { "type": "string" },
+    "reportingRole": { "type": "enumeration", "enum": ["admin", "manager"], "default": "manager" },
+    "status": { "type": "enumeration", "enum": ["Active", "Probation", "Notice", "Exited"], "default": "Active" },
+    "bankAccountNumber": { "type": "string" },
+    "bankIfsc": { "type": "string" },
+    "bankName": { "type": "string" },
+    "organizationUser": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::organization-user.organization-user"
+    },
+    "salaryStructure": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::salary-structure.salary-structure"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

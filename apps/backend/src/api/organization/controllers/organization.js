@@ -496,6 +496,8 @@ module.exports = createCoreController('api::organization.organization', ({ strap
       status,
       email,
       username,
+      firstName,
+      lastName,
       password,
       transferToUserId,
       departmentIds,
@@ -588,6 +590,10 @@ module.exports = createCoreController('api::organization.organization', ({ strap
             : null;
         const normalizedUsername =
           typeof username === 'string' && username.trim() !== '' ? username.trim() : null;
+        const normalizedFirstName =
+          typeof firstName === 'string' && firstName.trim() !== '' ? firstName.trim() : null;
+        const normalizedLastName =
+          typeof lastName === 'string' && lastName.trim() !== '' ? lastName.trim() : null;
 
         if (normalizedEmail) {
           const emailTaken = await strapi.query('plugin::users-permissions.user').findOne({
@@ -608,6 +614,12 @@ module.exports = createCoreController('api::organization.organization', ({ strap
             return ctx.badRequest('Name is already in use');
           }
           userUpdate.username = normalizedUsername;
+        }
+        if (normalizedFirstName) {
+          userUpdate.firstName = normalizedFirstName;
+        }
+        if (normalizedLastName) {
+          userUpdate.lastName = normalizedLastName;
         }
 
         if (Object.keys(userUpdate).length > 0) {

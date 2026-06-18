@@ -1,0 +1,44 @@
+'use client'
+
+import { WorkspaceLayoutContent } from '@webfudge/ui'
+import { usePathname } from 'next/navigation'
+import HRSidebar from './layout/HRSidebar'
+import { canReadCurrentHRPath } from '../lib/rbac'
+import { HRQuickActionsProvider } from './quick-actions/HRQuickActionsContext'
+import HRQuickActionDrawer from './quick-actions/HRQuickActionDrawer'
+import HRQuickActionsFab from './quick-actions/HRQuickActionsFab'
+import { HR_SITE } from '../lib/site'
+
+const PUBLIC_PATHS = ['/login', '/unauthorized', '/coming-soon']
+
+export default function LayoutContent({ children }) {
+  const pathname = usePathname()
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  const hasToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('auth-token'))
+  const canView = isPublic || !hasToken || canReadCurrentHRPath(pathname)
+
+  return (
+    <HRQuickActionsProvider>
+      <WorkspaceLayoutContent
+        sidebar={HRSidebar}
+        sidebarBehavior="hide"
+        sidebarBranding={{
+          logoPath: HR_SITE.logoPath,
+          productName: HR_SITE.name,
+          companyName: HR_SITE.brandName,
+          homeHref: '/dashboard',
+        }}
+        appName={HR_SITE.name}
+        pwaStorageKey="hr"
+        canView={canView}
+        deniedTitle="This module is not available for your role."
+        deniedDescription="Your current permissions do not include read access for this area. Contact an admin if you need access."
+        deniedVariant="card"
+        extras={!isPublic ? <HRQuickActionsFab /> : null}
+      >
+        {children}
+      </WorkspaceLayoutContent>
+      <HRQuickActionDrawer />
+    </HRQuickActionsProvider>
+  )
+}

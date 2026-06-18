@@ -1054,6 +1054,57 @@ export interface ApiDocumentDocument extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiEmployeeProfileEmployeeProfile extends Struct.CollectionTypeSchema {
+  collectionName: 'employee_profiles'
+  info: {
+    description: 'HR profile fields mapped to organization users'
+    displayName: 'Employee Profile'
+    pluralName: 'employee-profiles'
+    singularName: 'employee-profile'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    annualCtc: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    bankAccountNumber: Schema.Attribute.String
+    bankIfsc: Schema.Attribute.String
+    bankName: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    designation: Schema.Attribute.String
+    employeeCode: Schema.Attribute.String & Schema.Attribute.Required
+    employmentType: Schema.Attribute.Enumeration<['Full-time', 'Contract', 'Intern']> &
+      Schema.Attribute.DefaultTo<'Full-time'>
+    joinDate: Schema.Attribute.Date
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::employee-profile.employee-profile'
+    > &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUser: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::organization-user.organization-user'
+    >
+    phone: Schema.Attribute.String
+    publishedAt: Schema.Attribute.DateTime
+    reportingRole: Schema.Attribute.Enumeration<['admin', 'manager']> &
+      Schema.Attribute.DefaultTo<'manager'>
+    salaryStructure: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::salary-structure.salary-structure'
+    >
+    status: Schema.Attribute.Enumeration<['Active', 'Probation', 'Notice', 'Exited']> &
+      Schema.Attribute.DefaultTo<'Active'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    workLocation: Schema.Attribute.String
+  }
+}
+
 export interface ApiEntityAttachmentEntityAttachment extends Struct.CollectionTypeSchema {
   collectionName: 'entity_attachments'
   info: {
@@ -1811,6 +1862,8 @@ export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema
     >
     owner: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
     paymentSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    payrollSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    payslipSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     poSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     publishedAt: Schema.Attribute.DateTime
     retainerSequence: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
@@ -1916,6 +1969,144 @@ export interface ApiPaymentReceivedPaymentReceived extends Struct.CollectionType
     paymentNumber: Schema.Attribute.String
     publishedAt: Schema.Attribute.DateTime
     referenceNumber: Schema.Attribute.String
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiPayrollLineItemPayrollLineItem extends Struct.CollectionTypeSchema {
+  collectionName: 'payroll_line_items'
+  info: {
+    description: 'Per employee payroll calculation row within a run'
+    displayName: 'Payroll Line Item'
+    pluralName: 'payroll-line-items'
+    singularName: 'payroll-line-item'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    basic: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    deductionsTotal: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    employeeProfile: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::employee-profile.employee-profile'
+    >
+    esi: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    fbp: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    gross: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    hra: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::payroll-line-item.payroll-line-item'
+    > &
+      Schema.Attribute.Private
+    missingBankDetails: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    missingSalaryStructure: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    net: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUser: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::organization-user.organization-user'
+    >
+    payrollRun: Schema.Attribute.Relation<'manyToOne', 'api::payroll-run.payroll-run'>
+    payslipGeneratedAt: Schema.Attribute.DateTime
+    pf: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    pt: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    salaryStructure: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::salary-structure.salary-structure'
+    >
+    specialAllowance: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    tds: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    tdsEstimate: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiPayrollRunPayrollRun extends Struct.CollectionTypeSchema {
+  collectionName: 'payroll_runs'
+  info: {
+    description: 'Monthly payroll processing runs'
+    displayName: 'Payroll Run'
+    pluralName: 'payroll-runs'
+    singularName: 'payroll-run'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    disbursedAt: Schema.Attribute.DateTime
+    lineItems: Schema.Attribute.Relation<'oneToMany', 'api::payroll-line-item.payroll-line-item'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::payroll-run.payroll-run'> &
+      Schema.Attribute.Private
+    lockedAt: Schema.Attribute.DateTime
+    month: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 12
+          min: 1
+        },
+        number
+      >
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    pfLiability: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    runNumber: Schema.Attribute.String & Schema.Attribute.Required
+    status: Schema.Attribute.Enumeration<['draft', 'review', 'locked', 'disbursed']> &
+      Schema.Attribute.DefaultTo<'draft'>
+    totalDeductions: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    totalEmployees: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    totalGross: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    totalNet: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    year: Schema.Attribute.Integer & Schema.Attribute.Required
+  }
+}
+
+export interface ApiPayslipPayslip extends Struct.CollectionTypeSchema {
+  collectionName: 'payslips'
+  info: {
+    description: 'Generated employee payslips by payroll run'
+    displayName: 'Payslip'
+    pluralName: 'payslips'
+    singularName: 'payslip'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    generatedAt: Schema.Attribute.DateTime
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::payslip.payslip'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUser: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::organization-user.organization-user'
+    >
+    payrollLineItem: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::payroll-line-item.payroll-line-item'
+    >
+    payrollRun: Schema.Attribute.Relation<'manyToOne', 'api::payroll-run.payroll-run'>
+    payslipNumber: Schema.Attribute.String & Schema.Attribute.Required
+    publishedAt: Schema.Attribute.DateTime
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
@@ -2217,6 +2408,80 @@ export interface ApiRetainerInvoiceRetainerInvoice extends Struct.CollectionType
       Schema.Attribute.DefaultTo<'project_based'>
     status: Schema.Attribute.Enumeration<['draft', 'sent', 'viewed', 'partial', 'paid', 'void']> &
       Schema.Attribute.DefaultTo<'draft'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiSalaryComponentSalaryComponent extends Struct.CollectionTypeSchema {
+  collectionName: 'salary_components'
+  info: {
+    description: 'Component rows inside salary structures'
+    displayName: 'Salary Component'
+    pluralName: 'salary-components'
+    singularName: 'salary-component'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    componentType: Schema.Attribute.Enumeration<['basic', 'hra', 'special', 'fbp']> &
+      Schema.Attribute.Required
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::salary-component.salary-component'
+    > &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    percent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    salaryStructure: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::salary-structure.salary-structure'
+    >
+    sortOrder: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<1>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiSalaryStructureSalaryStructure extends Struct.CollectionTypeSchema {
+  collectionName: 'salary_structures'
+  info: {
+    description: 'Reusable salary structures assigned to employees'
+    displayName: 'Salary Structure'
+    pluralName: 'salary-structures'
+    singularName: 'salary-structure'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    basicPercent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<40>
+    components: Schema.Attribute.Relation<'oneToMany', 'api::salary-component.salary-component'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    ctc: Schema.Attribute.Integer & Schema.Attribute.Required & Schema.Attribute.DefaultTo<0>
+    fbpPercent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<10>
+    hraPercent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<20>
+    isActive: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::salary-structure.salary-structure'
+    > &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    specialAllowancePercent: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<30>
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
@@ -3059,6 +3324,7 @@ declare module '@strapi/strapi' {
       'api::department.department': ApiDepartmentDepartment
       'api::direct-message.direct-message': ApiDirectMessageDirectMessage
       'api::document.document': ApiDocumentDocument
+      'api::employee-profile.employee-profile': ApiEmployeeProfileEmployeeProfile
       'api::entity-attachment.entity-attachment': ApiEntityAttachmentEntityAttachment
       'api::estimate-line-item.estimate-line-item': ApiEstimateLineItemEstimateLineItem
       'api::estimate.estimate': ApiEstimateEstimate
@@ -3077,12 +3343,17 @@ declare module '@strapi/strapi' {
       'api::organization.organization': ApiOrganizationOrganization
       'api::payment-made.payment-made': ApiPaymentMadePaymentMade
       'api::payment-received.payment-received': ApiPaymentReceivedPaymentReceived
+      'api::payroll-line-item.payroll-line-item': ApiPayrollLineItemPayrollLineItem
+      'api::payroll-run.payroll-run': ApiPayrollRunPayrollRun
+      'api::payslip.payslip': ApiPayslipPayslip
       'api::project.project': ApiProjectProject
       'api::proposal.proposal': ApiProposalProposal
       'api::purchase-order.purchase-order': ApiPurchaseOrderPurchaseOrder
       'api::recurring-expense.recurring-expense': ApiRecurringExpenseRecurringExpense
       'api::recurring-invoice.recurring-invoice': ApiRecurringInvoiceRecurringInvoice
       'api::retainer-invoice.retainer-invoice': ApiRetainerInvoiceRetainerInvoice
+      'api::salary-component.salary-component': ApiSalaryComponentSalaryComponent
+      'api::salary-structure.salary-structure': ApiSalaryStructureSalaryStructure
       'api::sales-order.sales-order': ApiSalesOrderSalesOrder
       'api::service-record.service-record': ApiServiceRecordServiceRecord
       'api::subscription.subscription': ApiSubscriptionSubscription

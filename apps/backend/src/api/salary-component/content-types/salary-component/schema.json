@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "salary_components",
+  "info": {
+    "singularName": "salary-component",
+    "pluralName": "salary-components",
+    "displayName": "Salary Component",
+    "description": "Component rows inside salary structures"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "componentType": {
+      "type": "enumeration",
+      "enum": ["basic", "hra", "special", "fbp"],
+      "required": true
+    },
+    "percent": { "type": "decimal", "default": 0 },
+    "amount": { "type": "integer", "default": 0 },
+    "sortOrder": { "type": "integer", "default": 1 },
+    "salaryStructure": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::salary-structure.salary-structure",
+      "inversedBy": "components"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
