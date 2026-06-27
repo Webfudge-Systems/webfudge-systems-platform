@@ -17,6 +17,7 @@ import {
   Textarea,
   useIndustrySelectOptions,
   toDateInputValue,
+  LEAD_STATUS_OPTIONS,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../../lib/api/leadCompanyService';
@@ -100,16 +101,7 @@ export default function EditLeadCompanyPage() {
   const [deleteContactSubmitting, setDeleteContactSubmitting] = useState(false);
   const canEditLeadCompany = lead ? canEditCRMRecord('leads', lead) : false;
 
-  const statusOptions = useMemo(
-    () => [
-      { value: 'NEW', label: 'New' },
-      { value: 'CONTACTED', label: 'Contacted' },
-      { value: 'QUALIFIED', label: 'Qualified' },
-      { value: 'PROPOSAL_SENT', label: 'Proposal Sent' },
-      { value: 'LOST', label: 'Lost' },
-    ],
-    []
-  );
+  const statusOptions = LEAD_STATUS_OPTIONS;
 
   const employeeSizeOptions = useMemo(
     () => [

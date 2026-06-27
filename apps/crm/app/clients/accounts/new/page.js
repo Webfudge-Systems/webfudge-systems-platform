@@ -12,6 +12,7 @@ import {
   FormSectionCard,
   Badge,
   useIndustrySelectOptions,
+  ACCOUNT_STATUS_OPTIONS,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
@@ -66,10 +67,7 @@ const accountTypeOptions = [
   { value: 'PARTNER', label: 'Partner' },
 ];
 
-const accountStatusOptions = [
-  { value: 'ACTIVE', label: 'Active' },
-  { value: 'INACTIVE', label: 'Inactive' },
-];
+const accountStatusOptions = ACCOUNT_STATUS_OPTIONS;
 
 const billingCycleOptions = [
   { value: 'MONTHLY', label: 'Monthly' },

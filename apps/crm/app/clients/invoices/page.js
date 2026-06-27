@@ -49,6 +49,22 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
+const DEFAULT_COLUMN_WIDTHS = {
+  invoice: 260,
+  client: 260,
+  total: 120,
+  status: 130,
+  invoiceDate: 140,
+  dueDate: 140,
+  actions: 180,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  invoice: 220,
+  client: 220,
+  actions: 160,
+};
+
 export default function InvoicesPage() {
   const router = useRouter();
   const [invoices, setInvoices]   = useState([]);
@@ -87,6 +103,8 @@ export default function InvoicesPage() {
     widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
     defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
     reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
   });
 
   useEffect(() => {

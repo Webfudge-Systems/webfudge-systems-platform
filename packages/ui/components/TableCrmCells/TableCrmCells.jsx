@@ -248,13 +248,34 @@ export function TableCellOwner({
   );
 }
 
+const STATUS_PILL_CLASS = {
+  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  LEAD: 'border-blue-200 bg-blue-50 text-blue-800',
+  ONBOARDING: 'border-sky-200 bg-sky-50 text-sky-800',
+  AT_RISK: 'border-amber-200 bg-amber-50 text-amber-800',
+  PAUSED: 'border-violet-200 bg-violet-50 text-violet-800',
+  COMPLETED: 'border-green-200 bg-green-50 text-green-800',
+  INACTIVE: 'border-gray-300 bg-gray-50 text-gray-700',
+  CHURNED: 'border-red-200 bg-red-50 text-red-800',
+};
+
 /**
- * Active / inactive status pill (contacts + client accounts).
+ * CRM status pill for contacts and client accounts.
  */
 export function TableCellStatusPill({ status, className }) {
   const s = (status || 'ACTIVE').toString().toUpperCase();
-  const isActive = s === 'ACTIVE';
-  return <span className={clsx(cell.status.pill(isActive), className)}>{s}</span>;
+  const tone = STATUS_PILL_CLASS[s] || STATUS_PILL_CLASS.INACTIVE;
+  return (
+    <span
+      className={clsx(
+        'inline-flex rounded-lg border px-3 py-1 text-xs font-semibold uppercase tracking-wide',
+        tone,
+        className
+      )}
+    >
+      {s.replace(/_/g, ' ')}
+    </span>
+  );
 }
 
 /**
@@ -283,6 +304,8 @@ const leadStatusConfig = {
   contacted: { variant: 'warning', label: 'Contacted' },
   qualified: { variant: 'success', label: 'Qualified' },
   lost: { variant: 'danger', label: 'Lost' },
+  converted: { variant: 'success', label: 'Converted' },
+  client: { variant: 'success', label: 'Client' },
 };
 
 /**

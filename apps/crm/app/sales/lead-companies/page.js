@@ -57,7 +57,7 @@ import {
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import { LeadsKanbanBoard, LEAD_PIPELINE_STAGES } from '../../../components/LeadsKanbanBoard';
 import { LeadsByMembersView } from '../../../components/LeadsByMembersView';
-import { TableCellLeadStatusSelect } from '@webfudge/ui';
+import { TableCellLeadStatusSelect, LEAD_STATUS_OPTIONS } from '@webfudge/ui';
 import { LeadNextConnectCell } from '../../../components/LeadNextConnectCell';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
@@ -435,7 +435,9 @@ export default function LeadCompaniesPage() {
 
   const leadStats = useMemo(
     () => ({
+      total: statsByStatus.total ?? 0,
       new: statsByStatus.NEW ?? 0,
+      nonContacted: statsByStatus.NEW ?? 0,
       contacted: statsByStatus.CONTACTED ?? 0,
       qualified: statsByStatus.QUALIFIED ?? 0,
       lost: statsByStatus.LOST ?? 0,
@@ -443,17 +445,7 @@ export default function LeadCompaniesPage() {
     [statsByStatus]
   );
 
-  const statusFilterOptions = useMemo(
-    () => [
-      { value: 'NEW', label: 'New' },
-      { value: 'CONTACTED', label: 'Contacted' },
-      { value: 'QUALIFIED', label: 'Qualified' },
-      { value: 'LOST', label: 'Lost' },
-      { value: 'CONVERTED', label: 'Converted' },
-      { value: 'CLIENT', label: 'Client' },
-    ],
-    []
-  );
+  const statusFilterOptions = LEAD_STATUS_OPTIONS;
 
   const sourceFilterOptions = useMemo(
     () =>

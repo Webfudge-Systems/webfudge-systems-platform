@@ -12,6 +12,8 @@ export const LEAD_STATUS_OPTIONS = [
   { value: 'CONTACTED', label: 'Contacted' },
   { value: 'QUALIFIED', label: 'Qualified' },
   { value: 'LOST', label: 'Lost' },
+  { value: 'CONVERTED', label: 'Converted' },
+  { value: 'CLIENT', label: 'Client' },
 ];
 
 export const TASK_STATUS_OPTIONS = [
@@ -36,7 +38,12 @@ export const DEAL_STAGE_OPTIONS = [
 
 export const ACCOUNT_STATUS_OPTIONS = [
   { value: 'ACTIVE', label: 'Active' },
+  { value: 'ONBOARDING', label: 'Onboarding' },
+  { value: 'AT_RISK', label: 'At Risk' },
+  { value: 'PAUSED', label: 'Paused' },
+  { value: 'COMPLETED', label: 'Completed' },
   { value: 'INACTIVE', label: 'Inactive' },
+  { value: 'CHURNED', label: 'Churned' },
 ];
 
 /** PM task table labels (same enum values as {@link TASK_STATUS_OPTIONS}). */
@@ -81,6 +88,8 @@ const LEAD_STATUS_FILL_CLASS = {
   CONTACTED: 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100',
   QUALIFIED: 'border-green-200 bg-green-50 text-green-800 hover:bg-green-100',
   LOST: 'border-red-200 bg-red-50 text-red-800 hover:bg-red-100',
+  CONVERTED: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100',
+  CLIENT: 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100',
 };
 
 const TASK_STATUS_FILL_CLASS = {
@@ -105,7 +114,12 @@ const DEAL_STAGE_FILL_CLASS = {
 
 const ACCOUNT_STATUS_FILL_CLASS = {
   ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+  ONBOARDING: 'border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100',
+  AT_RISK: 'border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100',
+  PAUSED: 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100',
+  COMPLETED: 'border-green-200 bg-green-50 text-green-800 hover:bg-green-100',
   INACTIVE: 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100',
+  CHURNED: 'border-red-200 bg-red-50 text-red-800 hover:bg-red-100',
 };
 
 const PM_VARIANT_FILL_CLASS = {

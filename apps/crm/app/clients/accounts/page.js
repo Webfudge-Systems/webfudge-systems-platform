@@ -35,6 +35,7 @@ import {
   TableCellDateOnly,
   TableCellOwner,
   TableCellAccountStatusSelect,
+  ACCOUNT_STATUS_OPTIONS,
   formatTableDate,
   TableRowActionMenuPortal,
   Modal,
@@ -98,6 +99,44 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   acc[key] = DEFAULT_ON_KEYS.has(key);
   return acc;
 }, {});
+
+const DEFAULT_COLUMN_WIDTHS = {
+  company: 260,
+  primaryContact: 250,
+  healthScore: 140,
+  dealValue: 130,
+  contactsCount: 120,
+  location: 180,
+  industry: 160,
+  assignedTo: 190,
+  status: 150,
+  createdAt: 140,
+  updatedAt: 140,
+  accountType: 160,
+  billingCycle: 160,
+  website: 190,
+  companyPhone: 160,
+  companyEmail: 220,
+  address: 240,
+  city: 140,
+  state: 140,
+  country: 140,
+  zipCode: 130,
+  employees: 130,
+  description: 260,
+  linkedIn: 150,
+  twitter: 150,
+  notes: 240,
+  contractStartDate: 170,
+  contractEndDate: 170,
+  actions: 180,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  company: 220,
+  primaryContact: 220,
+  actions: 160,
+};
 
 const formatCurrency = (value) => {
   if (!value && value !== 0) return '₹0';
@@ -179,6 +218,8 @@ export default function ClientAccountsPage() {
     widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
     defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
     reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
   });
 
   useEffect(() => {
@@ -292,19 +333,19 @@ export default function ClientAccountsPage() {
   );
 
   // Statistics
+  const statusCounts = accounts.reduce((acc, account) => {
+    const key = (account.status || 'ACTIVE').toString().toUpperCase();
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
   const clientStats = {
     all: accounts.length,
-    active: accounts.filter((a) => a.status?.toLowerCase() === 'active').length,
-    inactive: accounts.filter((a) => a.status?.toLowerCase() === 'inactive').length,
+    active: statusCounts.ACTIVE || 0,
+    inactive: statusCounts.INACTIVE || 0,
   };
 
-  const statusFilterOptions = useMemo(
-    () => [
-      { value: 'ACTIVE', label: 'Active' },
-      { value: 'INACTIVE', label: 'Inactive' },
-    ],
-    []
-  );
+  const statusFilterOptions = ACCOUNT_STATUS_OPTIONS;
 
   const industryFilterOptions = useMemo(() => {
     const values = new Set();
@@ -448,8 +489,11 @@ export default function ClientAccountsPage() {
 
   const tabItems = [
     { key: 'all', label: 'All Clients', count: clientStats.all },
-    { key: 'active', label: 'Active', count: clientStats.active },
-    { key: 'inactive', label: 'Inactive', count: clientStats.inactive },
+    ...ACCOUNT_STATUS_OPTIONS.map((status) => ({
+      key: status.value.toLowerCase(),
+      label: status.label,
+      count: statusCounts[status.value] || 0,
+    })),
   ];
 
   const allTableColumns = useMemo(

@@ -12,6 +12,7 @@ import {
   FormSectionCard,
   useIndustrySelectOptions,
   buildUserSelectOptions,
+  LEAD_STATUS_OPTIONS,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
@@ -105,12 +106,9 @@ export default function AddLeadCompanyPage() {
     { value: 'OTHER', label: 'Other' },
   ];
 
-  const statusOptions = [
-    { value: 'NEW', label: 'New' },
-    { value: 'CONTACTED', label: 'Contacted' },
-    { value: 'QUALIFIED', label: 'Qualified' },
-    { value: 'PROPOSAL_SENT', label: 'Proposal Sent' },
-  ];
+  const statusOptions = LEAD_STATUS_OPTIONS.filter(
+    (opt) => opt.value !== 'CONVERTED' && opt.value !== 'CLIENT'
+  );
 
   const contactRoleOptions = [
     { value: 'PRIMARY_CONTACT', label: 'Primary contact' },

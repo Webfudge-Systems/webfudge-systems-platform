@@ -134,6 +134,38 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
+const DEFAULT_COLUMN_WIDTHS = {
+  contact: 260,
+  company: 220,
+  contactInfo: 260,
+  role: 150,
+  owner: 190,
+  createdAt: 140,
+  status: 150,
+  updatedAt: 140,
+  department: 160,
+  jobTitle: 180,
+  source: 140,
+  preferredContactMethod: 180,
+  companyName: 200,
+  city: 140,
+  state: 140,
+  country: 140,
+  zipCode: 130,
+  linkedIn: 150,
+  twitter: 150,
+  notes: 240,
+  actions: 180,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  contact: 220,
+  company: 180,
+  contactInfo: 220,
+  owner: 160,
+  actions: 160,
+};
+
 export default function ContactsPage() {
   const initialFilters = useMemo(
     () => ({
@@ -199,6 +231,8 @@ export default function ContactsPage() {
     widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
     defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
     reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
   });
 
   useEffect(() => {

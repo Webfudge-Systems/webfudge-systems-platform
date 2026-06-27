@@ -113,6 +113,32 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
+const DEFAULT_COLUMN_WIDTHS = {
+  deal: 300,
+  company: 220,
+  value: 130,
+  stage: 170,
+  probability: 170,
+  expectedCloseDate: 150,
+  assignedTo: 190,
+  priority: 140,
+  createdAt: 140,
+  source: 150,
+  visibility: 140,
+  dealGroup: 160,
+  primaryContact: 240,
+  notes: 240,
+  updatedAt: 140,
+  description: 260,
+  actions: 230,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  deal: 240,
+  company: 180,
+  actions: 210,
+};
+
 function truncateText(text, max = 72) {
   if (text == null || text === '') return '';
   const s = String(text).replace(/\s+/g, ' ').trim();
@@ -214,6 +240,8 @@ export default function DealsPage() {
     widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
     defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
     reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
   });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);

@@ -61,6 +61,22 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
+const DEFAULT_COLUMN_WIDTHS = {
+  name: 280,
+  status: 150,
+  trigger: 200,
+  version: 110,
+  updatedAt: 140,
+  createdAt: 140,
+  runStats: 160,
+  actions: 200,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  name: 240,
+  actions: 180,
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatRelative(iso) {
@@ -132,6 +148,8 @@ export default function AutomationsPage() {
     widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
     defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
     reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
   });
 
   const [showFilterModal, setShowFilterModal] = useState(false);

@@ -91,6 +91,27 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
+const DEFAULT_COLUMN_WIDTHS = {
+  task: 280,
+  status: 170,
+  priority: 140,
+  assignee: 190,
+  scheduledDate: 150,
+  clientAccount: 200,
+  deal: 200,
+  projects: 180,
+  leadCompany: 180,
+  description: 240,
+  createdAt: 140,
+  updatedAt: 140,
+  actions: 200,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  task: 240,
+  actions: 180,
+};
+
 const ITEMS_PER_PAGE = 15;
 
 function startOfDay(d) {
@@ -222,6 +243,8 @@ export default function ClientsTasksPage() {
     widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
     defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
     reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
   });
 
   useEffect(() => {

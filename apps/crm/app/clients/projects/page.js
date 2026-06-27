@@ -67,6 +67,28 @@ const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => {
   return acc;
 }, {});
 
+const DEFAULT_COLUMN_WIDTHS = {
+  project: 280,
+  status: 150,
+  projectManager: 190,
+  clientAccount: 200,
+  startDate: 130,
+  endDate: 130,
+  budget: 130,
+  tasks: 100,
+  sourceDeal: 200,
+  description: 240,
+  organization: 180,
+  createdAt: 140,
+  updatedAt: 140,
+  actions: 200,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  project: 240,
+  actions: 180,
+};
+
 const ITEMS_PER_PAGE = 15;
 
 const formatCurrency = (value) => {
@@ -158,6 +180,8 @@ export default function ClientsProjectsPage() {
     widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
     defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
     reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
   });
 
   useEffect(() => {
