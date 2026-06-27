@@ -1,6 +1,5 @@
 'use client'
 
-import { clsx } from 'clsx'
 import {
   Avatar,
   Badge,
@@ -9,13 +8,7 @@ import {
   TableCellText,
   TableCellTitleSubtitle,
 } from '@webfudge/ui'
-
-const STATUS_PILL = {
-  ACTIVE: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-  PROBATION: 'border-amber-200 bg-amber-50 text-amber-900',
-  NOTICE: 'border-orange-200 bg-orange-50 text-orange-900',
-  EXITED: 'border-gray-300 bg-gray-50 text-gray-700',
-}
+import { employeeStatusBadgeVariant } from '../../lib/employeeStatus'
 
 export function EmployeeNameCell({ row }) {
   const initial = row.name?.charAt(0) || '?'
@@ -41,7 +34,7 @@ export function EmployeeTextCell({ value, capitalize = false }) {
 }
 
 export function EmployeeManagerCell({ manager }) {
-  if (!manager) return <span className="text-sm text-gray-400">—</span>
+  if (!manager) return <TableCellText value="—" />
   return (
     <TableCellOwner
       label={manager}
@@ -53,14 +46,10 @@ export function EmployeeManagerCell({ manager }) {
 }
 
 export function EmployeeStatusPill({ status }) {
-  const raw = (status || 'Exited').toString().trim()
-  const key = raw.toUpperCase()
-  const tone = STATUS_PILL[key] || STATUS_PILL.EXITED
+  const label = (status || 'Exited').toString().trim()
   return (
-    <Badge
-      className={clsx('whitespace-nowrap border px-3 py-1 text-xs font-semibold uppercase tracking-wide', tone)}
-    >
-      {key.replace(/_/g, ' ')}
+    <Badge variant={employeeStatusBadgeVariant(label)} size="sm" className="capitalize">
+      {label}
     </Badge>
   )
 }

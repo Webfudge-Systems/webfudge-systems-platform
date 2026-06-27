@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Edit, Mail, Trash2, Briefcase, MapPin, Calendar } from 'lucide-react'
-import { Button, Modal, TabsWithActions } from '@webfudge/ui'
+import { Edit, Mail, Trash2 } from 'lucide-react'
+import { Button, Card, EmptyState, LoadingSpinner, Modal, TabsWithActions } from '@webfudge/ui'
 import HRPageHeader from '../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../components/layout/HRModulePage'
-import HRDashboardKpiRow from '../../../../components/dashboard/HRDashboardKpiRow'
 import EmployeeDetailMetaBar from '../../../../components/employees/EmployeeDetailMetaBar'
+import { employeeToForm } from '../../../../components/employees/EmployeeForm'
+import HRDetailHeaderActions from '../../../../components/shared/HRDetailHeaderActions'
 import {
   EmployeeOverviewPanel,
   EmployeeDocumentsPanel,
@@ -21,7 +21,9 @@ import {
 import { EMPLOYEE_DOCUMENTS, EMPLOYEE_OKRS } from '../../../../lib/mock-data/employees'
 import { EMPLOYEE_ACTIVITIES } from '../../../../lib/mock-data/activities'
 import { LEAVE_REQUESTS } from '../../../../lib/mock-data/leave'
-import { getSyncedEmployeeById, softDeleteEmployee } from '../../../../lib/employeeSyncService'
+import { getSyncedEmployeeById, softDeleteEmployee, updateEmployeeFromForm } from '../../../../lib/employeeSyncService'
+import { listSalaryStructures, upsertEmployeeProfileByMembership } from '../../../../lib/payrollSyncService'
+import { entityFilesPanelProps } from '../../../../lib/entityMedia'
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -45,6 +47,16 @@ export default function EmployeeProfilePage() {
   const [tab, setTab] = useState('overview')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [employee, setEmployee] = useState(null)
+  const [departmentCatalog, setDepartmentCatalog] = useState([])
+  const [managerRoleOptions, setManagerRoleOptions] = useState([
+    { value: 'admin', label: 'Admin' },
+    { value: 'manager', label: 'Manager' },
+  ])
+  const [salaryStructureOptions, setSalaryStructureOptions] = useState([{ value: '', label: 'Unassigned' }])
+  const [editingEmployeeInfo, setEditingEmployeeInfo] = useState(false)
+  const [employeeInfoDraft, setEmployeeInfoDraft] = useState(null)
+  const [savingEmployeeInfo, setSavingEmployeeInfo] = useState(false)
+  const [employeeInfoSaveError, setEmployeeInfoSaveError] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -52,8 +64,24 @@ export default function EmployeeProfilePage() {
     ;(async () => {
       try {
         setLoading(true)
-        const { employee: row } = await getSyncedEmployeeById(params.id)
-        if (!cancelled) setEmployee(row)
+        const [{ employee: row, departments, roles }, structureRows] = await Promise.all([
+          getSyncedEmployeeById(params.id),
+          listSalaryStructures(),
+        ])
+        if (cancelled) return
+        const managerRoles = roles
+          .map((r) => ({
+            value: String(r.code || r.name || '').toLowerCase(),
+            label: r.name || r.code,
+          }))
+          .filter((r) => r.value === 'admin' || r.value === 'manager')
+        setEmployee(row)
+        setDepartmentCatalog(departments)
+        if (managerRoles.length) setManagerRoleOptions(managerRoles)
+        setSalaryStructureOptions([
+          { value: '', label: 'Unassigned' },
+          ...structureRows.map((s) => ({ value: String(s.id), label: s.name })),
+        ])
       } catch {
         if (!cancelled) setEmployee(null)
       } finally {
@@ -67,20 +95,35 @@ export default function EmployeeProfilePage() {
 
   if (loading) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Loading employee...</p>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Loading..."
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+          <LoadingSpinner message="Loading employee..." />
+        </Card>
+      </div>
     )
   }
 
   if (!employee) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Employee not found.</p>
-        <Link href="/employees" className="mt-2 inline-block text-sm text-orange-600 hover:underline">
-          Back to directory
-        </Link>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Employee Not Found"
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="rounded-xl p-12">
+          <EmptyState
+            title="Employee not found"
+            description="The employee may have been removed or the link is incorrect."
+            action={<Link href="/employees" className="text-sm font-medium text-orange-600 hover:underline">Back to directory</Link>}
+          />
+        </Card>
+      </div>
     )
   }
 
@@ -95,32 +138,6 @@ export default function EmployeeProfilePage() {
   }))
   const leaveRequests = LEAVE_REQUESTS.filter((r) => r.employeeId === employee.id)
 
-  const location = employee.workLocation || employee.location || '—'
-
-  const kpiStats = [
-    {
-      title: 'Department',
-      value: employee.department,
-      subtitle: employee.employmentType || 'Full-time',
-      icon: Briefcase,
-      colorScheme: 'orange',
-    },
-    {
-      title: 'Location',
-      value: location,
-      subtitle: employee.shift || 'On-site',
-      icon: MapPin,
-      colorScheme: 'orange',
-    },
-    {
-      title: 'Joined',
-      value: employee.joinDate,
-      subtitle: `ID ${employee.employeeId}`,
-      icon: Calendar,
-      colorScheme: 'orange',
-    },
-  ]
-
   const handleDelete = async () => {
     try {
       await softDeleteEmployee(employee)
@@ -132,66 +149,137 @@ export default function EmployeeProfilePage() {
     }
   }
 
+  const openEmployeeInfoEdit = () => {
+    if (!employee) return
+    setEmployeeInfoDraft(employeeToForm(employee))
+    setEmployeeInfoSaveError('')
+    setEditingEmployeeInfo(true)
+  }
+
+  const cancelEmployeeInfoEdit = () => {
+    setEditingEmployeeInfo(false)
+    setEmployeeInfoDraft(null)
+    setEmployeeInfoSaveError('')
+  }
+
+  const setEmployeeInfoField = (field, value) => {
+    setEmployeeInfoDraft((prev) => (prev ? { ...prev, [field]: value } : prev))
+  }
+
+  const saveEmployeeInfo = async () => {
+    if (!employee || !employeeInfoDraft) return
+    if (!employeeInfoDraft.fullName?.trim()) {
+      setEmployeeInfoSaveError('Full name is required')
+      return
+    }
+    if (!employeeInfoDraft.email?.trim()) {
+      setEmployeeInfoSaveError('Work email is required')
+      return
+    }
+
+    try {
+      setSavingEmployeeInfo(true)
+      setEmployeeInfoSaveError('')
+      await updateEmployeeFromForm(employee, employeeInfoDraft, departmentCatalog)
+      if (employee.membershipId) {
+        await upsertEmployeeProfileByMembership(employee.membershipId, {
+          employeeCode: employee.employeeId || `WF-${1000 + Number(employee.membershipId || 0)}`,
+          annualCtc: Number(employeeInfoDraft.annualCtc || 0) || 0,
+          designation: employeeInfoDraft.designation || '',
+          employmentType: employeeInfoDraft.employmentType || 'Full-time',
+          joinDate: employeeInfoDraft.joinDate || null,
+          workLocation: employeeInfoDraft.location || '',
+          phone: employeeInfoDraft.phone || '',
+          reportingRole: employeeInfoDraft.reportingRole || 'manager',
+          status: employeeInfoDraft.status || 'Active',
+          bankAccountNumber: employeeInfoDraft.bankAccountNumber || '',
+          bankIfsc: employeeInfoDraft.bankIfsc || '',
+          bankName: employeeInfoDraft.bankName || '',
+          salaryStructure: employeeInfoDraft.salaryStructureId ? Number(employeeInfoDraft.salaryStructureId) : null,
+        })
+      }
+      const { employee: refreshed } = await getSyncedEmployeeById(employee.id)
+      setEmployee(refreshed)
+      setEditingEmployeeInfo(false)
+      setEmployeeInfoDraft(null)
+    } catch (error) {
+      setEmployeeInfoSaveError(error?.message || 'Failed to save employee details')
+    } finally {
+      setSavingEmployeeInfo(false)
+    }
+  }
+
   return (
-    <HRModulePage>
-      <div className="space-y-4">
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-3">
         <HRPageHeader
           title={employee.name}
           subtitle={employee.designation}
           breadcrumb={[
+            { label: 'Dashboard', href: '/dashboard' },
             { label: 'Employees', href: '/employees' },
             { label: employee.name, href: `/employees/${employee.id}` },
           ]}
-          showSearch
-          actions={
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => router.push(`/employees/${employee.id}/edit`)}
-              >
-                <Edit className="mr-1 h-4 w-4" />
-                Edit
-              </Button>
-              {employee.email ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    window.location.href = `mailto:${employee.email}`
-                  }}
-                >
-                  <Mail className="mr-1 h-4 w-4" />
-                  Message
-                </Button>
-              ) : null}
-              <Button
-                variant="secondary"
-                size="sm"
-                className="!text-red-600 hover:!bg-red-50"
-                onClick={() => setDeleteOpen(true)}
-              >
-                <Trash2 className="mr-1 h-4 w-4" />
-                Delete
-              </Button>
-            </div>
-          }
-        />
+          showProfile
+        >
+          <HRDetailHeaderActions
+            actions={[
+              {
+                label: 'Edit',
+                title: 'Edit employee',
+                icon: Edit,
+                onClick: () => router.push(`/employees/${employee.id}/edit`),
+              },
+              employee.email
+                ? {
+                    label: 'Message',
+                    title: 'Message employee',
+                    icon: Mail,
+                    onClick: () => {
+                      window.location.href = `mailto:${employee.email}`
+                    },
+                  }
+                : null,
+              {
+                label: 'Delete',
+                title: 'Delete employee',
+                icon: Trash2,
+                variant: 'danger',
+                onClick: () => setDeleteOpen(true),
+              },
+            ]}
+          />
+        </HRPageHeader>
 
         <EmployeeDetailMetaBar employee={employee} />
-
-        <HRDashboardKpiRow stats={kpiStats} columns="sm:grid-cols-2 lg:grid-cols-3" />
-
-        <TabsWithActions tabs={TABS} activeTab={tab} onTabChange={setTab} variant="pill" />
-
-        {tab === 'overview' && <EmployeeOverviewPanel employee={employee} />}
-        {tab === 'documents' && <EmployeeDocumentsPanel documents={docs} />}
-        {tab === 'attendance' && <EmployeeAttendancePanel />}
-        {tab === 'leave' && <EmployeeLeavePanel leaveRequests={leaveRequests} />}
-        {tab === 'payroll' && <EmployeePayrollPanel payslips={PAYSLIPS} />}
-        {tab === 'performance' && <EmployeePerformancePanel okrs={okrs} />}
-        {tab === 'activity' && <EmployeeActivityPanel activities={activities} />}
       </div>
+
+      <TabsWithActions tabs={TABS} activeTab={tab} onTabChange={setTab} variant="pill" />
+
+      {tab === 'overview' && (
+        <EmployeeOverviewPanel
+          employee={employee}
+          editing={editingEmployeeInfo}
+          draft={employeeInfoDraft}
+          departments={departmentCatalog.map((d) => d.name)}
+          managerRoleOptions={managerRoleOptions}
+          salaryStructureOptions={salaryStructureOptions}
+          saving={savingEmployeeInfo}
+          saveError={employeeInfoSaveError}
+          onEdit={openEmployeeInfoEdit}
+          onCancelEdit={cancelEmployeeInfoEdit}
+          onSaveEdit={saveEmployeeInfo}
+          onDraftChange={setEmployeeInfoField}
+        />
+      )}
+      {tab === 'documents' && (
+        <EmployeeDocumentsPanel employee={employee} documents={docs} filesProps={entityFilesPanelProps} />
+      )}
+      {tab === 'attendance' && <EmployeeAttendancePanel />}
+      {tab === 'leave' && <EmployeeLeavePanel leaveRequests={leaveRequests} />}
+      {tab === 'payroll' && <EmployeePayrollPanel payslips={PAYSLIPS} />}
+      {tab === 'performance' && <EmployeePerformancePanel okrs={okrs} />}
+      {tab === 'activity' && <EmployeeActivityPanel employee={employee} fallbackActivities={activities} />}
 
       <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)} title="Delete employee" size="sm">
         <p className="text-sm text-gray-600">
@@ -207,6 +295,6 @@ export default function EmployeeProfilePage() {
           </Button>
         </div>
       </Modal>
-    </HRModulePage>
+    </div>
   )
 }

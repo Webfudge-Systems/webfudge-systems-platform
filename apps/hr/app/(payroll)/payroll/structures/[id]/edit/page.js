@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@webfudge/ui'
+import { Save, ArrowLeft } from 'lucide-react'
+import { Button, Card, EmptyState, LoadingSpinner } from '@webfudge/ui'
 import HRPageHeader from '../../../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../../../components/layout/HRModulePage'
 import SalaryStructureForm, { salaryStructureToForm } from '../../../../../../components/payroll/SalaryStructureForm'
 import { getSalaryStructureById, updateSalaryStructure } from '../../../../../../lib/payrollSyncService'
-import { Save, ArrowLeft } from 'lucide-react'
 
 export default function EditSalaryStructurePage() {
   const params = useParams()
@@ -40,20 +39,35 @@ export default function EditSalaryStructurePage() {
 
   if (loading) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Loading structure...</p>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Loading..."
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payroll', href: '/payroll' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+          <LoadingSpinner message="Loading structure..." />
+        </Card>
+      </div>
     )
   }
 
   if (!structure) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Salary structure not found.</p>
-        <Link href="/payroll" className="mt-2 inline-block text-sm text-orange-600 hover:underline">
-          Back to payroll
-        </Link>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Structure Not Found"
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payroll', href: '/payroll' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="rounded-xl p-12">
+          <EmptyState
+            title="Salary structure not found"
+            description="The structure may have been removed or the link is incorrect."
+            action={<Link href="/payroll" className="text-sm font-medium text-orange-600 hover:underline">Back to payroll</Link>}
+          />
+        </Card>
+      </div>
     )
   }
 
@@ -83,17 +97,17 @@ export default function EditSalaryStructurePage() {
   }
 
   return (
-    <HRModulePage>
+    <div className="space-y-6 p-4 md:p-6">
       <HRPageHeader
         title={`Edit ${structure.name}`}
         subtitle="Update CTC band and salary components"
         breadcrumb={[
+          { label: 'Dashboard', href: '/dashboard' },
           { label: 'Payroll', href: '/payroll' },
           { label: structure.name, href: `/payroll/structures/${structure.id}` },
           { label: 'Edit', href: `/payroll/structures/${structure.id}/edit` },
         ]}
-        showSearch={false}
-        showActions={false}
+        showProfile
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -111,12 +125,7 @@ export default function EditSalaryStructurePage() {
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting} className="flex min-w-[140px] items-center justify-center gap-2">
-            {isSubmitting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-b-transparent" />
-                Saving...
-              </>
-            ) : (
+            {isSubmitting ? 'Saving…' : (
               <>
                 <Save className="h-4 w-4" />
                 Save Changes
@@ -125,6 +134,6 @@ export default function EditSalaryStructurePage() {
           </Button>
         </div>
       </form>
-    </HRModulePage>
+    </div>
   )
 }

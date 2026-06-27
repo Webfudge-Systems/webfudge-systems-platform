@@ -3,16 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@webfudge/ui'
+import { Save, ArrowLeft } from 'lucide-react'
+import { Button, Card, EmptyState, LoadingSpinner } from '@webfudge/ui'
 import HRPageHeader from '../../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../../components/layout/HRModulePage'
 import EmployeeForm, { employeeToForm } from '../../../../../components/employees/EmployeeForm'
 import {
   getSyncedEmployeeById,
   updateEmployeeFromForm,
 } from '../../../../../lib/employeeSyncService'
 import { listSalaryStructures, upsertEmployeeProfileByMembership } from '../../../../../lib/payrollSyncService'
-import { Save, ArrowLeft } from 'lucide-react'
 
 export default function EditEmployeePage() {
   const params = useParams()
@@ -64,20 +63,35 @@ export default function EditEmployeePage() {
 
   if (loading) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Loading employee...</p>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Loading..."
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+          <LoadingSpinner message="Loading employee..." />
+        </Card>
+      </div>
     )
   }
 
   if (!employee) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Employee not found.</p>
-        <Link href="/employees" className="mt-2 inline-block text-sm text-orange-600">
-          Back to directory
-        </Link>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Employee Not Found"
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Employees', href: '/employees' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="rounded-xl p-12">
+          <EmptyState
+            title="Employee not found"
+            description="The employee may have been removed or the link is incorrect."
+            action={<Link href="/employees" className="text-sm font-medium text-orange-600 hover:underline">Back to directory</Link>}
+          />
+        </Card>
+      </div>
     )
   }
 
@@ -117,17 +131,17 @@ export default function EditEmployeePage() {
   }
 
   return (
-    <HRModulePage>
+    <div className="space-y-6 p-4 md:p-6">
       <HRPageHeader
         title={`Edit ${employee.name}`}
         subtitle="Update employment and contact details"
         breadcrumb={[
+          { label: 'Dashboard', href: '/dashboard' },
           { label: 'Employees', href: '/employees' },
           { label: employee.name, href: `/employees/${employee.id}` },
           { label: 'Edit', href: `/employees/${employee.id}/edit` },
         ]}
-        showSearch={false}
-        showActions={false}
+        showProfile
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -155,12 +169,7 @@ export default function EditEmployeePage() {
             disabled={isSubmitting}
             className="flex min-w-[140px] items-center justify-center gap-2"
           >
-            {isSubmitting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-b-transparent" />
-                Saving...
-              </>
-            ) : (
+            {isSubmitting ? 'Saving…' : (
               <>
                 <Save className="h-4 w-4" />
                 Save Changes
@@ -169,6 +178,6 @@ export default function EditEmployeePage() {
           </Button>
         </div>
       </form>
-    </HRModulePage>
+    </div>
   )
 }

@@ -1,49 +1,42 @@
 'use client'
 
+import { Badge } from '@webfudge/ui'
+
 const STATUS_MAP = {
-  Active: 'green',
-  Approved: 'green',
-  Paid: 'green',
-  Verified: 'green',
-  Connected: 'green',
-  Completed: 'green',
-  Resolved: 'green',
-  Hired: 'green',
-  Open: 'blue',
-  WFH: 'blue',
-  'In Progress': 'blue',
+  Active: 'success',
+  Approved: 'success',
+  Paid: 'success',
+  Verified: 'success',
+  Connected: 'success',
+  Completed: 'success',
+  Resolved: 'success',
+  Hired: 'success',
+  Open: 'primary',
+  WFH: 'primary',
+  'In Progress': 'primary',
   Draft: 'gray',
   Closed: 'gray',
   Inactive: 'gray',
-  Probation: 'yellow',
+  Probation: 'warning',
   Pending: 'orange',
   'Pending Approval': 'orange',
   Notice: 'orange',
   Paused: 'orange',
   Sent: 'orange',
-  Rejected: 'red',
-  Exited: 'red',
-  Urgent: 'red',
-  High: 'red',
+  Rejected: 'danger',
+  Exited: 'danger',
+  Urgent: 'danger',
+  High: 'danger',
   Medium: 'gray',
   Low: 'gray',
-  Terminated: 'red',
-  Declined: 'red',
+  Terminated: 'danger',
+  Declined: 'danger',
 }
 
-export default function HRStatusBadge({ status, className = '' }) {
-  const variant = STATUS_MAP[status] || 'gray'
-  const classes = {
-    green: 'bg-green-100 text-green-700 border-green-200',
-    yellow: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    orange: 'bg-orange-100 text-orange-700 border-orange-200',
-    red: 'bg-red-100 text-red-700 border-red-200',
-    gray: 'bg-gray-100 text-gray-600 border-gray-200',
-    blue: 'bg-blue-100 text-blue-700 border-blue-200',
-  }
+export default function HRStatusBadge({ status, className }) {
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${classes[variant]} ${className}`}>
+    <Badge variant={STATUS_MAP[status] || 'gray'} className={className}>
       {status}
-    </span>
+    </Badge>
   )
 }

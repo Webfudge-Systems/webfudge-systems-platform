@@ -10,6 +10,7 @@ const SUBJECT_TYPES = new Set([
   'task',
   'project',
   'meeting',
+  'organization_user',
 ]);
 
 function mediaFileName(file) {

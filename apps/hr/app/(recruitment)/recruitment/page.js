@@ -17,9 +17,12 @@ import {
   KPICard,
   TabsWithActions,
   Avatar,
+  Select,
   TableCellText,
   TableCellDateOnly,
   TableCellOrangePill,
+  TableCellTitleSubtitle,
+  TableEmptyBelow,
   Card,
   TableResultsCount,
 } from '@webfudge/ui'
@@ -273,7 +276,7 @@ export default function RecruitmentPage() {
               : 0
 
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
         title="Recruitment"
         subtitle={`${stats.openJobs} open role${stats.openJobs === 1 ? '' : 's'} · ${stats.inPipeline} in pipeline`}
@@ -341,35 +344,21 @@ export default function RecruitmentPage() {
         afterTabs={
           activeTab === 'jobs' ? (
             <div className="hidden sm:block">
-              <select
+              <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by job status"
-              >
-                <option value="">All statuses</option>
-                {JOB_STATUS_FILTERS.filter(Boolean).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                onChange={setStatusFilter}
+                options={[{ value: '', label: 'All statuses' }, ...JOB_STATUS_FILTERS.filter(Boolean).map((s) => ({ value: s, label: s }))]}
+                placeholder="All statuses"
+              />
             </div>
           ) : activeTab === 'candidates' ? (
             <div className="hidden sm:block">
-              <select
+              <Select
                 value={stageFilter}
-                onChange={(e) => setStageFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by stage"
-              >
-                <option value="">All stages</option>
-                {STAGE_FILTERS.filter(Boolean).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                onChange={setStageFilter}
+                options={[{ value: '', label: 'All stages' }, ...STAGE_FILTERS.filter(Boolean).map((s) => ({ value: s, label: s }))]}
+                placeholder="All stages"
+              />
             </div>
           ) : null
         }
@@ -381,14 +370,13 @@ export default function RecruitmentPage() {
         <HRDataTableCard>
           <Table columns={jobColumns} data={jobRows} keyField="id" variant="modern" />
           {jobRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <Briefcase className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No open jobs found</h3>
-              <p className="mb-4 text-sm text-gray-500">Try adjusting your search or filters.</p>
-              <Button variant="primary" onClick={() => openQuickAction(HR_QUICK_ACTION_IDS.POST_JOB)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Post New Job
-              </Button>
+            <div className="border-t border-gray-200">
+              <TableEmptyBelow
+                icon={Briefcase}
+                title="No open jobs found"
+                description="Try adjusting your search or filters."
+                action={<Button variant="primary" onClick={() => openQuickAction(HR_QUICK_ACTION_IDS.POST_JOB)}><Plus className="mr-2 h-4 w-4" />Post New Job</Button>}
+              />
             </div>
           )}
         </HRDataTableCard>
@@ -440,10 +428,8 @@ export default function RecruitmentPage() {
         <HRDataTableCard>
           <Table columns={candidateColumns} data={candidateRows} keyField="id" variant="modern" />
           {candidateRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <Users className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No candidates found</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search or stage filter.</p>
+            <div className="border-t border-gray-200">
+              <TableEmptyBelow icon={Users} title="No candidates found" description="Try adjusting your search or stage filter." />
             </div>
           )}
         </HRDataTableCard>
@@ -460,10 +446,8 @@ export default function RecruitmentPage() {
           <HRDataTableCard>
             <Table columns={interviewColumns} data={interviewRows} keyField="id" variant="modern" />
             {interviewRows.length === 0 && (
-              <div className="border-t border-gray-200 p-12 text-center">
-                <CalendarClock className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-                <h3 className="mb-2 text-lg font-semibold text-gray-700">No interviews scheduled</h3>
-                <p className="text-sm text-gray-500">Try adjusting your search.</p>
+              <div className="border-t border-gray-200">
+                <TableEmptyBelow icon={CalendarClock} title="No interviews scheduled" description="Try adjusting your search." />
               </div>
             )}
           </HRDataTableCard>
@@ -474,10 +458,8 @@ export default function RecruitmentPage() {
         <HRDataTableCard>
           <Table columns={offerColumns} data={offerRows} keyField="id" variant="modern" />
           {offerRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <FileCheck className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No offers found</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search.</p>
+            <div className="border-t border-gray-200">
+              <TableEmptyBelow icon={FileCheck} title="No offers found" description="Try adjusting your search." />
             </div>
           )}
         </HRDataTableCard>

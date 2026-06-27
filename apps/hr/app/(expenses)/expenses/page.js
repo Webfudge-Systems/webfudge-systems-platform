@@ -27,7 +27,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
-import HRSectionCard from '../../../components/shared/HRSectionCard'
 import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import { EXPENSE_CLAIMS, EXPENSE_PAYOUTS } from '../../../lib/mock-data/expenses'
@@ -207,7 +206,7 @@ export default function ExpensesPage() {
           : 0
 
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
         title="Expenses"
         subtitle={`${stats.pending} pending claim${stats.pending === 1 ? '' : 's'} · ${stats.claimedLabel} claimed this month`}
@@ -346,7 +345,7 @@ export default function ExpensesPage() {
             <KPICard title="Pending" value={stats.pendingLabel} icon={Clock} colorScheme="orange" />
             <KPICard title="Rejected" value={stats.rejectedLabel} icon={XCircle} colorScheme="orange" />
           </HRKpiRow>
-          <HRSectionCard className="h-72">
+          <Card variant="elevated" className="h-72">
             <div className="mb-4 flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-orange-600" aria-hidden />
               <h3 className="font-semibold text-gray-900">Spend by category</h3>
@@ -360,7 +359,7 @@ export default function ExpensesPage() {
                 <Bar dataKey="amount" fill="#F97316" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </HRSectionCard>
+          </Card>
         </div>
       )}
 

@@ -1,8 +1,7 @@
 'use client'
 
 import { Download, CalendarRange } from 'lucide-react'
-import { Button } from '@webfudge/ui'
-import HRGlassCard from '../shared/HRGlassCard'
+import { Button, Card } from '@webfudge/ui'
 
 export default function AnalyticsCommandBar({
   tabs,
@@ -13,7 +12,7 @@ export default function AnalyticsCommandBar({
   onExport,
 }) {
   return (
-    <HRGlassCard className="!p-3 sm:!p-4">
+    <Card glass padding={false} className="p-3 sm:p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <nav
           className="flex flex-wrap gap-1 rounded-xl bg-white/50 p-1 ring-1 ring-orange-100/40"
@@ -57,6 +56,6 @@ export default function AnalyticsCommandBar({
           </Button>
         </div>
       </div>
-    </HRGlassCard>
+    </Card>
   )
 }

@@ -37,12 +37,7 @@ export function PayrollStatusBadge({ status }) {
 }
 
 export function PayrollStructureCell({ row }) {
-  return (
-    <div className="min-w-[200px]">
-      <div className="font-medium text-gray-900">{row.name}</div>
-      <div className="mt-0.5 line-clamp-1 text-sm text-gray-500">{row.components}</div>
-    </div>
-  )
+  return <TableCellTitleSubtitle title={row.name} subtitle={row.components} />
 }
 
 export function PayrollPayslipEmployeeCell({ row }) {

@@ -2,12 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Save, ArrowLeft } from 'lucide-react'
 import { Button } from '@webfudge/ui'
 import HRPageHeader from '../../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../../components/layout/HRModulePage'
 import SalaryStructureForm, { salaryStructureToForm } from '../../../../../components/payroll/SalaryStructureForm'
 import { createSalaryStructure } from '../../../../../lib/payrollSyncService'
-import { Save, ArrowLeft } from 'lucide-react'
 
 export default function NewSalaryStructurePage() {
   const router = useRouter()
@@ -41,16 +40,16 @@ export default function NewSalaryStructurePage() {
   }
 
   return (
-    <HRModulePage>
+    <div className="space-y-6 p-4 md:p-6">
       <HRPageHeader
         title="Create Salary Structure"
         subtitle="Define a CTC band and component split for a role family"
         breadcrumb={[
+          { label: 'Dashboard', href: '/dashboard' },
           { label: 'Payroll', href: '/payroll' },
           { label: 'New Structure', href: '/payroll/structures/new' },
         ]}
-        showSearch={false}
-        showActions={false}
+        showProfile
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -63,12 +62,7 @@ export default function NewSalaryStructurePage() {
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting} className="flex min-w-[140px] items-center justify-center gap-2">
-            {isSubmitting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-b-transparent" />
-                Saving...
-              </>
-            ) : (
+            {isSubmitting ? 'Saving…' : (
               <>
                 <Save className="h-4 w-4" />
                 Create Structure
@@ -77,6 +71,6 @@ export default function NewSalaryStructurePage() {
           </Button>
         </div>
       </form>
-    </HRModulePage>
+    </div>
   )
 }

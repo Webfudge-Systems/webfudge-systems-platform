@@ -9,17 +9,56 @@ export const viewport = {
 }
 
 const siteUrl = (process.env.NEXT_PUBLIC_HR_APP_URL || 'http://localhost:3008').replace(/\/$/, '')
+const shareDescription =
+  'A modern HR workspace for employees, payroll, attendance, leave, and workforce analytics.'
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: 'Fudge People', template: '%s | Fudge People' },
-  description: 'Fudge People — employees, payroll, attendance, leave, and workforce analytics.',
+  description: shareDescription,
   applicationName: 'Fudge People',
-  robots: { index: false, follow: false },
-  icons: {
-    icon: [{ url: '/favicon/favicon.svg', type: 'image/svg+xml' }],
-    apple: [{ url: '/favicon/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Fudge People',
   },
+  formatDetection: { telephone: false },
+  keywords: ['HRMS', 'HR management', 'payroll', 'attendance', 'leave management', 'workforce'],
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Fudge People',
+    description: shareDescription,
+    type: 'website',
+    images: [
+      {
+        url: '/favicon/web-app-manifest-512x512.png',
+        width: 512,
+        height: 512,
+        alt: 'Fudge People',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Fudge People',
+    description: shareDescription,
+    images: ['/favicon/web-app-manifest-512x512.png'],
+  },
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: { index: false, follow: false, noimageindex: true },
+  },
+  icons: {
+    icon: [
+      { url: '/favicon/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+    ],
+    apple: [{ url: '/favicon/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: ['/favicon/favicon.svg'],
+  },
+  manifest: '/favicon/site.webmanifest',
 }
 
 export default function RootLayout({ children }) {

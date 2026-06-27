@@ -25,7 +25,6 @@ import {
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
-import HRSectionCard from '../../../components/shared/HRSectionCard'
 import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import {
@@ -92,7 +91,7 @@ export default function SettingsPage() {
   )
 
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
         title="Settings"
         subtitle="Company profile, departments, roles, and integrations — aligned with CRM workspace settings"
@@ -104,7 +103,7 @@ export default function SettingsPage() {
       />
 
       <div className="flex flex-col gap-6 lg:flex-row">
-        <HRSectionCard className="shrink-0 !p-2 lg:w-60">
+        <Card variant="elevated" className="shrink-0 !p-2 lg:w-60">
           <nav className="space-y-0.5" aria-label="Settings sections">
             {HR_SETTINGS_SECTIONS.map((s) => {
               const Icon = SECTION_ICONS[s.icon]
@@ -126,7 +125,7 @@ export default function SettingsPage() {
               )
             })}
           </nav>
-        </HRSectionCard>
+        </Card>
 
         <div className="min-w-0 flex-1 space-y-6">
           {activeSection && (
@@ -303,7 +302,7 @@ export default function SettingsPage() {
           )}
 
           {section === 'billing' && (
-            <HRSectionCard className="max-w-lg">
+            <Card variant="elevated" className="max-w-lg">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
                   <CreditCard className="h-5 w-5 text-orange-600" aria-hidden />
@@ -316,7 +315,7 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </div>
-            </HRSectionCard>
+            </Card>
           )}
         </div>
       </div>

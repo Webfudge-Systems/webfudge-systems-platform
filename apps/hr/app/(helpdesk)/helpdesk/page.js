@@ -22,6 +22,7 @@ import {
   TableCellDateOnly,
   TableCellOrangePill,
   Card,
+  Modal,
   Accordion,
   Textarea,
   ChatMessageText,
@@ -30,9 +31,7 @@ import {
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
-import HRSectionCard from '../../../components/shared/HRSectionCard'
 import HRDataTableCard from '../../../components/shared/HRDataTableCard'
-import HRDrawer from '../../../components/shared/HRDrawer'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import {
   HELPDESK_TICKETS,
@@ -162,7 +161,7 @@ export default function HelpdeskPage() {
           : 0
 
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
         title="HR Helpdesk"
         subtitle={`${stats.open} open · ${stats.inProgress} in progress · ${stats.slaCompliance}% within SLA`}
@@ -301,26 +300,26 @@ export default function HelpdeskPage() {
 
       {activeTab === 'sla' && (
         <HRKpiRow columns={3}>
-          <HRSectionCard className="text-center">
+          <Card variant="elevated" className="text-center">
             <p className="text-3xl font-bold text-emerald-600">{stats.slaCompliance}%</p>
             <p className="mt-1 text-sm text-gray-500">Within SLA</p>
-          </HRSectionCard>
-          <HRSectionCard className="text-center">
+          </Card>
+          <Card variant="elevated" className="text-center">
             <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
               <Timer className="h-5 w-5 text-orange-600" aria-hidden />
             </div>
             <p className="text-3xl font-bold text-gray-900">{stats.avgResolutionHours}h</p>
             <p className="mt-1 text-sm text-gray-500">Avg resolution time</p>
-          </HRSectionCard>
-          <HRSectionCard className="text-center">
+          </Card>
+          <Card variant="elevated" className="text-center">
             <p className="text-3xl font-bold text-red-600">{stats.breaches}</p>
             <p className="mt-1 text-sm text-gray-500">Breaches this week</p>
-          </HRSectionCard>
+          </Card>
         </HRKpiRow>
       )}
 
       {activeTab === 'faq' && (
-        <HRSectionCard>
+        <Card variant="elevated">
           <div className="mb-4 flex items-center gap-2">
             <HelpCircle className="h-5 w-5 text-orange-600" aria-hidden />
             <h3 className="font-semibold text-gray-900">Frequently asked questions</h3>
@@ -332,18 +331,14 @@ export default function HelpdeskPage() {
               content: f.a,
             }))}
           />
-        </HRSectionCard>
+        </Card>
       )}
 
-      <HRDrawer
-        open={!!selected}
+      <Modal
+        isOpen={!!selected}
         onClose={() => setSelected(null)}
         title={selected?.subject || 'Ticket'}
-        footer={
-          <Button variant="primary" className="bg-orange-500 hover:bg-orange-600">
-            Send reply
-          </Button>
-        }
+        size="lg"
       >
         {selected && (
           <>
@@ -371,9 +366,14 @@ export default function HelpdeskPage() {
               ))}
             </div>
             <Textarea placeholder="Reply…" rows={3} />
+            <div className="flex justify-end mt-4 pt-4 border-t border-gray-200">
+              <Button variant="primary" className="bg-orange-500 hover:bg-orange-600">
+                Send reply
+              </Button>
+            </div>
           </>
         )}
-      </HRDrawer>
+      </Modal>
     </HRModulePage>
   )
 }

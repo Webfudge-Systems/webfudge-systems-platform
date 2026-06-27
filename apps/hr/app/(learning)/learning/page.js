@@ -15,9 +15,11 @@ import {
   Table,
   KPICard,
   TabsWithActions,
+  Select,
   TableCellText,
   TableCellDateOnly,
   TableCellOrangePill,
+  TableEmptyBelow,
   Card,
   TableResultsCount,
 } from '@webfudge/ui'
@@ -230,7 +232,7 @@ export default function LearningPage() {
             : 0
 
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
         title="Learning & Development"
         subtitle={`${stats.totalCourses} courses · ${stats.avgCompletion}% avg completion`}
@@ -298,19 +300,12 @@ export default function LearningPage() {
         afterTabs={
           activeTab === 'courses' ? (
             <div className="hidden sm:block">
-              <select
+              <Select
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by category"
-              >
-                <option value="">All categories</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+                onChange={setCategoryFilter}
+                options={[{ value: '', label: 'All categories' }, ...categories.map((cat) => ({ value: cat, label: cat }))]}
+                placeholder="All categories"
+              />
             </div>
           ) : null
         }
@@ -340,14 +335,13 @@ export default function LearningPage() {
           <HRDataTableCard>
             <Table columns={courseColumns} data={courseRows} keyField="id" variant="modern" />
             {courseRows.length === 0 && (
-              <div className="border-t border-gray-200 p-12 text-center">
-                <BookOpen className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-                <h3 className="mb-2 text-lg font-semibold text-gray-700">No courses found</h3>
-                <p className="mb-4 text-sm text-gray-500">Try adjusting your search or category filter.</p>
-                <Button variant="primary" onClick={() => console.log('Upload course')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Upload Course
-                </Button>
+              <div className="border-t border-gray-200">
+                <TableEmptyBelow
+                  icon={BookOpen}
+                  title="No courses found"
+                  description="Try adjusting your search or category filter."
+                  action={<Button variant="primary" onClick={() => console.log('Upload course')}><Plus className="mr-2 h-4 w-4" />Upload Course</Button>}
+                />
               </div>
             )}
           </HRDataTableCard>
@@ -358,10 +352,8 @@ export default function LearningPage() {
         <HRDataTableCard>
           <Table columns={pathColumns} data={pathRows} keyField="id" variant="modern" />
           {pathRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <Route className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No learning paths found</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search.</p>
+            <div className="border-t border-gray-200">
+              <TableEmptyBelow icon={Route} title="No learning paths found" description="Try adjusting your search." />
             </div>
           )}
         </HRDataTableCard>
@@ -371,10 +363,8 @@ export default function LearningPage() {
         <HRDataTableCard>
           <Table columns={assignmentColumns} data={assignmentRows} keyField="id" variant="modern" />
           {assignmentRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <GraduationCap className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No assignments found</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search.</p>
+            <div className="border-t border-gray-200">
+              <TableEmptyBelow icon={GraduationCap} title="No assignments found" description="Try adjusting your search." />
             </div>
           )}
         </HRDataTableCard>
@@ -384,10 +374,8 @@ export default function LearningPage() {
         <HRDataTableCard>
           <Table columns={certificateColumns} data={certificateRows} keyField="id" variant="modern" />
           {certificateRows.length === 0 && (
-            <div className="border-t border-gray-200 p-12 text-center">
-              <Award className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="mb-2 text-lg font-semibold text-gray-700">No certificates found</h3>
-              <p className="text-sm text-gray-500">Try adjusting your search.</p>
+            <div className="border-t border-gray-200">
+              <TableEmptyBelow icon={Award} title="No certificates found" description="Try adjusting your search." />
             </div>
           )}
         </HRDataTableCard>

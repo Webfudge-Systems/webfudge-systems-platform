@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Edit, Mail, Trash2, Wallet, TrendingDown, Banknote, FileText } from 'lucide-react'
-import { Button, Modal, TabsWithActions } from '@webfudge/ui'
+import { Button, Card, EmptyState, LoadingSpinner, Modal, TabsWithActions } from '@webfudge/ui'
 import HRPageHeader from '../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../components/layout/HRModulePage'
 import HRDashboardKpiRow from '../../../../components/dashboard/HRDashboardKpiRow'
 import PayrollDetailMetaBar from '../../../../components/payroll/PayrollDetailMetaBar'
+import HRDetailHeaderActions from '../../../../components/shared/HRDetailHeaderActions'
 import {
   PayrollRecordOverviewPanel,
   PayrollPayslipPanel,
@@ -91,20 +91,35 @@ export default function PayrollRecordPage() {
 
   if (loading) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Loading payroll record...</p>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Loading..."
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payroll', href: '/payroll' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+          <LoadingSpinner message="Loading payroll record..." />
+        </Card>
+      </div>
     )
   }
 
   if (!record) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Payroll record not found.</p>
-        <Link href="/payroll" className="mt-2 inline-block text-sm text-orange-600 hover:underline">
-          Back to payroll
-        </Link>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Record Not Found"
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payroll', href: '/payroll' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="rounded-xl p-12">
+          <EmptyState
+            title="Payroll record not found"
+            description="The record may have been removed or the link is incorrect."
+            action={<Link href="/payroll" className="text-sm font-medium text-orange-600 hover:underline">Back to payroll</Link>}
+          />
+        </Card>
+      </div>
     )
   }
 
@@ -118,79 +133,90 @@ export default function PayrollRecordPage() {
   }
 
   return (
-    <HRModulePage>
-      <div className="space-y-4">
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="space-y-3">
         <HRPageHeader
           title={record.name}
           subtitle={`${record.designation || record.dept} · ${monthLabel}`}
           breadcrumb={[
+            { label: 'Dashboard', href: '/dashboard' },
             { label: 'Payroll', href: '/payroll' },
             { label: record.name, href: `/payroll/${record.id}` },
           ]}
-          showSearch
-          actions={
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" size="sm" disabled={readOnly} onClick={() => router.push(`/payroll/${record.id}/edit`)}>
-                <Edit className="mr-1 h-4 w-4" />
-                Edit
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => router.push(`/employees/${record.employeeRefId || record.id}`)}>
-                <Mail className="mr-1 h-4 w-4" />
-                Employee
-              </Button>
-              <Button variant="secondary" size="sm" disabled={readOnly} className="!text-red-600 hover:!bg-red-50 disabled:opacity-40" onClick={() => setDeleteOpen(true)}>
-                <Trash2 className="mr-1 h-4 w-4" />
-                Remove
-              </Button>
-            </div>
-          }
-        />
+          showProfile
+        >
+          <HRDetailHeaderActions
+            actions={[
+              {
+                label: 'Edit',
+                title: 'Edit payroll record',
+                icon: Edit,
+                disabled: readOnly,
+                onClick: () => router.push(`/payroll/${record.id}/edit`),
+              },
+              {
+                label: 'Employee',
+                title: 'View employee',
+                icon: Mail,
+                onClick: () => router.push(`/employees/${record.employeeRefId || record.id}`),
+              },
+              {
+                label: 'Remove',
+                title: 'Remove from payroll',
+                icon: Trash2,
+                variant: 'danger',
+                disabled: readOnly,
+                onClick: () => setDeleteOpen(true),
+              },
+            ]}
+          />
+        </HRPageHeader>
 
         <PayrollDetailMetaBar record={record} month={monthLabel} />
-
-        <HRDashboardKpiRow
-          stats={[
-            {
-              title: 'Gross Pay',
-              value: formatPayrollInr(record.gross),
-              subtitle: monthLabel,
-              icon: Wallet,
-              colorScheme: 'orange',
-            },
-            {
-              title: 'Deductions',
-              value: formatPayrollInr(totalDeductions),
-              subtitle: 'PF, ESI, PT, TDS',
-              icon: TrendingDown,
-              colorScheme: 'orange',
-            },
-            {
-              title: 'Net Pay',
-              value: formatPayrollInr(record.net),
-              subtitle: record.status,
-              icon: Banknote,
-              colorScheme: 'orange',
-            },
-          ]}
-          columns="sm:grid-cols-2 lg:grid-cols-3"
-        />
-
-        <TabsWithActions tabs={TABS} activeTab={tab} onTabChange={setTab} variant="pill" />
-
-        {tab === 'overview' && <PayrollRecordOverviewPanel record={record} month={monthLabel} />}
-        {tab === 'payslip' && (
-          <div className="space-y-4">
-            <PayrollPayslipPanel record={record} month={monthLabel} />
-            {payslipId ? (
-              <Button variant="secondary" onClick={() => window.open(getPayslipDownloadUrl(payslipId), '_blank')}>
-                <FileText className="mr-2 h-4 w-4" />
-                Download Payslip PDF
-              </Button>
-            ) : null}
-          </div>
-        )}
-        {tab === 'deductions' && <PayrollDeductionsPanel record={record} />}
       </div>
+
+      <HRDashboardKpiRow
+        stats={[
+          {
+            title: 'Gross Pay',
+            value: formatPayrollInr(record.gross),
+            subtitle: monthLabel,
+            icon: Wallet,
+            colorScheme: 'orange',
+          },
+          {
+            title: 'Deductions',
+            value: formatPayrollInr(totalDeductions),
+            subtitle: 'PF, ESI, PT, TDS',
+            icon: TrendingDown,
+            colorScheme: 'orange',
+          },
+          {
+            title: 'Net Pay',
+            value: formatPayrollInr(record.net),
+            subtitle: record.status,
+            icon: Banknote,
+            colorScheme: 'orange',
+          },
+        ]}
+        columns="sm:grid-cols-2 lg:grid-cols-3"
+      />
+
+      <TabsWithActions tabs={TABS} activeTab={tab} onTabChange={setTab} variant="pill" />
+
+      {tab === 'overview' && <PayrollRecordOverviewPanel record={record} month={monthLabel} />}
+      {tab === 'payslip' && (
+        <div className="space-y-4">
+          <PayrollPayslipPanel record={record} month={monthLabel} />
+          {payslipId ? (
+            <Button variant="secondary" onClick={() => window.open(getPayslipDownloadUrl(payslipId), '_blank')}>
+              <FileText className="mr-2 h-4 w-4" />
+              Download Payslip PDF
+            </Button>
+          ) : null}
+        </div>
+      )}
+      {tab === 'deductions' && <PayrollDeductionsPanel record={record} />}
 
       <Modal isOpen={deleteOpen} onClose={() => setDeleteOpen(false)} title="Remove from payroll" size="sm">
         <p className="text-sm text-gray-600">
@@ -205,6 +231,6 @@ export default function PayrollRecordPage() {
           </Button>
         </div>
       </Modal>
-    </HRModulePage>
+    </div>
   )
 }

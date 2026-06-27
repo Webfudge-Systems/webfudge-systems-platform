@@ -12,19 +12,3 @@ export default function HRDataTableCard({ children, className = '' }) {
     </div>
   )
 }
-
-/** Results line above the table — matches PM list pages. */
-export function HRListResultsCount({ count, page, totalPages }) {
-  return (
-    <div className="text-sm text-gray-600">
-      Showing <span className="font-semibold text-gray-900">{count}</span> result
-      {count !== 1 ? 's' : ''}
-      {page != null && totalPages != null && totalPages > 1 ? (
-        <>
-          {' '}
-          (page {page} of {totalPages})
-        </>
-      ) : null}
-    </div>
-  )
-}

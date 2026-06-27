@@ -36,6 +36,42 @@ export const HR_WORKFORCE_LINKS = [
   { id: 'leave', label: 'Leave', href: '/leave', icon: CalendarOff },
 ]
 
+export const HR_NAVIGATE_SECTIONS = [
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    
+  },
+  {
+    id: 'employees',
+    label: 'Employees',
+    children: [
+      { id: 'employees-directory', label: 'Employee Directory', href: '/employees', icon: Users },
+      ...HR_WORKFORCE_LINKS,
+    ],
+  },
+  {
+    id: 'payroll',
+    label: 'Payroll',
+    children: [{ id: 'payroll-runs', label: 'Payroll', href: '/payroll', icon: Wallet }],
+  },
+  {
+    id: 'expenses',
+    label: 'Expenses',
+    children: [{ id: 'expense-claims', label: 'Expenses', href: '/expenses', icon: Receipt }],
+  },
+  {
+    id: 'recruitment',
+    label: 'Recruitment',
+    children: [{ id: 'recruitment-pipeline', label: 'Recruitment', href: '/recruitment', icon: Briefcase }],
+  },
+  {
+    id: 'performance',
+    label: 'Performance',
+    children: [{ id: 'performance-reviews', label: 'Performance', href: '/performance', icon: Target }],
+  },
+]
+
 /** Tools panel list — PM Tools-style */
 export const HR_TOOLS = [
   { id: 'analytics', label: 'Analytics', href: '/analytics', icon: BarChart3 },

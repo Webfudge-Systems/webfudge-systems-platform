@@ -1,8 +1,9 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Clock, ArrowLeft } from 'lucide-react'
-import { Suspense } from 'react'
+import { Button } from '@webfudge/ui'
 
 function ComingSoonContent() {
   const router = useRouter()
@@ -24,14 +25,10 @@ function ComingSoonContent() {
         <p className="mb-8 text-brand-text-light">
           We&apos;re working hard to bring you this feature soon. Stay tuned!
         </p>
-        <button
-          type="button"
-          onClick={() => router.push('/dashboard')}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-primary px-6 py-3 font-medium text-white transition-colors hover:bg-brand-primary/90"
-        >
+        <Button onClick={() => router.push('/dashboard')} className="inline-flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
-        </button>
+        </Button>
       </div>
     </div>
   )

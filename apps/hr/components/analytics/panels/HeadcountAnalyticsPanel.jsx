@@ -5,7 +5,7 @@ import { Users, UserPlus, UserMinus, TrendingUp } from 'lucide-react'
 import { Table, TableCellText, TableCellOrangePill } from '@webfudge/ui'
 import { HEADCOUNT_ANALYTICS } from '../../../lib/mock-data/analytics'
 import { computeHeadcountKpis } from '../../../lib/analyticsPage'
-import HRAnalyticsKpiRow from '../HRAnalyticsKpiRow'
+import HRDashboardKpiRow from '../../dashboard/HRDashboardKpiRow'
 import { HRAnalyticsTableSection } from '../HRAnalyticsChartCard'
 import HeadcountTrendAnalyticsChart from '../charts/HeadcountTrendAnalyticsChart'
 import HiresExitsChart from '../charts/HiresExitsChart'
@@ -81,7 +81,7 @@ export default function HeadcountAnalyticsPanel() {
 
   return (
     <div className="space-y-4">
-      <HRAnalyticsKpiRow items={stats} />
+      <HRDashboardKpiRow stats={stats} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
         <HeadcountTrendAnalyticsChart className="xl:col-span-8" />

@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Button } from '@webfudge/ui'
+import { Save, ArrowLeft } from 'lucide-react'
+import { Button, Card, EmptyState, LoadingSpinner } from '@webfudge/ui'
 import HRPageHeader from '../../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../../components/layout/HRModulePage'
 import PayrollRecordForm, { payrollRecordToForm } from '../../../../../components/payroll/PayrollRecordForm'
 import { getPayrollLineItemById, updatePayrollLineItem } from '../../../../../lib/payrollSyncService'
-import { Save, ArrowLeft } from 'lucide-react'
 
 export default function EditPayrollRecordPage() {
   const params = useParams()
@@ -57,20 +56,35 @@ export default function EditPayrollRecordPage() {
 
   if (loading) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Loading payroll record...</p>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Loading..."
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payroll', href: '/payroll' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+          <LoadingSpinner message="Loading payroll record..." />
+        </Card>
+      </div>
     )
   }
 
   if (!record) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Payroll record not found.</p>
-        <Link href="/payroll" className="mt-2 inline-block text-sm text-orange-600 hover:underline">
-          Back to payroll
-        </Link>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Record Not Found"
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payroll', href: '/payroll' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="rounded-xl p-12">
+          <EmptyState
+            title="Payroll record not found"
+            description="The record may have been removed or the link is incorrect."
+            action={<Link href="/payroll" className="text-sm font-medium text-orange-600 hover:underline">Back to payroll</Link>}
+          />
+        </Card>
+      </div>
     )
   }
 
@@ -100,17 +114,17 @@ export default function EditPayrollRecordPage() {
   }
 
   return (
-    <HRModulePage>
+    <div className="space-y-6 p-4 md:p-6">
       <HRPageHeader
         title={`Edit ${record.name}`}
         subtitle="Update salary and deduction details for this payroll run"
         breadcrumb={[
+          { label: 'Dashboard', href: '/dashboard' },
           { label: 'Payroll', href: '/payroll' },
           { label: record.name, href: `/payroll/${record.id}` },
           { label: 'Edit', href: `/payroll/${record.id}/edit` },
         ]}
-        showSearch={false}
-        showActions={false}
+        showProfile
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -122,12 +136,7 @@ export default function EditPayrollRecordPage() {
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting} className="flex min-w-[140px] items-center justify-center gap-2">
-            {isSubmitting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-b-transparent" />
-                Saving...
-              </>
-            ) : (
+            {isSubmitting ? 'Saving…' : (
               <>
                 <Save className="h-4 w-4" />
                 Save Changes
@@ -136,6 +145,6 @@ export default function EditPayrollRecordPage() {
           </Button>
         </div>
       </form>
-    </HRModulePage>
+    </div>
   )
 }

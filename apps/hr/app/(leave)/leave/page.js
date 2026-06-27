@@ -31,12 +31,12 @@ import {
   useTableSort,
   Card,
   Modal,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
-import HRSectionCard from '../../../components/shared/HRSectionCard'
-import HRDataTableCard, { HRListResultsCount } from '../../../components/shared/HRDataTableCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import {
   LeaveEmployeeCell,
   LeaveBalanceEmployeeCell,
@@ -527,7 +527,7 @@ export default function LeavePage() {
         />
       </div>
 
-      <HRListResultsCount count={resultCount} />
+      <TableResultsCount count={resultCount} />
 
       {activeTab === 'requests' && (
         <HRDataTableCard>
@@ -566,7 +566,7 @@ export default function LeavePage() {
 
       {activeTab === 'calendar' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <HRSectionCard className="lg:col-span-2">
+          <Card variant="elevated" className="lg:col-span-2">
             <div className="flex flex-col items-center py-12 text-center">
               <Calendar className="mb-3 h-12 w-12 text-gray-300" />
               <h3 className="text-lg font-semibold text-gray-800">Leave calendar</h3>
@@ -577,8 +577,8 @@ export default function LeavePage() {
                 Open calendar
               </Button>
             </div>
-          </HRSectionCard>
-          <HRSectionCard>
+          </Card>
+          <Card variant="elevated">
             <h3 className="mb-4 font-semibold text-gray-900">Who&apos;s on leave this week</h3>
             <ul className="space-y-3">
               {ON_LEAVE_THIS_WEEK.map((item) => (
@@ -591,7 +591,7 @@ export default function LeavePage() {
                 </li>
               ))}
             </ul>
-          </HRSectionCard>
+          </Card>
         </div>
       )}
 

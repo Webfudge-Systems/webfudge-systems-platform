@@ -31,11 +31,12 @@ import {
   Modal,
   LoadingSpinner,
   Badge,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
-import HRDataTableCard, { HRListResultsCount } from '../../../components/shared/HRDataTableCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import PayrollRunBanner from '../../../components/payroll/PayrollRunBanner'
 import {
   PayrollEmployeeCell,
@@ -451,7 +452,7 @@ export default function PayrollPage() {
         />
       </div>
 
-      {activeTab !== 'loans' ? <HRListResultsCount count={resultCount} /> : null}
+      {activeTab !== 'loans' ? <TableResultsCount count={resultCount} /> : null}
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       {actionError ? <p className="text-sm text-red-600">{actionError}</p> : null}
       {lockBlockers.length > 0 ? (

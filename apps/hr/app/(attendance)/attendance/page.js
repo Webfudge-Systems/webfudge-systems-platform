@@ -26,12 +26,12 @@ import {
   useTableSort,
   Card,
   Modal,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
-import HRSectionCard from '../../../components/shared/HRSectionCard'
-import HRDataTableCard, { HRListResultsCount } from '../../../components/shared/HRDataTableCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import {
   AttendanceEmployeeCell,
   AttendanceTextCell,
@@ -484,7 +484,7 @@ export default function AttendancePage() {
         />
       </div>
 
-      <HRListResultsCount count={resultCount} />
+      <TableResultsCount count={resultCount} />
 
       {activeTab === 'today' && (
         <HRDataTableCard>
@@ -508,7 +508,7 @@ export default function AttendancePage() {
       )}
 
       {activeTab === 'monthly' && (
-        <HRSectionCard>
+        <Card variant="elevated">
           <div className="flex flex-col items-center py-10 text-center">
             <FileSpreadsheet className="mb-3 h-12 w-12 text-gray-300" />
             <h3 className="text-lg font-semibold text-gray-800">Monthly attendance log</h3>
@@ -519,7 +519,7 @@ export default function AttendancePage() {
               Open monthly grid
             </Button>
           </div>
-        </HRSectionCard>
+        </Card>
       )}
 
       {activeTab === 'shifts' && (
@@ -556,7 +556,7 @@ export default function AttendancePage() {
       )}
 
       {activeTab === 'reports' && (
-        <HRSectionCard>
+        <Card variant="elevated">
           <div className="flex flex-col items-center py-10 text-center">
             <Users className="mb-3 h-12 w-12 text-gray-300" />
             <h3 className="text-lg font-semibold text-gray-800">Attendance reports</h3>
@@ -567,7 +567,7 @@ export default function AttendancePage() {
               Export report
             </Button>
           </div>
-        </HRSectionCard>
+        </Card>
       )}
 
       <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter Attendance" size="md">

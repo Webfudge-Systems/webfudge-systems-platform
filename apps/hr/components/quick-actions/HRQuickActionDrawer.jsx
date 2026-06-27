@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@webfudge/ui'
-import HRModal from '../shared/HRModal'
+import { Button, Modal } from '@webfudge/ui'
 import { HR_QUICK_ACTION_META, HR_QUICK_ACTION_IDS } from '../../lib/quickActions'
 import { HR_QUICK_FORM_ID } from './HRQuickFormFields'
 import { useHRQuickActions } from './HRQuickActionsContext'
@@ -37,30 +36,28 @@ export default function HRQuickActionDrawer() {
   if (!meta || !FormComponent) return null
 
   return (
-    <HRModal
-      open={isOpen}
+    <Modal
+      isOpen={isOpen}
       onClose={closeQuickAction}
       title={meta.title}
       subtitle={meta.subtitle}
-      sizeClass="max-w-md"
-      footer={
-        <>
-          <Button type="button" variant="secondary" onClick={closeQuickAction} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            form={HR_QUICK_FORM_ID}
-            variant="primary"
-            className="bg-orange-500 hover:bg-orange-600"
-            disabled={submitting}
-          >
-            {submitting ? 'Saving…' : meta.submitLabel}
-          </Button>
-        </>
-      }
+      size="sm"
     >
       <FormComponent onSuccess={handleSuccess} />
-    </HRModal>
+      <div className="flex justify-end gap-2 border-t border-gray-200 pt-4 mt-4">
+        <Button type="button" variant="secondary" onClick={closeQuickAction} disabled={submitting}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          form={HR_QUICK_FORM_ID}
+          variant="primary"
+          className="bg-orange-500 hover:bg-orange-600"
+          disabled={submitting}
+        >
+          {submitting ? 'Saving…' : meta.submitLabel}
+        </Button>
+      </div>
+    </Modal>
   )
 }

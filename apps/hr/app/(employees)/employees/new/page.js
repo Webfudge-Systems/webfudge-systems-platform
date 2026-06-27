@@ -1,15 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Save, ArrowLeft } from 'lucide-react'
 import { Button } from '@webfudge/ui'
 import HRPageHeader from '../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../components/layout/HRModulePage'
 import EmployeeForm, { employeeToForm } from '../../../../components/employees/EmployeeForm'
 import { createEmployeeFromForm, listDepartmentCatalog, listRoleCatalog } from '../../../../lib/employeeSyncService'
 import { listSalaryStructures, upsertEmployeeProfileByMembership } from '../../../../lib/payrollSyncService'
-import { Save, ArrowLeft } from 'lucide-react'
 
 export default function AddEmployeePage() {
   const router = useRouter()
@@ -97,7 +95,7 @@ export default function AddEmployeePage() {
   }
 
   return (
-    <HRModulePage>
+    <div className="space-y-6 p-4 md:p-6">
       <HRPageHeader
         title="Add New Employee"
         subtitle="Create a new employee record with employment details"
@@ -106,8 +104,7 @@ export default function AddEmployeePage() {
           { label: 'Employees', href: '/employees' },
           { label: 'Add New', href: '/employees/new' },
         ]}
-        showSearch={false}
-        showActions={false}
+        showProfile
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -130,12 +127,7 @@ export default function AddEmployeePage() {
             disabled={isSubmitting}
             className="flex min-w-[140px] items-center justify-center gap-2"
           >
-            {isSubmitting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-b-transparent" />
-                Saving...
-              </>
-            ) : (
+            {isSubmitting ? 'Saving…' : (
               <>
                 <Save className="h-4 w-4" />
                 Create Employee
@@ -144,6 +136,6 @@ export default function AddEmployeePage() {
           </Button>
         </div>
       </form>
-    </HRModulePage>
+    </div>
   )
 }

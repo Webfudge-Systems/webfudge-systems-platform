@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button, Select } from '@webfudge/ui'
+import { Save, ArrowLeft } from 'lucide-react'
+import { Button, Card, Select } from '@webfudge/ui'
 import HRPageHeader from '../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../components/layout/HRModulePage'
 import PayrollRecordForm, { payrollRecordToForm } from '../../../../components/payroll/PayrollRecordForm'
 import { createPayrollLineItem, listPayrollRuns } from '../../../../lib/payrollSyncService'
 import { listSyncedEmployees } from '../../../../lib/employeeSyncService'
-import { Save, ArrowLeft } from 'lucide-react'
 
 export default function AddPayrollRecordPage() {
   const router = useRouter()
@@ -79,23 +78,25 @@ export default function AddPayrollRecordPage() {
   }
 
   return (
-    <HRModulePage>
+    <div className="space-y-6 p-4 md:p-6">
       <HRPageHeader
         title="Add to Payroll"
         subtitle="Add an employee record to a payroll run"
         breadcrumb={[
+          { label: 'Dashboard', href: '/dashboard' },
           { label: 'Payroll', href: '/payroll' },
           { label: 'Add New', href: '/payroll/new' },
         ]}
-        showSearch={false}
-        showActions={false}
+        showProfile
       />
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 rounded-xl border border-gray-200 bg-white p-4 md:grid-cols-2">
-          <Select label="Payroll run" value={selectedRunId} onChange={setSelectedRunId} options={runOptions} />
-          <Select label="Employee" value={selectedMembershipId} onChange={setSelectedMembershipId} options={employeeOptions} />
-        </div>
+        <Card variant="elevated" className="rounded-xl p-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Select label="Payroll run" value={selectedRunId} onChange={setSelectedRunId} options={runOptions} />
+            <Select label="Employee" value={selectedMembershipId} onChange={setSelectedMembershipId} options={employeeOptions} />
+          </div>
+        </Card>
         <PayrollRecordForm form={form} onChange={handleChange} isNew={Boolean(selectedEmployee)} />
         {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
         <div className="flex items-center justify-between border-t border-gray-200 pt-6">
@@ -104,12 +105,7 @@ export default function AddPayrollRecordPage() {
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting || !selectedRunId || !selectedMembershipId} className="flex min-w-[140px] items-center justify-center gap-2">
-            {isSubmitting ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-b-transparent" />
-                Saving...
-              </>
-            ) : (
+            {isSubmitting ? 'Saving…' : (
               <>
                 <Save className="h-4 w-4" />
                 Add Record
@@ -118,6 +114,6 @@ export default function AddPayrollRecordPage() {
           </Button>
         </div>
       </form>
-    </HRModulePage>
+    </div>
   )
 }

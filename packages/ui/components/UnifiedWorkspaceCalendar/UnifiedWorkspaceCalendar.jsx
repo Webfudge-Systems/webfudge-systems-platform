@@ -6,7 +6,7 @@ import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
-import { Video, MapPin, CheckSquare, FolderKanban, Clock, User, Repeat } from 'lucide-react'
+import { Video, MapPin, CheckSquare, FolderKanban, Clock, User, Repeat, CalendarCheck } from 'lucide-react'
 
 const MEETING_TYPE_COLORS = {
   discovery: '#7c3aed',
@@ -52,6 +52,14 @@ const PROJECT_CAL = {
   bgFrom: '#ede9fe',
   bgTo: '#f5f3ff',
   ring: 'rgba(139, 92, 246, 0.14)',
+}
+
+const ATTENDANCE_CAL = {
+  present: { border: '#86efac', bg: '#ecfdf5', dot: '#10b981', text: '#047857' },
+  absent: { border: '#fca5a5', bg: '#fef2f2', dot: '#ef4444', text: '#b91c1c' },
+  leave: { border: '#fdba74', bg: '#fff7ed', dot: '#f97316', text: '#c2410c' },
+  wfh: { border: '#93c5fd', bg: '#eff6ff', dot: '#3b82f6', text: '#1d4ed8' },
+  default: { border: '#d1d5db', bg: '#f9fafb', dot: '#6b7280', text: '#374151' },
 }
 
 const MEETING_STATUS_LABELS = {
@@ -297,10 +305,47 @@ function ProjectEventCard({ arg }) {
   )
 }
 
+function AttendanceEventCard({ arg }) {
+  const log = arg.event.extendedProps?.entity || {}
+  const status = String(log.status || 'default').toLowerCase()
+  const palette = ATTENDANCE_CAL[status] || ATTENDANCE_CAL.default
+
+  return (
+    <div
+      className="wf-cal-attendance-minimal wf-cal-pastel-card flex min-h-[1.75rem] w-full min-w-0 items-center gap-1.5 rounded-md border px-2 py-1 shadow-sm"
+      style={{
+        borderColor: palette.border,
+        backgroundColor: palette.bg,
+        boxShadow: `0 1px 2px rgb(15 23 42 / 0.05), 0 0 0 1px ${palette.border}55`,
+      }}
+      title={log.summary || arg.event.title || 'Attendance log'}
+    >
+      <CalendarCheck className="h-3.5 w-3.5 shrink-0" style={{ color: palette.text }} aria-hidden />
+      <span
+        className="h-1.5 w-1.5 shrink-0 rounded-full ring-2 ring-white/80"
+        style={{ backgroundColor: palette.dot }}
+        aria-hidden
+      />
+      <span
+        className="min-w-0 flex-1 truncate text-left text-[11px] font-bold leading-tight tracking-tight"
+        style={{ color: palette.text }}
+      >
+        {arg.event.title}
+      </span>
+      {log.hours ? (
+        <span className="shrink-0 rounded bg-white/80 px-1.5 py-0.5 text-[9px] font-semibold text-gray-600 ring-1 ring-black/[0.06]">
+          {log.hours}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
 function renderEventCard(arg) {
   const kind = arg.event.extendedProps?.kind
   if (kind === 'task') return <TaskEventCard arg={arg} />
   if (kind === 'project') return <ProjectEventCard arg={arg} />
+  if (kind === 'attendance') return <AttendanceEventCard arg={arg} />
   return <MeetingEventCard arg={arg} />
 }
 
@@ -422,6 +467,29 @@ function HoverDetailPopover({ hover }) {
         )}
       </div>
     )
+  } else if (kind === 'attendance' && entity) {
+    const status = entity.label || entity.status || 'Attendance'
+    body = (
+      <div className="space-y-2 text-sm text-gray-700">
+        <div className="flex flex-wrap gap-1">
+          <Pill active>Attendance</Pill>
+          <Pill>{status}</Pill>
+          {entity.hours ? <Pill>{entity.hours}</Pill> : null}
+        </div>
+        {entity.summary ? <p className="text-xs leading-relaxed text-gray-600">{entity.summary}</p> : null}
+        {(entity.checkIn || entity.checkOut) && (
+          <p className="border-t border-gray-100 pt-2 text-xs text-gray-600">
+            <span className="font-semibold text-gray-500">Log:</span>{' '}
+            {entity.checkIn || '—'} to {entity.checkOut || '—'}
+          </p>
+        )}
+        {entity.note ? (
+          <p className="border-t border-gray-100 pt-2 text-xs leading-relaxed text-gray-500">
+            {entity.note}
+          </p>
+        ) : null}
+      </div>
+    )
   }
 
   const content = (
@@ -456,6 +524,7 @@ export default function UnifiedWorkspaceCalendar({
   onEventClick,
   onMeetingTimeChange,
   height = 'auto',
+  initialDate,
 }) {
   const calendarRef = useRef(null)
   const [hover, setHover] = useState(null)
@@ -642,6 +711,7 @@ export default function UnifiedWorkspaceCalendar({
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
+        initialDate={initialDate}
         headerToolbar={{
           left: 'prev,next today',
           center: 'title',

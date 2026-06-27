@@ -10,6 +10,7 @@ const CLIENT_ACCOUNT_UID = 'api::client-account.client-account';
 const MEETING_UID = 'api::meeting.meeting';
 const TASK_UID = 'api::task.task';
 const PROJECT_UID = 'api::project.project';
+const ORGANIZATION_USER_UID = 'api::organization-user.organization-user';
 
 const {
   emitCommentNotifications,
@@ -121,6 +122,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const meetingIdRaw = q.meetingId ?? q['meetingId'];
     const taskIdRaw = q.taskId ?? q['taskId'];
     const projectIdRaw = q.projectId ?? q['projectId'];
+    const organizationUserIdRaw = q.organizationUserId ?? q['organizationUserId'];
 
     const hasContact =
       contactIdRaw != null && String(contactIdRaw).trim() !== '' && contactIdRaw !== 'undefined';
@@ -138,6 +140,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       taskIdRaw != null && String(taskIdRaw).trim() !== '' && taskIdRaw !== 'undefined';
     const hasProject =
       projectIdRaw != null && String(projectIdRaw).trim() !== '' && projectIdRaw !== 'undefined';
+    const hasOrganizationUser =
+      organizationUserIdRaw != null &&
+      String(organizationUserIdRaw).trim() !== '' &&
+      organizationUserIdRaw !== 'undefined';
 
     const scopeCount = [
       hasContact,
@@ -147,10 +153,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       hasMeeting,
       hasTask,
       hasProject,
+      hasOrganizationUser,
     ].filter(Boolean).length;
     if (scopeCount !== 1) {
       return ctx.badRequest(
-        'Provide exactly one of contactId, leadCompanyId, dealId, clientAccountId, meetingId, taskId, or projectId'
+        'Provide exactly one of contactId, leadCompanyId, dealId, clientAccountId, meetingId, taskId, projectId, or organizationUserId'
       );
     }
 
@@ -261,6 +268,23 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         subjectType: 'project',
         subjectId: pid,
       };
+    } else if (hasOrganizationUser) {
+      const ouid = parseInt(String(organizationUserIdRaw), 10);
+      if (Number.isNaN(ouid)) return ctx.badRequest('Invalid organizationUserId');
+
+      const membership = await strapi.entityService.findOne(ORGANIZATION_USER_UID, ouid, {
+        populate: ['organization'],
+      });
+      if (!membership) return ctx.notFound();
+      if (orgIdFromRelation(membership.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+
+      filters = {
+        organization: ctx.state.orgId,
+        subjectType: 'organization_user',
+        subjectId: ouid,
+      };
     } else {
       // hasClientAccount
       const caid = parseInt(String(clientAccountIdRaw), 10);
@@ -322,6 +346,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const start = Math.max(0, parseInt(String(startRaw), 10) || 0);
     const type = String(q.type || q['type'] || '').trim().toLowerCase();
     const subjectTypesRaw = String(q.subjectTypes || q['subjectTypes'] || '').trim();
+    const actorIdRaw = q.actorId ?? q.actorUserId ?? q['actorId'] ?? q['actorUserId'];
 
     const filters = { organization: ctx.state.orgId };
     if (type) {
@@ -337,6 +362,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       } else if (parts.length > 1) {
         filters.subjectType = { $in: parts };
       }
+    }
+    if (actorIdRaw != null && String(actorIdRaw).trim() !== '') {
+      const actorId = parseInt(String(actorIdRaw), 10);
+      if (Number.isNaN(actorId)) return ctx.badRequest('Invalid actorId');
+      filters.actor = actorId;
     }
 
     let total = 0;

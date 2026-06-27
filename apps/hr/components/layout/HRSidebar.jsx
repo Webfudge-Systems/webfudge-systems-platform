@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react'
 import {
   HR_NAVIGATE_TILES,
+  HR_NAVIGATE_SECTIONS,
   HR_WORKFORCE_LINKS,
   HR_TOOLS,
   HR_SIDEBAR_SURFACE_CLASS,
@@ -21,6 +23,7 @@ import {
   isNavItemActive,
 } from '../../lib/navigation'
 import { HR_SITE } from '../../lib/site'
+import HRSubSidebar from './HRSubSidebar'
 
 const WORKFORCE_AVATAR_PALETTE = [
   'bg-orange-500',
@@ -39,8 +42,30 @@ function getWorkforceAvatarClass(item) {
 }
 
 export default function HRSidebar({ collapsed = false, onToggle }) {
+  const [subSidebarSection, setSubSidebarSection] = useState(null)
   const pathname = usePathname()
   const router = useRouter()
+
+  const openSubSidebar = (sectionId, fallbackHref) => {
+    if (sectionId === 'dashboard') {
+      router.push(fallbackHref || '/dashboard')
+      return
+    }
+
+    const section = HR_NAVIGATE_SECTIONS.find((item) => item.id === sectionId)
+    if (section) {
+      setSubSidebarSection(section)
+      return
+    }
+
+    if (fallbackHref) {
+      router.push(fallbackHref)
+    }
+  }
+
+  const closeSubSidebar = () => {
+    setSubSidebarSection(null)
+  }
 
   const sectionRule = (id) =>
     !collapsed && (
@@ -54,11 +79,12 @@ export default function HRSidebar({ collapsed = false, onToggle }) {
     )
 
   return (
-    <div
-      className={`${
-        collapsed ? 'w-16' : 'w-64'
-      } h-full min-h-0 ${HR_SIDEBAR_SURFACE_CLASS} flex flex-col overflow-hidden transition-[width] duration-300 flex-shrink-0`}
-    >
+    <>
+      <div
+        className={`${
+          collapsed ? 'w-16' : 'w-64'
+        } h-full min-h-0 ${HR_SIDEBAR_SURFACE_CLASS} flex flex-col overflow-hidden transition-[width] duration-300 flex-shrink-0`}
+      >
       <div className="shrink-0 px-4 pt-4 pb-3">
         <div
           className={`flex gap-2 ${
@@ -121,9 +147,10 @@ export default function HRSidebar({ collapsed = false, onToggle }) {
               const Icon = item.icon
               const active = tileIsActive(pathname, item)
               return (
-                <Link
+                <button
+                  type="button"
                   key={item.id}
-                  href={item.href || '/dashboard'}
+                  onClick={() => openSubSidebar(item.id, item.href || '/dashboard')}
                   className={`relative rounded-xl px-2 py-3.5 flex flex-col items-center justify-center gap-1.5 min-h-[4.5rem] transition-all border shadow-md ${
                     active
                       ? 'bg-brand-primary text-white border-brand-primary/40 shadow-lg shadow-orange-500/25'
@@ -137,7 +164,7 @@ export default function HRSidebar({ collapsed = false, onToggle }) {
                       {item.label}
                     </span>
                   )}
-                </Link>
+                </button>
               )
             })}
           </div>
@@ -241,6 +268,14 @@ export default function HRSidebar({ collapsed = false, onToggle }) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+
+      <HRSubSidebar
+        isOpen={Boolean(subSidebarSection)}
+        onClose={closeSubSidebar}
+        section={subSidebarSection}
+        onNavigate={closeSubSidebar}
+      />
+    </>
   )
 }

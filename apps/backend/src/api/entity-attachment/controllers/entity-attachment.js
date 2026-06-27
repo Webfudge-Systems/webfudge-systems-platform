@@ -15,6 +15,7 @@ const CLIENT_ACCOUNT_UID = 'api::client-account.client-account';
 const MEETING_UID = 'api::meeting.meeting';
 const TASK_UID = 'api::task.task';
 const PROJECT_UID = 'api::project.project';
+const ORGANIZATION_USER_UID = 'api::organization-user.organization-user';
 
 function orgIdFromRelation(rel) {
   if (rel == null) return null;
@@ -35,6 +36,7 @@ async function assertEntityAccess(strapi, ctx, subjectType, subjectId) {
     meeting: { uid: MEETING_UID, label: 'Meeting' },
     task: { uid: TASK_UID, label: 'Task' },
     project: { uid: PROJECT_UID, label: 'Project' },
+    organization_user: { uid: ORGANIZATION_USER_UID, label: 'Organization member' },
   };
 
   const entry = map[subjectType];

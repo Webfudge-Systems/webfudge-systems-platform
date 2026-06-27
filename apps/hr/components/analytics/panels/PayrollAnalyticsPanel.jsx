@@ -3,7 +3,7 @@
 import { Wallet, TrendingUp, Users, BarChart3 } from 'lucide-react'
 import { computePayrollKpis } from '../../../lib/analyticsPage'
 import { PAYROLL_ANALYTICS } from '../../../lib/mock-data/analytics'
-import HRAnalyticsKpiRow from '../HRAnalyticsKpiRow'
+import HRDashboardKpiRow from '../../dashboard/HRDashboardKpiRow'
 import PayrollAnalyticsCharts from '../charts/PayrollAnalyticsCharts'
 
 export default function PayrollAnalyticsPanel() {
@@ -29,7 +29,7 @@ export default function PayrollAnalyticsPanel() {
 
   return (
     <div className="space-y-4">
-      <HRAnalyticsKpiRow items={stats} />
+      <HRDashboardKpiRow stats={stats} />
       <PayrollAnalyticsCharts />
     </div>
   )

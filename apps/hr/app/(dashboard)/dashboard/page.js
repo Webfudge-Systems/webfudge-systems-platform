@@ -83,7 +83,7 @@ export default function DashboardPage() {
   )
 
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
         title={buildDashboardTitle(user)}
         subtitle={dateStr}
@@ -91,28 +91,26 @@ export default function DashboardPage() {
         showSearch
       />
       <HRDashboardKpiRow stats={kpiStats} />
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-3">
-          <div className="flex min-h-0 flex-col gap-4 xl:col-span-2">
-            <HeadcountTrendChart employees={EMPLOYEES} />
-            <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
-              <WorkforceStatusWidget activeEmployeeCount={activeCount} className={TILE_CLASS} />
-              <PendingApprovalsWidget className={TILE_CLASS} />
-            </div>
+      <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-3">
+        <div className="flex min-h-0 flex-col gap-4 xl:col-span-2">
+          <HeadcountTrendChart employees={EMPLOYEES} />
+          <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
+            <WorkforceStatusWidget activeEmployeeCount={activeCount} className={TILE_CLASS} />
+            <PendingApprovalsWidget className={TILE_CLASS} />
           </div>
-          <DashboardSidebar />
         </div>
+        <DashboardSidebar />
+      </div>
 
-        <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-3">
-          <AttendanceSnapshotWidget
-            activeEmployeeCount={activeCount}
-            className={`${INSIGHT_TILE_CLASS} xl:col-span-1`}
-          />
-          <DepartmentDistributionChart
-            employees={EMPLOYEES}
-            className={`${INSIGHT_TILE_CLASS} xl:col-span-2`}
-          />
-        </div>
+      <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-3">
+        <AttendanceSnapshotWidget
+          activeEmployeeCount={activeCount}
+          className={`${INSIGHT_TILE_CLASS} xl:col-span-1`}
+        />
+        <DepartmentDistributionChart
+          employees={EMPLOYEES}
+          className={`${INSIGHT_TILE_CLASS} xl:col-span-2`}
+        />
       </div>
     </HRModulePage>
   )

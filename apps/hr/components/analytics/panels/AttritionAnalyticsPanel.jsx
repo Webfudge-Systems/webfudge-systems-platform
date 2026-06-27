@@ -5,7 +5,7 @@ import { TrendingDown, AlertTriangle, Users } from 'lucide-react'
 import { Table, TableCellText, TableCellOrangePill } from '@webfudge/ui'
 import { ATTRITION_ANALYTICS } from '../../../lib/mock-data/analytics'
 import { computeAttritionKpis } from '../../../lib/analyticsPage'
-import HRAnalyticsKpiRow from '../HRAnalyticsKpiRow'
+import HRDashboardKpiRow from '../../dashboard/HRDashboardKpiRow'
 import { HRAnalyticsTableSection } from '../HRAnalyticsChartCard'
 import AttritionByDeptChart from '../charts/AttritionByDeptChart'
 
@@ -51,7 +51,7 @@ export default function AttritionAnalyticsPanel() {
 
   return (
     <div className="space-y-4">
-      <HRAnalyticsKpiRow items={stats} />
+      <HRDashboardKpiRow stats={stats} />
       <AttritionByDeptChart />
       <HRAnalyticsTableSection
         title="Department detail"

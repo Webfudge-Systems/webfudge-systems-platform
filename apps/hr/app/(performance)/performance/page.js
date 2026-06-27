@@ -26,7 +26,6 @@ import {
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
-import HRSectionCard from '../../../components/shared/HRSectionCard'
 import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import HRStatusBadge from '../../../components/shared/HRStatusBadge'
 import { COMPANY_OKRS, REVIEW_CYCLES, APPRAISALS, PIPS } from '../../../lib/mock-data/performance'
@@ -198,7 +197,7 @@ export default function PerformancePage() {
               : 0
 
   return (
-    <HRModulePage>
+    <HRModulePage className="!space-y-6">
       <HRPageHeader
         title="Performance"
         subtitle={`${stats.activeCycleName} · ${stats.cycleCompletion}% complete`}
@@ -300,7 +299,7 @@ export default function PerformancePage() {
             </Button>
           </div>
           {COMPANY_OKRS.map((o, i) => (
-            <HRSectionCard key={i}>
+            <Card variant="elevated" key={i}>
               <div className="mb-4 flex items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50">
                   <Target className="h-5 w-5 text-orange-600" aria-hidden />
@@ -318,7 +317,7 @@ export default function PerformancePage() {
                   </div>
                 ))}
               </div>
-            </HRSectionCard>
+            </Card>
           ))}
         </div>
       )}
@@ -338,7 +337,7 @@ export default function PerformancePage() {
 
       {activeTab === 'feedback' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <HRSectionCard>
+          <Card variant="elevated">
             <div className="mb-4 flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-orange-600" aria-hidden />
               <h3 className="font-semibold text-gray-900">Pending feedback requests</h3>
@@ -356,8 +355,8 @@ export default function PerformancePage() {
                 </li>
               ))}
             </ul>
-          </HRSectionCard>
-          <HRSectionCard>
+          </Card>
+          <Card variant="elevated">
             <div className="mb-4 flex items-center gap-2">
               <FileText className="h-5 w-5 text-orange-600" aria-hidden />
               <h3 className="font-semibold text-gray-900">Received (anonymized)</h3>
@@ -370,7 +369,7 @@ export default function PerformancePage() {
                 </li>
               ))}
             </ul>
-          </HRSectionCard>
+          </Card>
         </div>
       )}
 

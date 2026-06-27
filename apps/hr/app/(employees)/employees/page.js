@@ -17,11 +17,12 @@ import {
   useTableColumnPreferences,
   useTableSort,
   Modal,
+  TableResultsCount,
 } from '@webfudge/ui'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
-import HRDataTableCard, { HRListResultsCount } from '../../../components/shared/HRDataTableCard'
+import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import {
   EmployeeNameCell,
   EmployeeDepartmentCell,
@@ -475,7 +476,7 @@ export default function EmployeesPage() {
         />
       </div>
 
-      <HRListResultsCount count={filteredRows.length} />
+      <TableResultsCount count={filteredRows.length} />
 
       <HRDataTableCard>
         {loading ? (

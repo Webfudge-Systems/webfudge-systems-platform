@@ -5,7 +5,7 @@ import { CalendarCheck, Clock, TrendingDown, Home } from 'lucide-react'
 import { Button, Table, TableCellText, TableCellOrangePill } from '@webfudge/ui'
 import { ATTENDANCE_ANALYTICS } from '../../../lib/mock-data/analytics'
 import { computeAttendanceKpis } from '../../../lib/analyticsPage'
-import HRAnalyticsKpiRow from '../HRAnalyticsKpiRow'
+import HRDashboardKpiRow from '../../dashboard/HRDashboardKpiRow'
 import { HRAnalyticsTableSection } from '../HRAnalyticsChartCard'
 import AttendanceAnalyticsCharts from '../charts/AttendanceAnalyticsCharts'
 
@@ -39,7 +39,7 @@ export default function AttendanceAnalyticsPanel() {
 
   return (
     <div className="space-y-4">
-      <HRAnalyticsKpiRow items={stats} />
+      <HRDashboardKpiRow stats={stats} />
       <AttendanceAnalyticsCharts />
       <HRAnalyticsTableSection
         title="Department attendance"

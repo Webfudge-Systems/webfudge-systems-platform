@@ -4,9 +4,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Edit, Trash2 } from 'lucide-react'
-import { Button, Modal } from '@webfudge/ui'
+import { Button, Card, EmptyState, LoadingSpinner, Modal } from '@webfudge/ui'
 import HRPageHeader from '../../../../../components/layout/HRPageHeader'
-import HRModulePage from '../../../../../components/layout/HRModulePage'
+import HRDetailHeaderActions from '../../../../../components/shared/HRDetailHeaderActions'
 import { PayrollStructureOverviewPanel } from '../../../../../components/payroll/PayrollDetailTabPanels'
 import { deleteSalaryStructure, getSalaryStructureById } from '../../../../../lib/payrollSyncService'
 
@@ -35,56 +35,69 @@ export default function SalaryStructureDetailPage() {
 
   if (loading) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Loading structure...</p>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Loading..."
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payroll', href: '/payroll' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+          <LoadingSpinner message="Loading structure..." />
+        </Card>
+      </div>
     )
   }
 
   if (!structure) {
     return (
-      <HRModulePage>
-        <p className="text-gray-600">Salary structure not found.</p>
-        <Link href="/payroll" className="mt-2 inline-block text-sm text-orange-600 hover:underline">
-          Back to payroll
-        </Link>
-      </HRModulePage>
+      <div className="space-y-6 p-4 md:p-6">
+        <HRPageHeader
+          title="Structure Not Found"
+          breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Payroll', href: '/payroll' }]}
+          showProfile
+        />
+        <Card variant="elevated" className="rounded-xl p-12">
+          <EmptyState
+            title="Salary structure not found"
+            description="The structure may have been deleted or the link is incorrect."
+            action={<Link href="/payroll" className="text-sm font-medium text-orange-600 hover:underline">Back to payroll</Link>}
+          />
+        </Card>
+      </div>
     )
   }
 
   return (
-    <HRModulePage>
+    <div className="space-y-6 p-4 md:p-6">
       <HRPageHeader
         title={structure.name}
         subtitle={`Annual CTC ${structure.ctc ? `₹${Number(structure.ctc).toLocaleString('en-IN')}` : '—'}`}
         breadcrumb={[
+          { label: 'Dashboard', href: '/dashboard' },
           { label: 'Payroll', href: '/payroll' },
           { label: 'Structures', href: '/payroll?tab=structures' },
           { label: structure.name, href: `/payroll/structures/${structure.id}` },
         ]}
-        showSearch={false}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => router.push(`/payroll/structures/${structure.id}/edit`)}
-            >
-              <Edit className="mr-1 h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="!text-red-600 hover:!bg-red-50"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 className="mr-1 h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        }
-      />
+        showProfile
+      >
+        <HRDetailHeaderActions
+          actions={[
+            {
+              label: 'Edit',
+              title: 'Edit structure',
+              icon: Edit,
+              onClick: () => router.push(`/payroll/structures/${structure.id}/edit`),
+            },
+            {
+              label: 'Delete',
+              title: 'Delete structure',
+              icon: Trash2,
+              variant: 'danger',
+              onClick: () => setDeleteOpen(true),
+            },
+          ]}
+        />
+      </HRPageHeader>
 
       <PayrollStructureOverviewPanel structure={structure} />
 
@@ -110,6 +123,6 @@ export default function SalaryStructureDetailPage() {
           </Button>
         </div>
       </Modal>
-    </HRModulePage>
+    </div>
   )
 }
