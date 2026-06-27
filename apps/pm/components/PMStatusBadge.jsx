@@ -17,6 +17,7 @@ export const PRIORITY_OPTIONS = [
 
 const TASK_STATUS_META = {
   SCHEDULED: { variant: 'primary', label: 'To Do' },
+  ACTIVE: { variant: 'cyan', label: 'Active' },
   IN_PROGRESS: { variant: 'warning', label: 'In Progress' },
   INTERNAL_REVIEW: { variant: 'purple', label: 'In Review' },
   ON_HOLD: { variant: 'cyan', label: 'On Hold' },

@@ -16,6 +16,7 @@ export const LEAD_STATUS_OPTIONS = [
 
 export const TASK_STATUS_OPTIONS = [
   { value: 'SCHEDULED', label: 'Scheduled' },
+  { value: 'ACTIVE', label: 'Active' },
   { value: 'IN_PROGRESS', label: 'In progress' },
   { value: 'INTERNAL_REVIEW', label: 'Internal review' },
   { value: 'ON_HOLD', label: 'On hold' },
@@ -41,6 +42,7 @@ export const ACCOUNT_STATUS_OPTIONS = [
 /** PM task table labels (same enum values as {@link TASK_STATUS_OPTIONS}). */
 export const PM_TASK_STATUS_OPTIONS = [
   { value: 'SCHEDULED', label: 'To Do' },
+  { value: 'ACTIVE', label: 'Active' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'INTERNAL_REVIEW', label: 'In Review' },
   { value: 'ON_HOLD', label: 'On Hold' },
@@ -83,6 +85,7 @@ const LEAD_STATUS_FILL_CLASS = {
 
 const TASK_STATUS_FILL_CLASS = {
   SCHEDULED: 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100',
+  ACTIVE: 'border-cyan-200 bg-cyan-50 text-cyan-900 hover:bg-cyan-100',
   IN_PROGRESS: 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100',
   INTERNAL_REVIEW: 'border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100',
   ON_HOLD: 'border-sky-200 bg-sky-50 text-sky-900 hover:bg-sky-100',
@@ -118,6 +121,7 @@ const PM_VARIANT_FILL_CLASS = {
 
 const PM_TASK_STATUS_VARIANT = {
   SCHEDULED: 'primary',
+  ACTIVE: 'cyan',
   IN_PROGRESS: 'warning',
   INTERNAL_REVIEW: 'purple',
   ON_HOLD: 'cyan',
@@ -257,6 +261,7 @@ function taskStatusBadgeVariant(status) {
   if (s === 'COMPLETED') return 'completed';
   if (s === 'CANCELLED') return 'cancelled';
   if (s === 'OVERDUE') return 'danger';
+  if (s === 'ACTIVE') return 'active';
   if (s === 'IN_PROGRESS') return 'active';
   if (s === 'INTERNAL_REVIEW') return 'warning';
   if (s === 'ON_HOLD') return 'pending';

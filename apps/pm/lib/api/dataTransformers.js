@@ -9,6 +9,7 @@ import {
 // Status mappings
 const STATUS_MAP = {
   SCHEDULED: 'To Do',
+  ACTIVE: 'Active',
   IN_PROGRESS: 'In Progress',
   INTERNAL_REVIEW: 'Internal Review',
   ON_HOLD: 'On Hold',
@@ -19,6 +20,7 @@ const STATUS_MAP = {
 
 const STATUS_REVERSE_MAP = {
   'To Do': 'SCHEDULED',
+  Active: 'ACTIVE',
   'In Progress': 'IN_PROGRESS',
   'Internal Review': 'INTERNAL_REVIEW',
   'On Hold': 'ON_HOLD',

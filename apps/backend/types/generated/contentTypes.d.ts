@@ -2670,6 +2670,7 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     status: Schema.Attribute.Enumeration<
       [
         'SCHEDULED',
+        'ACTIVE',
         'IN_PROGRESS',
         'INTERNAL_REVIEW',
         'ON_HOLD',

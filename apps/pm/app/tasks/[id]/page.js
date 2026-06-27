@@ -142,6 +142,14 @@ function taskStatusHeaderVisual(status) {
       label: meta.label,
     };
   }
+  if (s === 'ACTIVE') {
+    return {
+      pillClass:
+        'border border-cyan-300/90 bg-gradient-to-br from-cyan-50 via-cyan-50 to-cyan-100/90 text-cyan-950 ring-cyan-200/70',
+      Icon: PlayCircle,
+      label: meta.label,
+    };
+  }
   if (s === 'IN_PROGRESS') {
     return {
       pillClass:

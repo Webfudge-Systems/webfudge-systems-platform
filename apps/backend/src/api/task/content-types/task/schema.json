@@ -21,7 +21,7 @@
     },
     "status": {
       "type": "enumeration",
-      "enum": ["SCHEDULED", "IN_PROGRESS", "INTERNAL_REVIEW", "ON_HOLD", "COMPLETED", "CANCELLED", "OVERDUE"],
+      "enum": ["SCHEDULED", "ACTIVE", "IN_PROGRESS", "INTERNAL_REVIEW", "ON_HOLD", "COMPLETED", "CANCELLED", "OVERDUE"],
       "default": "SCHEDULED"
     },
     "priority": {

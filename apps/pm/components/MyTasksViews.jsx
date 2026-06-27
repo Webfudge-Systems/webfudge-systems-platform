@@ -20,6 +20,7 @@ import { formatCalendarTableDate, isTaskDueOverdue } from '@webfudge/utils'
 
 const KANBAN_STAGES = [
   { key: 'SCHEDULED', label: 'To Do' },
+  { key: 'ACTIVE', label: 'Active' },
   { key: 'IN_PROGRESS', label: 'In Progress' },
   { key: 'INTERNAL_REVIEW', label: 'In Review' },
   { key: 'ON_HOLD', label: 'On Hold' },
@@ -33,6 +34,12 @@ const STAGE_STYLES = {
     text: 'text-blue-700',
     badge: 'bg-blue-100 text-blue-700',
     dropActive: 'border-blue-400 bg-blue-50/80 shadow-lg shadow-blue-100',
+  },
+  ACTIVE: {
+    header: 'bg-cyan-50 border-cyan-200',
+    text: 'text-cyan-700',
+    badge: 'bg-cyan-100 text-cyan-700',
+    dropActive: 'border-cyan-400 bg-cyan-50/80 shadow-lg shadow-cyan-100',
   },
   IN_PROGRESS: {
     header: 'bg-amber-50 border-amber-200',

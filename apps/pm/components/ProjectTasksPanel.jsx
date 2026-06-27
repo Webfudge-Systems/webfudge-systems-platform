@@ -55,6 +55,7 @@ const TABLE_PAGE_SIZE = 12;
 const STATUS_TABS = [
   { id: 'all', label: 'All Tasks' },
   { id: 'SCHEDULED', label: 'To Do' },
+  { id: 'ACTIVE', label: 'Active' },
   { id: 'IN_PROGRESS', label: 'In Progress' },
   { id: 'INTERNAL_REVIEW', label: 'In Review' },
   { id: 'ON_HOLD', label: 'On Hold' },

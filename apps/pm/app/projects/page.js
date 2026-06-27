@@ -66,6 +66,7 @@ import { usePmTableSort } from '../../hooks/usePmTableSort';
 import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.projects.tableSort';
+const PROJECT_FETCH_PAGE_SIZE = 500;
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Projects' },
@@ -376,8 +377,8 @@ export default function ProjectsPage() {
     try {
       setLoading(true);
       const params = {
-        page: currentPage,
-        pageSize,
+        page: 1,
+        pageSize: PROJECT_FETCH_PAGE_SIZE,
         sort: 'updatedAt:desc',
         search: searchQuery,
       };
@@ -395,7 +396,7 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, currentPage, filters.ownerId, filters.status, searchQuery]);
+  }, [activeTab, filters.ownerId, filters.status, searchQuery]);
 
   useEffect(() => {
     loadProjects();
@@ -470,6 +471,10 @@ export default function ProjectsPage() {
   const tabsWithBadges = STATUS_TABS.map((tab) => ({ ...tab, badge: tabCounts[tab.id] || 0 }));
   const totalPages = Math.max(1, Math.ceil(totalProjects / pageSize));
   const hasActiveFilters = Boolean(filters.status || filters.ownerId);
+  const pagedProjects = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedProjects.slice(start, start + pageSize);
+  }, [currentPage, pageSize, sortedProjects]);
 
   const updateProjectStatus = useCallback(
     async (project, status) => {
@@ -1146,7 +1151,7 @@ export default function ProjectsPage() {
           <>
             <Table
               columns={visibleTableColumns}
-              data={sortedProjects}
+              data={pagedProjects}
               keyField="id"
               variant="modern"
               {...tableResizeProps}
@@ -1191,18 +1196,30 @@ export default function ProjectsPage() {
             label="Status"
             value={filters.status}
             options={PROJECT_STATUS_OPTIONS}
-            onChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, status: value }));
+              setCurrentPage(1);
+            }}
             placeholder="Any status"
           />
           <Select
             label="Owner"
             value={filters.ownerId}
             options={users.map((user) => ({ value: String(user.id), label: ownerLabel(user) }))}
-            onChange={(value) => setFilters((prev) => ({ ...prev, ownerId: value }))}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, ownerId: value }));
+              setCurrentPage(1);
+            }}
             placeholder="Any owner"
           />
           <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
-            <Button variant="outline" onClick={() => setFilters({ status: '', ownerId: '' })}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFilters({ status: '', ownerId: '' });
+                setCurrentPage(1);
+              }}
+            >
               Clear
             </Button>
             <Button
