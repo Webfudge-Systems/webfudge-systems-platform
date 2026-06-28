@@ -32,7 +32,7 @@ export default function NewSalaryStructurePage() {
         fbpPercent: Number(form.fbpPercent || 0),
       })
       setIsSubmitting(false)
-      router.push(`/payroll/structures/${structure.id}`)
+      router.push('/payroll/structures')
     } catch (error) {
       setIsSubmitting(false)
       setSubmitError(error?.message || 'Failed to create structure')
@@ -47,6 +47,7 @@ export default function NewSalaryStructurePage() {
         breadcrumb={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'Payroll', href: '/payroll' },
+          { label: 'Salary Structures', href: '/payroll/structures' },
           { label: 'New Structure', href: '/payroll/structures/new' },
         ]}
         showProfile

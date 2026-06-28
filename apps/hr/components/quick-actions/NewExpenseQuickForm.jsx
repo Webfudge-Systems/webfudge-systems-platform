@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Input, Select, Textarea, Checkbox } from '@webfudge/ui'
+import { Input, Textarea, Checkbox } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
 import { getExpenseCategories } from '../../lib/expensesPage'
 import { HRQuickForm, HRQuickFormSection } from './HRQuickFormFields'
 

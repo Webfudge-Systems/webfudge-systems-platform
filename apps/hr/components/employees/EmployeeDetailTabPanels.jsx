@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import {
@@ -27,7 +27,6 @@ import {
   Avatar,
   Badge,
   Input,
-  Select,
   Table,
   EmptyState,
   EntityFilesPanel,
@@ -36,7 +35,9 @@ import {
   SidebarCardTitle,
   TableCellText,
   TableCellDateOnly,
+  LoadingSpinner,
 } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
 import HRDataTableCard from '../shared/HRDataTableCard'
 import { EmployeeStatusPill } from './EmployeeTableCells'
 import { employeeStatusBadgeVariant } from '../../lib/employeeStatus'
@@ -44,6 +45,17 @@ import {
   fetchEmployeeActivityTimeline,
   fetchEmployeeCrossAppActivity,
 } from '../../lib/api/employeeActivityService'
+import { listAttendanceRecords } from '../../lib/attendanceSyncService'
+import {
+  ATTENDANCE_UPDATED_EVENT,
+  buildEmployeeMonthAttendanceLogs,
+  toDateInputValue,
+} from '../../lib/attendanceShared'
+import { listLeaveRequests } from '../../lib/leaveSyncService'
+import {
+  computeEmployeeLeaveBalanceRows,
+  LEAVE_UPDATED_EVENT,
+} from '../../lib/leaveShared'
 
 const UnifiedWorkspaceCalendar = dynamic(
   () => import('@webfudge/ui').then((m) => ({ default: m.UnifiedWorkspaceCalendar })),
@@ -57,12 +69,33 @@ const UnifiedWorkspaceCalendar = dynamic(
   },
 )
 
-const ATTENDANCE_SUMMARY = { present: 18, absent: 1, leave: 2, wfh: 3 }
-const LEAVE_BALANCE = [
-  { id: 'cl', type: 'CL', entitlement: 12, used: 3, balance: 9 },
-  { id: 'sl', type: 'SL', entitlement: 12, used: 1, balance: 11 },
-  { id: 'pl', type: 'PL', entitlement: 21, used: 5, balance: 16 },
-]
+const ATTENDANCE_STATUS_META = {
+  present: {
+    label: 'Present',
+    dotClass: 'bg-emerald-400',
+    badgeClass: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  },
+  absent: {
+    label: 'Absent',
+    dotClass: 'bg-red-400',
+    badgeClass: 'bg-red-50 text-red-800 ring-red-200',
+  },
+  not_marked: {
+    label: 'Not Marked',
+    dotClass: 'bg-gray-300',
+    badgeClass: 'bg-gray-50 text-gray-700 ring-gray-200',
+  },
+  leave: {
+    label: 'On Leave',
+    dotClass: 'bg-orange-300',
+    badgeClass: 'bg-orange-50 text-orange-800 ring-orange-200',
+  },
+  wfh: {
+    label: 'WFH',
+    dotClass: 'bg-blue-400',
+    badgeClass: 'bg-blue-50 text-blue-800 ring-blue-200',
+  },
+}
 
 const detailLabelClass =
   'mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500'
@@ -581,12 +614,15 @@ export function EmployeeOverviewPanel({
               icon={MapPin}
             />
             <SnapshotTile
-              label="June attendance"
-              value={`${ATTENDANCE_SUMMARY.present} present`}
+              label="Attendance"
+              value="Open Attendance tab"
               icon={CheckCircle2}
               accent
             />
           </div>
+          <p className="border-t border-gray-100 px-5 py-3 text-center text-xs text-gray-500">
+            Live attendance and leave data are on the Attendance and Leave tabs.
+          </p>
         </Card>
 
         <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl">
@@ -595,28 +631,15 @@ export function EmployeeOverviewPanel({
             description="Available leave across active policies."
             icon={CalendarDays}
           />
-          <ul className="divide-y divide-gray-100 px-6">
-            {LEAVE_BALANCE.map((row) => (
-              <li key={row.id} className="py-4">
-                <div className="mb-2.5 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{row.type}</p>
-                    <p className="mt-0.5 text-xs text-gray-500">{row.used} used this cycle</p>
-                  </div>
-                  <span className="rounded-lg bg-orange-50 px-2.5 py-1 text-sm font-semibold tabular-nums text-orange-900 ring-1 ring-orange-200/70">
-                    {row.balance}
-                    <span className="font-medium text-orange-500"> / {row.entitlement}</span>
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-500"
-                    style={{ width: `${Math.min(100, Math.round((row.balance / row.entitlement) * 100))}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="px-6 py-8 text-center">
+            <p className="text-sm text-gray-500">Balances and requests sync from the Leave hub.</p>
+            <Link
+              href="/leave"
+              className="mt-3 inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            >
+              Open Leave tab
+            </Link>
+          </div>
         </Card>
       </div>
     </div>
@@ -693,60 +716,106 @@ export function EmployeeDocumentsPanel({ employee, documents = [], filesProps, c
   )
 }
 
-export function EmployeeAttendancePanel() {
+export function EmployeeAttendancePanel({ employee }) {
+  const [monthDate, setMonthDate] = useState(() => new Date())
+  const [records, setRecords] = useState([])
+  const [leaveRequests, setLeaveRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [selectedLog, setSelectedLog] = useState(null)
-  const statusMeta = {
-    present: {
-      label: 'Present',
-      dotClass: 'bg-emerald-400',
-      badgeClass: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
-      checkIn: '09:02 AM',
-      checkOut: '06:08 PM',
-      hours: '9h 6m',
-      note: 'Checked in from office.',
-    },
-    absent: {
-      label: 'Absent',
-      dotClass: 'bg-red-400',
-      badgeClass: 'bg-red-50 text-red-800 ring-red-200',
-      checkIn: '',
-      checkOut: '',
-      hours: '',
-      note: 'No attendance log recorded.',
-    },
-    leave: {
-      label: 'Leave',
-      dotClass: 'bg-orange-300',
-      badgeClass: 'bg-orange-50 text-orange-800 ring-orange-200',
-      checkIn: '',
-      checkOut: '',
-      hours: '',
-      note: 'Marked as approved leave.',
-    },
-    wfh: {
-      label: 'WFH',
-      dotClass: 'bg-blue-400',
-      badgeClass: 'bg-blue-50 text-blue-800 ring-blue-200',
-      checkIn: '09:18 AM',
-      checkOut: '06:01 PM',
-      hours: '8h 43m',
-      note: 'Remote work log submitted.',
-    },
-  }
-  const typeCycle = ['present', 'present', 'leave', 'wfh', 'present', 'absent', 'present']
-  const attendanceLogs = Array.from({ length: 28 }, (_, i) => {
-    const day = i + 1
-    const status = typeCycle[i % typeCycle.length]
-    const meta = statusMeta[status]
-    const date = `2026-06-${String(day).padStart(2, '0')}`
-    return {
-      id: `attendance-${date}`,
-      date,
-      status,
-      ...meta,
-      summary: `${meta.label}${meta.hours ? ` · ${meta.hours}` : ''}`,
+
+  const orgUserId = employee?.membershipId || employee?.id
+  const year = monthDate.getFullYear()
+  const month = monthDate.getMonth() + 1
+  const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const initialCalendarDate = `${year}-${String(month).padStart(2, '0')}-01`
+
+  const loadData = useCallback(async () => {
+    if (!orgUserId) {
+      setRecords([])
+      setLeaveRequests([])
+      setLoading(false)
+      return
     }
-  })
+
+    const from = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    try {
+      setLoading(true)
+      setLoadError('')
+      const [attendanceRows, leaveRows] = await Promise.all([
+        listAttendanceRecords({ organizationUser: orgUserId, from, to, limit: 62 }),
+        listLeaveRequests({ organizationUser: orgUserId, limit: 100 }),
+      ])
+      setRecords(attendanceRows)
+      setLeaveRequests(leaveRows)
+    } catch (error) {
+      setLoadError(error?.message || 'Could not load attendance')
+      setRecords([])
+      setLeaveRequests([])
+    } finally {
+      setLoading(false)
+    }
+  }, [orgUserId, year, month])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    const refresh = () => loadData()
+    window.addEventListener(ATTENDANCE_UPDATED_EVENT, refresh)
+    window.addEventListener(LEAVE_UPDATED_EVENT, refresh)
+    return () => {
+      window.removeEventListener(ATTENDANCE_UPDATED_EVENT, refresh)
+      window.removeEventListener(LEAVE_UPDATED_EVENT, refresh)
+    }
+  }, [loadData])
+
+  const attendanceLogs = useMemo(() => {
+    const rawLogs = buildEmployeeMonthAttendanceLogs({
+      employee,
+      records,
+      leaveRequests,
+      year,
+      month,
+    })
+
+    return rawLogs.map((log) => {
+      const meta = ATTENDANCE_STATUS_META[log.status] || ATTENDANCE_STATUS_META.not_marked
+      return {
+        ...log,
+        label: meta.label,
+        dotClass: meta.dotClass,
+        badgeClass: meta.badgeClass,
+      }
+    })
+  }, [employee, records, leaveRequests, year, month])
+
+  useEffect(() => {
+    if (!attendanceLogs.length) {
+      setSelectedLog(null)
+      return
+    }
+    const today = toDateInputValue(new Date())
+    const todayLog = attendanceLogs.find((log) => log.date === today)
+    setSelectedLog(todayLog || attendanceLogs[0])
+  }, [attendanceLogs])
+
+  const summary = useMemo(
+    () =>
+      attendanceLogs.reduce(
+        (acc, log) => {
+          acc[log.status] = (acc[log.status] || 0) + 1
+          return acc
+        },
+        { present: 0, absent: 0, leave: 0, wfh: 0, not_marked: 0 },
+      ),
+    [attendanceLogs],
+  )
+
   const events = attendanceLogs.map((log) => ({
     id: log.id,
     title: log.label,
@@ -757,19 +826,56 @@ export function EmployeeAttendancePanel() {
       entity: log,
     },
   }))
+
   const activeLog = selectedLog || attendanceLogs[0]
+
+  if (!employee?.membershipId && !employee?.id) {
+    return (
+      <Card variant="elevated" className="rounded-xl p-8">
+        <EmptyState
+          icon={Clock}
+          title="Attendance unavailable"
+          description="This employee must be synced with an organization membership before attendance can load."
+        />
+      </Card>
+    )
+  }
+
+  if (loading && !attendanceLogs.length) {
+    return (
+      <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+        <LoadingSpinner message="Loading attendance..." />
+      </Card>
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <Card variant="elevated" className="rounded-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">June 2026</h3>
-            <p className="text-sm text-gray-500">Calendar view of attendance logs and daily status.</p>
+            <h3 className="text-base font-semibold text-gray-900">{monthLabel}</h3>
+            <p className="text-sm text-gray-500">
+              Calendar view with saved logs and approved leave auto-detected.
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {summary.present} present · {summary.leave} on leave · {summary.not_marked} not marked · {summary.absent} absent · {summary.wfh} WFH
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <Input
+              type="month"
+              value={`${year}-${String(month).padStart(2, '0')}`}
+              onChange={(event) => {
+                const [nextYear, nextMonth] = String(event.target.value || '').split('-').map(Number)
+                if (nextYear && nextMonth) {
+                  setMonthDate(new Date(nextYear, nextMonth - 1, 1))
+                }
+              }}
+              className="!w-auto"
+            />
             <div className="flex flex-wrap gap-2">
-              {Object.entries(statusMeta).map(([key, item]) => (
+              {Object.entries(ATTENDANCE_STATUS_META).map(([key, item]) => (
                 <span key={key} className="inline-flex items-center gap-1.5 text-xs text-gray-600">
                   <span className={`h-2.5 w-2.5 rounded-full ${item.dotClass}`} aria-hidden />
                   {item.label}
@@ -785,9 +891,13 @@ export function EmployeeAttendancePanel() {
           </div>
         </div>
 
+        {loadError ? (
+          <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</p>
+        ) : null}
+
         <UnifiedWorkspaceCalendar
           events={events}
-          initialDate="2026-06-01"
+          initialDate={initialCalendarDate}
           onEventClick={({ kind, entity }) => {
             if (kind === 'attendance') setSelectedLog(entity)
           }}
@@ -797,54 +907,101 @@ export function EmployeeAttendancePanel() {
 
       <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl">
         <SidebarPanelHeader title="Marked log" description="Click any calendar entry to inspect the day." icon={Clock} />
-        <div className="space-y-4 p-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Selected date</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">
-              {new Date(`${activeLog.date}T00:00:00`).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </p>
+        {activeLog ? (
+          <div className="space-y-4 p-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Selected date</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900">
+                {new Date(`${activeLog.date}T12:00:00`).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
+            <span
+              className={`inline-flex rounded-lg px-3 py-1.5 text-sm font-semibold ring-1 ${activeLog.badgeClass}`}
+            >
+              {activeLog.label}
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-gray-500">Check in</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.checkIn || '—'}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-gray-500">Check out</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.checkOut || '—'}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-gray-500">Hours</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.hours || '—'}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-gray-500">Source</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.source || 'HR log'}</p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Note</p>
+              <p className="mt-1 text-sm text-orange-950">{activeLog.note}</p>
+            </div>
           </div>
-          <span
-            className={`inline-flex rounded-lg px-3 py-1.5 text-sm font-semibold ring-1 ${activeLog.badgeClass}`}
-          >
-            {activeLog.label}
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-gray-500">Check in</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.checkIn || '—'}</p>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-gray-500">Check out</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.checkOut || '—'}</p>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-gray-500">Hours</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.hours || '—'}</p>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-gray-500">Source</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">HR log</p>
-            </div>
+        ) : (
+          <div className="p-5">
+            <EmptyState icon={Clock} title="No logs" description="No attendance data for this month yet." className="py-4" />
           </div>
-          <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Note</p>
-            <p className="mt-1 text-sm text-orange-950">{activeLog.note}</p>
-          </div>
-        </div>
+        )}
       </Card>
     </div>
   )
 }
 
-export function EmployeeLeavePanel({ leaveRequests }) {
-  const totalEntitlement = LEAVE_BALANCE.reduce((sum, row) => sum + row.entitlement, 0)
-  const totalUsed = LEAVE_BALANCE.reduce((sum, row) => sum + row.used, 0)
-  const totalBalance = LEAVE_BALANCE.reduce((sum, row) => sum + row.balance, 0)
+export function EmployeeLeavePanel({ employee }) {
+  const [leaveRequests, setLeaveRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+
+  const orgUserId = employee?.membershipId || employee?.id
+
+  const loadData = useCallback(async () => {
+    if (!orgUserId) {
+      setLeaveRequests([])
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setLoadError('')
+      const rows = await listLeaveRequests({ organizationUser: orgUserId, limit: 100 })
+      setLeaveRequests(rows)
+    } catch (error) {
+      setLoadError(error?.message || 'Could not load leave requests')
+      setLeaveRequests([])
+    } finally {
+      setLoading(false)
+    }
+  }, [orgUserId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    const refresh = () => loadData()
+    window.addEventListener(LEAVE_UPDATED_EVENT, refresh)
+    return () => window.removeEventListener(LEAVE_UPDATED_EVENT, refresh)
+  }, [loadData])
+
+  const leaveBalance = useMemo(
+    () => computeEmployeeLeaveBalanceRows(employee, leaveRequests),
+    [employee, leaveRequests],
+  )
+
+  const totalEntitlement = leaveBalance.reduce((sum, row) => sum + row.entitlement, 0)
+  const totalUsed = leaveBalance.reduce((sum, row) => sum + row.used, 0)
+  const totalBalance = leaveBalance.reduce((sum, row) => sum + row.balance, 0)
   const pendingRequests = leaveRequests.filter((row) => row.status === 'Pending').length
   const requestColumns = [
     {
@@ -925,8 +1082,12 @@ export function EmployeeLeavePanel({ leaveRequests }) {
           </div>
         </div>
 
+        {loadError ? (
+          <p className="border-b border-gray-100 px-5 py-3 text-sm text-red-600">{loadError}</p>
+        ) : null}
+
         <div className="grid grid-cols-1 gap-4 p-5 lg:grid-cols-3">
-          {LEAVE_BALANCE.map((row) => {
+          {leaveBalance.map((row) => {
             const usedPercent = Math.min(100, Math.round((row.used / row.entitlement) * 100))
             const balancePercent = Math.min(100, Math.round((row.balance / row.entitlement) * 100))
             return (

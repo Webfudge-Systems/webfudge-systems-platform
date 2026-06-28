@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "overtime_records",
+  "info": {
+    "singularName": "overtime-record",
+    "pluralName": "overtime-records",
+    "displayName": "Overtime Record",
+    "description": "Employee overtime hours and payout tracking"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "recordDate": {
+      "type": "date",
+      "required": true
+    },
+    "regularHours": {
+      "type": "decimal",
+      "default": 8
+    },
+    "overtimeHours": {
+      "type": "decimal",
+      "default": 0
+    },
+    "amount": {
+      "type": "integer",
+      "default": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "approved", "paid"],
+      "default": "pending"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "organizationUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization-user.organization-user"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

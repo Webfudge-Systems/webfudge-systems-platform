@@ -23,6 +23,7 @@ import {
   Card,
   TableResultsCount,
 } from '@webfudge/ui'
+import { Select } from '../../../components/shared/HRSelect'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
@@ -274,32 +275,26 @@ export default function ExpensesPage() {
         afterTabs={
           activeTab === 'claims' ? (
             <div className="hidden items-center gap-2 sm:flex">
-              <select
+              <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by status"
-              >
-                <option value="">All statuses</option>
-                {STATUS_FILTERS.filter(Boolean).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <select
+                onChange={setStatusFilter}
+                options={[
+                  { value: '', label: 'All statuses' },
+                  ...STATUS_FILTERS.filter(Boolean).map((s) => ({ value: s, label: s })),
+                ]}
+                placeholder="All statuses"
+                containerClassName="min-w-[140px]"
+              />
+              <Select
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by category"
-              >
-                <option value="">All categories</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+                onChange={setCategoryFilter}
+                options={[
+                  { value: '', label: 'All categories' },
+                  ...categories.map((cat) => ({ value: cat, label: cat })),
+                ]}
+                placeholder="All categories"
+                containerClassName="min-w-[140px]"
+              />
             </div>
           ) : null
         }

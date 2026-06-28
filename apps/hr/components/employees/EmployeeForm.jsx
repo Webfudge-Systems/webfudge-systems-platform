@@ -1,6 +1,7 @@
 'use client'
 
-import { Input, Select, FormSectionCard } from '@webfudge/ui'
+import { Input, FormSectionCard } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
 import { User, Briefcase, Mail, Phone, MapPin, Building2, Landmark } from 'lucide-react'
 
 const EMPLOYMENT_TYPES = [

@@ -82,7 +82,7 @@ export function PayrollRecordOverviewPanel({ record, month }) {
         </Card>
       </div>
 
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         <Card variant="elevated" className="rounded-xl p-4">
           <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Summary</h3>
           <dl className="space-y-3 text-sm">
@@ -100,10 +100,12 @@ export function PayrollRecordOverviewPanel({ record, month }) {
             </div>
           </dl>
           <Link
-            href={`/employees/${record.id}`}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            href={record.employeeRefId ? `/employees/${record.employeeRefId}` : '#'}
+            className={`mt-4 inline-flex w-full min-w-0 items-center justify-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 ${
+              record.employeeRefId ? '' : 'pointer-events-none opacity-50'
+            }`}
           >
-            View employee profile
+            <span className="truncate">View employee profile</span>
           </Link>
         </Card>
       </div>

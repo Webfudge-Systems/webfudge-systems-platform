@@ -122,8 +122,13 @@ export async function createSalaryStructure(payload) {
 }
 
 export async function getSalaryStructureById(id) {
-  const response = await request(`/salary-structures/${id}`, { method: 'GET' })
-  return response?.data ? mapSalaryStructure(response.data) : null
+  try {
+    const response = await request(`/salary-structures/${id}`, { method: 'GET' })
+    return response?.data ? mapSalaryStructure(response.data) : null
+  } catch {
+    const list = await listSalaryStructures()
+    return list.find((row) => String(row.id) === String(id)) || null
+  }
 }
 
 export async function updateSalaryStructure(id, payload) {
@@ -202,9 +207,12 @@ export async function createPayrollLineItem(payload) {
 }
 
 export async function listPayslips({ payrollRunId } = {}) {
-  const query = buildQueryString({ payrollRun: payrollRunId, limit: 1000 })
+  const query = buildQueryString({ payrollRun: payrollRunId, limit: 200 })
   const rows = normalizeRows(await request(`/payslips?${query}`, { method: 'GET' }))
-  return rows
+  return rows.map((row) => ({
+    ...row,
+    payrollLineItemId: relationId(row.payrollLineItem),
+  }))
 }
 
 export async function generatePayslip({ payrollRunId, payrollLineItemId }) {
@@ -217,6 +225,36 @@ export async function generatePayslip({ payrollRunId, payrollLineItemId }) {
 
 export function getPayslipDownloadUrl(payslipId) {
   return `${API_BASE_URL}/api/payslips/${payslipId}/download`
+}
+
+export async function downloadPayslip(payslipId, { filename } = {}) {
+  const token = getToken()
+  const orgId = getOrgId()
+  const response = await fetch(`${API_BASE_URL}/api/payslips/${payslipId}/download`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(orgId ? { 'X-Organization-Id': orgId } : {}),
+    },
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    const err = data?.error || data
+    throw new Error(err?.message || (typeof err === 'string' ? err : `Download failed (HTTP ${response.status})`))
+  }
+
+  const blob = await response.blob()
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const match = disposition.match(/filename="?([^";]+)"?/)
+  const resolvedName = filename || match?.[1] || `payslip-${payslipId}.pdf`
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = resolvedName
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }
 
 export async function listEmployeeProfiles() {

@@ -17,7 +17,7 @@ const STATUS_PILL = {
 
 export function LeaveEmployeeCell({ row }) {
   const name = row.employeeName || row.name
-  const id = row.employeeId
+  const id = row.employeeCode || row.employeeId
   const initial = name?.charAt(0) || '?'
   return (
     <div className="flex min-w-[220px] items-center gap-3">

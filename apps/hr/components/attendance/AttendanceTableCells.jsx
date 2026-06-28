@@ -14,6 +14,7 @@ const STATUS_PILL = {
   'ON LEAVE': 'border-amber-200 bg-amber-50 text-amber-900',
   WFH: 'border-sky-200 bg-sky-50 text-sky-900',
   ABSENT: 'border-red-200 bg-red-50 text-red-900',
+  'NOT MARKED': 'border-gray-200 bg-gray-50 text-gray-600',
   APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-800',
   'PENDING APPROVAL': 'border-orange-200 bg-orange-50 text-orange-900',
   PAID: 'border-emerald-200 bg-emerald-50 text-emerald-800',
@@ -31,7 +32,7 @@ export function AttendanceEmployeeCell({ row }) {
       />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <TableCellTitleSubtitle title={row.name} subtitle={row.employeeId} />
+          <TableCellTitleSubtitle title={row.name} subtitle={row.employeeCode || row.employeeId} />
           {row.late ? (
             <Badge className="border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
               Late

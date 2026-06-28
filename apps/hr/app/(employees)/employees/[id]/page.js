@@ -20,7 +20,6 @@ import {
 } from '../../../../components/employees/EmployeeDetailTabPanels'
 import { EMPLOYEE_DOCUMENTS, EMPLOYEE_OKRS } from '../../../../lib/mock-data/employees'
 import { EMPLOYEE_ACTIVITIES } from '../../../../lib/mock-data/activities'
-import { LEAVE_REQUESTS } from '../../../../lib/mock-data/leave'
 import { getSyncedEmployeeById, softDeleteEmployee, updateEmployeeFromForm } from '../../../../lib/employeeSyncService'
 import { listSalaryStructures, upsertEmployeeProfileByMembership } from '../../../../lib/payrollSyncService'
 import { entityFilesPanelProps } from '../../../../lib/entityMedia'
@@ -136,7 +135,7 @@ export default function EmployeeProfilePage() {
     createdAt: new Date().toISOString(),
     actor: { username: 'System' },
   }))
-  const leaveRequests = LEAVE_REQUESTS.filter((r) => r.employeeId === employee.id)
+  const leaveRequests = []
 
   const handleDelete = async () => {
     try {
@@ -275,8 +274,8 @@ export default function EmployeeProfilePage() {
       {tab === 'documents' && (
         <EmployeeDocumentsPanel employee={employee} documents={docs} filesProps={entityFilesPanelProps} />
       )}
-      {tab === 'attendance' && <EmployeeAttendancePanel />}
-      {tab === 'leave' && <EmployeeLeavePanel leaveRequests={leaveRequests} />}
+      {tab === 'attendance' && <EmployeeAttendancePanel employee={employee} />}
+      {tab === 'leave' && <EmployeeLeavePanel employee={employee} />}
       {tab === 'payroll' && <EmployeePayrollPanel payslips={PAYSLIPS} />}
       {tab === 'performance' && <EmployeePerformancePanel okrs={okrs} />}
       {tab === 'activity' && <EmployeeActivityPanel employee={employee} fallbackActivities={activities} />}

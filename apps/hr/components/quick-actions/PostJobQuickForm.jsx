@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Input, Select, Textarea } from '@webfudge/ui'
+import { Input, Textarea } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
 import { DEPARTMENTS } from '../../lib/mock-data/employees'
 import { MapPin, Building2 } from 'lucide-react'
 import { HRQuickForm, HRQuickFormSection } from './HRQuickFormFields'

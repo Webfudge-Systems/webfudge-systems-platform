@@ -16,8 +16,8 @@ import {
 } from '../../../../components/payroll/PayrollDetailTabPanels'
 import {
   deletePayrollLineItem,
+  downloadPayslip,
   getPayrollLineItemById,
-  getPayslipDownloadUrl,
   listPayslips,
 } from '../../../../lib/payrollSyncService'
 import { formatPayrollInr } from '../../../../lib/payrollPage'
@@ -37,6 +37,8 @@ export default function PayrollRecordPage() {
   const [monthLabel, setMonthLabel] = useState('-')
   const [payslipId, setPayslipId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -78,7 +80,9 @@ export default function PayrollRecordPage() {
           )
         }
         const slips = await listPayslips({ payrollRunId: run.id })
-        const slip = slips.find((s) => String(s.payrollLineItem?.id || s.payrollLineItem) === String(line.id))
+        const slip = slips.find(
+          (s) => String(s.payrollLineItemId || s.payrollLineItem?.id || s.payrollLineItem) === String(line.id),
+        )
         setPayslipId(slip?.id || null)
       } finally {
         if (!cancelled) setLoading(false)
@@ -125,6 +129,19 @@ export default function PayrollRecordPage() {
 
   const totalDeductions = (record.pf || 0) + (record.esi || 0) + (record.pt || 0) + (record.tds || 0)
   const readOnly = ['locked', 'disbursed'].includes(String(record.status).toLowerCase())
+
+  const handleDownloadPayslip = async () => {
+    if (!payslipId) return
+    try {
+      setDownloading(true)
+      setDownloadError('')
+      await downloadPayslip(payslipId)
+    } catch (err) {
+      setDownloadError(err?.message || 'Failed to download payslip')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   const handleDelete = async () => {
     await deletePayrollLineItem(record.id)
@@ -209,10 +226,13 @@ export default function PayrollRecordPage() {
         <div className="space-y-4">
           <PayrollPayslipPanel record={record} month={monthLabel} />
           {payslipId ? (
-            <Button variant="secondary" onClick={() => window.open(getPayslipDownloadUrl(payslipId), '_blank')}>
-              <FileText className="mr-2 h-4 w-4" />
-              Download Payslip PDF
-            </Button>
+            <div className="space-y-2">
+              <Button variant="secondary" disabled={downloading} onClick={handleDownloadPayslip}>
+                <FileText className="mr-2 h-4 w-4" />
+                {downloading ? 'Downloading…' : 'Download Payslip PDF'}
+              </Button>
+              {downloadError ? <p className="text-sm text-red-600">{downloadError}</p> : null}
+            </div>
           ) : null}
         </div>
       )}

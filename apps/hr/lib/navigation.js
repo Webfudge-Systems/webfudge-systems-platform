@@ -13,6 +13,7 @@ import {
   LifeBuoy,
   Settings,
 } from 'lucide-react'
+import { HR_PAYROLL_NAV, isPayrollOverviewActive, isPayrollSectionActive } from './payrollNavigation'
 
 /** Main 2×3 navigate grid — aligned with PM sidebar */
 export const HR_NAVIGATE_TILES = [
@@ -53,7 +54,7 @@ export const HR_NAVIGATE_SECTIONS = [
   {
     id: 'payroll',
     label: 'Payroll',
-    children: [{ id: 'payroll-runs', label: 'Payroll', href: '/payroll', icon: Wallet }],
+    children: HR_PAYROLL_NAV,
   },
   {
     id: 'expenses',
@@ -100,6 +101,7 @@ export const HR_PRIMARY_BOX_ITEMS = HR_NAVIGATE_TILES
 export function isNavItemActive(pathname, href) {
   if (!href) return false
   if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/'
+  if (href === '/payroll') return isPayrollOverviewActive(pathname)
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -114,6 +116,9 @@ export function isEmployeeSectionActive(pathname) {
 export function tileIsActive(pathname, item) {
   if (item.id === 'employees') {
     return isEmployeeSectionActive(pathname)
+  }
+  if (item.id === 'payroll') {
+    return isPayrollSectionActive(pathname)
   }
   return item.href ? isNavItemActive(pathname, item.href) : false
 }

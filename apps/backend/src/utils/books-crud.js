@@ -8,7 +8,13 @@ const { createCoreController } = require('@strapi/strapi').factories;
 
 function relId(rel) {
   if (rel == null) return null;
-  return typeof rel === 'object' ? rel.id ?? null : rel;
+  if (typeof rel === 'object') return rel.id ?? rel.documentId ?? null;
+  return rel;
+}
+
+function sameOrgId(left, right) {
+  if (left == null || right == null) return false;
+  return String(left) === String(right);
 }
 
 function makeBooksCrudController(uid, { defaultPopulate = [], extraFilters = () => ({}) } = {}) {
@@ -41,9 +47,11 @@ function makeBooksCrudController(uid, { defaultPopulate = [], extraFilters = () 
     async findOne(ctx) {
       if (!ctx.state.user) return ctx.unauthorized();
       if (!ctx.state.orgId) return ctx.forbidden('No active organization');
-      const entry = await strapi.entityService.findOne(uid, ctx.params.id, { populate: defaultPopulate });
+      const entry = await strapi.entityService.findOne(uid, ctx.params.id, {
+        populate: [...new Set([...defaultPopulate, 'organization'])],
+      });
       if (!entry) return ctx.notFound();
-      if (relId(entry.organization) !== ctx.state.orgId) return ctx.forbidden();
+      if (!sameOrgId(relId(entry.organization), ctx.state.orgId)) return ctx.forbidden();
       return { data: entry };
     },
 
@@ -62,7 +70,7 @@ function makeBooksCrudController(uid, { defaultPopulate = [], extraFilters = () 
       if (!ctx.state.orgId) return ctx.forbidden('No active organization');
       const existing = await strapi.entityService.findOne(uid, ctx.params.id, { populate: ['organization'] });
       if (!existing) return ctx.notFound();
-      if (relId(existing.organization) !== ctx.state.orgId) return ctx.forbidden();
+      if (!sameOrgId(relId(existing.organization), ctx.state.orgId)) return ctx.forbidden();
       const body = ctx.request?.body || {};
       const data = { ...(body.data || body) };
       delete data.organization;
@@ -75,7 +83,7 @@ function makeBooksCrudController(uid, { defaultPopulate = [], extraFilters = () 
       if (!ctx.state.orgId) return ctx.forbidden('No active organization');
       const existing = await strapi.entityService.findOne(uid, ctx.params.id, { populate: ['organization'] });
       if (!existing) return ctx.notFound();
-      if (relId(existing.organization) !== ctx.state.orgId) return ctx.forbidden();
+      if (!sameOrgId(relId(existing.organization), ctx.state.orgId)) return ctx.forbidden();
       const entry = await strapi.entityService.delete(uid, ctx.params.id);
       return { data: entry };
     },
