@@ -15,7 +15,7 @@ import {
   Mail,
   Phone,
   MapPin,
-  IdCard,
+  CreditCard,
   Banknote,
   TrendingDown,
   Trophy,
@@ -299,7 +299,7 @@ export function EmployeeOverviewPanel({
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <HeaderPill icon={Briefcase} label={employee.department} />
-                    <HeaderPill icon={IdCard} label={employee.employeeId} />
+                    <HeaderPill icon={CreditCard} label={employee.employeeId} />
                     <HeaderPill icon={MapPin} label={employee.workLocation || employee.location} />
                   </div>
                   <div className="mt-2 sm:hidden">
@@ -544,7 +544,7 @@ export function EmployeeOverviewPanel({
                 <DetailCell label="Employment type" icon={Briefcase}>
                   <DetailValue value={employee.employmentType || '—'} />
                 </DetailCell>
-                <DetailCell label="Employee ID" icon={IdCard}>
+                <DetailCell label="Employee ID" icon={CreditCard}>
                   <DetailValue value={employee.employeeId || '—'} emphasize />
                 </DetailCell>
               </GridRow>
@@ -567,10 +567,10 @@ export function EmployeeOverviewPanel({
                 <DetailCell label="IFSC" icon={Wallet}>
                   <DetailValue value={employee.bankIfsc || '—'} />
                 </DetailCell>
-                <DetailCell label="PAN" icon={IdCard}>
+                <DetailCell label="PAN" icon={CreditCard}>
                   <DetailValue value={employee.pan || '—'} />
                 </DetailCell>
-                <DetailCell label="UAN" icon={IdCard}>
+                <DetailCell label="UAN" icon={CreditCard}>
                   <DetailValue value={employee.uan || '—'} />
                 </DetailCell>
               </GridRow>

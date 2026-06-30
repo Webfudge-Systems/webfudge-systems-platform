@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Save } from 'lucide-react'
 import { Button, Modal } from '@webfudge/ui'
 import FeedbackRequestForm, { feedbackRequestToForm } from './FeedbackRequestForm'
-import GiveFeedbackForm, { giveFeedbackToForm } from './GiveFeedbackForm'
+import { GiveFeedbackForm, giveFeedbackToForm } from './GiveFeedbackForm'
 import {
   isCustomFeedbackItem,
   submitFeedback,
