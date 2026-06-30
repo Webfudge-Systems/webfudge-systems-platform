@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fudge Flow — Project Delivery OS</title>
+    <meta name="description" content="Fudge Flow turns scope, tasks, milestones, blockers, and launch handoffs into one visible delivery surface.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family:'Inter',sans-serif; background:#FEFAF4; color:#0C0A09; overflow-x:hidden; }
+
+        /* ── Animations ── */
+        @keyframes ff-bar   { from { transform:scaleX(0); } }
+        @keyframes ff-tick  { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+        @keyframes ff-orb   { 0%,100%{transform:translate(0,0)} 50%{transform:translate(28px,-28px)} }
+        @keyframes ff-ping  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(1.45)} }
+        @keyframes ff-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)} }
+        @keyframes ff-draw  { from{stroke-dashoffset:1200} to{stroke-dashoffset:0} }
+        @keyframes ff-pop   { 0%{opacity:0;transform:scale(.6)} 100%{opacity:1;transform:scale(1)} }
+        @keyframes ff-slide-up { from{opacity:0;transform:translateY(40px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes ff-pulse-dot { 0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,0.45)} 50%{box-shadow:0 0 0 10px rgba(249,115,22,0)} }
+        @keyframes ff-marquee-v { 0%{transform:translateY(0)} 100%{transform:translateY(-50%)} }
+        @keyframes ff-rotate { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+        @keyframes ff-shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+        .bar-fill   { transform-origin:left; animation:ff-bar .65s cubic-bezier(.34,1.56,.64,1) both; }
+        .reveal     { opacity:0; transform:translateY(28px); transition:all .8s cubic-bezier(.22,1,.36,1); }
+        .reveal.active { opacity:1; transform:translateY(0); }
+        .stagger-1 { transition-delay:.08s; }
+        .stagger-2 { transition-delay:.16s; }
+        .stagger-3 { transition-delay:.24s; }
+        .stagger-4 { transition-delay:.32s; }
+        .stagger-5 { transition-delay:.40s; }
+
+        ::-webkit-scrollbar { width:7px; }
+        ::-webkit-scrollbar-track { background:#FEFAF4; }
+        ::-webkit-scrollbar-thumb { background:#e5ddd0; border-radius:4px; }
+
+        .gantt-row { transition:all .25s cubic-bezier(.22,1,.36,1); cursor:pointer; }
+        .gantt-row:hover { transform:translateY(-2px); }
+
+        .module-card { transition:all .32s cubic-bezier(.22,1,.36,1); }
+        .module-card:hover { background:#0C0A09!important; border-color:#0C0A09!important; transform:translateY(-4px); box-shadow:0 24px 80px rgba(12,10,9,.22); }
+        .module-card:hover h3 { color:white; }
+        .module-card:hover p  { color:#9ca3af; }
+        .module-card:hover .card-icon { color:#fb923c; }
+
+        /* Pipeline SVG */
+        .pipe-line { stroke-dasharray:1200; stroke-dashoffset:1200; }
+        .pipe-line.active { animation:ff-draw 2s ease-out forwards; }
+        .pipe-node { opacity:0; }
+        .pipe-node.active { animation:ff-pop .5s cubic-bezier(.22,1,.36,1) forwards; }
+
+        /* Kanban cards */
+        .kanban-card { transition:all .3s ease; }
+        .kanban-card:hover { transform:translateY(-3px) rotate(-0.5deg); box-shadow:0 14px 50px rgba(12,10,9,.14); }
+
+        /* Integration logos */
+        .int-card { transition:all .28s ease; }
+        .int-card:hover { transform:translateY(-3px); box-shadow:0 16px 50px rgba(12,10,9,.12); border-color:rgba(249,115,22,.35)!important; }
+
+        /* Counter animation */
+        .counter { display:inline-block; }
+
+        /* Shimmer badge */
+        .shimmer { background:linear-gradient(90deg,#FEFAF4 0%,#fff7ed 40%,#FEFAF4 60%,#fff7ed 100%); background-size:200% 100%; animation:ff-shimmer 3s ease-in-out infinite; }
+
+        /* Timeline dot pulse */
+        .tl-dot { animation:ff-pulse-dot 2.2s ease-in-out infinite; }
+
+        /* Vertical marquee */
+        .v-marquee { animation:ff-marquee-v 20s linear infinite; }
+
+        /* Float */
+        .float { animation:ff-float 6s ease-in-out infinite; }
+    </style>
+</head>
+<body class="relative w-full antialiased">
+
+    <!-- ── Ambient background ── -->
+    <div class="pointer-events-none fixed inset-0 overflow-hidden -z-10">
+        <div class="absolute -right-20 -top-20 h-[36rem] w-[36rem] rounded-full bg-orange-100/90 blur-3xl" style="animation:ff-orb 18s ease-in-out infinite"></div>
+        <div class="absolute -bottom-24 -left-12 h-[28rem] w-[28rem] rounded-full bg-violet-100/80 blur-3xl"></div>
+        <div class="absolute left-1/3 top-1/2 h-[18rem] w-[18rem] rounded-full bg-emerald-100/60 blur-3xl"></div>
+        <div class="absolute right-1/4 top-[40%] h-[14rem] w-[14rem] rounded-full bg-blue-100/50 blur-3xl float"></div>
+        <div class="absolute inset-0" style="background-image:radial-gradient(#0C0A09 1px,transparent 1px);background-size:44px 44px;opacity:0.03"></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════
+         HEADER / NAV
+         ════════════════════════════════════════════════════ -->
+    <header class="relative mx-auto flex max-w-[96rem] items-center justify-between px-5 py-5 sm:px-8">
+        <div class="flex items-center gap-3">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0C0A09]">
+                <svg viewBox="0 0 36 36" class="h-6 w-6"><path d="M5 10 11 29 18 13 25 29 31 10" fill="none" stroke="white" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.5"/><path d="M12 10h14" stroke="#F97316" stroke-linecap="round" stroke-width="2.5"/></svg>
+            </div>
+            <div>
+                <p class="text-sm font-black leading-none">Webfudge</p>
+                <p class="mt-0.5 text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Fudge Flow</p>
+            </div>
+        </div>
+        <nav class="hidden items-center gap-1 rounded-full border border-black/10 bg-white p-1.5 shadow-sm md:flex">
+            <a href="#pipeline" class="rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-gray-500 transition hover:bg-[#0C0A09] hover:text-white">Pipeline</a>
+            <a href="#map" class="rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-gray-500 transition hover:bg-[#0C0A09] hover:text-white">Map</a>
+            <a href="#board" class="rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-gray-500 transition hover:bg-[#0C0A09] hover:text-white">Board</a>
+            <a href="#modules" class="rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-gray-500 transition hover:bg-[#0C0A09] hover:text-white">Modules</a>
+            <a href="#data" class="rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-gray-500 transition hover:bg-[#0C0A09] hover:text-white">Data</a>
+            <a href="#launch" class="rounded-full px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-gray-500 transition hover:bg-[#0C0A09] hover:text-white">Launch</a>
+        </nav>
+        <span class="rounded-full border border-black/10 bg-white px-4 py-2 font-mono text-xs font-black text-gray-400 shadow-sm">Delivery OS</span>
+    </header>
+
+    <!-- ════════════════════════════════════════════════════
+         HERO
+         ════════════════════════════════════════════════════ -->
+    <section class="reveal relative mx-auto max-w-[96rem] px-5 pb-4 pt-10 text-center sm:px-8">
+        <div class="shimmer mx-auto mb-7 inline-flex items-center gap-2.5 rounded-full border border-orange-200 px-4 py-2">
+            <span class="h-2 w-2 rounded-full bg-orange-500" style="animation:ff-ping 2s ease-in-out infinite"></span>
+            <span class="text-[11px] font-black uppercase tracking-[0.2em] text-orange-600">Project delivery OS &middot; Fudge Flow</span>
+        </div>
+
+        <h1 class="mx-auto max-w-5xl text-6xl font-black leading-[0.88] tracking-[-0.07em] md:text-7xl xl:text-[5.8rem]">
+            Work that moves.<br>Delivery that lands.
+        </h1>
+        <p class="mx-auto mt-6 max-w-2xl text-base leading-8 text-gray-500 md:text-lg">
+            Fudge Flow turns scope, tasks, milestones, blockers, and launch handoffs into one visible delivery surface &mdash; no scattered updates, no deadline surprises. Every project, every sprint, every handoff &mdash; organized.
+        </p>
+
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <a href="#pipeline" class="inline-flex items-center gap-2.5 rounded-full bg-[#0C0A09] px-7 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-white transition hover:-translate-y-0.5 hover:shadow-[0_18px_50px_rgba(12,10,9,.22)]">
+                View pipeline <i data-lucide="route" class="h-4 w-4"></i>
+            </a>
+            <a href="#board" class="inline-flex items-center gap-2.5 rounded-full border border-black/10 bg-white px-7 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-[#0C0A09] transition hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(12,10,9,.1)]">
+                Sprint board <i data-lucide="arrow-right" class="h-4 w-4"></i>
+            </a>
+        </div>
+    </section>
+
+    <!-- ── Animated counter stats ── -->
+    <section class="reveal relative mx-auto max-w-[96rem] px-5 pb-8 pt-6 sm:px-8">
+        <div class="mx-auto flex max-w-4xl flex-wrap justify-center gap-6 md:gap-12">
+            <div class="group flex flex-col items-center gap-1 rounded-2xl border border-black/8 bg-white px-8 py-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+                <p class="text-4xl font-black tracking-[-0.04em] text-blue-500"><span class="counter" data-target="137">0</span></p>
+                <p class="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Active tasks</p>
+            </div>
+            <div class="group flex flex-col items-center gap-1 rounded-2xl border border-black/8 bg-white px-8 py-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+                <p class="text-4xl font-black tracking-[-0.04em] text-orange-500"><span class="counter" data-target="24">0</span></p>
+                <p class="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Live projects</p>
+            </div>
+            <div class="group flex flex-col items-center gap-1 rounded-2xl border border-black/8 bg-white px-8 py-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+                <p class="text-4xl font-black tracking-[-0.04em] text-emerald-500"><span class="counter" data-target="92" data-suffix="%">0</span></p>
+                <p class="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Handoff clarity</p>
+            </div>
+            <div class="group flex flex-col items-center gap-1 rounded-2xl border border-black/8 bg-white px-8 py-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+                <p class="text-4xl font-black tracking-[-0.04em] text-violet-500"><span class="counter" data-target="18">0</span></p>
+                <p class="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400">Dependency links</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         ANIMATED PIPELINE DIAGRAM
+         ════════════════════════════════════════════════════ -->
+    <section id="pipeline" class="reveal relative mx-auto max-w-[96rem] px-5 pb-10 sm:px-8 scroll-mt-20">
+        <p class="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-orange-500">How it works</p>
+        <h2 class="mb-3 text-5xl font-black tracking-[-0.07em]">The delivery pipeline.</h2>
+        <p class="mb-8 max-w-2xl text-base leading-7 text-gray-500">Every project follows the same five-phase path. The pipeline connects scope to shipment in a straight line — no loops, no lost context.</p>
+
+        <div class="overflow-hidden rounded-[2.4rem] border border-black/10 bg-white p-6 shadow-[0_30px_100px_rgba(12,10,9,.1)] md:p-10">
+            <!-- SVG Pipeline -->
+            <div class="relative mb-8 hidden md:block">
+                <svg id="pipeline-svg" viewBox="0 0 1000 120" class="w-full" fill="none">
+                    <!-- Connecting line -->
+                    <path class="pipe-line" d="M 80 60 L 920 60" stroke="#e5e7eb" stroke-width="3" stroke-linecap="round"/>
+                    <path class="pipe-line" id="pipe-active-line" d="M 80 60 L 920 60" stroke="#F97316" stroke-width="3" stroke-linecap="round"/>
+                    <!-- Nodes -->
+                    <g class="pipe-node" style="animation-delay:.3s"><circle cx="80" cy="60" r="28" fill="#F97316"/><text x="80" y="65" fill="white" text-anchor="middle" font-size="12" font-weight="900">01</text></g>
+                    <g class="pipe-node" style="animation-delay:.6s"><circle cx="290" cy="60" r="28" fill="#8B5CF6"/><text x="290" y="65" fill="white" text-anchor="middle" font-size="12" font-weight="900">02</text></g>
+                    <g class="pipe-node" style="animation-delay:.9s"><circle cx="500" cy="60" r="28" fill="#3B82F6"/><text x="500" y="65" fill="white" text-anchor="middle" font-size="12" font-weight="900">03</text></g>
+                    <g class="pipe-node" style="animation-delay:1.2s"><circle cx="710" cy="60" r="28" fill="#EF4444"/><text x="710" y="65" fill="white" text-anchor="middle" font-size="12" font-weight="900">04</text></g>
+                    <g class="pipe-node" style="animation-delay:1.5s"><circle cx="920" cy="60" r="28" fill="#10B981"/><text x="920" y="65" fill="white" text-anchor="middle" font-size="12" font-weight="900">05</text></g>
+                </svg>
+            </div>
+
+            <!-- Phase cards -->
+            <div class="grid gap-3 md:grid-cols-5">
+                <div class="reveal stagger-1 rounded-2xl border-2 border-orange-200 bg-orange-50 p-4">
+                    <div class="mb-3 flex items-center gap-2"><span class="flex h-7 w-7 items-center justify-center rounded-lg bg-orange-500 text-[10px] font-black text-white">01</span><span class="text-[10px] font-black uppercase tracking-[0.18em] text-orange-500">Scope</span></div>
+                    <h4 class="text-sm font-black">Shape the sprint</h4>
+                    <p class="mt-1.5 text-xs leading-5 text-gray-500">Goals, owners, acceptance criteria, and delivery windows form a single brief.</p>
+                    <div class="mt-3 space-y-1">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-orange-400"></i>Project brief</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-orange-400"></i>Scope boundaries</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-orange-400"></i>Owner roster</div>
+                    </div>
+                </div>
+                <div class="reveal stagger-2 rounded-2xl border-2 border-violet-200 bg-violet-50 p-4">
+                    <div class="mb-3 flex items-center gap-2"><span class="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500 text-[10px] font-black text-white">02</span><span class="text-[10px] font-black uppercase tracking-[0.18em] text-violet-500">Sequence</span></div>
+                    <h4 class="text-sm font-black">Map dependencies</h4>
+                    <p class="mt-1.5 text-xs leading-5 text-gray-500">Milestones, blockers, handoffs, and due dates form a dependency graph.</p>
+                    <div class="mt-3 space-y-1">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-violet-400"></i>Task dependencies</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-violet-400"></i>Milestone dates</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-violet-400"></i>Blocker chains</div>
+                    </div>
+                </div>
+                <div class="reveal stagger-3 rounded-2xl border-2 border-blue-200 bg-blue-50 p-4">
+                    <div class="mb-3 flex items-center gap-2"><span class="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500 text-[10px] font-black text-white">03</span><span class="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500">Execute</span></div>
+                    <h4 class="text-sm font-black">Track every task</h4>
+                    <p class="mt-1.5 text-xs leading-5 text-gray-500">Assignments, progress, comments, files, and checklists attached to work.</p>
+                    <div class="mt-3 space-y-1">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-blue-400"></i>Daily standup</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-blue-400"></i>Progress updates</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-blue-400"></i>Sprint velocity</div>
+                    </div>
+                </div>
+                <div class="reveal stagger-4 rounded-2xl border-2 border-red-200 bg-red-50 p-4">
+                    <div class="mb-3 flex items-center gap-2"><span class="flex h-7 w-7 items-center justify-center rounded-lg bg-red-500 text-[10px] font-black text-white">04</span><span class="text-[10px] font-black uppercase tracking-[0.18em] text-red-500">Review</span></div>
+                    <h4 class="text-sm font-black">Catch drift early</h4>
+                    <p class="mt-1.5 text-xs leading-5 text-gray-500">Risk signals, QA gates, stale tasks surface before they cause delays.</p>
+                    <div class="mt-3 space-y-1">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-red-400"></i>Risk radar</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-red-400"></i>QA checklist</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-red-400"></i>Manager sign-off</div>
+                    </div>
+                </div>
+                <div class="reveal stagger-5 rounded-2xl border-2 border-emerald-200 bg-emerald-50 p-4">
+                    <div class="mb-3 flex items-center gap-2"><span class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500 text-[10px] font-black text-white">05</span><span class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-500">Release</span></div>
+                    <h4 class="text-sm font-black">Ship with proof</h4>
+                    <p class="mt-1.5 text-xs leading-5 text-gray-500">Launch notes, handoffs, approvals close the loop after the code ships.</p>
+                    <div class="mt-3 space-y-1">
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-emerald-400"></i>Release notes</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-emerald-400"></i>Client handoff</div>
+                        <div class="flex items-center gap-1.5 text-[11px] text-gray-500"><i data-lucide="check" class="h-3 w-3 text-emerald-400"></i>Sprint archive</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         GANTT / DELIVERY MAP
+         ════════════════════════════════════════════════════ -->
+    <section id="map" class="reveal relative mx-auto max-w-[96rem] px-5 pb-8 sm:px-8 scroll-mt-20">
+        <div class="overflow-hidden rounded-[2.4rem] border border-black/10 bg-white p-5 shadow-[0_30px_100px_rgba(12,10,9,.1)] md:p-8">
+            <div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <p class="text-[11px] font-black uppercase tracking-[0.22em] text-orange-500">Live delivery map</p>
+                    <h2 class="mt-2 text-4xl font-black tracking-[-0.06em]">Sprint in progress.</h2>
+                    <p class="mt-2 max-w-lg text-sm leading-6 text-gray-400">Every milestone, every blocker, every handoff — in one Gantt view. Drag, filter, and drill down to see where pressure is building.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-emerald-500"></span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-gray-400">done</span></div>
+                    <div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-blue-500"></span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-gray-400">active</span></div>
+                    <div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-red-500"></span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-gray-400">blocked</span></div>
+                    <div class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-gray-300"></span><span class="text-[10px] font-black uppercase tracking-[0.12em] text-gray-400">pending</span></div>
+                    <span class="rounded-full bg-[#0C0A09] px-3 py-1.5 text-[11px] font-black text-white">Week 3 / 6</span>
+                </div>
+            </div>
+
+            <div class="space-y-2.5">
+                <div class="gantt-row rounded-[1.3rem] border border-black/8 bg-[#FEFAF4] p-4">
+                    <div class="mb-2.5 flex items-center justify-between"><span class="text-sm font-black">Discovery &amp; scope</span><div class="flex items-center gap-2"><span class="grid h-6 w-6 place-items-center rounded-full bg-emerald-500 text-[9px] font-black text-white">MA</span><span class="font-mono text-xs font-black text-emerald-500">100%</span></div></div>
+                    <div class="h-2.5 overflow-hidden rounded-full bg-black/6"><div class="h-full w-full rounded-full bg-emerald-500 bar-fill"></div></div>
+                    <div class="mt-2 flex items-center gap-2 text-[10px] text-gray-400"><i data-lucide="calendar" class="h-3 w-3"></i>Jun 1 – Jun 14 &middot; 14 days &middot; <span class="font-black text-emerald-500">Completed</span></div>
+                </div>
+                <div class="gantt-row rounded-[1.3rem] border border-black/8 bg-[#FEFAF4] p-4">
+                    <div class="mb-2.5 flex items-center justify-between"><span class="text-sm font-black">Design system tokens</span><div class="flex items-center gap-2"><span class="grid h-6 w-6 place-items-center rounded-full bg-blue-500 text-[9px] font-black text-white">PR</span><span class="font-mono text-xs font-black text-blue-500">78%</span></div></div>
+                    <div class="h-2.5 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-blue-500 bar-fill" style="width:78%;animation-delay:.07s"></div></div>
+                    <div class="mt-2 flex items-center gap-2 text-[10px] text-gray-400"><i data-lucide="calendar" class="h-3 w-3"></i>Jun 15 – Jun 28 &middot; 14 days &middot; <span class="font-black text-blue-500">Active</span></div>
+                </div>
+                <div class="gantt-row rounded-[1.3rem] border border-black/8 bg-[#FEFAF4] p-4">
+                    <div class="mb-2.5 flex items-center justify-between"><span class="text-sm font-black">Milestone health widget</span><div class="flex items-center gap-2"><span class="grid h-6 w-6 place-items-center rounded-full bg-violet-500 text-[9px] font-black text-white">KA</span><span class="font-mono text-xs font-black text-violet-500">64%</span></div></div>
+                    <div class="h-2.5 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-violet-500 bar-fill" style="width:64%;animation-delay:.14s"></div></div>
+                    <div class="mt-2 flex items-center gap-2 text-[10px] text-gray-400"><i data-lucide="calendar" class="h-3 w-3"></i>Jun 18 – Jul 4 &middot; 16 days &middot; <span class="font-black text-violet-500">Active</span></div>
+                </div>
+                <div class="gantt-row rounded-[1.3rem] border border-black/8 bg-[#FEFAF4] p-4">
+                    <div class="mb-2.5 flex items-center justify-between"><span class="text-sm font-black">Calendar sync API</span><div class="flex items-center gap-2"><span class="grid h-6 w-6 place-items-center rounded-full bg-orange-500 text-[9px] font-black text-white">AR</span><span class="font-mono text-xs font-black text-orange-500">42%</span></div></div>
+                    <div class="h-2.5 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-orange-500 bar-fill" style="width:42%;animation-delay:.21s"></div></div>
+                    <div class="mt-2 flex items-center gap-2 text-[10px] text-gray-400"><i data-lucide="calendar" class="h-3 w-3"></i>Jun 22 – Jul 12 &middot; 20 days &middot; <span class="font-black text-orange-500">Active</span></div>
+                </div>
+                <div class="gantt-row rounded-[1.3rem] border border-red-200 bg-red-50 p-4">
+                    <div class="mb-2.5 flex items-center justify-between"><span class="text-sm font-black">QA gate pass</span><div class="flex items-center gap-2"><span class="grid h-6 w-6 place-items-center rounded-full bg-red-500 text-[9px] font-black text-white">NI</span><span class="font-mono text-xs font-black text-red-500">blocked</span></div></div>
+                    <div class="h-2.5 overflow-hidden rounded-full bg-red-100"></div>
+                    <p class="mt-2 text-xs font-bold text-red-500"><i data-lucide="alert-triangle" class="mr-1 inline h-3 w-3"></i>Blocked — needs manager review before sprint can close.</p>
+                </div>
+                <div class="gantt-row rounded-[1.3rem] border border-black/6 bg-white/60 p-4 opacity-60">
+                    <div class="mb-2.5 flex items-center justify-between"><span class="text-sm font-black text-gray-400">Client handoff notes</span><div class="flex items-center gap-2"><span class="grid h-6 w-6 place-items-center rounded-full bg-gray-300 text-[9px] font-black text-white">DE</span><span class="font-mono text-xs font-black text-gray-400">pending</span></div></div>
+                    <div class="h-2.5 overflow-hidden rounded-full bg-black/5"></div>
+                    <div class="mt-2 flex items-center gap-2 text-[10px] text-gray-400"><i data-lucide="clock" class="h-3 w-3"></i>Jul 15 – Jul 22 &middot; 7 days &middot; Not started</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Dark ticker ── -->
+    <section class="relative overflow-hidden border-y border-black/10 bg-[#0C0A09] py-3.5 text-white">
+        <div class="flex w-max gap-12 whitespace-nowrap text-xs font-black uppercase tracking-[0.22em]" style="animation:ff-tick 26s linear infinite">
+            <span>24 live projects</span><span class="text-orange-400">&bull;</span><span>137 active tasks</span><span class="text-orange-400">&bull;</span><span>18 dependency links</span><span class="text-orange-400">&bull;</span><span>7 risk signals</span><span class="text-orange-400">&bull;</span><span>4 launch gates</span><span class="text-orange-400">&bull;</span><span>92% handoff clarity</span><span class="text-orange-400">&bull;</span>
+            <span>24 live projects</span><span class="text-orange-400">&bull;</span><span>137 active tasks</span><span class="text-orange-400">&bull;</span><span>18 dependency links</span><span class="text-orange-400">&bull;</span><span>7 risk signals</span><span class="text-orange-400">&bull;</span><span>4 launch gates</span><span class="text-orange-400">&bull;</span><span>92% handoff clarity</span><span class="text-orange-400">&bull;</span>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         KANBAN BOARD PREVIEW
+         ════════════════════════════════════════════════════ -->
+    <section id="board" class="reveal relative mx-auto max-w-[96rem] px-5 py-10 sm:px-8 scroll-mt-20">
+        <p class="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-violet-600">Task board</p>
+        <h2 class="mb-3 text-5xl font-black tracking-[-0.07em]">Drag. Drop. Ship.</h2>
+        <p class="mb-8 max-w-2xl text-base leading-7 text-gray-500">Every task lives on a Kanban board with owners, priority, due dates, and attachments. Drag between lanes to move work forward.</p>
+
+        <div class="grid gap-4 lg:grid-cols-4">
+            <!-- Backlog -->
+            <div class="rounded-2xl border border-black/10 bg-gray-50 p-4">
+                <div class="mb-3 flex items-center justify-between"><span class="text-xs font-black uppercase tracking-[0.14em] text-gray-400">Backlog</span><span class="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-black text-gray-500">3</span></div>
+                <div class="space-y-2.5">
+                    <div class="kanban-card rounded-xl border border-black/8 bg-white p-3.5 shadow-sm"><p class="text-xs font-bold">Write onboarding flow spec</p><div class="mt-2 flex items-center justify-between"><span class="rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-black text-orange-600">medium</span><span class="grid h-5 w-5 place-items-center rounded-full bg-blue-500 text-[8px] font-black text-white">PR</span></div></div>
+                    <div class="kanban-card rounded-xl border border-black/8 bg-white p-3.5 shadow-sm"><p class="text-xs font-bold">Research calendar integrations</p><div class="mt-2 flex items-center justify-between"><span class="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-black text-gray-500">low</span><span class="grid h-5 w-5 place-items-center rounded-full bg-violet-500 text-[8px] font-black text-white">KA</span></div></div>
+                    <div class="kanban-card rounded-xl border border-black/8 bg-white p-3.5 shadow-sm"><p class="text-xs font-bold">Draft release note template</p><div class="mt-2 flex items-center justify-between"><span class="rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-black text-gray-500">low</span><span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-500 text-[8px] font-black text-white">DE</span></div></div>
+                </div>
+            </div>
+            <!-- In Progress -->
+            <div class="rounded-2xl border-2 border-blue-200 bg-blue-50/60 p-4">
+                <div class="mb-3 flex items-center justify-between"><span class="text-xs font-black uppercase tracking-[0.14em] text-blue-500">In progress</span><span class="rounded-full bg-blue-200 px-2 py-0.5 text-[10px] font-black text-blue-600">4</span></div>
+                <div class="space-y-2.5">
+                    <div class="kanban-card rounded-xl border border-blue-200 bg-white p-3.5 shadow-sm"><p class="text-xs font-bold">Build milestone health widget</p><div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/6"><div class="h-full w-[64%] rounded-full bg-blue-400"></div></div><div class="mt-2 flex items-center justify-between"><span class="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-black text-red-600">high</span><span class="grid h-5 w-5 place-items-center rounded-full bg-violet-500 text-[8px] font-black text-white">KA</span></div></div>
+                    <div class="kanban-card rounded-xl border border-blue-200 bg-white p-3.5 shadow-sm"><p class="text-xs font-bold">Design system token setup</p><div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/6"><div class="h-full w-[78%] rounded-full bg-blue-400"></div></div><div class="mt-2 flex items-center justify-between"><span class="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-black text-red-600">high</span><span class="grid h-5 w-5 place-items-center rounded-full bg-blue-500 text-[8px] font-black text-white">PR</span></div></div>
+                    <div class="kanban-card rounded-xl border border-blue-200 bg-white p-3.5 shadow-sm"><p class="text-xs font-bold">Calendar sync API v1</p><div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-black/6"><div class="h-full w-[42%] rounded-full bg-orange-400"></div></div><div class="mt-2 flex items-center justify-between"><span class="rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-black text-orange-600">medium</span><span class="grid h-5 w-5 place-items-center rounded-full bg-orange-500 text-[8px] font-black text-white">AR</span></div></div>
+                </div>
+            </div>
+            <!-- Review -->
+            <div class="rounded-2xl border border-black/10 bg-orange-50/50 p-4">
+                <div class="mb-3 flex items-center justify-between"><span class="text-xs font-black uppercase tracking-[0.14em] text-orange-500">Review</span><span class="rounded-full bg-orange-200 px-2 py-0.5 text-[10px] font-black text-orange-600">2</span></div>
+                <div class="space-y-2.5">
+                    <div class="kanban-card rounded-xl border border-orange-200 bg-white p-3.5 shadow-sm"><p class="text-xs font-bold">Sprint standup redesign</p><div class="mt-2 flex items-center justify-between"><span class="rounded bg-orange-100 px-1.5 py-0.5 text-[9px] font-black text-orange-600">medium</span><span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-500 text-[8px] font-black text-white">MA</span></div></div>
+                    <div class="kanban-card rounded-xl border border-red-200 bg-red-50 p-3.5 shadow-sm"><p class="text-xs font-bold">QA gate pass review</p><div class="mt-2 flex items-center gap-2"><span class="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-black text-red-600">blocked</span><span class="text-[9px] text-red-400">needs manager</span></div></div>
+                </div>
+            </div>
+            <!-- Done -->
+            <div class="rounded-2xl border border-black/10 bg-emerald-50/50 p-4">
+                <div class="mb-3 flex items-center justify-between"><span class="text-xs font-black uppercase tracking-[0.14em] text-emerald-500">Done</span><span class="rounded-full bg-emerald-200 px-2 py-0.5 text-[10px] font-black text-emerald-600">5</span></div>
+                <div class="space-y-2.5">
+                    <div class="kanban-card rounded-xl border border-emerald-200 bg-white p-3.5 shadow-sm opacity-80"><p class="text-xs font-bold text-gray-500 line-through">Discovery & scope brief</p><div class="mt-2 flex items-center justify-between"><span class="text-[9px] text-gray-400">Jun 14</span><span class="grid h-5 w-5 place-items-center rounded-full bg-emerald-500 text-[8px] font-black text-white">MA</span></div></div>
+                    <div class="kanban-card rounded-xl border border-emerald-200 bg-white p-3.5 shadow-sm opacity-80"><p class="text-xs font-bold text-gray-500 line-through">Dependency graph setup</p><div class="mt-2 flex items-center justify-between"><span class="text-[9px] text-gray-400">Jun 16</span><span class="grid h-5 w-5 place-items-center rounded-full bg-blue-500 text-[8px] font-black text-white">PR</span></div></div>
+                    <div class="kanban-card rounded-xl border border-emerald-200 bg-white p-3.5 shadow-sm opacity-80"><p class="text-xs font-bold text-gray-500 line-through">Notification rules engine</p><div class="mt-2 flex items-center justify-between"><span class="text-[9px] text-gray-400">Jun 18</span><span class="grid h-5 w-5 place-items-center rounded-full bg-orange-500 text-[8px] font-black text-white">AR</span></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         SPRINT VELOCITY + RISK
+         ════════════════════════════════════════════════════ -->
+    <section class="reveal relative mx-auto max-w-[96rem] px-5 pb-10 sm:px-8">
+        <p class="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-blue-500">Sprint visibility</p>
+        <h2 class="mb-7 text-5xl font-black tracking-[-0.07em]">Every sprint, measured.</h2>
+        <div class="grid gap-4 lg:grid-cols-[1fr_0.55fr]">
+            <div class="overflow-hidden rounded-[2rem] border border-black/10 bg-white p-5 shadow-[0_18px_60px_rgba(12,10,9,.07)] md:p-7">
+                <p class="mb-6 text-[11px] font-black uppercase tracking-[0.22em] text-gray-400">Sprint velocity history</p>
+                <div class="space-y-3.5">
+                    <div class="flex items-center gap-3"><span class="w-28 shrink-0 text-right text-xs font-bold text-gray-400">Sprint 1</span><div class="h-5 flex-1 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-emerald-500 bar-fill" style="width:82%"></div></div><span class="w-8 shrink-0 text-right text-xs font-black text-emerald-500">82%</span></div>
+                    <div class="flex items-center gap-3"><span class="w-28 shrink-0 text-right text-xs font-bold text-gray-400">Sprint 2</span><div class="h-5 flex-1 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-emerald-500 bar-fill" style="width:91%;animation-delay:.08s"></div></div><span class="w-8 shrink-0 text-right text-xs font-black text-emerald-500">91%</span></div>
+                    <div class="flex items-center gap-3"><span class="w-28 shrink-0 text-right text-xs font-bold text-gray-400">Sprint 3</span><div class="h-5 flex-1 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-orange-400 bar-fill" style="width:64%;animation-delay:.16s"></div></div><span class="w-8 shrink-0 text-right text-xs font-black text-orange-400">64%</span></div>
+                    <div class="flex items-center gap-3"><span class="w-28 shrink-0 text-right text-xs font-bold text-gray-400">Sprint 4</span><div class="h-5 flex-1 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-red-400 bar-fill" style="width:55%;animation-delay:.24s"></div></div><span class="w-8 shrink-0 text-right text-xs font-black text-red-400">55%</span></div>
+                    <div class="flex items-center gap-3"><span class="w-28 shrink-0 text-right text-xs font-bold text-gray-400">Sprint 5</span><div class="h-5 flex-1 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-blue-500 bar-fill" style="width:78%;animation-delay:.32s"></div></div><span class="w-8 shrink-0 text-right text-xs font-black text-blue-500">78%</span></div>
+                    <div class="flex items-center gap-3"><span class="w-28 shrink-0 text-right text-xs font-bold text-gray-400">Sprint 6 (live)</span><div class="h-5 flex-1 overflow-hidden rounded-full bg-black/6"><div class="h-full rounded-full bg-violet-500 bar-fill" style="width:38%;animation-delay:.4s"></div></div><span class="w-8 shrink-0 text-right text-xs font-black text-violet-500">38%</span></div>
+                </div>
+            </div>
+            <div class="flex flex-col gap-3">
+                <div class="rounded-[2rem] bg-[#0C0A09] p-5 text-white shadow-[0_24px_80px_rgba(12,10,9,.18)] md:p-6">
+                    <p class="mb-4 text-[11px] font-black uppercase tracking-[0.22em] text-white/40">Risk signals</p>
+                    <div class="space-y-2.5">
+                        <div class="flex items-center gap-3 rounded-[1rem] border border-white/8 p-3" style="background:rgba(239,68,68,.12)"><span class="h-2 w-2 shrink-0 rounded-full bg-red-400 tl-dot"></span><span class="flex-1 text-xs font-bold text-white/80">QA gate blocked</span><span class="text-[9px] font-black uppercase text-red-400">blocked</span></div>
+                        <div class="flex items-center gap-3 rounded-[1rem] border border-white/8 p-3" style="background:rgba(249,115,22,.12)"><span class="h-2 w-2 shrink-0 rounded-full bg-orange-400"></span><span class="flex-1 text-xs font-bold text-white/80">Calendar sync delayed</span><span class="text-[9px] font-black uppercase text-orange-400">at-risk</span></div>
+                        <div class="flex items-center gap-3 rounded-[1rem] border border-white/8 p-3" style="background:rgba(249,115,22,.12)"><span class="h-2 w-2 shrink-0 rounded-full bg-orange-400"></span><span class="flex-1 text-xs font-bold text-white/80">Resource gap &middot; week 4</span><span class="text-[9px] font-black uppercase text-orange-400">at-risk</span></div>
+                        <div class="flex items-center gap-3 rounded-[1rem] border border-white/8 p-3" style="background:rgba(156,163,175,.1)"><span class="h-2 w-2 shrink-0 rounded-full bg-gray-500"></span><span class="flex-1 text-xs font-bold text-white/80">Handoff notes pending</span><span class="text-[9px] font-black uppercase text-gray-500">pending</span></div>
+                    </div>
+                </div>
+                <div class="rounded-[2rem] border border-black/10 bg-white p-5 shadow-[0_18px_60px_rgba(12,10,9,.07)]">
+                    <p class="text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">Next milestone</p>
+                    <p class="mt-2 text-2xl font-black tracking-[-0.04em]">QA sign-off</p>
+                    <p class="mt-1 text-xs font-semibold text-gray-400">July 18 &middot; 6 days ahead of schedule</p>
+                    <div class="mt-3 h-2.5 overflow-hidden rounded-full bg-black/6"><div class="h-full w-[72%] rounded-full bg-emerald-500 bar-fill"></div></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         DELIVERY PHASES (TABBED)
+         ════════════════════════════════════════════════════ -->
+    <section class="reveal relative mx-auto max-w-[96rem] px-5 pb-10 sm:px-8">
+        <p class="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-orange-500">Delivery phases</p>
+        <h2 class="mb-3 text-5xl font-black tracking-[-0.07em]">Five moves. One clean ship.</h2>
+        <p class="mb-7 max-w-2xl text-base leading-7 text-gray-500">Every sprint runs through the same five phases — from scope lock to client handoff. Click a phase to explore what happens at each stage.</p>
+
+        <div class="overflow-hidden rounded-[2rem] border border-black/10 bg-white shadow-[0_24px_90px_rgba(12,10,9,.08)]">
+            <div id="flow-phase-tabs" class="flex overflow-x-auto border-b border-black/10"></div>
+            <div id="flow-phase-content" class="grid gap-5 p-5 md:p-7 lg:grid-cols-[1fr_10rem] lg:items-start"></div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         MODULES (EXPANDED)
+         ════════════════════════════════════════════════════ -->
+    <section id="modules" class="reveal relative mx-auto max-w-[96rem] px-5 pb-10 sm:px-8 scroll-mt-20">
+        <p class="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-emerald-600">Workspace modules</p>
+        <h2 class="mb-3 text-5xl font-black tracking-[-0.07em]">Six surfaces. One delivery rhythm.</h2>
+        <p class="mb-7 max-w-2xl text-base leading-7 text-gray-500">Each module focuses on one job — dashboards, task boards, timelines, messaging, risk detection, and resource allocation. Together they form a complete delivery operating system.</p>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <article class="module-card rounded-[1.8rem] border border-black/10 bg-white p-6 shadow-[0_12px_50px_rgba(12,10,9,.05)]">
+                <i data-lucide="panel-top" class="card-icon mb-4 h-7 w-7 text-orange-500 transition-colors duration-300"></i>
+                <h3 class="text-xl font-black text-[#0C0A09] transition-colors duration-300">Delivery dashboard</h3>
+                <p class="mt-2 text-sm leading-6 text-gray-500 transition-colors duration-300">Health, velocity, overdue work, blocked tasks, milestone drift — all in one surface. Configurable widgets let teams build the view they need.</p>
+                <div class="mt-4 flex flex-wrap gap-1.5">
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">widgets</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">filters</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">export</span>
+                </div>
+            </article>
+            <article class="module-card rounded-[1.8rem] border border-black/10 bg-white p-6 shadow-[0_12px_50px_rgba(12,10,9,.05)]">
+                <i data-lucide="kanban-square" class="card-icon mb-4 h-7 w-7 text-orange-500 transition-colors duration-300"></i>
+                <h3 class="text-xl font-black text-[#0C0A09] transition-colors duration-300">Task board</h3>
+                <p class="mt-2 text-sm leading-6 text-gray-500 transition-colors duration-300">Kanban lanes with drag-and-drop, multi-select bulk actions, and swimlane grouping by owner, sprint, or priority level.</p>
+                <div class="mt-4 flex flex-wrap gap-1.5">
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">drag & drop</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">swimlanes</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">bulk ops</span>
+                </div>
+            </article>
+            <article class="module-card rounded-[1.8rem] border border-black/10 bg-white p-6 shadow-[0_12px_50px_rgba(12,10,9,.05)]">
+                <i data-lucide="calendar-days" class="card-icon mb-4 h-7 w-7 text-orange-500 transition-colors duration-300"></i>
+                <h3 class="text-xl font-black text-[#0C0A09] transition-colors duration-300">Timeline studio</h3>
+                <p class="mt-2 text-sm leading-6 text-gray-500 transition-colors duration-300">Milestone windows, release dates, sprint boundaries, and meeting markers on a Gantt timeline with dependency arrows.</p>
+                <div class="mt-4 flex flex-wrap gap-1.5">
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">Gantt</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">deps</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">calendar sync</span>
+                </div>
+            </article>
+            <article class="module-card rounded-[1.8rem] border border-black/10 bg-white p-6 shadow-[0_12px_50px_rgba(12,10,9,.05)]">
+                <i data-lucide="message-square-text" class="card-icon mb-4 h-7 w-7 text-orange-500 transition-colors duration-300"></i>
+                <h3 class="text-xl font-black text-[#0C0A09] transition-colors duration-300">Team inbox</h3>
+                <p class="mt-2 text-sm leading-6 text-gray-500 transition-colors duration-300">Mentions, decision threads, client updates, and delivery conversations — all threaded and linked to the task they belong to.</p>
+                <div class="mt-4 flex flex-wrap gap-1.5">
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">threads</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">mentions</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">linked</span>
+                </div>
+            </article>
+            <article class="module-card rounded-[1.8rem] border border-black/10 bg-white p-6 shadow-[0_12px_50px_rgba(12,10,9,.05)]">
+                <i data-lucide="radar" class="card-icon mb-4 h-7 w-7 text-orange-500 transition-colors duration-300"></i>
+                <h3 class="text-xl font-black text-[#0C0A09] transition-colors duration-300">Risk radar</h3>
+                <p class="mt-2 text-sm leading-6 text-gray-500 transition-colors duration-300">Overdue dependencies, capacity pressure, and blocked milestone progress auto-surface as risk signals with severity levels.</p>
+                <div class="mt-4 flex flex-wrap gap-1.5">
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">auto-detect</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">severity</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">alerts</span>
+                </div>
+            </article>
+            <article class="module-card rounded-[1.8rem] border border-black/10 bg-white p-6 shadow-[0_12px_50px_rgba(12,10,9,.05)]">
+                <i data-lucide="users-round" class="card-icon mb-4 h-7 w-7 text-orange-500 transition-colors duration-300"></i>
+                <h3 class="text-xl font-black text-[#0C0A09] transition-colors duration-300">Resource map</h3>
+                <p class="mt-2 text-sm leading-6 text-gray-500 transition-colors duration-300">Ownership gaps, workload pressure, contributor allocation, and utilization rates visualized as heatmaps and load bars.</p>
+                <div class="mt-4 flex flex-wrap gap-1.5">
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">heatmap</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">utilization</span>
+                    <span class="rounded-full border border-black/8 px-2.5 py-1 text-[9px] font-bold text-gray-400">gaps</span>
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         INTEGRATIONS
+         ════════════════════════════════════════════════════ -->
+    <section class="reveal relative mx-auto max-w-[96rem] px-5 pb-10 sm:px-8">
+        <p class="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-violet-600">Integrations</p>
+        <h2 class="mb-3 text-5xl font-black tracking-[-0.07em]">Plugs into what you already use.</h2>
+        <p class="mb-7 max-w-2xl text-base leading-7 text-gray-500">Connect delivery data to your existing toolchain. Two-way sync keeps context flowing without switching tabs.</p>
+        <div class="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+            <div class="int-card flex items-center gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0C0A09]"><i data-lucide="github" class="h-5 w-5 text-white"></i></div>
+                <div><p class="text-sm font-black">GitHub</p><p class="text-[10px] text-gray-400">PR → task sync</p></div>
+            </div>
+            <div class="int-card flex items-center gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-500"><i data-lucide="slack" class="h-5 w-5 text-white"></i></div>
+                <div><p class="text-sm font-black">Slack</p><p class="text-[10px] text-gray-400">Standup + alerts</p></div>
+            </div>
+            <div class="int-card flex items-center gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500"><i data-lucide="calendar" class="h-5 w-5 text-white"></i></div>
+                <div><p class="text-sm font-black">Google Calendar</p><p class="text-[10px] text-gray-400">Meeting → milestone</p></div>
+            </div>
+            <div class="int-card flex items-center gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500"><i data-lucide="figma" class="h-5 w-5 text-white"></i></div>
+                <div><p class="text-sm font-black">Figma</p><p class="text-[10px] text-gray-400">Design → task link</p></div>
+            </div>
+            <div class="int-card flex items-center gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-500"><i data-lucide="send" class="h-5 w-5 text-white"></i></div>
+                <div><p class="text-sm font-black">Email</p><p class="text-[10px] text-gray-400">Client handoff</p></div>
+            </div>
+            <div class="int-card flex items-center gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500"><i data-lucide="webhook" class="h-5 w-5 text-white"></i></div>
+                <div><p class="text-sm font-black">Webhooks</p><p class="text-[10px] text-gray-400">Custom triggers</p></div>
+            </div>
+            <div class="int-card flex items-center gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-500"><i data-lucide="circle-play" class="h-5 w-5 text-white"></i></div>
+                <div><p class="text-sm font-black">CI/CD</p><p class="text-[10px] text-gray-400">Build → milestone</p></div>
+            </div>
+            <div class="int-card flex items-center gap-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0C0A09]"><i data-lucide="plug" class="h-5 w-5 text-white"></i></div>
+                <div><p class="text-sm font-black">REST API</p><p class="text-[10px] text-gray-400">Full access</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         DATA MODEL + API
+         ════════════════════════════════════════════════════ -->
+    <section id="data" class="reveal relative mx-auto max-w-[96rem] px-5 pb-10 sm:px-8 scroll-mt-20">
+        <p class="mb-2 text-[11px] font-black uppercase tracking-[0.24em] text-gray-400">Data model</p>
+        <h2 class="mb-3 text-5xl font-black tracking-[-0.07em]">Primary records &amp; API.</h2>
+        <p class="mb-7 max-w-2xl text-base leading-7 text-gray-500">Every delivery object has a clear schema, write endpoint, and webhook event. Build automations on top of a predictable data layer.</p>
+
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_28rem]">
+            <div class="overflow-hidden rounded-[2rem] border border-black/10 bg-white shadow-[0_18px_60px_rgba(12,10,9,.07)]">
+                <div class="border-b border-black/10 p-5 flex items-center gap-3">
+                    <i data-lucide="database" class="h-5 w-5 text-orange-500"></i>
+                    <h3 class="text-xl font-black">Delivery data map</h3>
+                </div>
+                <table class="w-full text-sm">
+                    <thead><tr class="border-b border-black/8 text-[10px] font-black uppercase tracking-[0.16em] text-gray-400"><th class="px-5 py-3 text-left">Object</th><th class="px-5 py-3 text-left">Description</th><th class="px-5 py-3 text-left">Webhook</th></tr></thead>
+                    <tbody class="divide-y divide-black/6">
+                        <tr class="transition hover:bg-orange-50"><td class="px-5 py-3 font-black text-orange-500">Project</td><td class="px-5 py-3 text-xs text-gray-500">Scope, owners, client, timeline, status, and budget.</td><td class="px-5 py-3"><code class="text-[10px] text-gray-400">project.*</code></td></tr>
+                        <tr class="transition hover:bg-orange-50"><td class="px-5 py-3 font-black text-blue-500">Task</td><td class="px-5 py-3 text-xs text-gray-500">Assignee, priority, due date, status, checklist, comments.</td><td class="px-5 py-3"><code class="text-[10px] text-gray-400">task.*</code></td></tr>
+                        <tr class="transition hover:bg-orange-50"><td class="px-5 py-3 font-black text-violet-500">Milestone</td><td class="px-5 py-3 text-xs text-gray-500">Checkpoint grouping tasks, showing delivery pace.</td><td class="px-5 py-3"><code class="text-[10px] text-gray-400">milestone.*</code></td></tr>
+                        <tr class="transition hover:bg-orange-50"><td class="px-5 py-3 font-black text-emerald-500">Meeting</td><td class="px-5 py-3 text-xs text-gray-500">Scheduled event with participants and follow-ups.</td><td class="px-5 py-3"><code class="text-[10px] text-gray-400">meeting.*</code></td></tr>
+                        <tr class="transition hover:bg-orange-50"><td class="px-5 py-3 font-black text-red-500">Risk</td><td class="px-5 py-3 text-xs text-gray-500">Blocker or signal needing attention before slip.</td><td class="px-5 py-3"><code class="text-[10px] text-gray-400">risk.*</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="overflow-hidden rounded-[2rem] border border-black/10 bg-white shadow-[0_18px_60px_rgba(12,10,9,.07)]">
+                <div class="border-b border-black/10 p-5">
+                    <div class="flex items-center justify-between"><div class="flex items-center gap-2"><i data-lucide="code-2" class="h-5 w-5 text-violet-500"></i><p class="text-sm font-black">API sample</p></div><span class="rounded-full bg-black/6 px-3 py-1 font-mono text-[11px] font-bold text-gray-400">sdk.js</span></div>
+                    <h3 class="mt-3 text-xl font-black">Automate delivery context.</h3>
+                    <p class="mt-2 text-xs leading-5 text-gray-500">Tasks, projects, milestones, and risks all have full CRUD endpoints with webhook events on every mutation.</p>
+                </div>
+                <div class="bg-[#0C0A09] p-5">
+                    <pre class="overflow-x-auto text-xs leading-7 text-emerald-300"><code>const task = await flow.tasks.create({
+  projectId: 'proj_fudgeflow_42',
+  title: 'Build milestone health widget',
+  assignee: 'delivery@webfudge.com',
+  priority: 'high',
+  dueDate: '2026-07-18',
+  checklist: [
+    'Design states',
+    'Connect API',
+    'QA edge cases'
+  ]
+});
+
+// Result:
+// { id: 'tsk_8xmQ4a', status: 'open',
+//   createdAt: '2026-06-27T09:00:00Z' }</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         LAUNCH CHECKLIST
+         ════════════════════════════════════════════════════ -->
+    <section id="launch" class="reveal relative mx-auto max-w-[96rem] px-5 pb-12 sm:px-8 scroll-mt-20">
+        <div class="overflow-hidden rounded-[2.4rem] bg-[#0C0A09] text-white">
+            <div class="grid lg:grid-cols-[0.50fr_1.50fr]">
+                <div class="relative border-r border-white/10 p-7 md:p-9">
+                    <div class="absolute right-0 top-0 h-48 w-48 rounded-full bg-orange-500/20 blur-3xl"></div>
+                    <div class="absolute bottom-0 left-0 h-36 w-36 rounded-full bg-violet-500/15 blur-3xl"></div>
+                    <i data-lucide="check-circle-2" class="relative mb-8 h-9 w-9 text-emerald-400"></i>
+                    <p class="relative text-[11px] font-black uppercase tracking-[0.22em] text-white/40">Before go-live</p>
+                    <h2 class="relative mt-3 text-5xl font-black leading-[0.95] tracking-[-0.07em]">Make the handoff feel calm.</h2>
+                    <p class="relative mt-5 text-sm leading-7 text-white/45">Five steps between your last task and a clean client handoff. Run them before the code ships.</p>
+                </div>
+                <div class="p-5 md:p-7">
+                    <div class="grid gap-3">
+                        <div class="flex items-start gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.055] p-4"><span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-500 text-xs font-black text-white">1</span><div><p class="text-sm font-bold text-white/85">Create team roles</p><p class="mt-1 text-xs text-white/45">Admins, project managers, delivery owners, and contributors — each with scoped permissions.</p></div></div>
+                        <div class="flex items-start gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.055] p-4"><span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-500 text-xs font-black text-white">2</span><div><p class="text-sm font-bold text-white/85">Configure workspace</p><p class="mt-1 text-xs text-white/45">Project statuses, task lanes, priority rules, milestone naming conventions, and notification policies.</p></div></div>
+                        <div class="flex items-start gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.055] p-4"><span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-500 text-xs font-black text-white">3</span><div><p class="text-sm font-bold text-white/85">Prepare templates</p><p class="mt-1 text-xs text-white/45">Discovery, implementation, QA, launch, and support phase templates for rapid project spin-up.</p></div></div>
+                        <div class="flex items-start gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.055] p-4"><span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-500 text-xs font-black text-white">4</span><div><p class="text-sm font-bold text-white/85">Connect integrations</p><p class="mt-1 text-xs text-white/45">Calendar, inbox, CI/CD, meeting, and task notification flows — two-way sync across your toolchain.</p></div></div>
+                        <div class="flex items-start gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.055] p-4"><span class="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-orange-500 text-xs font-black text-white">5</span><div><p class="text-sm font-bold text-white/85">Review handoff rules</p><p class="mt-1 text-xs text-white/45">Client visibility, file handling, audit trails, and approval workflows — verified before the first sprint begins.</p></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════
+         SCRIPTS
+         ════════════════════════════════════════════════════ -->
+    <script>
+        lucide.createIcons();
+
+        // ── Phase tabs ──
+        const ffPhases = [
+            {num:'01',label:'Scope',color:'#F97316',stat:'24',statLabel:'avg tasks per sprint',headline:'Shape every sprint before it starts.',body:'Goals, owners, acceptance criteria, and delivery windows become a single brief every contributor reads before the first task is created.',tasks:['Write project brief','Define scope boundaries','Assign owner roster','Set acceptance criteria','Agree delivery window','Lock sprint commitment']},
+            {num:'02',label:'Sequence',color:'#8B5CF6',stat:'18',statLabel:'avg dependency links',headline:'Connect work before motion starts.',body:'Milestones, blockers, handoffs, and due dates form a dependency graph that shows what must move first and where pressure is building.',tasks:['Map task dependencies','Set milestone dates','Link blocker chains','Create handoff points','Mark critical path','Review resource conflicts']},
+            {num:'03',label:'Execute',color:'#3B82F6',stat:'137',statLabel:'active tasks',headline:'Track every task in flight.',body:'Assignments, priority, progress, comments, files, and checklists stay attached to the work — not scattered across threads and inboxes.',tasks:['Run daily standup view','Update task progress','Log blockers early','Review sprint velocity','Attach files & comments','Track checklist items']},
+            {num:'04',label:'Review',color:'#EF4444',stat:'7',statLabel:'risk signals tracked',headline:'Catch drift before it becomes a delay.',body:'Risk signals, QA gates, stale updates, and overdue blockers surface before they miss the milestone — not after the damage is done.',tasks:['Review risk radar','Run QA checklist','Resolve stale tasks','Manager sign-off','Check dependency health','Validate milestone pace']},
+            {num:'05',label:'Release',color:'#10B981',stat:'92%',statLabel:'handoff clarity score',headline:'Ship with proof, not hope.',body:'Launch notes, handoffs, client approvals, and support context close the delivery loop so nothing disappears after the code ships.',tasks:['Write release notes','Record client handoff','Log approval decisions','Archive sprint context','Export delivery report','Close project cleanly']},
+        ];
+        let ffOpen = 0;
+        function ffSetPhase(i) {
+            ffOpen = i; const p = ffPhases[i];
+            document.getElementById('flow-phase-tabs').innerHTML = ffPhases.map((ph,idx) => `<button onclick="ffSetPhase(${idx})" class="flex-1 min-w-[5rem] py-4 text-center text-xs font-black uppercase tracking-[0.14em] transition duration-200" style="color:${idx===i?ph.color:'#9CA3AF'};border-bottom:2.5px solid ${idx===i?ph.color:'transparent'}">${ph.label}</button>`).join('');
+            document.getElementById('flow-phase-content').innerHTML = `<div><p class="text-[11px] font-black uppercase tracking-[0.24em]" style="color:${p.color}">${p.num} &middot; ${p.label}</p><h3 class="mt-2 text-3xl font-black tracking-[-0.055em] text-[#0C0A09]">${p.headline}</h3><p class="mt-3 max-w-2xl text-sm leading-7 text-gray-500">${p.body}</p><div class="mt-5 grid gap-2 sm:grid-cols-2">${p.tasks.map(t=>`<div class="flex items-center gap-2 text-sm font-semibold text-[#0C0A09]"><span class="h-1.5 w-1.5 flex-shrink-0 rounded-full" style="background:${p.color}"></span>${t}</div>`).join('')}</div></div><div class="flex flex-col items-center justify-center rounded-[1.5rem] border border-black/10 bg-[#FEFAF4] px-5 py-6 text-center"><span class="text-5xl font-black tracking-[-0.05em]" style="color:${p.color}">${p.stat}</span><span class="mt-2 text-[10px] font-black uppercase tracking-[0.18em] text-gray-400">${p.statLabel}</span></div>`;
+        }
+        ffSetPhase(0);
+
+        // ── Scroll reveal ──
+        const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add('active'); }), { threshold: 0.06 });
+        document.querySelectorAll('.reveal').forEach((el, i) => setTimeout(() => obs.observe(el), i * 80));
+
+        // ── Animated counters ──
+        const counterObs = new IntersectionObserver(es => {
+            es.forEach(e => {
+                if (!e.isIntersecting) return;
+                const el = e.target;
+                const target = +el.dataset.target;
+                const suffix = el.dataset.suffix || '';
+                let current = 0;
+                const step = Math.max(1, Math.floor(target / 40));
+                const timer = setInterval(() => {
+                    current += step;
+                    if (current >= target) { current = target; clearInterval(timer); }
+                    el.textContent = current.toLocaleString() + suffix;
+                }, 35);
+                counterObs.unobserve(el);
+            });
+        }, { threshold: 0.5 });
+        document.querySelectorAll('.counter').forEach(el => counterObs.observe(el));
+
+        // ── Pipeline SVG animation ──
+        const pipeObs = new IntersectionObserver(es => {
+            es.forEach(e => {
+                if (!e.isIntersecting) return;
+                e.target.querySelectorAll('.pipe-line, .pipe-node').forEach(el => el.classList.add('active'));
+                pipeObs.unobserve(e.target);
+            });
+        }, { threshold: 0.3 });
+        const psvg = document.getElementById('pipeline-svg');
+        if (psvg) pipeObs.observe(psvg);
+    </script>
+</body>
+</html>
