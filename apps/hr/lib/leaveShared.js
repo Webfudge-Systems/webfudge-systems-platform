@@ -72,6 +72,7 @@ export function computeLeaveBalances(employees = [], requests = [], year = new D
       return {
         employeeId: key,
         employeeName: employee.name || 'Employee',
+        employeeCode: employee.employeeId || '',
         department: employee.department || '—',
         cl: Math.max(0, (POLICY_ENTITLEMENTS['Casual Leave'] || 0) - used.cl),
         sl: Math.max(0, (POLICY_ENTITLEMENTS['Sick Leave'] || 0) - used.sl),
@@ -107,7 +108,7 @@ export function computeEmployeeLeaveBalanceRows(employee, requests = [], year = 
   })
 }
 
-export function getApprovedLeavesThisWeek(requests = [], referenceDate = new Date()) {
+export function getApprovedLeavesThisWeekRows(requests = [], referenceDate = new Date()) {
   const start = new Date(referenceDate)
   start.setHours(0, 0, 0, 0)
   const day = start.getDay()
@@ -125,10 +126,13 @@ export function getApprovedLeavesThisWeek(requests = [], referenceDate = new Dat
       if (Number.isNaN(from.getTime())) return false
       return from <= end && to >= start
     })
-    .map((row) => ({
-      name: row.employeeName,
-      detail: `${row.type.replace(' Leave', '')} · ${row.from}${row.to && row.to !== row.from ? ` – ${row.to}` : ''}`,
-    }))
+}
+
+export function getApprovedLeavesThisWeek(requests = [], referenceDate = new Date()) {
+  return getApprovedLeavesThisWeekRows(requests, referenceDate).map((row) => ({
+    name: row.employeeName,
+    detail: `${row.type.replace(' Leave', '')} · ${row.from}${row.to && row.to !== row.from ? ` – ${row.to}` : ''}`,
+  }))
 }
 
 export const LEAVE_UPDATED_EVENT = 'hr-leave-updated'

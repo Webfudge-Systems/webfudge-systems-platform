@@ -7,27 +7,19 @@ import {
   XCircle,
   CalendarDays,
   Plus,
-  Calendar,
-  FileText,
   Palmtree,
-  Eye,
-  Trash2,
-  Check,
-  X,
+  FileText,
 } from 'lucide-react'
 import {
   Button,
   Table,
   KPICard,
   TabsWithActions,
-  TableCellCreated,
-  TableCellOrangePill,
   TableEmptyBelow,
   TableColumnPicker,
   TableSortDropdown,
   useTableColumnPreferences,
   useTableSort,
-  Card,
   Modal,
   TableResultsCount,
 } from '@webfudge/ui'
@@ -37,26 +29,29 @@ import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
 import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import {
-  LeaveEmployeeCell,
-  LeaveBalanceEmployeeCell,
-  LeaveTypeCell,
-  LeaveTextCell,
-  LeaveStatusPill,
-} from '../../../components/leave/LeaveTableCells'
-import CreateLeaveRequestModal from '../../../components/leave/CreateLeaveRequestModal'
-import LeaveRequestDetailModal from '../../../components/leave/LeaveRequestDetailModal'
+  buildLeaveRequestColumns,
+  buildLeaveBalanceColumns,
+  buildLeavePolicyColumns,
+  resolveVisibleLeaveColumns,
+} from '../../../components/leave/leaveTableColumns'
+import LeaveCalendarView from '../../../components/leave/LeaveCalendarView'
 import {
   computeLeaveStats,
   filterLeaveRequests,
   filterLeaveBalances,
+  filterLeavePolicies,
   getLeaveTabItems,
   leaveRequestSortValue,
+  leaveBalanceSortValue,
+  leavePolicySortValue,
 } from '../../../lib/leavePage'
+import CreateLeaveRequestModal from '../../../components/leave/CreateLeaveRequestModal'
+import LeaveRequestDetailModal from '../../../components/leave/LeaveRequestDetailModal'
+import { filterLeaveCalendarRequests } from '../../../lib/leaveCalendar'
 import {
   DEFAULT_LEAVE_POLICIES,
   LEAVE_UPDATED_EVENT,
   computeLeaveBalances,
-  getApprovedLeavesThisWeek,
   notifyLeaveUpdated,
 } from '../../../lib/leaveShared'
 import {
@@ -70,10 +65,20 @@ import {
 import { listSyncedEmployees } from '../../../lib/employeeSyncService'
 import { HR_ROOT_BREADCRUMB } from '../../../lib/pageHeader'
 
-const TABLE_SORT_STORAGE_KEY = 'hr.leave.requests.tableSort'
-const COLUMN_VISIBILITY_STORAGE_KEY = 'hr.leave.requests.tableColumnVisibility'
-const COLUMN_ORDER_STORAGE_KEY = 'hr.leave.requests.tableColumnOrder'
-const COLUMN_WIDTHS_STORAGE_KEY = 'hr.leave.requests.tableColumnWidths'
+const REQUEST_SORT_STORAGE_KEY = 'hr.leave.requests.tableSort'
+const REQUEST_COLUMN_VISIBILITY_STORAGE_KEY = 'hr.leave.requests.tableColumnVisibility'
+const REQUEST_COLUMN_ORDER_STORAGE_KEY = 'hr.leave.requests.tableColumnOrder'
+const REQUEST_COLUMN_WIDTHS_STORAGE_KEY = 'hr.leave.requests.tableColumnWidths'
+
+const BALANCE_SORT_STORAGE_KEY = 'hr.leave.balances.tableSort'
+const BALANCE_COLUMN_VISIBILITY_STORAGE_KEY = 'hr.leave.balances.tableColumnVisibility'
+const BALANCE_COLUMN_ORDER_STORAGE_KEY = 'hr.leave.balances.tableColumnOrder'
+const BALANCE_COLUMN_WIDTHS_STORAGE_KEY = 'hr.leave.balances.tableColumnWidths'
+
+const POLICY_SORT_STORAGE_KEY = 'hr.leave.policies.tableSort'
+const POLICY_COLUMN_VISIBILITY_STORAGE_KEY = 'hr.leave.policies.tableColumnVisibility'
+const POLICY_COLUMN_ORDER_STORAGE_KEY = 'hr.leave.policies.tableColumnOrder'
+const POLICY_COLUMN_WIDTHS_STORAGE_KEY = 'hr.leave.policies.tableColumnWidths'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
@@ -82,7 +87,7 @@ const STATUS_OPTIONS = [
   { value: 'Rejected', label: 'Rejected' },
 ]
 
-const DEFAULT_COLUMN_WIDTHS = {
+const REQUEST_DEFAULT_COLUMN_WIDTHS = {
   employee: 260,
   type: 150,
   from: 130,
@@ -92,9 +97,26 @@ const DEFAULT_COLUMN_WIDTHS = {
   actions: 160,
 }
 
+const BALANCE_DEFAULT_COLUMN_WIDTHS = {
+  employee: 260,
+  cl: 90,
+  sl: 90,
+  pl: 90,
+  compOff: 120,
+  lop: 90,
+}
+
+const POLICY_DEFAULT_COLUMN_WIDTHS = {
+  name: 220,
+  type: 120,
+  entitlement: 140,
+  carryForward: 150,
+  encashable: 120,
+}
+
 const MIN_COLUMN_WIDTHS = { actions: 140 }
 
-const TOGGLEABLE_COLUMNS = [
+const REQUEST_TOGGLEABLE_COLUMNS = [
   { key: 'type', label: 'Leave type' },
   { key: 'from', label: 'From date' },
   { key: 'to', label: 'To date' },
@@ -102,9 +124,47 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'status', label: 'Status' },
 ]
 
-const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => ({ ...acc, [key]: true }), {})
-const SORT_COLUMN_OPTIONS = [{ key: 'employee', label: 'Employee' }, ...TOGGLEABLE_COLUMNS]
-const SORTABLE_KEYS = SORT_COLUMN_OPTIONS.map((c) => c.key)
+const BALANCE_TOGGLEABLE_COLUMNS = [
+  { key: 'cl', label: 'Casual leave' },
+  { key: 'sl', label: 'Sick leave' },
+  { key: 'pl', label: 'Privilege leave' },
+  { key: 'compOff', label: 'Comp-off' },
+  { key: 'lop', label: 'LOP' },
+]
+
+const POLICY_TOGGLEABLE_COLUMNS = [
+  { key: 'type', label: 'Type' },
+  { key: 'entitlement', label: 'Entitlement' },
+  { key: 'carryForward', label: 'Carry forward' },
+  { key: 'encashable', label: 'Encashable' },
+]
+
+const REQUEST_DEFAULT_COLUMN_VISIBILITY = REQUEST_TOGGLEABLE_COLUMNS.reduce(
+  (acc, { key }) => ({ ...acc, [key]: true }),
+  {},
+)
+const BALANCE_DEFAULT_COLUMN_VISIBILITY = BALANCE_TOGGLEABLE_COLUMNS.reduce(
+  (acc, { key }) => ({ ...acc, [key]: true }),
+  {},
+)
+const POLICY_DEFAULT_COLUMN_VISIBILITY = POLICY_TOGGLEABLE_COLUMNS.reduce(
+  (acc, { key }) => ({ ...acc, [key]: true }),
+  {},
+)
+
+const REQUEST_SORT_COLUMN_OPTIONS = [{ key: 'employee', label: 'Employee' }, ...REQUEST_TOGGLEABLE_COLUMNS]
+const BALANCE_SORT_COLUMN_OPTIONS = [{ key: 'employee', label: 'Employee' }, ...BALANCE_TOGGLEABLE_COLUMNS]
+const POLICY_SORT_COLUMN_OPTIONS = [{ key: 'name', label: 'Policy' }, ...POLICY_TOGGLEABLE_COLUMNS]
+
+const REQUEST_SORTABLE_KEYS = REQUEST_SORT_COLUMN_OPTIONS.map((c) => c.key)
+const BALANCE_SORTABLE_KEYS = BALANCE_SORT_COLUMN_OPTIONS.map((c) => c.key)
+const POLICY_SORTABLE_KEYS = POLICY_SORT_COLUMN_OPTIONS.map((c) => c.key)
+
+const REQUEST_REORDERABLE_KEYS = REQUEST_TOGGLEABLE_COLUMNS.map((c) => c.key)
+const BALANCE_REORDERABLE_KEYS = BALANCE_TOGGLEABLE_COLUMNS.map((c) => c.key)
+const POLICY_REORDERABLE_KEYS = POLICY_TOGGLEABLE_COLUMNS.map((c) => c.key)
+
+const DATA_TABLE_TABS = new Set(['requests', 'balances', 'policies'])
 
 export default function LeavePage() {
   const [activeTab, setActiveTab] = useState('requests')
@@ -155,12 +215,27 @@ export default function LeavePage() {
   )
 
   const stats = useMemo(() => computeLeaveStats(requests), [requests])
-  const tabItems = useMemo(
-    () => getLeaveTabItems({ requests, balances, policies: DEFAULT_LEAVE_POLICIES }),
-    [requests, balances],
+
+  const calendarLeaveRows = useMemo(
+    () => filterLeaveCalendarRequests(requests, searchQuery),
+    [requests, searchQuery],
   )
 
-  const onLeaveThisWeek = useMemo(() => getApprovedLeavesThisWeek(requests), [requests])
+  const calendarTabCount = useMemo(
+    () => filterLeaveCalendarRequests(requests, '').length,
+    [requests],
+  )
+
+  const tabItems = useMemo(
+    () =>
+      getLeaveTabItems({
+        requests,
+        balances,
+        policies: DEFAULT_LEAVE_POLICIES,
+        calendarCount: calendarTabCount,
+      }),
+    [requests, balances, calendarTabCount],
+  )
 
   const {
     columnVisibility,
@@ -178,12 +253,60 @@ export default function LeavePage() {
     resetColumnTablePreferences,
     tableResizeProps,
   } = useTableColumnPreferences({
-    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
-    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
-    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
-    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
-    reorderableKeys: TOGGLEABLE_COLUMNS.map((c) => c.key),
-    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    visibilityStorageKey: REQUEST_COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: REQUEST_COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: REQUEST_COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: REQUEST_DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REQUEST_REORDERABLE_KEYS,
+    defaultWidths: REQUEST_DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  })
+
+  const {
+    columnVisibility: balanceColumnVisibility,
+    columnOrder: balanceColumnOrder,
+    columnPickerOpen: balanceColumnPickerOpen,
+    setColumnPickerOpen: setBalanceColumnPickerOpen,
+    columnDropIndicator: balanceColumnDropIndicator,
+    setColumnVisible: setBalanceColumnVisible,
+    handleColumnDragStart: handleBalanceColumnDragStart,
+    handleColumnDragEnd: handleBalanceColumnDragEnd,
+    handleColumnRowDragOver: handleBalanceColumnRowDragOver,
+    handleColumnListDragLeave: handleBalanceColumnListDragLeave,
+    handleColumnDrop: handleBalanceColumnDrop,
+    resetColumnTablePreferences: resetBalanceColumnTablePreferences,
+    tableResizeProps: balanceTableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: BALANCE_COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: BALANCE_COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: BALANCE_COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: BALANCE_DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: BALANCE_REORDERABLE_KEYS,
+    defaultWidths: BALANCE_DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  })
+
+  const {
+    columnVisibility: policyColumnVisibility,
+    columnOrder: policyColumnOrder,
+    columnPickerOpen: policyColumnPickerOpen,
+    setColumnPickerOpen: setPolicyColumnPickerOpen,
+    columnDropIndicator: policyColumnDropIndicator,
+    setColumnVisible: setPolicyColumnVisible,
+    handleColumnDragStart: handlePolicyColumnDragStart,
+    handleColumnDragEnd: handlePolicyColumnDragEnd,
+    handleColumnRowDragOver: handlePolicyColumnRowDragOver,
+    handleColumnListDragLeave: handlePolicyColumnListDragLeave,
+    handleColumnDrop: handlePolicyColumnDrop,
+    resetColumnTablePreferences: resetPolicyColumnTablePreferences,
+    tableResizeProps: policyTableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: POLICY_COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: POLICY_COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: POLICY_COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: POLICY_DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: POLICY_REORDERABLE_KEYS,
+    defaultWidths: POLICY_DEFAULT_COLUMN_WIDTHS,
     minWidths: MIN_COLUMN_WIDTHS,
   })
 
@@ -198,7 +321,33 @@ export default function LeavePage() {
     moveSortRule,
     clearSort,
     maxRules: sortMaxRules,
-  } = useTableSort({ storageKey: TABLE_SORT_STORAGE_KEY })
+  } = useTableSort({ storageKey: REQUEST_SORT_STORAGE_KEY })
+
+  const {
+    sortRules: balanceSortRules,
+    sortData: balanceSortData,
+    bindSortableColumns: bindBalanceSortableColumns,
+    hasActiveSort: hasBalanceActiveSort,
+    addSortRule: addBalanceSortRule,
+    removeSortRule: removeBalanceSortRule,
+    setRuleDirection: setBalanceRuleDirection,
+    moveSortRule: moveBalanceSortRule,
+    clearSort: clearBalanceSort,
+    maxRules: balanceSortMaxRules,
+  } = useTableSort({ storageKey: BALANCE_SORT_STORAGE_KEY })
+
+  const {
+    sortRules: policySortRules,
+    sortData: policySortData,
+    bindSortableColumns: bindPolicySortableColumns,
+    hasActiveSort: hasPolicyActiveSort,
+    addSortRule: addPolicySortRule,
+    removeSortRule: removePolicySortRule,
+    setRuleDirection: setPolicyRuleDirection,
+    moveSortRule: movePolicySortRule,
+    clearSort: clearPolicySort,
+    maxRules: policySortMaxRules,
+  } = useTableSort({ storageKey: POLICY_SORT_STORAGE_KEY })
 
   const requestRows = useMemo(
     () => filterLeaveRequests(requests, { search: searchQuery, statusFilter }),
@@ -215,16 +364,44 @@ export default function LeavePage() {
     [balances, searchQuery],
   )
 
+  const policyRows = useMemo(
+    () => filterLeavePolicies(DEFAULT_LEAVE_POLICIES, searchQuery).map((policy) => ({ ...policy, id: policy.type })),
+    [searchQuery],
+  )
+
+  const sortedBalanceRows = useMemo(
+    () => balanceSortData(balanceRows, (row, key) => leaveBalanceSortValue(row, key)),
+    [balanceRows, balanceSortData, balanceSortRules],
+  )
+
+  const sortedPolicyRows = useMemo(
+    () => policySortData(policyRows, (row, key) => leavePolicySortValue(row, key)),
+    [policyRows, policySortData, policySortRules],
+  )
+
   useEffect(() => {
-    if (!columnPickerOpen && !sortPickerOpen) return undefined
+    if (!columnPickerOpen && !balanceColumnPickerOpen && !policyColumnPickerOpen && !sortPickerOpen) {
+      return undefined
+    }
     const onDocMouseDown = (event) => {
       if (toolbarRef.current?.contains(event.target)) return
       setColumnPickerOpen(false)
+      setBalanceColumnPickerOpen(false)
+      setPolicyColumnPickerOpen(false)
       setSortPickerOpen(false)
     }
     document.addEventListener('mousedown', onDocMouseDown)
     return () => document.removeEventListener('mousedown', onDocMouseDown)
-  }, [columnPickerOpen, sortPickerOpen, setColumnPickerOpen, toolbarRef])
+  }, [
+    columnPickerOpen,
+    balanceColumnPickerOpen,
+    policyColumnPickerOpen,
+    sortPickerOpen,
+    setColumnPickerOpen,
+    setBalanceColumnPickerOpen,
+    setPolicyColumnPickerOpen,
+    toolbarRef,
+  ])
 
   const handleCreate = useCallback(async (payload) => {
     await createLeaveRequest(payload)
@@ -285,140 +462,226 @@ export default function LeavePage() {
     }
   }, [deleteTarget, loadData])
 
-  const requestTableColumns = useMemo(
-    () => [
-      {
-        key: 'employee',
-        label: 'EMPLOYEE',
-        fixed: true,
-        render: (_, row) => <LeaveEmployeeCell row={row} />,
-      },
-      {
-        key: 'type',
-        visibilityKey: 'type',
-        label: 'TYPE',
-        render: (_, row) => <LeaveTypeCell type={row.type} />,
-      },
-      {
-        key: 'from',
-        visibilityKey: 'from',
-        label: 'FROM',
-        render: (_, row) => <TableCellCreated dateString={row.from} dateMode="calendar" />,
-      },
-      {
-        key: 'to',
-        visibilityKey: 'to',
-        label: 'TO',
-        render: (_, row) => <TableCellCreated dateString={row.to} dateMode="calendar" />,
-      },
-      {
-        key: 'days',
-        visibilityKey: 'days',
-        label: 'DAYS',
-        render: (_, row) => <LeaveTextCell value={String(row.days)} emphasized />,
-      },
-      {
-        key: 'status',
-        visibilityKey: 'status',
-        label: 'STATUS',
-        render: (_, row) => <LeaveStatusPill status={row.status} />,
-      },
-      {
-        key: 'actions',
-        label: 'ACTIONS',
-        fixed: true,
-        resizable: false,
-        width: 160,
-        render: (_, row) => (
-          <div className="flex justify-end gap-0.5" onClick={(event) => event.stopPropagation()}>
-            {row.status === 'Pending' ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-2 text-emerald-600 hover:bg-emerald-50"
-                  title="Approve"
-                  disabled={actionId === row.id}
-                  onClick={() => handleApprove(row.id)}
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="p-2 text-red-600 hover:bg-red-50"
-                  title="Reject"
-                  disabled={actionId === row.id}
-                  onClick={() => handleReject(row.id)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-emerald-600 hover:bg-emerald-50"
-              title="View details"
-              onClick={() => setDetailRequest(row)}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-red-600 hover:bg-red-50"
-              title="Delete request"
-              disabled={actionId === row.id}
-              onClick={() => setDeleteTarget(row)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ),
-      },
-    ],
+  const requestColumns = useMemo(
+    () =>
+      buildLeaveRequestColumns({
+        actionId,
+        onApprove: handleApprove,
+        onReject: handleReject,
+        onView: setDetailRequest,
+        onDelete: setDeleteTarget,
+      }),
     [actionId, handleApprove, handleReject],
   )
 
-  const visibleRequestColumns = useMemo(() => {
-    const byKey = Object.fromEntries(requestTableColumns.map((c) => [c.key, c]))
-    const out = []
-    if (byKey.employee) out.push(byKey.employee)
-    for (const key of columnOrder) {
-      const col = byKey[key]
-      if (!col?.visibilityKey || !columnVisibility[col.visibilityKey]) continue
-      out.push(col)
-    }
-    if (byKey.actions) out.push(byKey.actions)
-    return activeTab === 'requests' ? bindSortableColumns(out, SORTABLE_KEYS) : out
-  }, [columnOrder, columnVisibility, requestTableColumns, activeTab, bindSortableColumns])
+  const balanceColumns = useMemo(() => buildLeaveBalanceColumns(), [])
+  const policyColumns = useMemo(() => buildLeavePolicyColumns(), [])
 
-  const balanceColumns = useMemo(
-    () => [
-      {
-        key: 'employee',
-        label: 'EMPLOYEE',
-        fixed: true,
-        render: (_, row) => <LeaveBalanceEmployeeCell row={row} />,
-      },
-      { key: 'cl', label: 'CL', render: (_, row) => <LeaveTextCell value={String(row.cl)} emphasized /> },
-      { key: 'sl', label: 'SL', render: (_, row) => <LeaveTextCell value={String(row.sl)} /> },
-      { key: 'pl', label: 'PL', render: (_, row) => <LeaveTextCell value={String(row.pl)} /> },
-      { key: 'compOff', label: 'COMP-OFF', render: (_, row) => <LeaveTextCell value={String(row.compOff)} /> },
-      { key: 'lop', label: 'LOP', render: (_, row) => <LeaveTextCell value={String(row.lop)} /> },
-    ],
-    [],
+  const visibleRequestColumns = useMemo(
+    () =>
+      resolveVisibleLeaveColumns(
+        requestColumns,
+        columnOrder,
+        columnVisibility,
+        bindSortableColumns,
+        REQUEST_SORTABLE_KEYS,
+      ),
+    [requestColumns, columnOrder, columnVisibility, bindSortableColumns],
   )
+
+  const visibleBalanceColumns = useMemo(
+    () =>
+      resolveVisibleLeaveColumns(
+        balanceColumns,
+        balanceColumnOrder,
+        balanceColumnVisibility,
+        bindBalanceSortableColumns,
+        BALANCE_SORTABLE_KEYS,
+      ),
+    [balanceColumns, balanceColumnOrder, balanceColumnVisibility, bindBalanceSortableColumns],
+  )
+
+  const visiblePolicyColumns = useMemo(
+    () =>
+      resolveVisibleLeaveColumns(
+        policyColumns,
+        policyColumnOrder,
+        policyColumnVisibility,
+        bindPolicySortableColumns,
+        POLICY_SORTABLE_KEYS,
+        'name',
+      ),
+    [policyColumns, policyColumnOrder, policyColumnVisibility, bindPolicySortableColumns],
+  )
+
+  const activeTableContext = useMemo(() => {
+    if (activeTab === 'balances') {
+      return {
+        sortRules: balanceSortRules,
+        sortColumnOptions: BALANCE_SORT_COLUMN_OPTIONS,
+        hasActiveSort: hasBalanceActiveSort,
+        reorderableColumns: BALANCE_TOGGLEABLE_COLUMNS,
+        columnVisibility: balanceColumnVisibility,
+        columnOrder: balanceColumnOrder,
+        columnDropIndicator: balanceColumnDropIndicator,
+        setColumnVisible: setBalanceColumnVisible,
+        handleColumnDragStart: handleBalanceColumnDragStart,
+        handleColumnDragEnd: handleBalanceColumnDragEnd,
+        handleColumnRowDragOver: handleBalanceColumnRowDragOver,
+        handleColumnListDragLeave: handleBalanceColumnListDragLeave,
+        handleColumnDrop: handleBalanceColumnDrop,
+        resetColumnTablePreferences: resetBalanceColumnTablePreferences,
+        addSortRule: addBalanceSortRule,
+        removeSortRule: removeBalanceSortRule,
+        setRuleDirection: setBalanceRuleDirection,
+        moveSortRule: moveBalanceSortRule,
+        clearSort: clearBalanceSort,
+        sortMaxRules: balanceSortMaxRules,
+        columnPickerOpen: balanceColumnPickerOpen,
+        setColumnPickerOpen: setBalanceColumnPickerOpen,
+        pickerDescription: 'Employee name stays visible.',
+        tableResizeProps: balanceTableResizeProps,
+      }
+    }
+
+    if (activeTab === 'policies') {
+      return {
+        sortRules: policySortRules,
+        sortColumnOptions: POLICY_SORT_COLUMN_OPTIONS,
+        hasActiveSort: hasPolicyActiveSort,
+        reorderableColumns: POLICY_TOGGLEABLE_COLUMNS,
+        columnVisibility: policyColumnVisibility,
+        columnOrder: policyColumnOrder,
+        columnDropIndicator: policyColumnDropIndicator,
+        setColumnVisible: setPolicyColumnVisible,
+        handleColumnDragStart: handlePolicyColumnDragStart,
+        handleColumnDragEnd: handlePolicyColumnDragEnd,
+        handleColumnRowDragOver: handlePolicyColumnRowDragOver,
+        handleColumnListDragLeave: handlePolicyColumnListDragLeave,
+        handleColumnDrop: handlePolicyColumnDrop,
+        resetColumnTablePreferences: resetPolicyColumnTablePreferences,
+        addSortRule: addPolicySortRule,
+        removeSortRule: removePolicySortRule,
+        setRuleDirection: setPolicyRuleDirection,
+        moveSortRule: movePolicySortRule,
+        clearSort: clearPolicySort,
+        sortMaxRules: policySortMaxRules,
+        columnPickerOpen: policyColumnPickerOpen,
+        setColumnPickerOpen: setPolicyColumnPickerOpen,
+        pickerDescription: 'Policy name stays visible.',
+        tableResizeProps: policyTableResizeProps,
+      }
+    }
+
+    if (activeTab === 'requests') {
+      return {
+        sortRules,
+        sortColumnOptions: REQUEST_SORT_COLUMN_OPTIONS,
+        hasActiveSort,
+        reorderableColumns: REQUEST_TOGGLEABLE_COLUMNS,
+        columnVisibility,
+        columnOrder,
+        columnDropIndicator,
+        setColumnVisible,
+        handleColumnDragStart,
+        handleColumnDragEnd,
+        handleColumnRowDragOver,
+        handleColumnListDragLeave,
+        handleColumnDrop,
+        resetColumnTablePreferences,
+        addSortRule,
+        removeSortRule,
+        setRuleDirection,
+        moveSortRule,
+        clearSort,
+        sortMaxRules,
+        columnPickerOpen,
+        setColumnPickerOpen,
+        pickerDescription: 'Employee name and actions stay visible.',
+        tableResizeProps,
+      }
+    }
+
+    return null
+  }, [
+    activeTab,
+    balanceSortRules,
+    hasBalanceActiveSort,
+    balanceColumnVisibility,
+    balanceColumnOrder,
+    balanceColumnDropIndicator,
+    setBalanceColumnVisible,
+    handleBalanceColumnDragStart,
+    handleBalanceColumnDragEnd,
+    handleBalanceColumnRowDragOver,
+    handleBalanceColumnListDragLeave,
+    handleBalanceColumnDrop,
+    resetBalanceColumnTablePreferences,
+    addBalanceSortRule,
+    removeBalanceSortRule,
+    setBalanceRuleDirection,
+    moveBalanceSortRule,
+    clearBalanceSort,
+    balanceSortMaxRules,
+    balanceColumnPickerOpen,
+    setBalanceColumnPickerOpen,
+    balanceTableResizeProps,
+    policySortRules,
+    hasPolicyActiveSort,
+    policyColumnVisibility,
+    policyColumnOrder,
+    policyColumnDropIndicator,
+    setPolicyColumnVisible,
+    handlePolicyColumnDragStart,
+    handlePolicyColumnDragEnd,
+    handlePolicyColumnRowDragOver,
+    handlePolicyColumnListDragLeave,
+    handlePolicyColumnDrop,
+    resetPolicyColumnTablePreferences,
+    addPolicySortRule,
+    removePolicySortRule,
+    setPolicyRuleDirection,
+    movePolicySortRule,
+    clearPolicySort,
+    policySortMaxRules,
+    policyColumnPickerOpen,
+    setPolicyColumnPickerOpen,
+    policyTableResizeProps,
+    sortRules,
+    hasActiveSort,
+    columnVisibility,
+    columnOrder,
+    columnDropIndicator,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    sortMaxRules,
+    columnPickerOpen,
+    setColumnPickerOpen,
+    tableResizeProps,
+  ])
+
+  const isDataTableTab = DATA_TABLE_TABS.has(activeTab)
 
   const resultCount =
     activeTab === 'requests'
       ? requestRows.length
       : activeTab === 'balances'
         ? balanceRows.length
-        : activeTab === 'policies'
-          ? DEFAULT_LEAVE_POLICIES.length
-          : 0
+        : activeTab === 'calendar'
+          ? calendarLeaveRows.length
+          : activeTab === 'policies'
+            ? policyRows.length
+            : 0
 
   return (
     <HRModulePage className="!space-y-6">
@@ -454,44 +717,44 @@ export default function LeavePage() {
           showFilter={activeTab === 'requests'}
           onFilterClick={() => setFilterOpen(true)}
           hasActiveFilters={Boolean(statusFilter)}
-          showColumnVisibility={activeTab === 'requests'}
+          showColumnVisibility={isDataTableTab}
           onColumnVisibilityClick={() => {
             setSortPickerOpen(false)
-            setColumnPickerOpen((open) => !open)
+            activeTableContext?.setColumnPickerOpen((open) => !open)
           }}
-          showSort={activeTab === 'requests'}
+          showSort={isDataTableTab}
           onSortClick={() => {
-            setColumnPickerOpen(false)
+            activeTableContext?.setColumnPickerOpen(false)
             setSortPickerOpen((open) => !open)
           }}
-          hasActiveSort={hasActiveSort}
+          hasActiveSort={activeTableContext?.hasActiveSort ?? false}
           variant="glass"
         />
         <TableSortDropdown
-          open={sortPickerOpen && activeTab === 'requests'}
-          sortRules={sortRules}
-          columnOptions={SORT_COLUMN_OPTIONS}
-          onAddRule={addSortRule}
-          onRemoveRule={removeSortRule}
-          onSetDirection={setRuleDirection}
-          onMoveRule={moveSortRule}
-          onClear={clearSort}
-          maxRules={sortMaxRules}
+          open={sortPickerOpen && isDataTableTab}
+          sortRules={activeTableContext?.sortRules ?? []}
+          columnOptions={activeTableContext?.sortColumnOptions ?? []}
+          onAddRule={activeTableContext?.addSortRule}
+          onRemoveRule={activeTableContext?.removeSortRule}
+          onSetDirection={activeTableContext?.setRuleDirection}
+          onMoveRule={activeTableContext?.moveSortRule}
+          onClear={activeTableContext?.clearSort}
+          maxRules={activeTableContext?.sortMaxRules}
         />
         <TableColumnPicker
-          open={columnPickerOpen && activeTab === 'requests'}
-          description="Employee name and actions stay visible."
-          reorderableRows={TOGGLEABLE_COLUMNS}
-          columnVisibility={columnVisibility}
-          columnOrder={columnOrder}
-          columnDropIndicator={columnDropIndicator}
-          onSetVisible={setColumnVisible}
-          onDragStart={handleColumnDragStart}
-          onDragEnd={handleColumnDragEnd}
-          onRowDragOver={handleColumnRowDragOver}
-          onListDragLeave={handleColumnListDragLeave}
-          onDrop={handleColumnDrop}
-          onReset={resetColumnTablePreferences}
+          open={Boolean(activeTableContext?.columnPickerOpen) && isDataTableTab}
+          description={activeTableContext?.pickerDescription ?? 'Fixed columns stay visible.'}
+          reorderableRows={activeTableContext?.reorderableColumns ?? []}
+          columnVisibility={activeTableContext?.columnVisibility ?? {}}
+          columnOrder={activeTableContext?.columnOrder ?? []}
+          columnDropIndicator={activeTableContext?.columnDropIndicator}
+          onSetVisible={activeTableContext?.setColumnVisible}
+          onDragStart={activeTableContext?.handleColumnDragStart}
+          onDragEnd={activeTableContext?.handleColumnDragEnd}
+          onRowDragOver={activeTableContext?.handleColumnRowDragOver}
+          onListDragLeave={activeTableContext?.handleColumnListDragLeave}
+          onDrop={activeTableContext?.handleColumnDrop}
+          onReset={activeTableContext?.resetColumnTablePreferences}
         />
       </div>
 
@@ -507,7 +770,7 @@ export default function LeavePage() {
             data={sortedRequestRows}
             keyField="id"
             variant="modernEmbedded"
-            {...tableResizeProps}
+            {...activeTableContext?.tableResizeProps}
             onRowClick={(row) => setDetailRequest(row)}
           />
           {!loading && requestRows.length === 0 ? (
@@ -528,7 +791,13 @@ export default function LeavePage() {
 
       {activeTab === 'balances' && (
         <HRDataTableCard>
-          <Table columns={balanceColumns} data={balanceRows} keyField="employeeId" variant="modernEmbedded" />
+          <Table
+            columns={visibleBalanceColumns}
+            data={sortedBalanceRows}
+            keyField="employeeId"
+            variant="modernEmbedded"
+            {...activeTableContext?.tableResizeProps}
+          />
           {!loading && balanceRows.length === 0 ? (
             <TableEmptyBelow icon={CalendarDays} title="No balance records found" description="Add employees to see leave balances." />
           ) : null}
@@ -536,53 +805,25 @@ export default function LeavePage() {
       )}
 
       {activeTab === 'calendar' && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Card variant="elevated" className="lg:col-span-2">
-            <div className="flex flex-col items-center py-12 text-center">
-              <Calendar className="mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="text-lg font-semibold text-gray-800">Leave calendar</h3>
-              <p className="mt-2 max-w-md text-sm text-gray-500">
-                {stats.approved} approved leave request{stats.approved === 1 ? '' : 's'} this year. Full calendar view coming soon.
-              </p>
-            </div>
-          </Card>
-          <Card variant="elevated">
-            <h3 className="mb-4 font-semibold text-gray-900">Who&apos;s on leave this week</h3>
-            {onLeaveThisWeek.length ? (
-              <ul className="space-y-3">
-                {onLeaveThisWeek.map((item) => (
-                  <li key={`${item.name}-${item.detail}`} className="rounded-xl border border-white/60 bg-white/50 px-3 py-2.5 text-sm">
-                    <span className="font-medium text-gray-900">{item.name}</span>
-                    <span className="mt-0.5 block text-gray-500">{item.detail}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-gray-500">No approved leave this week.</p>
-            )}
-          </Card>
-        </div>
+        <LeaveCalendarView
+          requests={calendarLeaveRows}
+          onEventClick={setDetailRequest}
+        />
       )}
 
       {activeTab === 'policies' && (
-        <div className="space-y-4">
-          {DEFAULT_LEAVE_POLICIES.filter((p) => p.type !== 'WFH').map((p) => (
-            <Card key={p.type} variant="elevated" className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-50">
-                  <FileText className="h-5 w-5 text-orange-600" aria-hidden />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{p.name}</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {p.entitlement}/yr · carry-forward {p.carryForward} · {p.encashable ? 'encashable' : 'not encashable'}
-                  </p>
-                </div>
-              </div>
-              <TableCellOrangePill value={p.type} />
-            </Card>
-          ))}
-        </div>
+        <HRDataTableCard>
+          <Table
+            columns={visiblePolicyColumns}
+            data={sortedPolicyRows}
+            keyField="id"
+            variant="modernEmbedded"
+            {...activeTableContext?.tableResizeProps}
+          />
+          {policyRows.length === 0 ? (
+            <TableEmptyBelow icon={FileText} title="No leave policies" description="Configure leave policies in HR settings." />
+          ) : null}
+        </HRDataTableCard>
       )}
 
       <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter Leave" size="md">

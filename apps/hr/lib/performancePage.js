@@ -1,13 +1,31 @@
 import { COMPANY_OKRS, REVIEW_CYCLES, APPRAISALS, PIPS } from './mock-data/performance'
 
 export const PENDING_FEEDBACK = [
-  { id: 'fb-1', label: 'Peer review for Ankit Sharma', due: '2026-06-10' },
-  { id: 'fb-2', label: 'Manager review for Priya Nair', due: '2026-06-12' },
+  {
+    label: 'Peer review for Ankit Sharma',
+    due: '2026-06-10',
+    type: 'Peer',
+    reviewCycle: 'Q2 2026 Review',
+  },
+  {
+    label: 'Manager review for Priya Nair',
+    due: '2026-06-12',
+    type: 'Manager',
+    reviewCycle: 'Q2 2026 Review',
+  },
 ]
 
 export const RECEIVED_FEEDBACK = [
-  { id: 'rf-1', quote: 'Strong technical leadership on the payments project.', period: 'Q1 2026' },
-  { id: 'rf-2', quote: 'Excellent collaboration with cross-functional teams.', period: 'Q1 2026' },
+  {
+    quote: 'Strong technical leadership on the payments project.',
+    period: 'Q1 2026',
+    type: 'Peer',
+  },
+  {
+    quote: 'Excellent collaboration with cross-functional teams.',
+    period: 'Q1 2026',
+    type: 'Manager',
+  },
 ]
 
 export function computePerformanceStats(
@@ -34,14 +52,264 @@ export function computePerformanceStats(
   }
 }
 
-export function getPerformanceTabItems() {
+function objectiveAvgProgress(okr) {
+  if (!okr.keyResults?.length) return 0
+  return okr.keyResults.reduce((sum, keyResult) => sum + keyResult.progress, 0) / okr.keyResults.length
+}
+
+export function getGoalsTabItems(okrs = COMPANY_OKRS) {
+  const onTrack = okrs.filter((okr) => objectiveAvgProgress(okr) >= 50).length
+  const atRisk = okrs.filter((okr) => objectiveAvgProgress(okr) < 50).length
   return [
-    { key: 'goals', label: 'Goals', count: COMPANY_OKRS.length },
-    { key: 'reviews', label: 'Reviews', count: REVIEW_CYCLES.length },
-    { key: 'feedback', label: 'Feedback', count: PENDING_FEEDBACK.length },
-    { key: 'appraisals', label: 'Appraisals', count: APPRAISALS.length },
-    { key: 'pips', label: 'PIPs', count: PIPS.length },
+    { key: 'all', label: 'All Goals', count: okrs.length },
+    { key: 'on-track', label: 'On Track', count: onTrack },
+    { key: 'at-risk', label: 'At Risk', count: atRisk },
   ]
+}
+
+export function matchesGoalsTab(okr, tabKey) {
+  if (tabKey === 'all') return true
+  const avg = objectiveAvgProgress(okr)
+  if (tabKey === 'on-track') return avg >= 50
+  if (tabKey === 'at-risk') return avg < 50
+  return true
+}
+
+export function getGoalAverageProgress(okr) {
+  return Math.round(objectiveAvgProgress(okr))
+}
+
+export function getGoalScopeLabel(okr) {
+  if (okr.scope === 'department' && okr.department) return okr.department
+  if (okr.scope === 'individual') return 'Individual'
+  return 'Company'
+}
+
+export function getKeyResultStatusLabel(progress) {
+  const value = Number(progress || 0)
+  if (value >= 90) return 'Nearly complete'
+  if (value >= 50) return 'On track'
+  return 'Needs attention'
+}
+
+export function goalSortValue(row, key) {
+  switch (key) {
+    case 'objective':
+      return row.objective || ''
+    case 'scope':
+      return getGoalScopeLabel(row)
+    case 'progress':
+      return getGoalAverageProgress(row)
+    case 'keyResults':
+      return row.keyResults?.length ?? 0
+    case 'status':
+      return getGoalAverageProgress(row) >= 50 ? 'on-track' : 'at-risk'
+    default:
+      return row[key]
+  }
+}
+
+export function computeReviewStats(cycles = REVIEW_CYCLES) {
+  const activeCycles = cycles.filter((cycle) => cycle.status === 'Active')
+  const closedCycles = cycles.filter((cycle) => cycle.status === 'Closed')
+  const avgCompletion = cycles.length
+    ? Math.round(cycles.reduce((sum, cycle) => sum + (cycle.completion || 0), 0) / cycles.length)
+    : 0
+  const activeCycle = activeCycles[0]
+
+  return {
+    totalCycles: cycles.length,
+    activeCount: activeCycles.length,
+    closedCount: closedCycles.length,
+    avgCompletion,
+    activeCycleName: activeCycle?.name ?? '—',
+    activeCycleCompletion: activeCycle?.completion ?? 0,
+  }
+}
+
+export function getReviewTabItems(cycles = REVIEW_CYCLES) {
+  const active = cycles.filter((cycle) => cycle.status === 'Active').length
+  const closed = cycles.filter((cycle) => cycle.status === 'Closed').length
+  return [
+    { key: 'all', label: 'All Cycles', count: cycles.length },
+    { key: 'active', label: 'Active', count: active },
+    { key: 'closed', label: 'Closed', count: closed },
+  ]
+}
+
+export function matchesReviewTab(row, tabKey) {
+  if (tabKey === 'all') return true
+  if (tabKey === 'active') return row.status === 'Active'
+  if (tabKey === 'closed') return row.status === 'Closed'
+  return true
+}
+
+export function getFeedbackTabItems(
+  pending = PENDING_FEEDBACK,
+  received = RECEIVED_FEEDBACK
+) {
+  return [
+    { key: 'pending', label: 'Pending', count: pending.length },
+    { key: 'received', label: 'Received', count: received.length },
+  ]
+}
+
+export function computeFeedbackStats(pending = PENDING_FEEDBACK, received = RECEIVED_FEEDBACK) {
+  const peerPending = pending.filter((row) => row.type === 'Peer').length
+  const managerPending = pending.filter((row) => row.type === 'Manager').length
+  const nextDue = [...pending]
+    .filter((row) => row.due)
+    .sort((a, b) => String(a.due).localeCompare(String(b.due)))[0]
+
+  const formatShortDate = (value) => {
+    if (!value) return '—'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
+
+  return {
+    pendingCount: pending.length,
+    receivedCount: received.length,
+    peerPending,
+    managerPending,
+    nextDueLabel: nextDue?.label ?? '—',
+    nextDueDate: formatShortDate(nextDue?.due),
+  }
+}
+
+export function filterPendingFeedback(rows, search = '') {
+  const q = search.toLowerCase().trim()
+  if (!q) return rows
+  return rows.filter(
+    (row) =>
+      row.label.toLowerCase().includes(q) ||
+      (row.reviewCycle || '').toLowerCase().includes(q) ||
+      (row.type || '').toLowerCase().includes(q)
+  )
+}
+
+export function filterReceivedFeedback(rows, search = '') {
+  const q = search.toLowerCase().trim()
+  if (!q) return rows
+  return rows.filter(
+    (row) =>
+      row.quote.toLowerCase().includes(q) ||
+      (row.period || '').toLowerCase().includes(q) ||
+      (row.type || '').toLowerCase().includes(q)
+  )
+}
+
+export function pendingFeedbackSortValue(row, key) {
+  switch (key) {
+    case 'label':
+      return row.label || ''
+    case 'due':
+      return row.due || ''
+    case 'type':
+      return row.type || ''
+    case 'reviewCycle':
+      return row.reviewCycle || ''
+    default:
+      return row[key]
+  }
+}
+
+export function receivedFeedbackSortValue(row, key) {
+  switch (key) {
+    case 'quote':
+      return row.quote || ''
+    case 'period':
+      return row.period || ''
+    case 'type':
+      return row.type || ''
+    default:
+      return row[key]
+  }
+}
+
+export function computeAppraisalStats(appraisals = APPRAISALS) {
+  const pending = appraisals.filter((row) => row.status === 'Pending')
+  const approved = appraisals.filter((row) => row.status === 'Approved')
+  const avgRating = appraisals.length
+    ? (appraisals.reduce((sum, row) => sum + Number(row.rating || 0), 0) / appraisals.length).toFixed(1)
+    : '0'
+  const avgRevision = appraisals.length
+    ? Math.round(appraisals.reduce((sum, row) => sum + Number(row.revision || 0), 0) / appraisals.length)
+    : 0
+  const promotions = appraisals.filter((row) => row.promotion === 'Yes').length
+
+  return {
+    totalAppraisals: appraisals.length,
+    pendingCount: pending.length,
+    approvedCount: approved.length,
+    avgRating,
+    avgRevision,
+    promotionCount: promotions,
+  }
+}
+
+export function getAppraisalTabItems(appraisals = APPRAISALS) {
+  const pending = appraisals.filter((row) => row.status === 'Pending').length
+  const approved = appraisals.filter((row) => row.status === 'Approved').length
+  return [
+    { key: 'all', label: 'All Appraisals', count: appraisals.length },
+    { key: 'pending', label: 'Pending', count: pending },
+    { key: 'approved', label: 'Approved', count: approved },
+  ]
+}
+
+export function matchesAppraisalTab(row, tabKey) {
+  if (tabKey === 'all') return true
+  if (tabKey === 'pending') return row.status === 'Pending'
+  if (tabKey === 'approved') return row.status === 'Approved'
+  return true
+}
+
+export function parsePipMilestonePercent(milestones) {
+  if (!milestones) return 0
+  const match = String(milestones).match(/(\d+)\s*\/\s*(\d+)/)
+  if (!match) return 0
+  const completed = Number(match[1])
+  const total = Number(match[2])
+  if (!total) return 0
+  return Math.round((completed / total) * 100)
+}
+
+export function computePipStats(pips = PIPS) {
+  const active = pips.filter((row) => row.status !== 'Terminated' && row.status !== 'Closed')
+  const closed = pips.filter((row) => row.status === 'Closed')
+  const terminated = pips.filter((row) => row.status === 'Terminated')
+  const avgMilestoneCompletion = pips.length
+    ? Math.round(
+        pips.reduce((sum, row) => sum + parsePipMilestonePercent(row.milestones), 0) / pips.length,
+      )
+    : 0
+
+  return {
+    totalPips: pips.length,
+    activeCount: active.length,
+    closedCount: closed.length,
+    terminatedCount: terminated.length,
+    avgMilestoneCompletion,
+  }
+}
+
+export function getPipTabItems(pips = PIPS) {
+  const active = pips.filter((row) => row.status !== 'Terminated' && row.status !== 'Closed').length
+  const closed = pips.filter((row) => row.status === 'Terminated' || row.status === 'Closed').length
+  return [
+    { key: 'all', label: 'All PIPs', count: pips.length },
+    { key: 'active', label: 'Active', count: active },
+    { key: 'closed', label: 'Closed', count: closed },
+  ]
+}
+
+export function matchesPipTab(row, tabKey) {
+  if (tabKey === 'all') return true
+  if (tabKey === 'active') return row.status !== 'Terminated' && row.status !== 'Closed'
+  if (tabKey === 'closed') return row.status === 'Terminated' || row.status === 'Closed'
+  return true
 }
 
 export function filterReviewCycles(cycles, search = '') {
@@ -55,17 +323,15 @@ export function filterReviewCycles(cycles, search = '') {
   )
 }
 
-export function filterAppraisals(appraisals, { search = '', statusFilter = '' } = {}) {
+export function filterAppraisals(appraisals, search = '') {
   const q = search.toLowerCase().trim()
-  return appraisals.map((row, index) => ({ ...row, id: `apr-${index}` })).filter((a) => {
-    if (statusFilter && a.status !== statusFilter) return false
-    if (!q) return true
-    return (
-      a.employee.toLowerCase().includes(q) ||
-      a.department.toLowerCase().includes(q) ||
-      a.status.toLowerCase().includes(q)
-    )
-  })
+  if (!q) return appraisals
+  return appraisals.filter(
+    (row) =>
+      row.employee.toLowerCase().includes(q) ||
+      (row.department || '').toLowerCase().includes(q) ||
+      (row.status || '').toLowerCase().includes(q)
+  )
 }
 
 export function filterPips(pips, search = '') {
@@ -79,4 +345,59 @@ export function filterPips(pips, search = '') {
         p.manager.toLowerCase().includes(q) ||
         p.status.toLowerCase().includes(q)
     )
+}
+
+export function reviewCycleSortValue(row, key) {
+  switch (key) {
+    case 'name':
+      return row.name || ''
+    case 'due':
+      return row.due || ''
+    case 'completion':
+      return row.completion ?? 0
+    case 'status':
+      return row.status || ''
+    default:
+      return row[key]
+  }
+}
+
+export function appraisalSortValue(row, key) {
+  switch (key) {
+    case 'employee':
+      return row.employee || ''
+    case 'department':
+      return row.department || ''
+    case 'rating':
+      return row.rating ?? 0
+    case 'revision':
+      return row.revision ?? 0
+    case 'promotion':
+      return row.promotion || ''
+    case 'effective':
+      return row.effective || ''
+    case 'status':
+      return row.status || ''
+    default:
+      return row[key]
+  }
+}
+
+export function pipSortValue(row, key) {
+  switch (key) {
+    case 'employee':
+      return row.employee || ''
+    case 'manager':
+      return row.manager || ''
+    case 'start':
+      return row.start || ''
+    case 'duration':
+      return row.duration || ''
+    case 'milestones':
+      return row.milestones || ''
+    case 'status':
+      return row.status || ''
+    default:
+      return row[key]
+  }
 }

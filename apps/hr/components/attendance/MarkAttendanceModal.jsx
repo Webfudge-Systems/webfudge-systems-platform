@@ -53,7 +53,7 @@ export default function MarkAttendanceModal({
   useEffect(() => {
     if (!open) return
     setSubmitError('')
-    const dateValue = toDateInputValue(selectedDate || new Date())
+    const dateValue = toDateInputValue(initialRow?.attendanceDate || selectedDate || new Date())
     setAttendanceDate(dateValue)
 
     if (initialRow) {

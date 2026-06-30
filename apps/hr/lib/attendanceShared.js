@@ -272,6 +272,12 @@ export function todayDateLabel(date = new Date()) {
   })
 }
 
+export function monthDateLabel(monthValue = '') {
+  const [year, month] = String(monthValue || '').split('-').map(Number)
+  if (!year || !month) return monthValue || ''
+  return new Date(year, month - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
 export function monthRange(year, month) {
   const from = `${year}-${String(month).padStart(2, '0')}-01`
   const lastDay = new Date(year, month, 0).getDate()

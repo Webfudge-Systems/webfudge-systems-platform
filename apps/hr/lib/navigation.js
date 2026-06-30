@@ -14,6 +14,11 @@ import {
   Settings,
 } from 'lucide-react'
 import { HR_PAYROLL_NAV, isPayrollOverviewActive, isPayrollSectionActive } from './payrollNavigation'
+import {
+  HR_PERFORMANCE_NAV,
+  isPerformanceGoalsActive,
+  isPerformanceSectionActive,
+} from './performanceNavigation'
 
 /** Main 2×3 navigate grid — aligned with PM sidebar */
 export const HR_NAVIGATE_TILES = [
@@ -69,7 +74,7 @@ export const HR_NAVIGATE_SECTIONS = [
   {
     id: 'performance',
     label: 'Performance',
-    children: [{ id: 'performance-reviews', label: 'Performance', href: '/performance', icon: Target }],
+    children: HR_PERFORMANCE_NAV,
   },
 ]
 
@@ -102,6 +107,7 @@ export function isNavItemActive(pathname, href) {
   if (!href) return false
   if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/'
   if (href === '/payroll') return isPayrollOverviewActive(pathname)
+  if (href === '/performance') return isPerformanceGoalsActive(pathname)
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -119,6 +125,9 @@ export function tileIsActive(pathname, item) {
   }
   if (item.id === 'payroll') {
     return isPayrollSectionActive(pathname)
+  }
+  if (item.id === 'performance') {
+    return isPerformanceSectionActive(pathname)
   }
   return item.href ? isNavItemActive(pathname, item.href) : false
 }

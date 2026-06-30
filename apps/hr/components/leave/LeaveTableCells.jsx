@@ -33,12 +33,7 @@ export function LeaveEmployeeCell({ row }) {
 }
 
 export function LeaveBalanceEmployeeCell({ row }) {
-  return (
-    <div className="min-w-[180px]">
-      <div className="truncate font-medium text-gray-900">{row.employeeName}</div>
-      <div className="truncate text-sm text-gray-500">{row.department}</div>
-    </div>
-  )
+  return <LeaveEmployeeCell row={row} />
 }
 
 export function LeaveTypeCell({ type }) {

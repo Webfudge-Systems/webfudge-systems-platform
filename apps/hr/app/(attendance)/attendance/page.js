@@ -8,17 +8,13 @@ import {
   Clock,
   FileSpreadsheet,
   Users,
-  Trash2,
   Plus,
-  Check,
-  CircleDashed,
 } from 'lucide-react'
 import {
   Button,
   Table,
   KPICard,
   TabsWithActions,
-  TableCellCreated,
   TableEmptyBelow,
   TableColumnPicker,
   TableSortDropdown,
@@ -36,28 +32,31 @@ import HRKpiRow from '../../../components/layout/HRKpiRow'
 import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import MarkAttendanceModal from '../../../components/attendance/MarkAttendanceModal'
 import {
-  AttendanceEmployeeCell,
-  AttendanceTextCell,
-  AttendanceStatusPill,
-  AttendanceLocationCell,
-  AttendancePersonCell,
-} from '../../../components/attendance/AttendanceTableCells'
+  buildTodayAttendanceColumns,
+  buildMonthlyAttendanceColumns,
+  buildOvertimeColumns,
+  buildShiftColumns,
+  resolveVisibleAttendanceColumns,
+} from '../../../components/attendance/attendanceTableColumns'
 import {
   filterAttendanceLog,
+  filterShifts,
   filterOvertimeRecords,
   getAttendanceTabItems,
   attendanceSortValue,
+  overtimeSortValue,
+  shiftSortValue,
 } from '../../../lib/attendancePage'
 import {
   ATTENDANCE_UPDATED_EVENT,
   DEFAULT_SHIFTS,
   buildAttendanceSnapshot,
   buildDailyAttendanceRoster,
-  isAttendanceOnLeave,
   monthRange,
   notifyAttendanceUpdated,
   todayDateLabel,
   toDateInputValue,
+  monthDateLabel,
 } from '../../../lib/attendanceShared'
 import {
   approveOvertimeRecord,
@@ -79,6 +78,21 @@ const COLUMN_VISIBILITY_STORAGE_KEY = 'hr.attendance.today.tableColumnVisibility
 const COLUMN_ORDER_STORAGE_KEY = 'hr.attendance.today.tableColumnOrder'
 const COLUMN_WIDTHS_STORAGE_KEY = 'hr.attendance.today.tableColumnWidths'
 
+const MONTHLY_TABLE_SORT_STORAGE_KEY = 'hr.attendance.monthly.tableSort'
+const MONTHLY_COLUMN_VISIBILITY_STORAGE_KEY = 'hr.attendance.monthly.tableColumnVisibility'
+const MONTHLY_COLUMN_ORDER_STORAGE_KEY = 'hr.attendance.monthly.tableColumnOrder'
+const MONTHLY_COLUMN_WIDTHS_STORAGE_KEY = 'hr.attendance.monthly.tableColumnWidths'
+
+const OVERTIME_TABLE_SORT_STORAGE_KEY = 'hr.attendance.overtime.tableSort'
+const OVERTIME_COLUMN_VISIBILITY_STORAGE_KEY = 'hr.attendance.overtime.tableColumnVisibility'
+const OVERTIME_COLUMN_ORDER_STORAGE_KEY = 'hr.attendance.overtime.tableColumnOrder'
+const OVERTIME_COLUMN_WIDTHS_STORAGE_KEY = 'hr.attendance.overtime.tableColumnWidths'
+
+const SHIFT_TABLE_SORT_STORAGE_KEY = 'hr.attendance.shifts.tableSort'
+const SHIFT_COLUMN_VISIBILITY_STORAGE_KEY = 'hr.attendance.shifts.tableColumnVisibility'
+const SHIFT_COLUMN_ORDER_STORAGE_KEY = 'hr.attendance.shifts.tableColumnOrder'
+const SHIFT_COLUMN_WIDTHS_STORAGE_KEY = 'hr.attendance.shifts.tableColumnWidths'
+
 const STATUS_OPTIONS = [
   { value: '', label: 'All statuses' },
   { value: 'Present', label: 'Present' },
@@ -98,6 +112,33 @@ const DEFAULT_COLUMN_WIDTHS = {
   actions: 140,
 }
 
+const MONTHLY_DEFAULT_COLUMN_WIDTHS = {
+  employee: 260,
+  date: 130,
+  clockIn: 100,
+  clockOut: 100,
+  duration: 110,
+  status: 130,
+  location: 160,
+  actions: 140,
+}
+
+const OVERTIME_DEFAULT_COLUMN_WIDTHS = {
+  employee: 260,
+  date: 130,
+  ot: 100,
+  amount: 120,
+  status: 150,
+  actions: 140,
+}
+
+const SHIFT_DEFAULT_COLUMN_WIDTHS = {
+  shift: 260,
+  timing: 160,
+  employees: 140,
+  status: 130,
+}
+
 const MIN_COLUMN_WIDTHS = { actions: 120 }
 
 const TOGGLEABLE_COLUMNS = [
@@ -108,9 +149,46 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'location', label: 'Location' },
 ]
 
+const MONTHLY_TOGGLEABLE_COLUMNS = [
+  { key: 'date', label: 'Date' },
+  ...TOGGLEABLE_COLUMNS,
+]
+
+const OVERTIME_TOGGLEABLE_COLUMNS = [
+  { key: 'date', label: 'Date' },
+  { key: 'ot', label: 'OT hours' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'status', label: 'Status' },
+]
+
+const SHIFT_TOGGLEABLE_COLUMNS = [
+  { key: 'timing', label: 'Timing' },
+  { key: 'employees', label: 'Assigned' },
+  { key: 'status', label: 'Status' },
+]
+
 const DEFAULT_COLUMN_VISIBILITY = TOGGLEABLE_COLUMNS.reduce((acc, { key }) => ({ ...acc, [key]: true }), {})
+const MONTHLY_DEFAULT_COLUMN_VISIBILITY = MONTHLY_TOGGLEABLE_COLUMNS.reduce(
+  (acc, { key }) => ({ ...acc, [key]: true }),
+  {},
+)
+const OVERTIME_DEFAULT_COLUMN_VISIBILITY = OVERTIME_TOGGLEABLE_COLUMNS.reduce(
+  (acc, { key }) => ({ ...acc, [key]: true }),
+  {},
+)
+const SHIFT_DEFAULT_COLUMN_VISIBILITY = SHIFT_TOGGLEABLE_COLUMNS.reduce(
+  (acc, { key }) => ({ ...acc, [key]: true }),
+  {},
+)
+
 const SORT_COLUMN_OPTIONS = [{ key: 'employee', label: 'Employee' }, ...TOGGLEABLE_COLUMNS]
+const MONTHLY_SORT_COLUMN_OPTIONS = [{ key: 'employee', label: 'Employee' }, ...MONTHLY_TOGGLEABLE_COLUMNS]
+const OVERTIME_SORT_COLUMN_OPTIONS = [{ key: 'employee', label: 'Employee' }, ...OVERTIME_TOGGLEABLE_COLUMNS]
+const SHIFT_SORT_COLUMN_OPTIONS = [{ key: 'shift', label: 'Shift' }, ...SHIFT_TOGGLEABLE_COLUMNS]
 const SORTABLE_KEYS = SORT_COLUMN_OPTIONS.map((c) => c.key)
+const MONTHLY_SORTABLE_KEYS = MONTHLY_SORT_COLUMN_OPTIONS.map((c) => c.key)
+const OVERTIME_SORTABLE_KEYS = OVERTIME_SORT_COLUMN_OPTIONS.map((c) => c.key)
+const SHIFT_SORTABLE_KEYS = SHIFT_SORT_COLUMN_OPTIONS.map((c) => c.key)
 
 export default function AttendancePage() {
   const [activeTab, setActiveTab] = useState('today')
@@ -193,13 +271,28 @@ export default function AttendancePage() {
     [todayRoster, employees],
   )
 
-  const shiftCards = useMemo(
-    () =>
-      DEFAULT_SHIFTS.map((shift, index) => ({
+  const shiftCards = useMemo(() => {
+    const activeCount = employees.filter((e) => e.status !== 'Exited').length
+    return DEFAULT_SHIFTS.map((shift, index) => {
+      const assigned = index === 0 ? activeCount : 0
+      return {
         ...shift,
-        employees: index === 0 ? employees.filter((e) => e.status !== 'Exited').length : 0,
-      })),
-    [employees],
+        shiftCode: shift.id.toUpperCase(),
+        employees: assigned,
+        assignedLabel:
+          assigned === 0
+            ? 'No employees'
+            : assigned === 1
+              ? '1 employee'
+              : `${assigned} employees`,
+        status: assigned > 0 ? 'Active' : 'Unassigned',
+      }
+    })
+  }, [employees])
+
+  const shiftRows = useMemo(
+    () => filterShifts(shiftCards, searchQuery),
+    [shiftCards, searchQuery],
   )
 
   const tabItems = useMemo(
@@ -239,6 +332,30 @@ export default function AttendancePage() {
   })
 
   const {
+    columnVisibility: monthlyColumnVisibility,
+    columnOrder: monthlyColumnOrder,
+    columnPickerOpen: monthlyColumnPickerOpen,
+    setColumnPickerOpen: setMonthlyColumnPickerOpen,
+    columnDropIndicator: monthlyColumnDropIndicator,
+    setColumnVisible: setMonthlyColumnVisible,
+    handleColumnDragStart: handleMonthlyColumnDragStart,
+    handleColumnDragEnd: handleMonthlyColumnDragEnd,
+    handleColumnRowDragOver: handleMonthlyColumnRowDragOver,
+    handleColumnListDragLeave: handleMonthlyColumnListDragLeave,
+    handleColumnDrop: handleMonthlyColumnDrop,
+    resetColumnTablePreferences: resetMonthlyColumnTablePreferences,
+    tableResizeProps: monthlyTableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: MONTHLY_COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: MONTHLY_COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: MONTHLY_COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: MONTHLY_DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: MONTHLY_TOGGLEABLE_COLUMNS.map((c) => c.key),
+    defaultWidths: MONTHLY_DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  })
+
+  const {
     sortRules,
     sortData,
     bindSortableColumns,
@@ -250,6 +367,93 @@ export default function AttendancePage() {
     clearSort,
     maxRules: sortMaxRules,
   } = useTableSort({ storageKey: TABLE_SORT_STORAGE_KEY })
+
+  const {
+    sortRules: monthlySortRules,
+    sortData: monthlySortData,
+    bindSortableColumns: bindMonthlySortableColumns,
+    hasActiveSort: hasMonthlyActiveSort,
+    addSortRule: addMonthlySortRule,
+    removeSortRule: removeMonthlySortRule,
+    setRuleDirection: setMonthlyRuleDirection,
+    moveSortRule: moveMonthlySortRule,
+    clearSort: clearMonthlySort,
+    maxRules: monthlySortMaxRules,
+  } = useTableSort({ storageKey: MONTHLY_TABLE_SORT_STORAGE_KEY })
+
+  const {
+    columnVisibility: overtimeColumnVisibility,
+    columnOrder: overtimeColumnOrder,
+    columnPickerOpen: overtimeColumnPickerOpen,
+    setColumnPickerOpen: setOvertimeColumnPickerOpen,
+    columnDropIndicator: overtimeColumnDropIndicator,
+    setColumnVisible: setOvertimeColumnVisible,
+    handleColumnDragStart: handleOvertimeColumnDragStart,
+    handleColumnDragEnd: handleOvertimeColumnDragEnd,
+    handleColumnRowDragOver: handleOvertimeColumnRowDragOver,
+    handleColumnListDragLeave: handleOvertimeColumnListDragLeave,
+    handleColumnDrop: handleOvertimeColumnDrop,
+    resetColumnTablePreferences: resetOvertimeColumnTablePreferences,
+    tableResizeProps: overtimeTableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: OVERTIME_COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: OVERTIME_COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: OVERTIME_COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: OVERTIME_DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: OVERTIME_TOGGLEABLE_COLUMNS.map((c) => c.key),
+    defaultWidths: OVERTIME_DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  })
+
+  const {
+    sortRules: overtimeSortRules,
+    sortData: overtimeSortData,
+    bindSortableColumns: bindOvertimeSortableColumns,
+    hasActiveSort: hasOvertimeActiveSort,
+    addSortRule: addOvertimeSortRule,
+    removeSortRule: removeOvertimeSortRule,
+    setRuleDirection: setOvertimeRuleDirection,
+    moveSortRule: moveOvertimeSortRule,
+    clearSort: clearOvertimeSort,
+    maxRules: overtimeSortMaxRules,
+  } = useTableSort({ storageKey: OVERTIME_TABLE_SORT_STORAGE_KEY })
+
+  const {
+    columnVisibility: shiftColumnVisibility,
+    columnOrder: shiftColumnOrder,
+    columnPickerOpen: shiftColumnPickerOpen,
+    setColumnPickerOpen: setShiftColumnPickerOpen,
+    columnDropIndicator: shiftColumnDropIndicator,
+    setColumnVisible: setShiftColumnVisible,
+    handleColumnDragStart: handleShiftColumnDragStart,
+    handleColumnDragEnd: handleShiftColumnDragEnd,
+    handleColumnRowDragOver: handleShiftColumnRowDragOver,
+    handleColumnListDragLeave: handleShiftColumnListDragLeave,
+    handleColumnDrop: handleShiftColumnDrop,
+    resetColumnTablePreferences: resetShiftColumnTablePreferences,
+    tableResizeProps: shiftTableResizeProps,
+  } = useTableColumnPreferences({
+    visibilityStorageKey: SHIFT_COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: SHIFT_COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: SHIFT_COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: SHIFT_DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: SHIFT_TOGGLEABLE_COLUMNS.map((c) => c.key),
+    defaultWidths: SHIFT_DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  })
+
+  const {
+    sortRules: shiftSortRules,
+    sortData: shiftSortData,
+    bindSortableColumns: bindShiftSortableColumns,
+    hasActiveSort: hasShiftActiveSort,
+    addSortRule: addShiftSortRule,
+    removeSortRule: removeShiftSortRule,
+    setRuleDirection: setShiftRuleDirection,
+    moveSortRule: moveShiftSortRule,
+    clearSort: clearShiftSort,
+    maxRules: shiftSortMaxRules,
+  } = useTableSort({ storageKey: SHIFT_TABLE_SORT_STORAGE_KEY })
 
   const todayRows = useMemo(
     () => filterAttendanceLog(todayRoster, { search: searchQuery, statusFilter }),
@@ -266,7 +470,34 @@ export default function AttendancePage() {
     [monthlyRecords, searchQuery, statusFilter],
   )
 
-  const overtimeRows = useMemo(() => filterOvertimeRecords(overtimeRecords, searchQuery), [overtimeRecords, searchQuery])
+  const sortedMonthlyRows = useMemo(
+    () => monthlySortData(monthlyRows, (row, key) => attendanceSortValue(row, key)),
+    [monthlyRows, monthlySortData, monthlySortRules],
+  )
+
+  const overtimeRows = useMemo(() => {
+    const filtered = filterOvertimeRecords(overtimeRecords, searchQuery)
+    return filtered.map((row) => {
+      const employee = employees.find(
+        (item) => String(item.membershipId || item.id) === String(row.organizationUserId),
+      )
+      return {
+        ...row,
+        name: row.employee,
+        employeeCode: employee?.employeeId,
+      }
+    })
+  }, [overtimeRecords, searchQuery, employees])
+
+  const sortedOvertimeRows = useMemo(
+    () => overtimeSortData(overtimeRows, (row, key) => overtimeSortValue(row, key)),
+    [overtimeRows, overtimeSortData, overtimeSortRules],
+  )
+
+  const sortedShiftRows = useMemo(
+    () => shiftSortData(shiftRows, (row, key) => shiftSortValue(row, key)),
+    [shiftRows, shiftSortData, shiftSortRules],
+  )
 
   const handleSaveAttendance = useCallback(
     async (payload) => {
@@ -299,7 +530,7 @@ export default function AttendancePage() {
         setActionId(rowKey)
         setActionError('')
         const payload = {
-          attendanceDate: selectedDate,
+          attendanceDate: row.attendanceDate || selectedDate,
           status,
           clockIn: showClock && row.clockIn && row.clockIn !== '—' ? row.clockIn : showClock ? '09:00' : '',
           clockOut: showClock && row.clockOut && row.clockOut !== '—' ? row.clockOut : showClock ? '18:00' : '',
@@ -357,134 +588,287 @@ export default function AttendancePage() {
     setMarkOpen(true)
   }, [])
 
-  const todayTableColumns = useMemo(
-    () => [
-      { key: 'employee', label: 'EMPLOYEE', fixed: true, render: (_, row) => <AttendanceEmployeeCell row={row} /> },
-      { key: 'clockIn', visibilityKey: 'clockIn', label: 'IN', render: (_, row) => <AttendanceTextCell value={row.clockIn} emphasized /> },
-      { key: 'clockOut', visibilityKey: 'clockOut', label: 'OUT', render: (_, row) => <AttendanceTextCell value={row.clockOut} /> },
-      { key: 'duration', visibilityKey: 'duration', label: 'DURATION', render: (_, row) => <AttendanceTextCell value={row.duration} /> },
-      { key: 'status', visibilityKey: 'status', label: 'STATUS', render: (_, row) => <AttendanceStatusPill status={row.status} /> },
-      { key: 'location', visibilityKey: 'location', label: 'LOCATION', render: (_, row) => <AttendanceLocationCell location={row.location} /> },
-      {
-        key: 'actions',
-        label: 'ACTIONS',
-        fixed: true,
-        resizable: false,
-        width: 140,
-        render: (_, row) => {
-          const rowKey = row.id || row.organizationUserId || row.employeeId
-          const busy = actionId === rowKey
-          const onLeave = isAttendanceOnLeave(row)
-
-          if (onLeave) {
-            return (
-              <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wide text-amber-900"
-                  title="Approved leave — auto-detected from Leave module"
-                >
-                  <Clock className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  On leave
-                </span>
-              </div>
-            )
-          }
-
-          return (
-          <div className="flex justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-emerald-600 hover:bg-emerald-50"
-              title="Mark present"
-              disabled={busy}
-              onClick={() => handleQuickMark(row, 'present')}
-            >
-              <UserCheck className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-red-600 hover:bg-red-50"
-              title="Mark absent"
-              disabled={busy}
-              onClick={() => handleQuickMark(row, 'absent')}
-            >
-              <UserX className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2 text-orange-600 hover:bg-orange-50"
-              title="Mark attendance (full form)"
-              disabled={busy}
-              onClick={() => openMarkModal(row)}
-            >
-              <Clock className="h-4 w-4" />
-            </Button>
-            {row.id ? (
-              <Button variant="ghost" size="sm" className="p-2 text-red-600 hover:bg-red-50" title="Delete" disabled={busy} onClick={() => setDeleteTarget(row)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            ) : null}
-          </div>
-          )
-        },
-      },
-    ],
+  const attendanceLogHandlers = useMemo(
+    () => ({
+      actionId,
+      onQuickMark: handleQuickMark,
+      onOpenMarkModal: openMarkModal,
+      onDelete: setDeleteTarget,
+    }),
     [actionId, openMarkModal, handleQuickMark],
   )
 
+  const todayTableColumns = useMemo(
+    () => buildTodayAttendanceColumns(attendanceLogHandlers),
+    [attendanceLogHandlers],
+  )
+
   const monthlyColumns = useMemo(
-    () => [
-      { key: 'employee', label: 'EMPLOYEE', fixed: true, render: (_, row) => <AttendanceEmployeeCell row={row} /> },
-      { key: 'date', label: 'DATE', render: (_, row) => <TableCellCreated dateString={row.attendanceDate} dateMode="calendar" /> },
-      { key: 'clockIn', label: 'IN', render: (_, row) => <AttendanceTextCell value={row.clockIn} /> },
-      { key: 'clockOut', label: 'OUT', render: (_, row) => <AttendanceTextCell value={row.clockOut} /> },
-      { key: 'status', label: 'STATUS', render: (_, row) => <AttendanceStatusPill status={row.status} /> },
-    ],
-    [],
+    () => buildMonthlyAttendanceColumns(attendanceLogHandlers),
+    [attendanceLogHandlers],
   )
 
   const overtimeColumns = useMemo(
-    () => [
-      { key: 'employee', label: 'EMPLOYEE', fixed: true, render: (_, row) => <AttendancePersonCell name={row.employee} /> },
-      { key: 'date', label: 'DATE', render: (_, row) => <TableCellCreated dateString={row.date} dateMode="calendar" /> },
-      { key: 'ot', label: 'OT HRS', render: (_, row) => <AttendanceTextCell value={String(row.ot)} emphasized /> },
-      { key: 'amount', label: 'AMOUNT', render: (_, row) => <AttendanceTextCell value={`₹${row.amount.toLocaleString('en-IN')}`} emphasized /> },
-      { key: 'status', label: 'STATUS', render: (_, row) => <AttendanceStatusPill status={row.status} /> },
-      {
-        key: 'actions',
-        label: 'ACTIONS',
-        render: (_, row) => (
-          <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-            {row.statusRaw === 'pending' ? (
-              <Button variant="ghost" size="sm" className="p-2 text-emerald-600" disabled={actionId === row.id} onClick={() => handleApproveOvertime(row.id)}>
-                <Check className="h-4 w-4" />
-              </Button>
-            ) : null}
-            <Button variant="ghost" size="sm" className="p-2 text-red-600" disabled={actionId === row.id} onClick={async () => { setActionId(row.id); await deleteOvertimeRecord(row.id); await loadData(); setActionId(null) }}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ),
-      },
-    ],
+    () =>
+      buildOvertimeColumns({
+        actionId,
+        onApprove: handleApproveOvertime,
+        onDelete: async (id) => {
+          setActionId(id)
+          await deleteOvertimeRecord(id)
+          await loadData()
+          setActionId(null)
+        },
+      }),
     [actionId, handleApproveOvertime, loadData],
   )
 
-  const visibleTodayColumns = useMemo(() => {
-    const byKey = Object.fromEntries(todayTableColumns.map((c) => [c.key, c]))
-    const out = []
-    if (byKey.employee) out.push(byKey.employee)
-    for (const key of columnOrder) {
-      const col = byKey[key]
-      if (!col?.visibilityKey || !columnVisibility[col.visibilityKey]) continue
-      out.push(col)
+  const shiftColumns = useMemo(() => buildShiftColumns(), [])
+
+  const visibleTodayColumns = useMemo(
+    () =>
+      resolveVisibleAttendanceColumns(
+        todayTableColumns,
+        columnOrder,
+        columnVisibility,
+        bindSortableColumns,
+        SORTABLE_KEYS,
+      ),
+    [columnOrder, columnVisibility, todayTableColumns, bindSortableColumns],
+  )
+
+  const visibleMonthlyColumns = useMemo(
+    () =>
+      resolveVisibleAttendanceColumns(
+        monthlyColumns,
+        monthlyColumnOrder,
+        monthlyColumnVisibility,
+        bindMonthlySortableColumns,
+        MONTHLY_SORTABLE_KEYS,
+      ),
+    [monthlyColumnOrder, monthlyColumnVisibility, monthlyColumns, bindMonthlySortableColumns],
+  )
+
+  const visibleOvertimeColumns = useMemo(
+    () =>
+      resolveVisibleAttendanceColumns(
+        overtimeColumns,
+        overtimeColumnOrder,
+        overtimeColumnVisibility,
+        bindOvertimeSortableColumns,
+        OVERTIME_SORTABLE_KEYS,
+      ),
+    [overtimeColumnOrder, overtimeColumnVisibility, overtimeColumns, bindOvertimeSortableColumns],
+  )
+
+  const visibleShiftColumns = useMemo(
+    () =>
+      resolveVisibleAttendanceColumns(
+        shiftColumns,
+        shiftColumnOrder,
+        shiftColumnVisibility,
+        bindShiftSortableColumns,
+        SHIFT_SORTABLE_KEYS,
+        'shift',
+      ),
+    [shiftColumnOrder, shiftColumnVisibility, shiftColumns, bindShiftSortableColumns],
+  )
+
+  const activeTableContext = useMemo(() => {
+    if (activeTab === 'shifts') {
+      return {
+        sortRules: shiftSortRules,
+        sortColumnOptions: SHIFT_SORT_COLUMN_OPTIONS,
+        hasActiveSort: hasShiftActiveSort,
+        reorderableColumns: SHIFT_TOGGLEABLE_COLUMNS,
+        columnVisibility: shiftColumnVisibility,
+        columnOrder: shiftColumnOrder,
+        columnDropIndicator: shiftColumnDropIndicator,
+        setColumnVisible: setShiftColumnVisible,
+        handleColumnDragStart: handleShiftColumnDragStart,
+        handleColumnDragEnd: handleShiftColumnDragEnd,
+        handleColumnRowDragOver: handleShiftColumnRowDragOver,
+        handleColumnListDragLeave: handleShiftColumnListDragLeave,
+        handleColumnDrop: handleShiftColumnDrop,
+        resetColumnTablePreferences: resetShiftColumnTablePreferences,
+        addSortRule: addShiftSortRule,
+        removeSortRule: removeShiftSortRule,
+        setRuleDirection: setShiftRuleDirection,
+        moveSortRule: moveShiftSortRule,
+        clearSort: clearShiftSort,
+        sortMaxRules: shiftSortMaxRules,
+        columnPickerOpen: shiftColumnPickerOpen,
+        setColumnPickerOpen: setShiftColumnPickerOpen,
+      }
     }
-    if (byKey.actions) out.push(byKey.actions)
-    return activeTab === 'today' ? bindSortableColumns(out, SORTABLE_KEYS) : out
-  }, [columnOrder, columnVisibility, todayTableColumns, activeTab, bindSortableColumns])
+
+    if (activeTab === 'monthly') {
+      return {
+        sortRules: monthlySortRules,
+        sortColumnOptions: MONTHLY_SORT_COLUMN_OPTIONS,
+        hasActiveSort: hasMonthlyActiveSort,
+        reorderableColumns: MONTHLY_TOGGLEABLE_COLUMNS,
+        columnVisibility: monthlyColumnVisibility,
+        columnOrder: monthlyColumnOrder,
+        columnDropIndicator: monthlyColumnDropIndicator,
+        setColumnVisible: setMonthlyColumnVisible,
+        handleColumnDragStart: handleMonthlyColumnDragStart,
+        handleColumnDragEnd: handleMonthlyColumnDragEnd,
+        handleColumnRowDragOver: handleMonthlyColumnRowDragOver,
+        handleColumnListDragLeave: handleMonthlyColumnListDragLeave,
+        handleColumnDrop: handleMonthlyColumnDrop,
+        resetColumnTablePreferences: resetMonthlyColumnTablePreferences,
+        addSortRule: addMonthlySortRule,
+        removeSortRule: removeMonthlySortRule,
+        setRuleDirection: setMonthlyRuleDirection,
+        moveSortRule: moveMonthlySortRule,
+        clearSort: clearMonthlySort,
+        sortMaxRules: monthlySortMaxRules,
+        columnPickerOpen: monthlyColumnPickerOpen,
+        setColumnPickerOpen: setMonthlyColumnPickerOpen,
+      }
+    }
+
+    if (activeTab === 'overtime') {
+      return {
+        sortRules: overtimeSortRules,
+        sortColumnOptions: OVERTIME_SORT_COLUMN_OPTIONS,
+        hasActiveSort: hasOvertimeActiveSort,
+        reorderableColumns: OVERTIME_TOGGLEABLE_COLUMNS,
+        columnVisibility: overtimeColumnVisibility,
+        columnOrder: overtimeColumnOrder,
+        columnDropIndicator: overtimeColumnDropIndicator,
+        setColumnVisible: setOvertimeColumnVisible,
+        handleColumnDragStart: handleOvertimeColumnDragStart,
+        handleColumnDragEnd: handleOvertimeColumnDragEnd,
+        handleColumnRowDragOver: handleOvertimeColumnRowDragOver,
+        handleColumnListDragLeave: handleOvertimeColumnListDragLeave,
+        handleColumnDrop: handleOvertimeColumnDrop,
+        resetColumnTablePreferences: resetOvertimeColumnTablePreferences,
+        addSortRule: addOvertimeSortRule,
+        removeSortRule: removeOvertimeSortRule,
+        setRuleDirection: setOvertimeRuleDirection,
+        moveSortRule: moveOvertimeSortRule,
+        clearSort: clearOvertimeSort,
+        sortMaxRules: overtimeSortMaxRules,
+        columnPickerOpen: overtimeColumnPickerOpen,
+        setColumnPickerOpen: setOvertimeColumnPickerOpen,
+      }
+    }
+
+    if (activeTab === 'today') {
+      return {
+        sortRules,
+        sortColumnOptions: SORT_COLUMN_OPTIONS,
+        hasActiveSort,
+        reorderableColumns: TOGGLEABLE_COLUMNS,
+        columnVisibility,
+        columnOrder,
+        columnDropIndicator,
+        setColumnVisible,
+        handleColumnDragStart,
+        handleColumnDragEnd,
+        handleColumnRowDragOver,
+        handleColumnListDragLeave,
+        handleColumnDrop,
+        resetColumnTablePreferences,
+        addSortRule,
+        removeSortRule,
+        setRuleDirection,
+        moveSortRule,
+        clearSort,
+        sortMaxRules,
+        columnPickerOpen,
+        setColumnPickerOpen,
+      }
+    }
+
+    return null
+  }, [
+    activeTab,
+    shiftSortRules,
+    hasShiftActiveSort,
+    shiftColumnVisibility,
+    shiftColumnOrder,
+    shiftColumnDropIndicator,
+    shiftColumnPickerOpen,
+    setShiftColumnVisible,
+    handleShiftColumnDragStart,
+    handleShiftColumnDragEnd,
+    handleShiftColumnRowDragOver,
+    handleShiftColumnListDragLeave,
+    handleShiftColumnDrop,
+    resetShiftColumnTablePreferences,
+    addShiftSortRule,
+    removeShiftSortRule,
+    setShiftRuleDirection,
+    moveShiftSortRule,
+    clearShiftSort,
+    shiftSortMaxRules,
+    setShiftColumnPickerOpen,
+    monthlySortRules,
+    hasMonthlyActiveSort,
+    monthlyColumnVisibility,
+    monthlyColumnOrder,
+    monthlyColumnDropIndicator,
+    monthlyColumnPickerOpen,
+    overtimeSortRules,
+    hasOvertimeActiveSort,
+    overtimeColumnVisibility,
+    overtimeColumnOrder,
+    overtimeColumnDropIndicator,
+    overtimeColumnPickerOpen,
+    sortRules,
+    hasActiveSort,
+    columnVisibility,
+    columnOrder,
+    columnDropIndicator,
+    columnPickerOpen,
+    setMonthlyColumnVisible,
+    handleMonthlyColumnDragStart,
+    handleMonthlyColumnDragEnd,
+    handleMonthlyColumnRowDragOver,
+    handleMonthlyColumnListDragLeave,
+    handleMonthlyColumnDrop,
+    resetMonthlyColumnTablePreferences,
+    addMonthlySortRule,
+    removeMonthlySortRule,
+    setMonthlyRuleDirection,
+    moveMonthlySortRule,
+    clearMonthlySort,
+    monthlySortMaxRules,
+    setMonthlyColumnPickerOpen,
+    setOvertimeColumnVisible,
+    handleOvertimeColumnDragStart,
+    handleOvertimeColumnDragEnd,
+    handleOvertimeColumnRowDragOver,
+    handleOvertimeColumnListDragLeave,
+    handleOvertimeColumnDrop,
+    resetOvertimeColumnTablePreferences,
+    addOvertimeSortRule,
+    removeOvertimeSortRule,
+    setOvertimeRuleDirection,
+    moveOvertimeSortRule,
+    clearOvertimeSort,
+    overtimeSortMaxRules,
+    setOvertimeColumnPickerOpen,
+    setColumnVisible,
+    handleColumnDragStart,
+    handleColumnDragEnd,
+    handleColumnRowDragOver,
+    handleColumnListDragLeave,
+    handleColumnDrop,
+    resetColumnTablePreferences,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    sortMaxRules,
+    setColumnPickerOpen,
+  ])
+
+  const isDataTableTab = Boolean(activeTableContext)
 
   const resultCount =
     activeTab === 'today'
@@ -494,7 +878,7 @@ export default function AttendancePage() {
         : activeTab === 'overtime'
           ? overtimeRows.length
           : activeTab === 'shifts'
-            ? shiftCards.length
+            ? shiftRows.length
             : 0
 
   return (
@@ -513,10 +897,9 @@ export default function AttendancePage() {
         }
       />
 
-      <HRKpiRow columns={5}>
+      <HRKpiRow columns={4}>
         <KPICard title="Present" value={snapshot.present} subtitle={`${snapshot.present} employees`} icon={UserCheck} colorScheme="orange" />
         <KPICard title="On Leave" value={snapshot.onLeave} subtitle={`${snapshot.onLeave} on leave`} icon={Clock} colorScheme="orange" />
-        <KPICard title="Not Marked" value={snapshot.notMarked} subtitle={`${snapshot.notMarked} pending`} icon={CircleDashed} colorScheme="orange" />
         <KPICard title="Absent" value={snapshot.absent} subtitle={`${snapshot.absent} marked absent`} icon={UserX} colorScheme="orange" />
         <KPICard title="WFH" value={snapshot.wfh} subtitle={`${snapshot.wfh} remote`} icon={Home} colorScheme="orange" />
       </HRKpiRow>
@@ -533,6 +916,19 @@ export default function AttendancePage() {
         </div>
       ) : null}
 
+      {activeTab === 'monthly' ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">{monthDateLabel(monthValue)}</p>
+            <p className="text-xs text-gray-500">
+              {monthlyRecords.length} saved record{monthlyRecords.length === 1 ? '' : 's'}
+              {statusFilter || searchQuery ? ` · ${monthlyRows.length} matching filters` : ''}
+            </p>
+          </div>
+          <Input type="month" value={monthValue} onChange={(e) => setMonthValue(e.target.value)} className="max-w-[180px]" />
+        </div>
+      ) : null}
+
       <div className="relative" ref={toolbarRef}>
         <TabsWithActions
           tabs={tabItems.map((item) => ({ key: item.key, label: item.label, badge: String(item.count) }))}
@@ -542,21 +938,51 @@ export default function AttendancePage() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Search attendance..."
-          showAdd={activeTab === 'today'}
+          showAdd={activeTab === 'today' || activeTab === 'monthly'}
           onAddClick={() => openMarkModal(null)}
           addTitle="Mark attendance"
           showFilter={activeTab === 'today' || activeTab === 'monthly'}
           onFilterClick={() => setFilterOpen(true)}
           hasActiveFilters={Boolean(statusFilter)}
-          showColumnVisibility={activeTab === 'today'}
-          onColumnVisibilityClick={() => { setSortPickerOpen(false); setColumnPickerOpen((o) => !o) }}
-          showSort={activeTab === 'today'}
-          onSortClick={() => { setColumnPickerOpen(false); setSortPickerOpen((o) => !o) }}
-          hasActiveSort={hasActiveSort}
+          showColumnVisibility={isDataTableTab}
+          onColumnVisibilityClick={() => {
+            setSortPickerOpen(false)
+            activeTableContext?.setColumnPickerOpen((open) => !open)
+          }}
+          showSort={isDataTableTab}
+          onSortClick={() => {
+            activeTableContext?.setColumnPickerOpen(false)
+            setSortPickerOpen((open) => !open)
+          }}
+          hasActiveSort={activeTableContext?.hasActiveSort ?? false}
           variant="glass"
         />
-        <TableSortDropdown open={sortPickerOpen && activeTab === 'today'} sortRules={sortRules} columnOptions={SORT_COLUMN_OPTIONS} onAddRule={addSortRule} onRemoveRule={removeSortRule} onSetDirection={setRuleDirection} onMoveRule={moveSortRule} onClear={clearSort} maxRules={sortMaxRules} />
-        <TableColumnPicker open={columnPickerOpen && activeTab === 'today'} reorderableRows={TOGGLEABLE_COLUMNS} columnVisibility={columnVisibility} columnOrder={columnOrder} columnDropIndicator={columnDropIndicator} onSetVisible={setColumnVisible} onDragStart={handleColumnDragStart} onDragEnd={handleColumnDragEnd} onRowDragOver={handleColumnRowDragOver} onListDragLeave={handleColumnListDragLeave} onDrop={handleColumnDrop} onReset={resetColumnTablePreferences} />
+        <TableSortDropdown
+          open={sortPickerOpen && isDataTableTab}
+          sortRules={activeTableContext?.sortRules ?? []}
+          columnOptions={activeTableContext?.sortColumnOptions ?? []}
+          onAddRule={activeTableContext?.addSortRule}
+          onRemoveRule={activeTableContext?.removeSortRule}
+          onSetDirection={activeTableContext?.setRuleDirection}
+          onMoveRule={activeTableContext?.moveSortRule}
+          onClear={activeTableContext?.clearSort}
+          maxRules={activeTableContext?.sortMaxRules}
+        />
+        <TableColumnPicker
+          open={Boolean(activeTableContext?.columnPickerOpen) && isDataTableTab}
+          description="Employee name and actions stay visible."
+          reorderableRows={activeTableContext?.reorderableColumns ?? []}
+          columnVisibility={activeTableContext?.columnVisibility ?? {}}
+          columnOrder={activeTableContext?.columnOrder ?? []}
+          columnDropIndicator={activeTableContext?.columnDropIndicator}
+          onSetVisible={activeTableContext?.setColumnVisible}
+          onDragStart={activeTableContext?.handleColumnDragStart}
+          onDragEnd={activeTableContext?.handleColumnDragEnd}
+          onRowDragOver={activeTableContext?.handleColumnRowDragOver}
+          onListDragLeave={activeTableContext?.handleColumnListDragLeave}
+          onDrop={activeTableContext?.handleColumnDrop}
+          onReset={activeTableContext?.resetColumnTablePreferences}
+        />
       </div>
 
       {actionError ? <p className="text-sm text-red-600">{actionError}</p> : null}
@@ -574,43 +1000,64 @@ export default function AttendancePage() {
       )}
 
       {activeTab === 'monthly' && (
-        <>
-          <div className="flex justify-end">
-            <Input type="month" value={monthValue} onChange={(e) => setMonthValue(e.target.value)} className="max-w-[200px]" />
-          </div>
-          <HRDataTableCard>
-            <Table columns={monthlyColumns} data={monthlyRows} keyField="id" variant="modernEmbedded" />
-            {!loading && monthlyRows.length === 0 ? (
-              <TableEmptyBelow icon={FileSpreadsheet} title="No monthly records" description="Mark attendance during the month to build the log." />
-            ) : null}
-          </HRDataTableCard>
-        </>
+        <HRDataTableCard>
+          <Table
+            columns={visibleMonthlyColumns}
+            data={sortedMonthlyRows}
+            keyField="id"
+            variant="modernEmbedded"
+            {...monthlyTableResizeProps}
+          />
+          {!loading && monthlyRows.length === 0 ? (
+            <TableEmptyBelow
+              icon={FileSpreadsheet}
+              title="No monthly records"
+              description="Mark attendance during the month to build the log."
+              action={
+                <Button className="gap-2 bg-orange-500 hover:bg-orange-600" onClick={() => openMarkModal(null)}>
+                  <Plus className="h-4 w-4" />
+                  Mark attendance
+                </Button>
+              }
+            />
+          ) : null}
+        </HRDataTableCard>
       )}
 
       {activeTab === 'shifts' && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {shiftCards.map((s) => (
-            <Card key={s.id} variant="elevated" className="p-6">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{s.name}</h3>
-                  <p className="mt-1 text-sm text-gray-500">{s.timing}</p>
-                  <p className="mt-3 text-sm font-medium text-orange-600">{s.employees} employees assigned</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
-                  <Clock className="h-5 w-5 text-orange-600" aria-hidden />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <HRDataTableCard>
+          <Table
+            columns={visibleShiftColumns}
+            data={sortedShiftRows}
+            keyField="id"
+            variant="modernEmbedded"
+            {...shiftTableResizeProps}
+          />
+          {!loading && shiftRows.length === 0 ? (
+            <TableEmptyBelow
+              icon={Clock}
+              title="No shifts found"
+              description="Adjust your search to find a shift."
+            />
+          ) : null}
+        </HRDataTableCard>
       )}
 
       {activeTab === 'overtime' && (
         <HRDataTableCard>
-          <Table columns={overtimeColumns} data={overtimeRows} keyField="id" variant="modernEmbedded" />
+          <Table
+            columns={visibleOvertimeColumns}
+            data={sortedOvertimeRows}
+            keyField="id"
+            variant="modernEmbedded"
+            {...overtimeTableResizeProps}
+          />
           {!loading && overtimeRows.length === 0 ? (
-            <TableEmptyBelow icon={Clock} title="No overtime records" description="Overtime entries can be added via API or future UI." />
+            <TableEmptyBelow
+              icon={Clock}
+              title="No overtime records"
+              description="Overtime entries can be added via API or future UI."
+            />
           ) : null}
         </HRDataTableCard>
       )}

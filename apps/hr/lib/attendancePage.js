@@ -23,12 +23,24 @@ export function filterAttendanceLog(log, { search = '', statusFilter = '' } = {}
   })
 }
 
+export function filterShifts(shifts = [], search = '') {
+  const q = search.toLowerCase().trim()
+  if (!q) return shifts
+  return shifts.filter(
+    (row) =>
+      (row.name || '').toLowerCase().includes(q) ||
+      (row.timing || '').toLowerCase().includes(q) ||
+      (row.status || '').toLowerCase().includes(q),
+  )
+}
+
 export function filterOvertimeRecords(records, search = '') {
   const q = search.toLowerCase().trim()
   if (!q) return records
   return records.filter(
     (r) =>
-      (r.employee || '').toLowerCase().includes(q) ||
+      (r.name || r.employee || '').toLowerCase().includes(q) ||
+      (r.employeeCode || '').toLowerCase().includes(q) ||
       (r.date || '').includes(q) ||
       (r.status || '').toLowerCase().includes(q),
   )
@@ -49,7 +61,39 @@ export function attendanceSortValue(row, key) {
     case 'location':
       return row.location || ''
     case 'date':
-      return row.attendanceDate || ''
+      return row.attendanceDate || row.date || ''
+    default:
+      return row[key]
+  }
+}
+
+export function shiftSortValue(row, key) {
+  switch (key) {
+    case 'shift':
+      return row.name || ''
+    case 'timing':
+      return row.timing || ''
+    case 'employees':
+      return Number(row.employees || 0)
+    case 'status':
+      return row.status || ''
+    default:
+      return row[key]
+  }
+}
+
+export function overtimeSortValue(row, key) {
+  switch (key) {
+    case 'employee':
+      return row.name || row.employee || ''
+    case 'date':
+      return row.date || ''
+    case 'ot':
+      return Number(row.ot || 0)
+    case 'amount':
+      return Number(row.amount || 0)
+    case 'status':
+      return row.status || ''
     default:
       return row[key]
   }
