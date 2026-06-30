@@ -1,0 +1,1 @@
+export { DocsComponentEmbed } from './DocsComponentEmbed';
