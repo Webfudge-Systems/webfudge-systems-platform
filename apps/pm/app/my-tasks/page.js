@@ -66,6 +66,7 @@ import {
   pmTableSelectFillProps,
   PRIORITY_OPTIONS,
 } from '../../components/PMStatusBadge';
+import { hasActiveListFilters, matchesDueDateRange } from '@webfudge/utils';
 import projectService from '../../lib/api/projectService';
 import { fetchPmAssignableUsers } from '../../lib/api/messageService';
 import taskService from '../../lib/api/taskService';
@@ -77,6 +78,7 @@ import {
   buildChildrenByParentId,
   enrichTasksWithProjectManager,
   filterMajorTasks,
+  filterMyTasksTableRoots,
   isMajorTask,
   mergeTasksById,
 } from '../../lib/taskListUtils';
@@ -129,6 +131,36 @@ const MIN_COLUMN_WIDTHS = {
 };
 
 const TASK_VIEW_MODES = ['list', 'table', 'kanban', 'timeline'];
+
+const TASK_FILTER_INITIAL = {
+  status: '',
+  priority: '',
+  projectId: '',
+  assigneeId: '',
+  assignerId: '',
+  dueDateRange: '',
+  tagQuery: '',
+  nameQuery: '',
+};
+
+function taskAssigneeIds(task) {
+  const ids = new Set();
+  for (const id of task.assigneeUserIds || []) {
+    if (id != null) ids.add(String(id));
+  }
+  for (const assignee of task.assignees || []) {
+    if (assignee?.id != null) ids.add(String(assignee.id));
+  }
+  if (task.assigneeId != null) ids.add(String(task.assigneeId));
+  return ids;
+}
+
+function taskMatchesTags(task, tagQuery) {
+  if (!tagQuery?.trim()) return true;
+  const q = tagQuery.trim().toLowerCase();
+  const tags = Array.isArray(task.tags) ? task.tags : [];
+  return tags.some((tag) => String(tag).toLowerCase().includes(q));
+}
 
 function readStoredTaskView() {
   if (typeof window === 'undefined') return 'table';
@@ -254,7 +286,8 @@ export default function MyTasksPage() {
     typeof window === 'undefined' ? 'table' : readStoredTaskView()
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({ priority: '', projectId: '' });
+  const [appliedFilters, setAppliedFilters] = useState(TASK_FILTER_INITIAL);
+  const [draftFilters, setDraftFilters] = useState(TASK_FILTER_INITIAL);
   const [filterOpen, setFilterOpen] = useState(false);
   const [taskModal, setTaskModal] = useState({ open: false, task: null, parentContext: null });
   const [expandedSubtaskParents, setExpandedSubtaskParents] = useState(() => new Set());
@@ -308,8 +341,8 @@ export default function MyTasksPage() {
     try {
       if (!silent) setLoading(true);
       const params = { pageSize: 500, sort: 'updatedAt:desc' };
-      if (filters.priority) params.priority = filters.priority;
-      if (filters.projectId) params.projectId = filters.projectId;
+      if (appliedFilters.priority) params.priority = appliedFilters.priority;
+      if (appliedFilters.projectId) params.projectId = appliedFilters.projectId;
 
       const rawList = await taskService.fetchAllTasks(params);
       if (requestId !== loadTasksRequestIdRef.current) return;
@@ -326,7 +359,7 @@ export default function MyTasksPage() {
     } finally {
       if (requestId === loadTasksRequestIdRef.current && !silent) setLoading(false);
     }
-  }, [filters.priority, filters.projectId]);
+  }, [appliedFilters.priority, appliedFilters.projectId]);
 
   const currentUserId = useMemo(() => {
     const id = getUserId();
@@ -375,12 +408,33 @@ export default function MyTasksPage() {
         );
       });
     }
+    list = list.filter((task) => {
+      const st = (task.strapiStatus || '').toUpperCase();
+      const assigneeIds = taskAssigneeIds(task);
+      const assignerId = task.assignerId != null ? String(task.assignerId) : '';
+      const projectId = task.projectId != null ? String(task.projectId) : '';
+      return (
+        (!appliedFilters.status || st === appliedFilters.status) &&
+        (!appliedFilters.priority ||
+          (task.priority || '').toLowerCase() === appliedFilters.priority.toLowerCase()) &&
+        (!appliedFilters.projectId || projectId === appliedFilters.projectId) &&
+        (!appliedFilters.assigneeId || assigneeIds.has(appliedFilters.assigneeId)) &&
+        (!appliedFilters.assignerId || assignerId === appliedFilters.assignerId) &&
+        (!appliedFilters.nameQuery ||
+          (task.name || '').toLowerCase().includes(appliedFilters.nameQuery.toLowerCase())) &&
+        taskMatchesTags(task, appliedFilters.tagQuery) &&
+        (!appliedFilters.dueDateRange ||
+          (appliedFilters.dueDateRange === 'overdue'
+            ? isTaskOverdue(task)
+            : matchesDueDateRange(task.dueDate, appliedFilters.dueDateRange)))
+      );
+    });
     return list;
-  }, [allTasksEnriched, activeTab, searchQuery, isActiveMyTask]);
+  }, [allTasksEnriched, activeTab, searchQuery, isActiveMyTask, appliedFilters]);
 
-  /** My Tasks: assigned subtasks as their own rows; other tabs: major tasks only. */
+  /** My Tasks: assigned subtasks as rows; hide major tasks that have subtasks. Other tabs: major only. */
   const tableRootTasks = useMemo(() => {
-    if (activeTab === 'MY_TASKS') return filteredTasks;
+    if (activeTab === 'MY_TASKS') return filterMyTasksTableRoots(filteredTasks, allTasksEnriched);
     return filteredTasks.filter((task) => isMajorTask(task, allTasksEnriched));
   }, [filteredTasks, activeTab, allTasksEnriched]);
 
@@ -471,7 +525,33 @@ export default function MyTasksPage() {
 
   useEffect(() => {
     setTablePage(1);
-  }, [activeTab, searchQuery, filters.priority, filters.projectId, taskViewMode]);
+  }, [activeTab, searchQuery, appliedFilters, taskViewMode]);
+
+  const hasActiveFilters = useMemo(() => hasActiveListFilters(appliedFilters), [appliedFilters]);
+
+  const openFilterModal = useCallback(() => {
+    setDraftFilters(appliedFilters);
+    setFilterOpen(true);
+  }, [appliedFilters]);
+
+  const applyFilters = useCallback(() => {
+    setAppliedFilters(draftFilters);
+    setFilterOpen(false);
+  }, [draftFilters]);
+
+  const clearAllFilters = useCallback(() => {
+    setDraftFilters(TASK_FILTER_INITIAL);
+    setAppliedFilters(TASK_FILTER_INITIAL);
+    setFilterOpen(false);
+  }, []);
+
+  const userFilterOptions = useMemo(
+    () =>
+      users
+        .map((u) => ({ value: String(u.id), label: u.name || u.email || `User ${u.id}` }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [users]
+  );
 
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(sortedTableRootTasks.length / TABLE_PAGE_SIZE));
@@ -525,15 +605,16 @@ export default function MyTasksPage() {
 
   const tabsWithBadges = useMemo(() => {
     const counts = { all: majorTasks.length, MY_TASKS: 0, IN_PROGRESS: 0, OVERDUE: 0 };
-    for (const task of allTasks) {
-      if (isActiveMyTask(task)) counts.MY_TASKS += 1;
-    }
+    counts.MY_TASKS = filterMyTasksTableRoots(
+      allTasksEnriched.filter(isActiveMyTask),
+      allTasksEnriched
+    ).length;
     for (const task of majorTasks) {
       if (task.strapiStatus === 'IN_PROGRESS') counts.IN_PROGRESS += 1;
       if (isTaskOverdue(task)) counts.OVERDUE += 1;
     }
     return STATUS_TABS.map((tab) => ({ ...tab, badge: counts[tab.id] || 0 }));
-  }, [allTasks, majorTasks, isActiveMyTask]);
+  }, [allTasksEnriched, majorTasks, isActiveMyTask]);
 
   const updateTask = useCallback(
     async (task, patch) => {
@@ -1032,8 +1113,8 @@ export default function MyTasksPage() {
         showProfile
         showActions
         onAddClick={() => setTaskModal({ open: true, task: null, parentContext: null })}
-        onFilterClick={() => setFilterOpen(true)}
-        hasActiveFilters={Boolean(filters.priority || filters.projectId)}
+        onFilterClick={openFilterModal}
+        hasActiveFilters={hasActiveFilters}
         onImportClick={() => console.log('Import clicked')}
         onExportClick={() => console.log('Export clicked')}
       />
@@ -1091,7 +1172,8 @@ export default function MyTasksPage() {
           onAddClick={() => setTaskModal({ open: true, task: null, parentContext: null })}
           addTitle="Add Task"
           showFilter
-          onFilterClick={() => setFilterOpen(true)}
+          onFilterClick={openFilterModal}
+          filterTitle={hasActiveFilters ? 'Filters active' : 'Filter tasks'}
           showColumnVisibility={taskViewMode === 'table'}
           onColumnVisibilityClick={() => {
             setSortPickerOpen(false);
@@ -1250,28 +1332,91 @@ export default function MyTasksPage() {
         )}
       </div>
 
-      <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter Tasks" size="md">
+      <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter Tasks" size="lg">
         <div className="space-y-5">
-          <Select
-            label="Priority"
-            value={filters.priority}
-            options={PRIORITY_OPTIONS}
-            onChange={(priority) => setFilters((prev) => ({ ...prev, priority }))}
-            placeholder="Any priority"
-          />
-          <Select
-            label="Project"
-            value={filters.projectId}
-            options={projects.map((project) => ({ value: String(project.id), label: project.name }))}
-            onChange={(projectId) => setFilters((prev) => ({ ...prev, projectId }))}
-            placeholder="Any project"
-          />
-          <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
-            <Button variant="outline" onClick={() => setFilters({ priority: '', projectId: '' })}>
-              Clear
-            </Button>
-            <Button onClick={() => setFilterOpen(false)}>Apply Filters</Button>
+          <p className="text-sm text-gray-600">Refine tasks by status, people, schedule, and tags</p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Select
+              label="Status"
+              value={draftFilters.status}
+              options={PM_TASK_STATUS_OPTIONS.filter((opt) => opt.value !== 'OVERDUE')}
+              onChange={(status) => setDraftFilters((prev) => ({ ...prev, status }))}
+              placeholder="Any status"
+            />
+            <Select
+              label="Priority"
+              value={draftFilters.priority}
+              options={PRIORITY_OPTIONS}
+              onChange={(priority) => setDraftFilters((prev) => ({ ...prev, priority }))}
+              placeholder="Any priority"
+            />
+            <Select
+              label="Project"
+              value={draftFilters.projectId}
+              options={projects.map((project) => ({ value: String(project.id), label: project.name }))}
+              onChange={(projectId) => setDraftFilters((prev) => ({ ...prev, projectId }))}
+              placeholder="Any project"
+            />
+            <Select
+              label="Assignee"
+              value={draftFilters.assigneeId}
+              options={userFilterOptions}
+              onChange={(assigneeId) => setDraftFilters((prev) => ({ ...prev, assigneeId }))}
+              placeholder="Anyone"
+            />
+            <Select
+              label="Reporter"
+              value={draftFilters.assignerId}
+              options={userFilterOptions}
+              onChange={(assignerId) => setDraftFilters((prev) => ({ ...prev, assignerId }))}
+              placeholder="Anyone"
+            />
+            <Select
+              label="Due date"
+              value={draftFilters.dueDateRange}
+              options={[
+                { value: 'overdue', label: 'Overdue (before today)' },
+                { value: 'today', label: 'Due today' },
+                { value: 'week', label: 'Due within 7 days' },
+                { value: 'next30', label: 'Due within 30 days' },
+                { value: 'noDate', label: 'No due date' },
+              ]}
+              onChange={(dueDateRange) => setDraftFilters((prev) => ({ ...prev, dueDateRange }))}
+              placeholder="Any time"
+            />
+            <label className="space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-gray-700">Tags contain</span>
+              <input
+                value={draftFilters.tagQuery}
+                onChange={(e) => setDraftFilters((prev) => ({ ...prev, tagQuery: e.target.value }))}
+                placeholder="Filter by tag…"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              />
+            </label>
+            <label className="space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-gray-700">Task name contains</span>
+              <input
+                value={draftFilters.nameQuery}
+                onChange={(e) => setDraftFilters((prev) => ({ ...prev, nameQuery: e.target.value }))}
+                placeholder="Filter by title…"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              />
+            </label>
           </div>
+          <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+            <Button type="button" variant="outline" onClick={clearAllFilters}>
+              Clear all
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="muted" onClick={() => setFilterOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" onClick={applyFilters}>
+                Apply Filters
+              </Button>
+            </div>
+          </div>
+          {hasActiveFilters ? <p className="text-xs text-orange-700">Active filters are applied.</p> : null}
         </div>
       </Modal>
 

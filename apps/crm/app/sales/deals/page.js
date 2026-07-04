@@ -59,6 +59,25 @@ import { contactDisplayName } from '../../../lib/dealFormOptions';
 import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../lib/rbac';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
+import strapiClient from '../../../lib/strapiClient';
+import { hasActiveListFilters, matchesDueDateRange, matchesNumericRange } from '@webfudge/utils';
+
+const DEAL_FILTER_INITIAL = {
+  stage: '',
+  priority: '',
+  assignedToId: '',
+  valueRange: '',
+  closeDateRange: '',
+  companyQuery: '',
+  nameQuery: '',
+};
+
+const DEAL_VALUE_RANGES = {
+  lt100k: { max: 100000 },
+  '100k_1m': { min: 100000, max: 1000000 },
+  '1m_5m': { min: 1000000, max: 5000000 },
+  gt5m: { min: 5000000 },
+};
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.deals.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.deals.tableColumnOrder';
@@ -260,6 +279,11 @@ export default function DealsPage() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [commentError, setCommentError] = useState('');
 
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState(DEAL_FILTER_INITIAL);
+  const [draftFilters, setDraftFilters] = useState(DEAL_FILTER_INITIAL);
+  const [orgUsers, setOrgUsers] = useState([]);
+
   const [dealViewMode, setDealViewMode] = useState(() =>
     typeof window === 'undefined' ? 'table' : readStoredDealView()
   );
@@ -290,6 +314,37 @@ export default function DealsPage() {
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
   }, [columnPickerOpen, sortOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await strapiClient.getXtrawrkxUsers();
+        if (!cancelled) setOrgUsers(Array.isArray(res?.data) ? res.data : []);
+      } catch {
+        if (!cancelled) setOrgUsers([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const assigneeFilterOptions = useMemo(() => {
+    return orgUsers
+      .map((user) => {
+        const id = user.id ?? user.documentId;
+        if (id == null) return null;
+        const name =
+          user.username ||
+          [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+          user.email ||
+          `User ${id}`;
+        return { value: String(id), label: name };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [orgUsers]);
 
   const fetchDeals = useCallback(async () => {
     try {
@@ -333,9 +388,44 @@ export default function DealsPage() {
       deal.clientAccount?.name?.toLowerCase().includes(q) ||
       deal.contact?.email?.toLowerCase().includes(q) ||
       contactDisplayName(deal.contact).toLowerCase().includes(q);
-    const matchesTab = activeTab === 'all' || deal.stage?.toLowerCase() === activeTab.toLowerCase();
-    return matchesSearch && matchesTab;
+    const stage = (deal.stage || '').toLowerCase();
+    const matchesTab = activeTab === 'all' || stage === activeTab.toLowerCase();
+    const assignedId =
+      deal.assignedTo && typeof deal.assignedTo === 'object'
+        ? String(deal.assignedTo.id ?? deal.assignedTo.documentId ?? '')
+        : '';
+    const companyText = companyLine(deal).toLowerCase();
+    const matchesAdvanced =
+      (!appliedFilters.stage || stage === appliedFilters.stage.toLowerCase()) &&
+      (!appliedFilters.priority ||
+        (deal.priority || '').toLowerCase() === appliedFilters.priority.toLowerCase()) &&
+      (!appliedFilters.assignedToId || assignedId === appliedFilters.assignedToId) &&
+      matchesNumericRange(deal.value, appliedFilters.valueRange, DEAL_VALUE_RANGES) &&
+      (!appliedFilters.closeDateRange ||
+        matchesDueDateRange(deal.expectedCloseDate, appliedFilters.closeDateRange)) &&
+      (!appliedFilters.companyQuery || companyText.includes(appliedFilters.companyQuery.toLowerCase())) &&
+      (!appliedFilters.nameQuery ||
+        (deal.name || '').toLowerCase().includes(appliedFilters.nameQuery.toLowerCase()));
+    return matchesSearch && matchesTab && matchesAdvanced;
   });
+
+  const hasActiveFilters = useMemo(() => hasActiveListFilters(appliedFilters), [appliedFilters]);
+
+  const openFilterModal = useCallback(() => {
+    setDraftFilters(appliedFilters);
+    setShowFilterModal(true);
+  }, [appliedFilters]);
+
+  const applyFilters = useCallback(() => {
+    setAppliedFilters(draftFilters);
+    setShowFilterModal(false);
+  }, [draftFilters]);
+
+  const clearAllFilters = useCallback(() => {
+    setDraftFilters(DEAL_FILTER_INITIAL);
+    setAppliedFilters(DEAL_FILTER_INITIAL);
+    setShowFilterModal(false);
+  }, []);
 
   // Multi-column sort (only applied in table view)
   const {
@@ -356,7 +446,7 @@ export default function DealsPage() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeTab]);
+  }, [searchQuery, activeTab, appliedFilters]);
 
   useEffect(() => {
     if (!paginatedDeals?.length) return;
@@ -847,7 +937,8 @@ export default function DealsPage() {
         ]}
         showActions
         onAddClick={canCreateDeals ? () => router.push('/sales/deals/new') : undefined}
-        onFilterClick={() => {}}
+        onFilterClick={openFilterModal}
+        hasActiveFilters={hasActiveFilters}
         onImportClick={() => {}}
         onExportClick={() => {}}
       />
@@ -903,7 +994,8 @@ export default function DealsPage() {
           onAddClick={canCreateDeals ? () => router.push('/sales/deals/new') : undefined}
           addTitle="Add Deal"
           showFilter
-          onFilterClick={() => {}}
+          onFilterClick={openFilterModal}
+          filterTitle={hasActiveFilters ? 'Filters active' : 'Filter deals'}
           showColumnVisibility={dealViewMode === 'table'}
           onColumnVisibilityClick={() => { setColumnPickerOpen((o) => !o); setSortOpen(false); }}
           columnVisibilityTitle="Show or hide columns"
@@ -1085,6 +1177,118 @@ export default function DealsPage() {
             </div>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)} title="Filter Deals" size="xl">
+        <div className="space-y-5">
+          <p className="text-sm text-gray-600">Refine deals by stage, value, close date, and assignment</p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Stage</span>
+              <select
+                value={draftFilters.stage}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, stage: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any stage</option>
+                {DEAL_PIPELINE_STAGES.map((s) => (
+                  <option key={s.key} value={s.key}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Priority</span>
+              <select
+                value={draftFilters.priority}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, priority: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any priority</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Assigned to</span>
+              <select
+                value={draftFilters.assignedToId}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, assignedToId: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Anyone</option>
+                {assigneeFilterOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Deal value</span>
+              <select
+                value={draftFilters.valueRange}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, valueRange: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any value</option>
+                <option value="lt100k">Under ₹1 lakh</option>
+                <option value="100k_1m">₹1 lakh – ₹10 lakh</option>
+                <option value="1m_5m">₹10 lakh – ₹50 lakh</option>
+                <option value="gt5m">Above ₹50 lakh</option>
+              </select>
+            </label>
+            <label className="space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-gray-700">Expected close</span>
+              <select
+                value={draftFilters.closeDateRange}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, closeDateRange: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any time</option>
+                <option value="overdue">Past due</option>
+                <option value="today">Closing today</option>
+                <option value="week">Within 7 days</option>
+                <option value="next30">Within 30 days</option>
+                <option value="noDate">No close date</option>
+              </select>
+            </label>
+            <label className="space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-gray-700">Company contains</span>
+              <input
+                value={draftFilters.companyQuery}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, companyQuery: e.target.value }))}
+                placeholder="Filter by lead or client company…"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              />
+            </label>
+            <label className="space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-gray-700">Deal name contains</span>
+              <input
+                value={draftFilters.nameQuery}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, nameQuery: e.target.value }))}
+                placeholder="Filter by deal title…"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              />
+            </label>
+          </div>
+          <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+            <Button type="button" variant="outline" onClick={clearAllFilters}>
+              Clear all
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="muted" onClick={() => setShowFilterModal(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" onClick={applyFilters}>
+                Apply filters
+              </Button>
+            </div>
+          </div>
+          {hasActiveFilters ? <p className="text-xs text-orange-700">Active filters are applied.</p> : null}
+        </div>
       </Modal>
 
       {moreActionMenu &&

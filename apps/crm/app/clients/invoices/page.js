@@ -15,6 +15,22 @@ import {
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import invoiceService from '../../../lib/api/invoiceService';
+import { hasActiveListFilters, matchesCreatedDateRange, matchesDueDateRange, matchesNumericRange } from '@webfudge/utils';
+
+const INVOICE_FILTER_INITIAL = {
+  status: '',
+  clientQuery: '',
+  amountRange: '',
+  dueDateRange: '',
+  invoiceDateRange: '',
+};
+
+const INVOICE_AMOUNT_RANGES = {
+  lt10k: { max: 10000 },
+  '10k_1l': { min: 10000, max: 100000 },
+  '1l_10l': { min: 100000, max: 1000000 },
+  gt10l: { min: 1000000 },
+};
 
 const formatCurrency = (value) => {
   if (!value && value !== 0) return '₹0';
@@ -81,6 +97,8 @@ export default function InvoicesPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [actionMenu, setActionMenu]       = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState(INVOICE_FILTER_INITIAL);
+  const [draftFilters, setDraftFilters] = useState(INVOICE_FILTER_INITIAL);
 
   const {
     columnVisibility,
@@ -142,18 +160,47 @@ export default function InvoicesPage() {
   }, [currentPage, activeTab]);
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
-  useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery]);
+  useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery, appliedFilters]);
 
   const filtered = invoices.filter((inv) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
+    if (!inv) return false;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
       inv.invoiceNumber?.toLowerCase().includes(q) ||
       inv.billToName?.toLowerCase().includes(q) ||
       inv.billToCompany?.toLowerCase().includes(q) ||
-      inv.fromOrgName?.toLowerCase().includes(q)
-    );
+      inv.fromOrgName?.toLowerCase().includes(q);
+    const st = (inv.status || '').toUpperCase();
+    const matchesTab = activeTab === 'all' || st === activeTab.toUpperCase();
+    const clientText = `${inv.billToName || ''} ${inv.billToCompany || ''}`.toLowerCase();
+    const matchesAdvanced =
+      (!appliedFilters.status || st === appliedFilters.status.toUpperCase()) &&
+      (!appliedFilters.clientQuery || clientText.includes(appliedFilters.clientQuery.toLowerCase())) &&
+      matchesNumericRange(inv.total, appliedFilters.amountRange, INVOICE_AMOUNT_RANGES) &&
+      (!appliedFilters.dueDateRange || matchesDueDateRange(inv.dueDate, appliedFilters.dueDateRange)) &&
+      (!appliedFilters.invoiceDateRange ||
+        matchesCreatedDateRange(inv.invoiceDate || inv.createdAt, appliedFilters.invoiceDateRange));
+    return matchesSearch && matchesTab && matchesAdvanced;
   });
+
+  const hasActiveFilters = useMemo(() => hasActiveListFilters(appliedFilters), [appliedFilters]);
+
+  const openFilterModal = useCallback(() => {
+    setDraftFilters(appliedFilters);
+    setShowFilterModal(true);
+  }, [appliedFilters]);
+
+  const applyFilters = useCallback(() => {
+    setAppliedFilters(draftFilters);
+    setShowFilterModal(false);
+  }, [draftFilters]);
+
+  const clearAllFilters = useCallback(() => {
+    setDraftFilters(INVOICE_FILTER_INITIAL);
+    setAppliedFilters(INVOICE_FILTER_INITIAL);
+    setShowFilterModal(false);
+  }, []);
 
   const stats = {
     all:       totalItems,
@@ -342,7 +389,8 @@ export default function InvoicesPage() {
         ]}
         showActions={true}
         onAddClick={() => router.push('/clients/invoices/new')}
-        onFilterClick={() => {}}
+        onFilterClick={openFilterModal}
+        hasActiveFilters={hasActiveFilters}
         onExportClick={() => {}}
       />
 
@@ -383,7 +431,8 @@ export default function InvoicesPage() {
           onAddClick={() => router.push('/clients/invoices/new')}
           addTitle="New Invoice"
           showFilter={true}
-          onFilterClick={() => setShowFilterModal(true)}
+          onFilterClick={openFilterModal}
+          filterTitle={hasActiveFilters ? 'Filters active' : 'Filter invoices'}
           showColumnVisibility={true}
           onColumnVisibilityClick={() => setColumnPickerOpen((o) => !o)}
           columnVisibilityTitle="Show or hide columns"
@@ -557,38 +606,92 @@ export default function InvoicesPage() {
         </div>
       </div>
     </Modal>
-    <Modal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)} title="Filter Invoices" size="md">
-      <div className="space-y-4">
-        <p className="text-sm text-gray-600">Quick filter by status:</p>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'draft', label: 'Draft' },
-            { key: 'sent', label: 'Sent' },
-            { key: 'paid', label: 'Paid' },
-            { key: 'overdue', label: 'Overdue' },
-            { key: 'partial', label: 'Partial' },
-          ].map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => {
-                setActiveTab(item.key);
-                setShowFilterModal(false);
-              }}
-              className={`rounded-lg border px-3 py-2 text-sm text-left transition-colors ${
-                activeTab === item.key
-                  ? 'border-orange-300 bg-orange-50 text-orange-700'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-              }`}
+    <Modal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)} title="Filter Invoices" size="lg">
+      <div className="space-y-5">
+        <p className="text-sm text-gray-600">Refine invoices by status, client, amount, and dates</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium text-gray-700">Status</span>
+            <select
+              value={draftFilters.status}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, status: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
             >
-              {item.label}
-            </button>
-          ))}
+              <option value="">Any status</option>
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>
+                  {cfg.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium text-gray-700">Amount</span>
+            <select
+              value={draftFilters.amountRange}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, amountRange: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="">Any amount</option>
+              <option value="lt10k">Under ₹10,000</option>
+              <option value="10k_1l">₹10,000 – ₹1 lakh</option>
+              <option value="1l_10l">₹1 lakh – ₹10 lakh</option>
+              <option value="gt10l">Above ₹10 lakh</option>
+            </select>
+          </label>
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="text-sm font-medium text-gray-700">Bill to contains</span>
+            <input
+              value={draftFilters.clientQuery}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, clientQuery: e.target.value }))}
+              placeholder="Filter by client name or company…"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium text-gray-700">Invoice date</span>
+            <select
+              value={draftFilters.invoiceDateRange}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, invoiceDateRange: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="">Any time</option>
+              <option value="last7">Last 7 days</option>
+              <option value="last30">Last 30 days</option>
+              <option value="last90">Last 90 days</option>
+              <option value="thisYear">This year</option>
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium text-gray-700">Due date</span>
+            <select
+              value={draftFilters.dueDateRange}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, dueDateRange: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="">Any time</option>
+              <option value="overdue">Overdue</option>
+              <option value="today">Due today</option>
+              <option value="week">Due within 7 days</option>
+              <option value="next30">Due within 30 days</option>
+              <option value="noDate">No due date</option>
+            </select>
+          </label>
         </div>
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={() => setShowFilterModal(false)}>Close</Button>
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+          <Button type="button" variant="outline" onClick={clearAllFilters}>
+            Clear all
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="muted" onClick={() => setShowFilterModal(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="primary" onClick={applyFilters}>
+              Apply filters
+            </Button>
+          </div>
         </div>
+        {hasActiveFilters ? <p className="text-xs text-orange-700">Active filters are applied.</p> : null}
       </div>
     </Modal>
     </>

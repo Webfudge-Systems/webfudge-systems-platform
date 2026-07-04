@@ -19,7 +19,7 @@ import taskService from '../lib/api/taskService'
 import strapiClient from '../lib/strapiClient'
 import { canReadPM } from '../lib/rbac'
 import { transformTask, transformUser, transformProject } from '../lib/api/dataTransformers'
-import { filterMajorTasks } from '../lib/taskListUtils'
+import { filterMajorTasks, filterMyTasksTableRoots } from '../lib/taskListUtils'
 
 /**
  * Shared height for My Tasks + Upcoming Deadlines.
@@ -73,8 +73,12 @@ export default function DashboardPage() {
   const canViewTasks = canReadPM('tasks') || canReadPM('my_tasks')
 
   const openAssigneeTasks = useMemo(
-    () => assigneeTasks.filter(isOpenAssignedTask),
-    [assigneeTasks]
+    () =>
+      filterMyTasksTableRoots(
+        assigneeTasks.filter(isOpenAssignedTask),
+        allTasks
+      ),
+    [assigneeTasks, allTasks]
   )
 
   const majorTasks = useMemo(() => filterMajorTasks(allTasks), [allTasks])

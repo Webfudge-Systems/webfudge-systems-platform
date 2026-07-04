@@ -6,7 +6,15 @@ import { animate, motion, useMotionValue } from 'framer-motion'
 const ACCENT = '#F5630F'
 const EASE = [0.22, 1, 0.36, 1] as const
 
-type Variant = 'crm' | 'pm' | 'accounts' | 'hr'
+type Variant =
+  | 'crm'
+  | 'erp'
+  | 'hr'
+  | 'finance'
+  | 'lead-gen'
+  | 'invoice'
+  | 'inventory'
+  | 'custom-web'
 type Props = { variant: Variant; dark: boolean }
 
 const stroke = (dark: boolean) => (dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)')
@@ -275,7 +283,424 @@ function CrmIllustration({ dark, uid }: { dark: boolean; uid: string }) {
   )
 }
 
-/** PM — kanban task flows; progress + team status sync */
+/** ERP — connected modules pulse around a central operations hub */
+function ErpIllustration({ dark, uid }: { dark: boolean; uid: string }) {
+  const hub = { x: 96, y: 62, w: 88, h: 56 }
+  const hubCx = hub.x + hub.w / 2
+  const hubCy = hub.y + hub.h / 2
+
+  const modules = [
+    { label: 'Sales', x: 28, y: 42, linkX: hub.x, linkY: hubCy - 10 },
+    { label: 'Finance', x: 196, y: 42, linkX: hub.x + hub.w, linkY: hubCy - 10 },
+    { label: 'HR', x: 28, y: 118, linkX: hub.x, linkY: hubCy + 10 },
+    { label: 'Stock', x: 196, y: 118, linkX: hub.x + hub.w, linkY: hubCy + 10 },
+  ]
+
+  return (
+    <BoardShell dark={dark} uid={uid}>
+      {modules.map((mod, i) => {
+        const modCx = mod.x + 36
+        const modCy = mod.y + 18
+        return (
+          <DrawLine
+            key={`line-${mod.label}`}
+            x1={modCx}
+            y1={modCy}
+            x2={mod.linkX}
+            y2={mod.linkY}
+            dark={dark}
+            delay={0.15 + i * 0.12}
+          />
+        )
+      })}
+
+      <motion.rect
+        x={hub.x}
+        y={hub.y}
+        width={hub.w}
+        height={hub.h}
+        rx="12"
+        fill={dark ? 'rgba(245,99,15,0.18)' : 'rgba(245,99,15,0.1)'}
+        stroke={ACCENT}
+        strokeWidth="1.5"
+        animate={{ scale: [1, 1.04, 1], opacity: [0.85, 1, 0.85] }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      <text x={hubCx} y={hubCy - 4} textAnchor="middle" fill={ACCENT} fontSize="7" fontWeight="700" letterSpacing="0.08em">
+        ERP
+      </text>
+      <rect x={hubCx - 22} y={hubCy + 2} width="44" height="3" rx="1.5" fill={ACCENT} opacity="0.55" />
+
+      {modules.map((mod, i) => (
+        <motion.g
+          key={mod.label}
+          animate={{
+            opacity: [0.65, 1, 0.65],
+            scale: [1, 1.03, 1],
+          }}
+          transition={{ duration: 3.2, repeat: Infinity, delay: i * 0.45, ease: 'easeInOut' }}
+        >
+          <rect
+            x={mod.x}
+            y={mod.y}
+            width="72"
+            height="36"
+            rx="8"
+            fill={fillCol(dark)}
+            stroke={stroke(dark)}
+          />
+          <text
+            x={mod.x + 36}
+            y={mod.y + 22}
+            textAnchor="middle"
+            fill={labelFill(dark)}
+            fontSize="6.5"
+            fontWeight="600"
+          >
+            {mod.label.toUpperCase()}
+          </text>
+        </motion.g>
+      ))}
+    </BoardShell>
+  )
+}
+
+/** Lead gen — browser page + extension popup side-by-side, leads below */
+function LeadGenIllustration({ dark, uid }: { dark: boolean; uid: string }) {
+  return (
+    <BoardShell dark={dark} uid={uid}>
+      {/* Browser chrome */}
+      <rect x="22" y="22" width="236" height="16" rx="5" fill={fillCol(dark)} stroke={stroke(dark)} />
+      <circle cx="32" cy="30" r="2.5" fill="#ff5f57" opacity="0.85" />
+      <circle cx="41" cy="30" r="2.5" fill="#febc2e" opacity="0.85" />
+      <circle cx="50" cy="30" r="2.5" fill="#28c840" opacity="0.85" />
+      <rect x="62" y="26" width="108" height="7" rx="3.5" fill={fillPanel(dark)} />
+
+      <motion.text
+        x="248"
+        y="32"
+        textAnchor="end"
+        fill={ACCENT}
+        fontSize="7.5"
+        fontWeight="700"
+        animate={{ opacity: [0.45, 1, 0.45] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        +12
+      </motion.text>
+
+      {/* Left — webpage content */}
+      <rect x="22" y="44" width="108" height="68" rx="8" fill={fillCol(dark)} stroke={stroke(dark)} />
+      <text x="32" y="58" fill={labelFill(dark)} fontSize="6" fontWeight="600" letterSpacing="0.06em">
+        WEB PAGE
+      </text>
+      {[0, 1, 2].map((i) => (
+        <rect key={i} x="32" y={64 + i * 14} width={78 - i * 10} height="3.5" rx="1.75" fill={stroke(dark)} />
+      ))}
+
+      {/* Right — extension popup (no overlap) */}
+      <motion.g
+        filter={`url(#${uid}-shadow)`}
+        animate={{ y: [0, -1.5, 0] }}
+        transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <rect
+          x="138"
+          y="44"
+          width="120"
+          height="68"
+          rx="9"
+          fill={dark ? 'rgba(245,99,15,0.14)' : 'rgba(245,99,15,0.08)'}
+          stroke={ACCENT}
+          strokeWidth="1.5"
+        />
+        <text x="198" y="58" textAnchor="middle" fill={ACCENT} fontSize="6" fontWeight="700" letterSpacing="0.05em">
+          CAPTURE LEAD
+        </text>
+        <rect x="150" y="64" width="96" height="9" rx="4" fill={fillCol(dark)} stroke={stroke(dark)} />
+        <rect x="150" y="78" width="96" height="9" rx="4" fill={fillCol(dark)} stroke={stroke(dark)} />
+        <rect x="150" y="94" width="96" height="12" rx="6" fill={ACCENT} />
+        <text x="198" y="103" textAnchor="middle" fill="#fff" fontSize="5.5" fontWeight="700">
+          SAVE
+        </text>
+      </motion.g>
+
+      {/* Bottom — captured leads panel */}
+      <rect x="22" y="122" width="236" height="44" rx="8" fill={fillPanel(dark)} stroke={stroke(dark)} />
+      <text x="32" y="134" fill={labelFill(dark)} fontSize="5.5" fontWeight="600" letterSpacing="0.06em">
+        CAPTURED LEADS
+      </text>
+
+      {[0, 1].map((i) => (
+        <motion.g
+          key={i}
+          animate={{ opacity: [0.35, 1, 0.75], x: [4, 0, 0] }}
+          transition={{ duration: 4.5, repeat: Infinity, delay: i * 1.2, ease: EASE, times: [0, 0.25, 1] }}
+        >
+          <rect x="32" y={140 + i * 12} width="116" height="9" rx="4" fill={fillCol(dark)} stroke={stroke(dark)} />
+          <circle cx="40" cy={144.5 + i * 12} r="2.5" fill={ACCENT} />
+          <rect x="48" y={142.5 + i * 12} width={72 - i * 8} height="2.5" rx="1.25" fill={stroke(dark)} />
+        </motion.g>
+      ))}
+
+      <motion.g
+        animate={{ opacity: [0.4, 1, 0.4] }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <rect x="168" y="140" width="78" height="9" rx="4" fill={fillCol(dark)} stroke={stroke(dark)} />
+        <circle cx="176" cy="144.5" r="2.5" fill={ACCENT} />
+        <rect x="184" y="142.5" width="52" height="2.5" rx="1.25" fill={stroke(dark)} />
+      </motion.g>
+    </BoardShell>
+  )
+}
+
+/** Invoice — document status moves from sent to paid */
+function InvoiceIllustration({ dark, uid }: { dark: boolean; uid: string }) {
+  return (
+    <BoardShell dark={dark} uid={uid}>
+      <motion.g
+        animate={{ y: [0, -2, 0] }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <rect x="72" y="28" width="136" height="118" rx="10" fill={fillCol(dark)} stroke={stroke(dark)} />
+        <text x="88" y="48" fill={labelFill(dark)} fontSize="7" fontWeight="600" letterSpacing="0.08em">
+          INVOICE #1042
+        </text>
+        {[0, 1, 2, 3].map((i) => (
+          <g key={i}>
+            <rect x="88" y={58 + i * 16} width="72" height="3" rx="1.5" fill={stroke(dark)} />
+            <rect x="176" y={58 + i * 16} width="20" height="3" rx="1.5" fill={stroke(dark)} />
+          </g>
+        ))}
+        <line x1="88" y1="118" x2="188" y2="118" stroke={stroke(dark)} />
+        <text x="88" y="132" fill={textPrimary(dark)} fontSize="8" fontWeight="700">
+          TOTAL
+        </text>
+        <text x="188" y="132" textAnchor="end" fill={ACCENT} fontSize="9" fontWeight="700">
+          $2,480
+        </text>
+      </motion.g>
+
+      <motion.g
+        animate={{
+          opacity: [0, 0, 1, 1, 0.35],
+          scale: [0.8, 0.8, 1.05, 1, 1],
+          rotate: [-8, -8, -4, -4, -4],
+        }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: EASE, times: [0, 0.45, 0.55, 0.85, 1] }}
+      >
+        <rect x="150" y="72" width="52" height="22" rx="6" fill={ACCENT} opacity="0.92" />
+        <text x="176" y="87" textAnchor="middle" fill="#fff" fontSize="7" fontWeight="800">
+          PAID
+        </text>
+      </motion.g>
+
+      <motion.path
+        d="M36 92 L44 100 L62 78"
+        stroke={ACCENT}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        initial={{ pathLength: 0, opacity: 0 }}
+        animate={{ pathLength: [0, 0, 1, 1], opacity: [0, 0, 1, 0.6] }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: EASE, times: [0, 0.5, 0.65, 1] }}
+      />
+
+      {[0, 1].map((i) => (
+        <motion.rect
+          key={i}
+          x="28"
+          y={148 + i * 14}
+          width={88 + i * 16}
+          height="8"
+          rx="4"
+          fill={fillCol(dark)}
+          stroke={stroke(dark)}
+          animate={{ opacity: [0.45, 0.9, 0.45] }}
+          transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.35, ease: 'easeInOut' }}
+        />
+      ))}
+
+      <motion.circle
+        cx="248"
+        cy="28"
+        r="5"
+        fill={ACCENT}
+        filter={`url(#${uid}-glow)`}
+        animate={{ scale: [1, 1.15, 1], opacity: [0.45, 1, 0.45] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+      />
+    </BoardShell>
+  )
+}
+
+/** Inventory — warehouse grid with stock levels and reorder alert */
+function InventoryIllustration({ dark, uid }: { dark: boolean; uid: string }) {
+  const slots = [
+    { x: 24, y: 38, level: 0.85 },
+    { x: 78, y: 38, level: 0.55 },
+    { x: 132, y: 38, level: 0.25 },
+    { x: 186, y: 38, level: 0.7 },
+    { x: 24, y: 92, level: 0.6 },
+    { x: 78, y: 92, level: 0.4 },
+    { x: 132, y: 92, level: 0.9 },
+    { x: 186, y: 92, level: 0.35 },
+  ]
+
+  return (
+    <BoardShell dark={dark} uid={uid}>
+      <text x="28" y="30" fill={labelFill(dark)} fontSize="7" fontWeight="600" letterSpacing="0.08em">
+        WAREHOUSE STOCK
+      </text>
+
+      {slots.map((slot, i) => {
+        const low = slot.level < 0.35
+        return (
+          <g key={i}>
+            <rect
+              x={slot.x}
+              y={slot.y}
+              width="44"
+              height="44"
+              rx="8"
+              fill={fillCol(dark)}
+              stroke={low ? ACCENT : stroke(dark)}
+              strokeWidth={low ? 1.5 : 1}
+            />
+            <rect x={slot.x + 6} y={slot.y + 34} width="32" height="4" rx="2" fill={fillPanel(dark)} />
+            <motion.rect
+              x={slot.x + 6}
+              y={slot.y + 34 - 24 * slot.level}
+              width="32"
+              height={24 * slot.level}
+              rx="2"
+              fill={low ? ACCENT : fillCol(dark)}
+              animate={low ? { opacity: [0.55, 1, 0.55] } : { opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2.8, repeat: Infinity, delay: i * 0.08, ease: 'easeInOut' }}
+            />
+          </g>
+        )
+      })}
+
+      <motion.g
+        animate={{ x: [0, 6, 0], opacity: [0.6, 1, 0.6] }}
+        transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <rect x="28" y="148" width="96" height="18" rx="7" fill={dark ? 'rgba(245,99,15,0.16)' : 'rgba(245,99,15,0.08)'} stroke={ACCENT} />
+        <text x="76" y="160" textAnchor="middle" fill={ACCENT} fontSize="6.5" fontWeight="700">
+          REORDER
+        </text>
+      </motion.g>
+
+      <motion.path
+        d="M196 156 L214 156 L205 146"
+        stroke={ACCENT}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        animate={{ x: [0, 8, 0], opacity: [0.4, 1, 0.4] }}
+        transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+      />
+    </BoardShell>
+  )
+}
+
+/** Custom web app — modular widgets assemble into a tailored dashboard */
+function CustomWebIllustration({ dark, uid }: { dark: boolean; uid: string }) {
+  const widgets = [
+    { x: 92, y: 34, w: 88, h: 34, delay: 0 },
+    { x: 92, y: 76, w: 42, h: 34, delay: 0.15 },
+    { x: 138, y: 76, w: 42, h: 34, delay: 0.3 },
+    { x: 92, y: 118, w: 88, h: 34, delay: 0.45 },
+  ]
+
+  return (
+    <BoardShell dark={dark} uid={uid}>
+      <rect x="20" y="28" width="56" height="124" rx="9" fill={fillCol(dark)} stroke={stroke(dark)} />
+      {[0, 1, 2, 3].map((i) => (
+        <motion.rect
+          key={i}
+          x="30"
+          y={40 + i * 22}
+          width="36"
+          height="8"
+          rx="4"
+          fill={i === 0 ? ACCENT : fillPanel(dark)}
+          animate={i === 0 ? { opacity: [0.6, 1, 0.6] } : {}}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      ))}
+
+      {widgets.map((w, i) => (
+        <motion.g
+          key={i}
+          initial={{ opacity: 0, scale: 0.92, y: 8 }}
+          animate={{ opacity: [0.55, 1, 1], scale: 1, y: 0 }}
+          transition={{
+            duration: 3.6,
+            repeat: Infinity,
+            delay: w.delay,
+            ease: EASE,
+            times: [0, 0.25, 1],
+          }}
+        >
+          <rect
+            x={w.x}
+            y={w.y}
+            width={w.w}
+            height={w.h}
+            rx="8"
+            fill={fillCol(dark)}
+            stroke={i === 0 ? ACCENT : stroke(dark)}
+            strokeWidth={i === 0 ? 1.5 : 1}
+          />
+          {i === 0 && (
+            <>
+              {[0, 1, 2, 3].map((b) => (
+                <motion.rect
+                  key={b}
+                  x={w.x + 10 + b * 16}
+                  y={w.y + 18}
+                  width="8"
+                  height={[12, 18, 10, 22][b]}
+                  rx="2"
+                  fill={b === 2 ? ACCENT : fillPanel(dark)}
+                  animate={{ height: [[12, 18, 10, 22][b], [16, 14, 16, 18][b], [12, 18, 10, 22][b]] }}
+                  transition={{ duration: 2.8, repeat: Infinity, delay: b * 0.1, ease: 'easeInOut' }}
+                />
+              ))}
+            </>
+          )}
+          {i > 0 && (
+            <>
+              <rect x={w.x + 10} y={w.y + 12} width={w.w - 20} height="3" rx="1.5" fill={stroke(dark)} />
+              <rect x={w.x + 10} y={w.y + 20} width={w.w - 28} height="3" rx="1.5" fill={stroke(dark)} />
+            </>
+          )}
+        </motion.g>
+      ))}
+
+      <motion.g
+        animate={{ rotate: [0, 8, 0], opacity: [0.5, 1, 0.5] }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <text x="34" y="166" fill={ACCENT} fontSize="11" fontWeight="700">
+          {'{ }'}
+        </text>
+      </motion.g>
+    </BoardShell>
+  )
+}
+
+/** Finance — balance count-up, ledger rows, trend chart */
+function FinanceIllustration({ dark, uid }: { dark: boolean; uid: string }) {
+  return <AccountsIllustration dark={dark} uid={uid} />
+}
+
+/** PM kept for backward compatibility */
 function PmIllustration({ dark, uid }: { dark: boolean; uid: string }) {
   const cols = ['To Do', 'In Progress', 'Done']
   const colX = [20, 102, 184]
@@ -529,9 +954,13 @@ export default function SolutionCardIllustration({ variant, dark }: Props) {
   return (
     <div className="absolute inset-0 flex items-center justify-center px-2 pt-11 pb-1 pointer-events-none">
       {variant === 'crm' && <CrmIllustration dark={dark} uid={uid} />}
-      {variant === 'pm' && <PmIllustration dark={dark} uid={uid} />}
-      {variant === 'accounts' && <AccountsIllustration dark={dark} uid={uid} />}
+      {variant === 'erp' && <ErpIllustration dark={dark} uid={uid} />}
       {variant === 'hr' && <HrIllustration dark={dark} uid={uid} />}
+      {variant === 'finance' && <FinanceIllustration dark={dark} uid={uid} />}
+      {variant === 'lead-gen' && <LeadGenIllustration dark={dark} uid={uid} />}
+      {variant === 'invoice' && <InvoiceIllustration dark={dark} uid={uid} />}
+      {variant === 'inventory' && <InventoryIllustration dark={dark} uid={uid} />}
+      {variant === 'custom-web' && <CustomWebIllustration dark={dark} uid={uid} />}
     </div>
   )
 }

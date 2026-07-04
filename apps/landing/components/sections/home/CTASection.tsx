@@ -4,6 +4,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, Calendar, Check } from 'lucide-react'
 import Container from '../../ui/Container'
+import { ctaContent } from '../../../data/site'
 
 const TRUST_ITEMS = [
   'Free Consultation',
@@ -117,9 +118,9 @@ export default function CTASection() {
               className="font-bold text-white leading-[1.05] tracking-tight mb-6 max-w-3xl"
               style={{ fontSize: 'clamp(1.75rem, 7vw, 4.5rem)' }}
             >
-              Ready to Build Your
+              {ctaContent.headline}
               <br />
-              <span className="font-playfair italic opacity-90">Custom Software?</span>
+              <span className="font-playfair italic opacity-90">{ctaContent.headlineAccent}</span>
             </motion.h2>
 
             {/* Sub-copy */}
@@ -130,8 +131,7 @@ export default function CTASection() {
               transition={{ delay: 0.38, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
               className="text-white/70 text-base md:text-lg max-w-lg mx-auto mb-12 leading-relaxed"
             >
-              Let&apos;s discuss your requirements and create a scalable system
-              tailored for your business workflow.
+              {ctaContent.subcopy}
             </motion.p>
 
             {/* CTA buttons */}

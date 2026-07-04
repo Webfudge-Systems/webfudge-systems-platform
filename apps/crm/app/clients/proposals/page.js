@@ -32,6 +32,23 @@ import {
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import proposalService from '../../../lib/api/proposalService';
+import { hasActiveListFilters, matchesCreatedDateRange, matchesDueDateRange, matchesNumericRange } from '@webfudge/utils';
+
+const PROPOSAL_FILTER_INITIAL = {
+  status: '',
+  clientQuery: '',
+  valueRange: '',
+  dateRange: '',
+  validUntilRange: '',
+  nameQuery: '',
+};
+
+const PROPOSAL_VALUE_RANGES = {
+  lt50k: { max: 50000 },
+  '50k_5l': { min: 50000, max: 500000 },
+  '5l_50l': { min: 500000, max: 5000000 },
+  gt50l: { min: 5000000 },
+};
 
 const formatCurrency = (value) => {
   if (!value && value !== 0) return '₹0';
@@ -119,6 +136,9 @@ export default function ProposalsPage() {
 
   const [deleteProposalId, setDeleteProposalId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState(PROPOSAL_FILTER_INITIAL);
+  const [draftFilters, setDraftFilters] = useState(PROPOSAL_FILTER_INITIAL);
 
   const {
     columnVisibility,
@@ -180,18 +200,49 @@ export default function ProposalsPage() {
   }, [currentPage, activeTab]);
 
   useEffect(() => { fetchProposals(); }, [fetchProposals]);
-  useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery]);
+  useEffect(() => { setCurrentPage(1); }, [activeTab, searchQuery, appliedFilters]);
 
   const filtered = proposals.filter((p) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
+    if (!p) return false;
+    const q = searchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
       p.title?.toLowerCase().includes(q) ||
       p.proposalNumber?.toLowerCase().includes(q) ||
       p.clientCompanyName?.toLowerCase().includes(q) ||
-      p.projectName?.toLowerCase().includes(q)
-    );
+      p.projectName?.toLowerCase().includes(q);
+    const st = (p.status || '').toUpperCase();
+    const matchesTab = activeTab === 'all' || st === activeTab.toUpperCase();
+    const matchesAdvanced =
+      (!appliedFilters.status || st === appliedFilters.status.toUpperCase()) &&
+      (!appliedFilters.clientQuery ||
+        (p.clientCompanyName || '').toLowerCase().includes(appliedFilters.clientQuery.toLowerCase())) &&
+      matchesNumericRange(p.totalValue ?? p.value, appliedFilters.valueRange, PROPOSAL_VALUE_RANGES) &&
+      (!appliedFilters.dateRange || matchesCreatedDateRange(p.createdAt, appliedFilters.dateRange)) &&
+      (!appliedFilters.validUntilRange ||
+        matchesDueDateRange(p.validUntil, appliedFilters.validUntilRange)) &&
+      (!appliedFilters.nameQuery ||
+        (p.title || p.projectName || '').toLowerCase().includes(appliedFilters.nameQuery.toLowerCase()));
+    return matchesSearch && matchesTab && matchesAdvanced;
   });
+
+  const hasActiveFilters = useMemo(() => hasActiveListFilters(appliedFilters), [appliedFilters]);
+
+  const openFilterModal = useCallback(() => {
+    setDraftFilters(appliedFilters);
+    setShowFilterModal(true);
+  }, [appliedFilters]);
+
+  const applyFilters = useCallback(() => {
+    setAppliedFilters(draftFilters);
+    setShowFilterModal(false);
+  }, [draftFilters]);
+
+  const clearAllFilters = useCallback(() => {
+    setDraftFilters(PROPOSAL_FILTER_INITIAL);
+    setAppliedFilters(PROPOSAL_FILTER_INITIAL);
+    setShowFilterModal(false);
+  }, []);
 
   const stats = {
     all: totalItems,
@@ -403,7 +454,8 @@ export default function ProposalsPage() {
         ]}
         showActions={true}
         onAddClick={() => router.push('/clients/proposals/new')}
-        onFilterClick={() => { }}
+        onFilterClick={openFilterModal}
+        hasActiveFilters={hasActiveFilters}
         onExportClick={() => { }}
       />
 
@@ -445,8 +497,8 @@ export default function ProposalsPage() {
           onAddClick={() => router.push('/clients/proposals/new')}
           addTitle="Add Proposal"
           showFilter={true}
-          onFilterClick={() => {}}
-          filterTitle="Filter"
+          onFilterClick={openFilterModal}
+          filterTitle={hasActiveFilters ? 'Filters active' : 'Filter proposals'}
           showColumnVisibility={true}
           onColumnVisibilityClick={() => setColumnPickerOpen((o) => !o)}
           columnVisibilityTitle="Show, hide, or reorder columns"
@@ -506,7 +558,7 @@ export default function ProposalsPage() {
                 <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">No proposals found</h3>
                 <p className="text-sm text-gray-500 mb-4">
-                  {searchQuery || activeTab !== 'all' ? 'Try adjusting your filters' : 'Create your first proposal to get started'}
+                  {searchQuery || activeTab !== 'all' || hasActiveFilters ? 'Try adjusting your filters' : 'Create your first proposal to get started'}
                 </p>
                 {!searchQuery && activeTab === 'all' && (
                   <Button variant="primary" onClick={() => router.push('/clients/proposals/new')}>
@@ -525,6 +577,104 @@ export default function ProposalsPage() {
         )}
       </div>
     </div>
+
+    <Modal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)} title="Filter Proposals" size="xl">
+      <div className="space-y-5">
+        <p className="text-sm text-gray-600">Refine proposals by status, client, value, and dates</p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium text-gray-700">Status</span>
+            <select
+              value={draftFilters.status}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, status: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="">Any status</option>
+              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>
+                  {cfg.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium text-gray-700">Value</span>
+            <select
+              value={draftFilters.valueRange}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, valueRange: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="">Any value</option>
+              <option value="lt50k">Under ₹50,000</option>
+              <option value="50k_5l">₹50,000 – ₹5 lakh</option>
+              <option value="5l_50l">₹5 lakh – ₹50 lakh</option>
+              <option value="gt50l">Above ₹50 lakh</option>
+            </select>
+          </label>
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="text-sm font-medium text-gray-700">Client contains</span>
+            <input
+              value={draftFilters.clientQuery}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, clientQuery: e.target.value }))}
+              placeholder="Filter by client company…"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            />
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium text-gray-700">Created</span>
+            <select
+              value={draftFilters.dateRange}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, dateRange: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="">Any time</option>
+              <option value="last7">Last 7 days</option>
+              <option value="last30">Last 30 days</option>
+              <option value="last90">Last 90 days</option>
+              <option value="thisYear">This year</option>
+            </select>
+          </label>
+          <label className="space-y-1.5">
+            <span className="text-sm font-medium text-gray-700">Valid until</span>
+            <select
+              value={draftFilters.validUntilRange}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, validUntilRange: e.target.value }))}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="">Any time</option>
+              <option value="overdue">Expired / past due</option>
+              <option value="today">Expires today</option>
+              <option value="week">Within 7 days</option>
+              <option value="next30">Within 30 days</option>
+              <option value="noDate">No expiry date</option>
+            </select>
+          </label>
+          <label className="space-y-1.5 md:col-span-2">
+            <span className="text-sm font-medium text-gray-700">Title contains</span>
+            <input
+              value={draftFilters.nameQuery}
+              onChange={(e) => setDraftFilters((p) => ({ ...p, nameQuery: e.target.value }))}
+              placeholder="Filter by proposal title…"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            />
+          </label>
+        </div>
+        <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+          <Button type="button" variant="outline" onClick={clearAllFilters}>
+            Clear all
+          </Button>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="muted" onClick={() => setShowFilterModal(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="primary" onClick={applyFilters}>
+              Apply filters
+            </Button>
+          </div>
+        </div>
+        {hasActiveFilters ? <p className="text-xs text-orange-700">Active filters are applied.</p> : null}
+      </div>
+    </Modal>
 
     <Modal
       isOpen={!!deleteProposalId}

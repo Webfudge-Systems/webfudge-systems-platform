@@ -2,9 +2,10 @@
 
 import React, { useEffect, useRef } from 'react'
 import { motion, useMotionValue, useTransform } from 'framer-motion'
-import { ArrowRight, Play, Zap } from 'lucide-react'
+import { ArrowRight, Play } from 'lucide-react'
 import Image from 'next/image'
 import ClientLogoStrip from './ClientLogoStrip'
+import { heroContent } from '../../../data/site'
 
 /* ─── Animated blobs — tuned for the orange brand background ── */
 function AnimatedBlobs() {
@@ -108,20 +109,6 @@ export default function HeroSection() {
 
       {/* ── Main content — centered ── */}
       <div className="relative z-10 mx-auto px-4 sm:px-6 lg:px-8 max-w-[1400px] w-full flex flex-col items-center text-center">
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full border border-white/20 mb-6 sm:mb-8 md:mb-10 max-w-full"
-          style={{ background: 'rgba(255,255,255,0.12)' }}
-        >
-          <Zap size={11} className="text-white flex-shrink-0" />
-          <span className="text-[10px] sm:text-xs font-semibold text-white/90 tracking-wider sm:tracking-widest uppercase text-center">
-            Custom Business Software Solutions
-          </span>
-        </motion.div>
-
         {/* ── HEADLINE — single line, center ── */}
         <motion.h1
           initial={{ opacity: 0, y: 40 }}
@@ -130,7 +117,18 @@ export default function HeroSection() {
           className="font-extrabold leading-[1.05] sm:leading-tight tracking-tight text-white mb-4 sm:mb-5 px-1"
           style={{ fontSize: 'clamp(1.75rem, 7vw, 6.5rem)' }}
         >
-          Automate. Scale. Grow Faster.
+          {heroContent.headline}
+          <br />
+          <span
+            style={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #ffd4b0 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            {heroContent.headlineAccent}
+          </span>
         </motion.h1>
 
         {/* Description */}
@@ -140,8 +138,7 @@ export default function HeroSection() {
           transition={{ duration: 0.7, delay: 0.38 }}
           className="text-white/65 text-sm sm:text-base leading-relaxed max-w-xl mb-7 sm:mb-9 px-2"
         >
-          We help businesses streamline operations, manage customers, automate workflows, and
-          improve productivity through scalable and easy-to-use software systems.
+          {heroContent.description}
         </motion.p>
 
         {/* CTAs — centered */}
@@ -234,9 +231,9 @@ export default function HeroSection() {
       </div>
 
       {/* ── CLIENT LOGO STRIP — dark variant at bottom ── */}
-      <div className="relative z-10 w-full border-t border-white/[0.08]">
+      {/* <div className="relative z-10 w-full border-t border-white/[0.08]">
         <ClientLogoStrip dark />
-      </div>
+      </div> */}
     </section>
   )
 }

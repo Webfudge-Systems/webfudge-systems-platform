@@ -21,9 +21,9 @@ export default function Home() {
       <Navbar />
       <HeroSection />
       <SolutionsSection />
-      <ServicesSection />
+      {/* <ServicesSection /> */}
       <StatsSection />
-      <FeatureShowcase />
+      {/* <FeatureShowcase /> */}
       <IndustriesSection />
       <TestimonialsSection />
       <FAQSection />

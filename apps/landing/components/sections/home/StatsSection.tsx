@@ -1,64 +1,26 @@
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
 import Container from '../../ui/Container'
+import { businessPillars } from '../../../data/site'
 
-function useCountUp(target: number, duration: number = 2, isActive: boolean) {
-  const [count, setCount] = useState(0)
-
-  useEffect(() => {
-    if (!isActive) return
-    let startTime: number | null = null
-    let frame: number
-
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp
-      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setCount(Math.floor(eased * target))
-      if (progress < 1) frame = requestAnimationFrame(animate)
-    }
-
-    frame = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(frame)
-  }, [target, duration, isActive])
-
-  return count
-}
-
-const statCards = [
-  {
-    value: 62,
-    suffix: '%',
-    label: 'of companies struggle with outdated digital processes',
-  },
-  {
-    value: 47,
-    suffix: '%',
-    label: 'report rising operational costs due to low automation',
-  },
-  {
-    value: 72,
-    suffix: '%',
-    label: 'of consumers now expect real-time digital services',
-  },
-]
+const statCards = businessPillars.slice(0, 3).map((pillar) => ({
+  label: pillar.label,
+  description: pillar.description,
+}))
 
 function StatCard({
-  value,
-  suffix,
   label,
+  description,
   index,
 }: {
-  value: number
-  suffix: string
   label: string
+  description: string
   index: number
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
-  const count = useCountUp(value, 2.2, isInView)
 
   return (
     <motion.div
@@ -101,15 +63,13 @@ function StatCard({
       />
 
       <div
-        className="text-5xl md:text-6xl font-extrabold text-white leading-none relative z-10"
-        style={{ fontVariantNumeric: 'tabular-nums' }}
+        className="text-xl md:text-2xl font-extrabold text-white leading-snug relative z-10"
       >
-        {count}
-        <span className="text-4xl md:text-5xl">{suffix}</span>
+        {label}
       </div>
 
       <p className="text-white/55 text-xs sm:text-sm leading-relaxed mt-4 relative z-10">
-        {label}
+        {description}
       </p>
     </motion.div>
   )
@@ -162,7 +122,7 @@ export default function StatsSection() {
             transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
           >
             <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white leading-[1.08] tracking-tight mb-6 sm:mb-8">
-              Transformation
+              Built for
               <br />
               <span
                 style={{
@@ -172,12 +132,13 @@ export default function StatsSection() {
                   backgroundClip: 'text',
                 }}
               >
-                Matters Now
+                Every Business
               </span>
             </h2>
 
             <p className="text-white/50 text-base md:text-lg leading-relaxed mb-10 max-w-sm">
-              Businesses that streamline operations grow faster and scale with confidence.
+              SaaS and on-premise solutions that are scalable, secure, and reliable — tailored to
+              how your business operates.
             </p>
 
             {/* Challenge block — card style */}
@@ -202,10 +163,11 @@ export default function StatsSection() {
               />
 
               <p className="text-[#F5630F] font-bold text-xs uppercase tracking-[0.25em] mb-3">
-                The opportunity
+                Why Webfudge
               </p>
               <p className="text-white font-semibold text-xl md:text-2xl leading-snug">
-                Custom software that automates your workflows is your biggest competitive advantage.
+                Let&apos;s automate &amp; scale your business with software built around your
+                workflow.
               </p>
             </motion.div>
           </motion.div>
@@ -215,50 +177,58 @@ export default function StatsSection() {
             {statCards.map((stat, i) => (
               <StatCard
                 key={stat.label}
-                value={stat.value}
-                suffix={stat.suffix}
                 label={stat.label}
+                description={stat.description}
                 index={i}
               />
             ))}
 
-            {/* 4th card — bold statement / highlighted */}
-            <motion.div
-              initial={{ opacity: 0, y: 36 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-60px' }}
-              transition={{ duration: 0.7, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
-              className="relative rounded-2xl overflow-hidden p-6 flex flex-col justify-end"
-              style={{
-                background: 'linear-gradient(145deg, #b84008 0%, #E8570D 50%, #FF7E38 100%)',
-                minHeight: 190,
-              }}
-            >
-              {/* Animated shimmer overlay */}
+            {/* Highlighted card — Secure */}
+            {businessPillars.slice(3, 4).map((pillar, i) => (
               <motion.div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%)',
-                }}
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-              />
-
-              {/* Soft noise texture */}
-              <motion.div
-                className="absolute bottom-0 right-0 w-32 h-32 pointer-events-none"
+                key={pillar.label}
+                initial={{ opacity: 0, y: 36 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={{ duration: 0.7, delay: 0.42 + i * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                className="relative rounded-2xl overflow-hidden p-6 flex flex-col justify-end"
                 style={{
                   background:
-                    'radial-gradient(circle at bottom right, rgba(255,255,255,0.12) 0%, transparent 70%)',
+                    i === 0
+                      ? 'linear-gradient(145deg, #b84008 0%, #E8570D 50%, #FF7E38 100%)'
+                      : 'linear-gradient(145deg, #161616 0%, #0f0f0f 100%)',
+                  border: i === 0 ? undefined : '1px solid rgba(255,255,255,0.07)',
+                  minHeight: 190,
                 }}
-                animate={{ scale: [1, 1.15, 1] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              />
+              >
+                {i === 0 && (
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 55%)',
+                    }}
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                )}
 
-              <p className="text-white font-bold text-base md:text-lg leading-snug relative z-10">
-                Scalable software systems give businesses the edge to grow without limits
-              </p>
-            </motion.div>
+                <p
+                  className={`font-bold text-base md:text-lg leading-snug relative z-10 ${
+                    i === 0 ? 'text-white' : 'text-white/90'
+                  }`}
+                >
+                  {pillar.label}
+                </p>
+                <p
+                  className={`text-sm leading-relaxed mt-2 relative z-10 ${
+                    i === 0 ? 'text-white/80' : 'text-white/55'
+                  }`}
+                >
+                  {pillar.description}
+                </p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </Container>

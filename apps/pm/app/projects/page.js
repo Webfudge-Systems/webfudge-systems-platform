@@ -64,9 +64,18 @@ import { canWritePM } from '../../lib/rbac';
 import { canCreateProjectsInPm, canEditProjectInPm } from '../../lib/pmOrgRoles';
 import { usePmTableSort } from '../../hooks/usePmTableSort';
 import { TableSortDropdown as PmTableSortDropdown } from '@webfudge/ui';
+import { hasActiveListFilters, matchesCreatedDateRange } from '@webfudge/utils';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.projects.tableSort';
 const PROJECT_FETCH_PAGE_SIZE = 500;
+
+const PROJECT_FILTER_INITIAL = {
+  status: '',
+  ownerId: '',
+  clientQuery: '',
+  dateRange: '',
+  nameQuery: '',
+};
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Projects' },
@@ -286,7 +295,8 @@ export default function ProjectsPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [activeView, setActiveView] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({ status: '', ownerId: '' });
+  const [appliedFilters, setAppliedFilters] = useState(PROJECT_FILTER_INITIAL);
+  const [draftFilters, setDraftFilters] = useState(PROJECT_FILTER_INITIAL);
   const [filterOpen, setFilterOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, project: null });
   const [savingId, setSavingId] = useState(null);
@@ -332,6 +342,24 @@ export default function ProjectsPage() {
 
   const canShowAddProject = useMemo(() => canWritePM('projects') && canCreateProjectsInPm(), []);
 
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      if (!project) return false;
+      if (appliedFilters.clientQuery) {
+        const q = appliedFilters.clientQuery.toLowerCase();
+        if (!(project.clientName || '').toLowerCase().includes(q)) return false;
+      }
+      if (appliedFilters.nameQuery) {
+        const q = appliedFilters.nameQuery.toLowerCase();
+        if (!(project.name || '').toLowerCase().includes(q)) return false;
+      }
+      if (appliedFilters.dateRange && !matchesCreatedDateRange(project.createdAt, appliedFilters.dateRange)) {
+        return false;
+      }
+      return true;
+    });
+  }, [projects, appliedFilters]);
+
   const {
     sortedData: sortedProjects,
     bindSortableColumns,
@@ -347,7 +375,7 @@ export default function ProjectsPage() {
   } = usePmTableSort({
     entity: 'project',
     storageKey: TABLE_SORT_STORAGE_KEY,
-    data: projects,
+    data: filteredProjects,
   });
 
   const loadUsers = useCallback(async () => {
@@ -382,13 +410,13 @@ export default function ProjectsPage() {
         sort: 'updatedAt:desc',
         search: searchQuery,
       };
-      const status = filters.status || (activeTab !== 'all' ? activeTab : '');
+      const status = appliedFilters.status || (activeTab !== 'all' ? activeTab : '');
       if (status) params.status = status;
-      if (filters.ownerId) params.ownerId = filters.ownerId;
+      if (appliedFilters.ownerId) params.ownerId = appliedFilters.ownerId;
       const res = await projectService.getAllProjects(params);
       const transformed = (res?.data || []).map(transformProject).filter(Boolean);
       setProjects(transformed);
-      setTotalProjects(res?.meta?.pagination?.total || transformed.length);
+      setTotalProjects(transformed.length);
     } catch (error) {
       console.error('Load projects error:', error);
       setProjects([]);
@@ -396,7 +424,7 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, filters.ownerId, filters.status, searchQuery]);
+  }, [activeTab, appliedFilters.ownerId, appliedFilters.status, searchQuery]);
 
   useEffect(() => {
     loadProjects();
@@ -469,8 +497,27 @@ export default function ProjectsPage() {
   }, [kpiRows, kpiTotal]);
 
   const tabsWithBadges = STATUS_TABS.map((tab) => ({ ...tab, badge: tabCounts[tab.id] || 0 }));
-  const totalPages = Math.max(1, Math.ceil(totalProjects / pageSize));
-  const hasActiveFilters = Boolean(filters.status || filters.ownerId);
+  const displayTotal = filteredProjects.length;
+  const totalPages = Math.max(1, Math.ceil(displayTotal / pageSize));
+  const hasActiveFilters = hasActiveListFilters(appliedFilters);
+
+  const openFilterModal = useCallback(() => {
+    setDraftFilters(appliedFilters);
+    setFilterOpen(true);
+  }, [appliedFilters]);
+
+  const applyFilters = useCallback(() => {
+    setAppliedFilters(draftFilters);
+    setFilterOpen(false);
+    setCurrentPage(1);
+  }, [draftFilters]);
+
+  const clearAllFilters = useCallback(() => {
+    setDraftFilters(PROJECT_FILTER_INITIAL);
+    setAppliedFilters(PROJECT_FILTER_INITIAL);
+    setFilterOpen(false);
+    setCurrentPage(1);
+  }, []);
   const pagedProjects = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return sortedProjects.slice(start, start + pageSize);
@@ -995,7 +1042,7 @@ export default function ProjectsPage() {
         showProfile
         showActions
         onAddClick={canShowAddProject ? () => router.push('/projects/add') : undefined}
-        onFilterClick={() => setFilterOpen(true)}
+        onFilterClick={openFilterModal}
         hasActiveFilters={hasActiveFilters}
         onImportClick={() => console.log('Import clicked')}
         onExportClick={() => console.log('Export clicked')}
@@ -1054,7 +1101,7 @@ export default function ProjectsPage() {
           activeTab={activeTab}
           onTabChange={(id) => {
             setActiveTab(id);
-            setFilters((prev) => ({ ...prev, status: '' }));
+            setAppliedFilters((prev) => ({ ...prev, status: '' }));
             setCurrentPage(1);
           }}
           showSearch
@@ -1068,7 +1115,7 @@ export default function ProjectsPage() {
           onAddClick={() => router.push('/projects/add')}
           addTitle="Create Project"
           showFilter
-          onFilterClick={() => setFilterOpen(true)}
+          onFilterClick={openFilterModal}
           filterTitle={hasActiveFilters ? 'Filters active' : 'Filter projects'}
           afterTabs={projectViewSwitcher}
           showColumnVisibility={activeView === 'list'}
@@ -1115,8 +1162,8 @@ export default function ProjectsPage() {
       </div>
 
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{totalProjects}</span> result
-        {totalProjects !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{displayTotal}</span> result
+        {displayTotal !== 1 ? 's' : ''}
       </div>
 
       {loading ? (
@@ -1127,7 +1174,7 @@ export default function ProjectsPage() {
         </div>
       ) : activeView === 'kanban' ? (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-gray-50/60">
-          {projects.length === 0 ? (
+          {displayTotal === 0 ? (
             <div className="p-12 text-center">
               <FolderOpen className="mx-auto mb-3 h-12 w-12 text-gray-300" />
               <h3 className="text-lg font-semibold text-gray-700">No projects found</h3>
@@ -1139,7 +1186,7 @@ export default function ProjectsPage() {
             </div>
           ) : (
             <ProjectsKanbanBoard
-              projects={projects}
+              projects={sortedProjects}
               router={router}
               currentUserId={currentUserId}
               onStatusChange={updateProjectStatus}
@@ -1157,7 +1204,7 @@ export default function ProjectsPage() {
               {...tableResizeProps}
               onRowClick={(row) => router.push(`/projects/${row.slug || row.id}`)}
             />
-            {projects.length === 0 ? (
+            {displayTotal === 0 ? (
               <div className="border-t border-gray-200 p-12 text-center">
                 <div className="mb-2 text-gray-400">
                   <FolderOpen className="mx-auto mb-3 h-12 w-12 opacity-50" />
@@ -1180,7 +1227,7 @@ export default function ProjectsPage() {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={totalProjects}
+                totalItems={displayTotal}
                 itemsPerPage={pageSize}
                 onPageChange={setCurrentPage}
                 className="border-t border-gray-200 bg-gray-50"
@@ -1190,47 +1237,71 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter Projects" size="md">
+      <Modal isOpen={filterOpen} onClose={() => setFilterOpen(false)} title="Filter Projects" size="lg">
         <div className="space-y-5">
-          <Select
-            label="Status"
-            value={filters.status}
-            options={PROJECT_STATUS_OPTIONS}
-            onChange={(value) => {
-              setFilters((prev) => ({ ...prev, status: value }));
-              setCurrentPage(1);
-            }}
-            placeholder="Any status"
-          />
-          <Select
-            label="Owner"
-            value={filters.ownerId}
-            options={users.map((user) => ({ value: String(user.id), label: ownerLabel(user) }))}
-            onChange={(value) => {
-              setFilters((prev) => ({ ...prev, ownerId: value }));
-              setCurrentPage(1);
-            }}
-            placeholder="Any owner"
-          />
-          <div className="flex justify-end gap-3 border-t border-gray-200 pt-5">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setFilters({ status: '', ownerId: '' });
-                setCurrentPage(1);
-              }}
-            >
-              Clear
-            </Button>
-            <Button
-              onClick={() => {
-                setFilterOpen(false);
-                setCurrentPage(1);
-              }}
-            >
-              Apply Filters
-            </Button>
+          <p className="text-sm text-gray-600">Refine projects by status, owner, client, and dates</p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Select
+              label="Status"
+              value={draftFilters.status}
+              options={PROJECT_STATUS_OPTIONS}
+              onChange={(value) => setDraftFilters((prev) => ({ ...prev, status: value }))}
+              placeholder="Any status"
+            />
+            <Select
+              label="Owner"
+              value={draftFilters.ownerId}
+              options={users.map((user) => ({ value: String(user.id), label: ownerLabel(user) }))}
+              onChange={(value) => setDraftFilters((prev) => ({ ...prev, ownerId: value }))}
+              placeholder="Any owner"
+            />
+            <label className="space-y-1.5 md:col-span-2">
+              <span className="text-sm font-medium text-gray-700">Client name contains</span>
+              <input
+                value={draftFilters.clientQuery}
+                onChange={(e) => setDraftFilters((prev) => ({ ...prev, clientQuery: e.target.value }))}
+                placeholder="Filter by client account…"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Created</span>
+              <select
+                value={draftFilters.dateRange}
+                onChange={(e) => setDraftFilters((prev) => ({ ...prev, dateRange: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any time</option>
+                <option value="last7">Last 7 days</option>
+                <option value="last30">Last 30 days</option>
+                <option value="last90">Last 90 days</option>
+                <option value="thisYear">This year</option>
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Project name contains</span>
+              <input
+                value={draftFilters.nameQuery}
+                onChange={(e) => setDraftFilters((prev) => ({ ...prev, nameQuery: e.target.value }))}
+                placeholder="Filter by project title…"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm placeholder:text-gray-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              />
+            </label>
           </div>
+          <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+            <Button type="button" variant="outline" onClick={clearAllFilters}>
+              Clear all
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="muted" onClick={() => setFilterOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" onClick={applyFilters}>
+                Apply Filters
+              </Button>
+            </div>
+          </div>
+          {hasActiveFilters ? <p className="text-xs text-orange-700">Active filters are applied.</p> : null}
         </div>
       </Modal>
 

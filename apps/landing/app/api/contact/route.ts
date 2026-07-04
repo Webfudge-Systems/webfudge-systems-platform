@@ -6,7 +6,7 @@ import { Resend } from 'resend'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const TO_EMAIL = process.env.CONTACT_TO_EMAIL ?? 'webfudgesystems@gmail.com'
+const TO_EMAIL = process.env.CONTACT_TO_EMAIL ?? 'contact@webfudge.in'
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)

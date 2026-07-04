@@ -5,43 +5,35 @@ import { motion } from 'framer-motion'
 import { ArrowUpRight } from 'lucide-react'
 import Container from '../../ui/Container'
 import SolutionCardIllustration from './SolutionCardIllustration'
+import { products } from '../../../data/site'
 
-const STAGGER_OFFSETS = ['mt-0', 'lg:mt-10', 'lg:mt-5', 'lg:mt-[60px]'] as const
+const STAGGER_OFFSETS = [
+  'mt-0',
+  'lg:mt-6',
+  'lg:mt-3',
+  'lg:mt-9',
+  'mt-0',
+  'lg:mt-6',
+  'lg:mt-3',
+  'lg:mt-9',
+] as const
 
-const cards = [
-  {
-    badge: 'CRM',
-    title: 'Manage customers and close more deals',
-    description:
-      'Custom CRM platforms built around your sales process — with lead tracking, pipelines, automation, and real-time insights.',
-    theme: 'dark' as const,
-    illustration: 'crm' as const,
-  },
-  {
-    badge: 'Project Management',
-    title: 'Streamline teams and deliver on time',
-    description:
-      'Smart project management systems that help teams manage tasks, workflows, deadlines, and collaboration efficiently.',
-    theme: 'glow' as const,
-    illustration: 'pm' as const,
-  },
-  {
-    badge: 'Accounts',
-    title: 'Track finances with clarity and control',
-    description:
-      'Accounts software for billing, invoicing, ledgers, and financial reporting — so every transaction stays visible and accurate.',
-    theme: 'light' as const,
-    illustration: 'accounts' as const,
-  },
-  {
-    badge: 'HR',
-    title: 'Manage people, payroll, and performance',
-    description:
-      'HR platforms for employee records, leave management, org structure, and team operations — all in one place.',
-    theme: 'white' as const,
-    illustration: 'hr' as const,
-  },
-]
+type CardTheme = 'dark' | 'glow' | 'light' | 'white'
+type Illustration =
+  | 'crm'
+  | 'erp'
+  | 'hr'
+  | 'finance'
+  | 'lead-gen'
+  | 'invoice'
+  | 'inventory'
+  | 'custom-web'
+
+const cards = products.map((product) => ({
+  ...product,
+  theme: product.theme as CardTheme,
+  illustration: product.illustration as Illustration,
+}))
 
 export default function SolutionsSection() {
   return (
@@ -63,25 +55,23 @@ export default function SolutionsSection() {
           <div className="flex items-center gap-2 mb-6">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: '#F5630F' }} />
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#888888]">
-              About Us
+              Our Products
             </span>
           </div>
 
           {/* Large editorial heading */}
           <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] sm:leading-[1.05] tracking-tight text-[#111111] max-w-5xl">
-            Webfudge Systems <span className="text-[#bbbbbb]">–</span> specializes in building{' '}
-            <span className="font-playfair italic">custom software</span> solutions designed to{' '}
-            <span className="font-playfair italic text-[#111111]">simplify</span> operations and{' '}
-            <span className="text-[#F5630F]">accelerate</span> business growth.
+            Software solutions <span className="font-playfair italic text-[#111111]">built</span> to{' '}
+            <span className="text-[#F5630F]">automate</span> and scale your business.
           </h2>
 
           <p className="mt-6 text-[#666666] text-base md:text-lg max-w-2xl leading-relaxed">
-            Our focus is on creating scalable, user-friendly, and performance-driven systems that
-            help businesses automate processes, manage operations, and improve efficiency.
+            From CRM and ERP to HRMS, finance, invoicing, inventory, and custom web applications —
+            scalable systems designed around your workflow.
           </p>
         </motion.div>
 
-        {/* ── 4-card staggered horizontal row ── */}
+        {/* ── Product cards ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 items-start">
           {cards.map((card, i) => {
             const isDark = card.theme === 'dark' || card.theme === 'glow'
@@ -121,23 +111,6 @@ export default function SolutionsSection() {
                   <div className="relative flex-1 min-h-[140px] sm:min-h-[180px] lg:min-h-[200px] overflow-hidden">
                     <SolutionCardIllustration variant={card.illustration} dark={isDark} />
 
-                    {/* Badge pill — top left */}
-                    <div className="absolute top-5 left-5 z-10">
-                      <span
-                        className="px-3 py-1.5 rounded-full text-[11px] font-semibold tracking-wide"
-                        style={{
-                          background: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)',
-                          color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)',
-                          backdropFilter: 'blur(8px)',
-                          border: isDark
-                            ? '1px solid rgba(255,255,255,0.1)'
-                            : '1px solid rgba(0,0,0,0.08)',
-                        }}
-                      >
-                        {card.badge}
-                      </span>
-                    </div>
-
                     {/* Arrow icon top-right (appears on hover) */}
                     <motion.div
                       className="absolute top-5 right-5 z-10 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
@@ -149,23 +122,28 @@ export default function SolutionsSection() {
 
                   {/* Content — bottom */}
                   <div className="p-4 sm:p-6 pt-4 sm:pt-5">
-                    {/* Orange dot + title */}
-                    <div className="flex items-start gap-3 mb-3">
-                      <span
-                        className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-                        style={{ background: '#F5630F' }}
-                      />
-                      <h3
-                        className={`text-base font-bold leading-snug ${
-                          isDark ? 'text-white' : 'text-[#111111]'
+                    {/* Product name — primary heading */}
+                    <h3
+                      className={`text-lg sm:text-xl font-extrabold leading-tight tracking-tight mb-2 ${
+                        isDark ? 'text-white' : 'text-[#111111]'
+                      }`}
+                    >
+                      {card.badge}
+                    </h3>
+
+                    {/* Tagline */}
+                    <div className="flex items-start gap-2.5 mb-3">
+                      <p
+                        className={`text-sm font-semibold leading-snug ${
+                          isDark ? 'text-white/75' : 'text-[#444444]'
                         }`}
                       >
                         {card.title}
-                      </h3>
+                      </p>
                     </div>
 
                     <p
-                      className="text-xs leading-relaxed pl-5"
+                      className="text-xs leading-relaxed"
                       style={{ color: isDark ? 'rgba(255,255,255,0.45)' : '#888888' }}
                     >
                       {card.description}

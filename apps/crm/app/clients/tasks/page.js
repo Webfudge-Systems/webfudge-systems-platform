@@ -181,6 +181,10 @@ export default function ClientsTasksPage() {
       assigneeId: '',
       nameQuery: '',
       scheduledRange: '',
+      leadCompanyId: '',
+      clientAccountId: '',
+      dealId: '',
+      projectId: '',
     }),
     []
   );
@@ -440,6 +444,63 @@ export default function ClientsTasksPage() {
     return c;
   }, [tasks]);
 
+  const projectFilterOptions = useMemo(() => {
+    const map = new Map();
+    for (const t of tasks) {
+      for (const p of t?.projects || []) {
+        if (!p || typeof p !== 'object') continue;
+        const id = p.id ?? p.documentId;
+        if (id == null) continue;
+        map.set(String(id), p.name || `Project ${id}`);
+      }
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [tasks]);
+
+  const dealFilterOptions = useMemo(() => {
+    const map = new Map();
+    for (const t of tasks) {
+      const d = t?.deal;
+      if (!d || typeof d !== 'object') continue;
+      const id = d.id ?? d.documentId;
+      if (id == null) continue;
+      map.set(String(id), dealLabel(d) || `Deal ${id}`);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [tasks]);
+
+  const leadCompanyFilterOptions = useMemo(() => {
+    const map = new Map();
+    for (const t of tasks) {
+      const lc = t?.leadCompany;
+      if (!lc || typeof lc !== 'object') continue;
+      const id = lc.id ?? lc.documentId;
+      if (id == null) continue;
+      map.set(String(id), leadCompanyLabel(lc) || `Lead ${id}`);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [tasks]);
+
+  const clientAccountFilterOptions = useMemo(() => {
+    const map = new Map();
+    for (const t of tasks) {
+      const ca = t?.clientAccount;
+      if (!ca || typeof ca !== 'object') continue;
+      const id = ca.id ?? ca.documentId;
+      if (id == null) continue;
+      map.set(String(id), accountLabel(ca) || `Account ${id}`);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [tasks]);
+
   const assigneeFilterOptions = useMemo(() => {
     const map = new Map();
     for (const t of tasks) {
@@ -508,13 +569,33 @@ export default function ClientsTasksPage() {
           ? String(task.assignee.id ?? task.assignee.documentId ?? '')
           : '';
 
+      const taskDealId =
+        task.deal && typeof task.deal === 'object'
+          ? String(task.deal.id ?? task.deal.documentId ?? '')
+          : '';
+      const taskLeadId =
+        task.leadCompany && typeof task.leadCompany === 'object'
+          ? String(task.leadCompany.id ?? task.leadCompany.documentId ?? '')
+          : '';
+      const taskClientId =
+        task.clientAccount && typeof task.clientAccount === 'object'
+          ? String(task.clientAccount.id ?? task.clientAccount.documentId ?? '')
+          : '';
+      const taskProjectIds = (task.projects || [])
+        .map((p) => (p && typeof p === 'object' ? String(p.id ?? p.documentId ?? '') : ''))
+        .filter(Boolean);
+
       const matchesAdvanced =
         (!appliedFilters.status || st === appliedFilters.status) &&
         (!appliedFilters.priority || (task.priority || '').toLowerCase() === appliedFilters.priority.toLowerCase()) &&
         (!appliedFilters.assigneeId || assigneeId === appliedFilters.assigneeId) &&
         (!appliedFilters.nameQuery ||
           (task.name || '').toLowerCase().includes(appliedFilters.nameQuery.toLowerCase())) &&
-        matchesScheduledRange(task, appliedFilters.scheduledRange);
+        matchesScheduledRange(task, appliedFilters.scheduledRange) &&
+        (!appliedFilters.dealId || taskDealId === appliedFilters.dealId) &&
+        (!appliedFilters.leadCompanyId || taskLeadId === appliedFilters.leadCompanyId) &&
+        (!appliedFilters.clientAccountId || taskClientId === appliedFilters.clientAccountId) &&
+        (!appliedFilters.projectId || taskProjectIds.includes(appliedFilters.projectId));
 
       return matchesSearch && matchesTab && matchesAdvanced;
     });
@@ -1385,9 +1466,9 @@ export default function ClientsTasksPage() {
         ) : null}
       </Modal>
 
-      <Modal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)} title="Filter tasks" size="lg">
+      <Modal isOpen={showFilterModal} onClose={() => setShowFilterModal(false)} title="Filter tasks" size="xl">
         <div className="space-y-5">
-          <p className="text-sm text-gray-600">Refine tasks by status, assignee, and schedule</p>
+          <p className="text-sm text-gray-600">Refine tasks by status, assignee, linked records, and schedule</p>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-sm font-medium text-gray-700">Status</span>
@@ -1444,6 +1525,66 @@ export default function ClientsTasksPage() {
                 <option value="today">Due today</option>
                 <option value="week">Due within 7 days</option>
                 <option value="next30">Due within 30 days</option>
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Lead company</span>
+              <select
+                value={draftFilters.leadCompanyId}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, leadCompanyId: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any lead</option>
+                {leadCompanyFilterOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Client account</span>
+              <select
+                value={draftFilters.clientAccountId}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, clientAccountId: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any client</option>
+                {clientAccountFilterOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Deal</span>
+              <select
+                value={draftFilters.dealId}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, dealId: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any deal</option>
+                {dealFilterOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">Project</span>
+              <select
+                value={draftFilters.projectId}
+                onChange={(e) => setDraftFilters((p) => ({ ...p, projectId: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any project</option>
+                {projectFilterOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="space-y-1.5 md:col-span-2">

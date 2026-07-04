@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, ArrowRight } from 'lucide-react'
 import Container from '../../ui/Container'
+import { siteContact } from '../../../data/site'
 
 /* ── SVG noise filter (inlined so no external asset needed) ── */
 function NoiseSVG() {
@@ -24,7 +25,7 @@ function NoiseSVG() {
   )
 }
 
-const CONTACT_EMAIL = 'webfudgesystems@gmail.com'
+const CONTACT_EMAIL = siteContact.email
 
 export default function ContactSection() {
   const [form, setForm] = useState({ name: '', company: '', email: '' })
@@ -206,7 +207,7 @@ export default function ContactSection() {
               Looking to build a custom software solution? Share your requirements and we&apos;ll get back to you within 24 hours.
             </motion.p>
 
-            {/* Email */}
+            {/* Email & phone */}
             <motion.a
               href={`mailto:${CONTACT_EMAIL}`}
               initial={{ opacity: 0, y: 10 }}
@@ -223,6 +224,33 @@ export default function ContactSection() {
               </span>
               {CONTACT_EMAIL}
             </motion.a>
+
+            <motion.a
+              href={siteContact.phoneHref}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.38 }}
+              className="inline-flex items-center gap-2 mt-4 text-sm font-medium text-[#333333] hover:text-[#F5630F] transition-colors duration-300 group"
+            >
+              <span
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-colors duration-300"
+                style={{ background: 'rgba(245,99,15,0.1)' }}
+              >
+                <ArrowRight size={13} className="text-[#F5630F]" />
+              </span>
+              {siteContact.phone}
+            </motion.a>
+
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.46 }}
+              className="mt-4 text-sm text-[#666666]"
+            >
+              {siteContact.location.display}
+            </motion.p>
           </div>
 
           {/* ── DIVIDER ── */}

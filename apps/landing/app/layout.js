@@ -4,7 +4,7 @@ import { AuthProvider } from '@webfudge/auth'
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://webfudgesystems.in'
 const organizationName = 'Webfudge Systems'
 const defaultDescription =
-  'Webfudge Systems builds custom software solutions — CRM systems, project management software, business automation, ERP, and admin panels — that help businesses streamline operations and grow faster.'
+  'Webfudge Systems builds CRM, ERP, HRMS, finance, invoicing, inventory, and custom web applications — scalable SaaS and on-premise software that helps businesses automate operations and grow faster.'
 
 export const metadata = {
   title: {
@@ -23,17 +23,19 @@ export const metadata = {
     telephone: false,
   },
   keywords: [
-    'custom software development',
-    'CRM software development',
-    'project management software',
-    'business automation software',
-    'ERP software development',
-    'dashboard development',
-    'admin panel development',
+    'CRM system',
+    'ERP system',
+    'HRMS system',
+    'finance software',
+    'invoice and billing software',
+    'inventory management software',
+    'custom web application development',
+    'lead generation extension',
+    'SaaS solutions',
+    'on-premise software',
     'Webfudge Systems',
     'business software solutions',
-    'affordable software development India',
-    'scalable software solutions',
+    'scalable software solutions India',
   ],
   alternates: {
     canonical: '/',
@@ -92,6 +94,14 @@ export default function RootLayout({ children }) {
         url: siteUrl,
         logo: `${siteUrl}/favicon/web-app-manifest-512x512.png`,
         description: defaultDescription,
+        address: {
+          '@type': 'PostalAddress',
+          addressLocality: 'Pune',
+          addressRegion: 'MH',
+          addressCountry: 'IN',
+        },
+        email: 'contact@webfudge.in',
+        telephone: '+917385302967',
         sameAs: [],
       },
       {

@@ -17,6 +17,16 @@ export {
 export { listCacheBust, strapiRowId, paginateStrapiList } from './api/paginateStrapiList';
 
 export {
+  startOfDay,
+  endOfDay,
+  daysSinceDate,
+  matchesCreatedDateRange,
+  matchesDueDateRange,
+  hasActiveListFilters,
+  matchesNumericRange,
+} from './listFilters';
+
+export {
   pickUploadedFile,
   normalizeUploadedFile,
   resolveMediaUrl,

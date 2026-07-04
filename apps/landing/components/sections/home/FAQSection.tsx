@@ -9,11 +9,11 @@ import Container from '../../ui/Container'
 const faqs = [
   {
     question: 'What services does Webfudge Systems offer?',
-    answer: 'We specialize in five core services: Custom Software Development, CRM Software, Project Management Software, Business Automation & ERP Systems, and Dashboard & Admin Panel Development. We work with startups, agencies, and businesses across various industries to deliver scalable, easy-to-use software solutions.',
+    answer: 'We offer CRM, ERP, HRMS, finance, lead generation extensions, invoice & billing, inventory management, and custom web applications. Solutions are available as SaaS or on-premise deployments — scalable, secure, and built for businesses of all sizes.',
   },
   {
     question: 'How long does a typical software project take?',
-    answer: 'Project timelines depend on scope and complexity. A CRM or project management system typically takes 6–12 weeks. A full custom ERP or enterprise platform ranges from 3–6 months. We provide a detailed timeline estimate during our discovery phase and keep you updated at every stage.',
+    answer: 'Project timelines depend on scope and complexity. A CRM or ERP module typically takes 6–12 weeks. A full custom platform ranges from 3–6 months. We provide a detailed timeline estimate during our discovery phase and keep you updated at every stage.',
   },
   {
     question: 'Do you build fully custom software from scratch?',

@@ -3,6 +3,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { Instagram, Twitter, Linkedin, Youtube, Plus } from 'lucide-react'
+import { siteContact } from '../../../data/site'
 
 const socialLinks = [
   { icon: Instagram, label: 'Instagram', href: '#' },
@@ -77,9 +78,9 @@ export default function Footer() {
                 Location
               </p>
               <p className="text-base text-white/65 leading-relaxed">
-                Bengaluru,
+                {siteContact.location.city},
                 <br />
-                Karnataka, India
+                {siteContact.location.region}, {siteContact.location.country}
               </p>
             </div>
 
@@ -113,16 +114,16 @@ export default function Footer() {
               </p>
               <div className="flex flex-col gap-3">
                 <a
-                  href="tel:+919999999999"
+                  href={siteContact.phoneHref}
                   className="text-base text-white/65 hover:text-white transition-colors duration-200"
                 >
-                  +91 99999 99999
+                  {siteContact.phone}
                 </a>
                 <a
-                  href="mailto:webfudgesystems@gmail.com"
+                  href={`mailto:${siteContact.email}`}
                   className="text-base text-white/65 hover:text-white transition-colors duration-200"
                 >
-                  webfudgesystems@gmail.com
+                  {siteContact.email}
                 </a>
               </div>
             </div>
