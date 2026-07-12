@@ -2621,6 +2621,7 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     deal: Schema.Attribute.Relation<'manyToOne', 'api::deal.deal'>
     description: Schema.Attribute.Text
+    devMetadata: Schema.Attribute.JSON
     endTime: Schema.Attribute.String
     hoursLogged: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
     invoiced: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
@@ -2682,6 +2683,8 @@ export interface ApiTaskTask extends Struct.CollectionTypeSchema {
       Schema.Attribute.DefaultTo<'SCHEDULED'>
     subtasks: Schema.Attribute.Relation<'oneToMany', 'api::task.task'>
     tags: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
+    taskCategory: Schema.Attribute.Enumeration<['general', 'development']> &
+      Schema.Attribute.DefaultTo<'general'>
     timeInvoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>
     timeProject: Schema.Attribute.Relation<'manyToOne', 'api::project.project'>
     timerRunning: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>

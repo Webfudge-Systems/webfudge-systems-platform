@@ -39,6 +39,15 @@
       "type": "json",
       "default": []
     },
+    "taskCategory": {
+      "type": "enumeration",
+      "enum": ["general", "development"],
+      "default": "general"
+    },
+    "devMetadata": {
+      "type": "json",
+      "default": null
+    },
     "assignee": {
       "type": "relation",
       "relation": "manyToOne",

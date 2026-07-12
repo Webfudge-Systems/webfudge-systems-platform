@@ -20,7 +20,17 @@ import {
 } from 'lucide-react'
 import TaskAssigneesPicker from './TaskAssigneesPicker'
 import TaskRecurrenceFormFields from './TaskRecurrenceFormFields'
+import TaskCategorySwitch from './TaskCategorySwitch'
+import TaskDevFormFields from './TaskDevFormFields'
 import { pmTableSelectFillProps, PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge'
+import {
+  DEV_AREA_OPTIONS,
+  DEV_WORK_TYPE_OPTIONS,
+  TASK_CATEGORIES,
+  isDevelopmentTask,
+  normalizeDevMetadata,
+  optionLabel,
+} from '../lib/taskDev'
 
 function isPresent(value) {
   if (value == null) return false
@@ -198,6 +208,25 @@ export default function TaskDetailsCard({
         </div>
 
         <div className="space-y-5 px-6 pb-6 pt-5">
+          <TaskCategorySwitch
+            value={taskInfoDraft.taskCategory || TASK_CATEGORIES.GENERAL}
+            onChange={(next) =>
+              onSetTaskInfoDraft((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      taskCategory: next,
+                      devMetadata:
+                        next === TASK_CATEGORIES.DEVELOPMENT
+                          ? normalizeDevMetadata(prev.devMetadata)
+                          : normalizeDevMetadata(null),
+                    }
+                  : prev
+              )
+            }
+            disabled={saving}
+          />
+
           <Input
             label="Task name"
             required
@@ -356,6 +385,17 @@ export default function TaskDetailsCard({
             />
           </section>
 
+          {taskInfoDraft.taskCategory === TASK_CATEGORIES.DEVELOPMENT ? (
+            <TaskDevFormFields
+              value={taskInfoDraft.devMetadata}
+              onChange={(next) => onTaskInfoFieldChange('devMetadata', next)}
+              disabled={saving}
+              users={users}
+              showTeamRoles={!task?.parentId}
+              isTicket={Boolean(task?.parentId)}
+            />
+          ) : null}
+
           {taskInfoSaveError ? <p className="text-sm text-red-600">{taskInfoSaveError}</p> : null}
 
           <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-100 pt-4">
@@ -393,10 +433,24 @@ export default function TaskDetailsCard({
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-gray-100 px-6 pt-6 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 pr-2">
-          <h2 className="text-xl font-semibold text-gray-900">Task details</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold text-gray-900">Task details</h2>
+            {isDevelopmentTask(task) ? (
+              <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                Development
+              </span>
+            ) : null}
+          </div>
           <p className="mt-1.5 text-base text-gray-500">
             {isRecurring ? 'Assignment, schedule, and project.' : 'Assignment, dates, and project.'}
           </p>
+          {isDevelopmentTask(task) ? (
+            <p className="mt-2 text-sm text-gray-600">
+              {optionLabel(DEV_WORK_TYPE_OPTIONS, normalizeDevMetadata(task.devMetadata).workType)}
+              {' · '}
+              {optionLabel(DEV_AREA_OPTIONS, normalizeDevMetadata(task.devMetadata).area)}
+            </p>
+          ) : null}
         </div>
         <div
           className="flex w-full shrink-0 flex-nowrap items-center gap-2.5 sm:w-auto sm:justify-end"

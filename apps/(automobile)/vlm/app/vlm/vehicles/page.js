@@ -2,9 +2,23 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, LoadingSpinner, Table, TabsWithActions } from '@webfudge/ui';
-import { Car } from 'lucide-react';
+import { Car, CheckCircle2, MapPin, Truck } from 'lucide-react';
+import {
+  Button,
+  EmptyState,
+  KPICard,
+  LoadingSpinner,
+  Table,
+  TableCellCreated,
+  TableCellStatusPill,
+  TabsWithActions,
+} from '@webfudge/ui';
 import VLMPageHeader from '../../../components/VLMPageHeader';
+import VLMModulePage from '../../../components/layout/VLMModulePage';
+import VLMKpiRow from '../../../components/layout/VLMKpiRow';
+import VLMDataTableCard from '../../../components/shared/VLMDataTableCard';
+import { buildVlmBreadcrumb } from '../../../lib/pageHeader';
+import { computeVehicleStats } from '../../../lib/vlmDisplay';
 import { vehicleService } from '../../../lib/api';
 
 export default function VehiclesPage() {
@@ -34,6 +48,8 @@ export default function VehiclesPage() {
     };
   }, []);
 
+  const stats = useMemo(() => computeVehicleStats(vehicles), [vehicles]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return vehicles.filter((v) => {
@@ -46,39 +62,74 @@ export default function VehiclesPage() {
           .includes(q) ||
         String(v?.vin || '')
           .toLowerCase()
+          .includes(q) ||
+        String(v?.registrationNumber || '')
+          .toLowerCase()
           .includes(q);
       return matchesTab && matchesQuery;
     });
   }, [vehicles, query, activeTab]);
 
   const tabs = [
-    { key: 'all', label: 'All' },
-    { key: 'ACTIVE', label: 'Active' },
+    { key: 'all', label: 'All', badge: String(stats.total) },
+    { key: 'ACTIVE', label: 'Active', badge: String(stats.active) },
     { key: 'INACTIVE', label: 'Inactive' },
-    { key: 'ALLOCATED', label: 'Allocated' },
-    { key: 'IN_TRANSIT', label: 'In Transit' },
+    { key: 'ALLOCATED', label: 'Allocated', badge: String(stats.allocated) },
+    { key: 'IN_TRANSIT', label: 'In Transit', badge: String(stats.inTransit) },
   ];
 
   const columns = [
-    { key: 'name', label: 'NAME', render: (_, row) => row.name || 'Untitled vehicle' },
-    { key: 'vin', label: 'VIN', render: (_, row) => row.vin || '—' },
-    { key: 'registrationNumber', label: 'REGISTRATION', render: (_, row) => row.registrationNumber || '—' },
-    { key: 'derivedStatus', label: 'STATUS', render: (_, row) => row.derivedStatus || 'UNKNOWN' },
+    {
+      key: 'name',
+      label: 'VEHICLE',
+      render: (_, row) => (
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-gray-900">{row.name || 'Untitled vehicle'}</p>
+          {row.vin ? <p className="truncate text-xs text-gray-500">{row.vin}</p> : null}
+        </div>
+      ),
+    },
+    {
+      key: 'registrationNumber',
+      label: 'REGISTRATION',
+      render: (_, row) => row.registrationNumber || '—',
+    },
+    {
+      key: 'make',
+      label: 'MAKE / MODEL',
+      render: (_, row) => {
+        const parts = [row.make, row.model].filter(Boolean);
+        return parts.length ? parts.join(' ') : '—';
+      },
+    },
+    {
+      key: 'derivedStatus',
+      label: 'STATUS',
+      render: (_, row) => <TableCellStatusPill status={row.derivedStatus || 'INACTIVE'} />,
+    },
+    {
+      key: 'createdAt',
+      label: 'CREATED',
+      render: (_, row) => <TableCellCreated dateString={row.createdAt} />,
+    },
   ];
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <VLMModulePage className="space-y-6">
       <VLMPageHeader
         title="Vehicles"
         subtitle="Track the full vehicle lifecycle with event-derived status"
-        breadcrumb={[
-          { label: 'Dashboard', href: '/' },
-          { label: 'VLM', href: '/vlm/vehicles' },
-          { label: 'Vehicles', href: '/vlm/vehicles' },
-        ]}
+        breadcrumb={buildVlmBreadcrumb({ label: 'Vehicles', href: '/vlm/vehicles' })}
         showActions
         onAddClick={() => router.push('/vlm/vehicles/new')}
       />
+
+      <VLMKpiRow>
+        <KPICard title="Total Vehicles" value={stats.total} icon={Car} colorScheme="orange" />
+        <KPICard title="Active" value={stats.active} icon={CheckCircle2} colorScheme="orange" />
+        <KPICard title="Allocated" value={stats.allocated} icon={MapPin} colorScheme="orange" />
+        <KPICard title="In Transit" value={stats.inTransit} icon={Truck} colorScheme="orange" />
+      </VLMKpiRow>
 
       <TabsWithActions
         tabs={tabs}
@@ -87,22 +138,32 @@ export default function VehiclesPage() {
         showSearch
         searchQuery={query}
         onSearchChange={setQuery}
-        searchPlaceholder="Search by vehicle name or VIN…"
+        searchPlaceholder="Search by name, VIN, or registration…"
+        onAddClick={() => router.push('/vlm/vehicles/new')}
       />
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <VLMDataTableCard>
         {loading ? (
           <div className="flex items-center justify-center p-10">
-            <LoadingSpinner message="Loading vehicles..." />
+            <LoadingSpinner message="Loading vehicles…" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="p-10 text-center">
-            <Car className="mx-auto mb-3 h-10 w-10 text-gray-400" />
-            <p className="mb-4 text-sm text-gray-600">No vehicles found.</p>
-            <Button variant="primary" onClick={() => router.push('/vlm/vehicles/new')}>
-              Add Vehicle
-            </Button>
-          </div>
+          <EmptyState
+            icon={Car}
+            title="No vehicles found"
+            description={
+              query || activeTab !== 'all'
+                ? 'Try adjusting your search or filter to find vehicles.'
+                : 'Add your first vehicle to start tracking its lifecycle.'
+            }
+            action={
+              !query && activeTab === 'all' ? (
+                <Button variant="primary" onClick={() => router.push('/vlm/vehicles/new')}>
+                  Add Vehicle
+                </Button>
+              ) : null
+            }
+          />
         ) : (
           <Table
             columns={columns}
@@ -112,8 +173,7 @@ export default function VehiclesPage() {
             onRowClick={(row) => router.push(`/vlm/vehicles/${row.id}`)}
           />
         )}
-      </div>
-    </div>
+      </VLMDataTableCard>
+    </VLMModulePage>
   );
 }
-

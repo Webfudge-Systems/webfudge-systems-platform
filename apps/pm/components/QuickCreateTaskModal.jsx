@@ -5,13 +5,22 @@ import { Button, Input, Modal, Select, Textarea } from '@webfudge/ui';
 import { PRIORITY_OPTIONS, TASK_STATUS_OPTIONS } from './PMStatusBadge';
 import TaskRecurrenceFormFields, { recurrencePayloadFromForm } from './TaskRecurrenceFormFields';
 import TaskAssigneesPicker from './TaskAssigneesPicker';
+import TaskCategorySwitch from './TaskCategorySwitch';
+import TaskDevFormFields from './TaskDevFormFields';
 import { usersForProjectTaskAssignment } from '../lib/api/projectAssignableUsers';
+import {
+  TASK_CATEGORIES,
+  devMetadataToPayload,
+  normalizeDevMetadata,
+} from '../lib/taskDev';
 
 const EMPTY_FORM = {
   name: '',
   description: '',
   status: 'SCHEDULED',
   priority: 'medium',
+  taskCategory: TASK_CATEGORIES.GENERAL,
+  devMetadata: normalizeDevMetadata(null),
   startDate: '',
   scheduledDate: '',
   projectId: '',
@@ -127,6 +136,8 @@ export default function QuickCreateTaskModal({
             : '',
         recurrenceCustomUnit: task.recurrenceCustomUnit || 'day',
         recurrenceEndsAt: task.recurrenceEndsAt ? task.recurrenceEndsAt.slice(0, 10) : '',
+        taskCategory: task.taskCategory || TASK_CATEGORIES.GENERAL,
+        devMetadata: normalizeDevMetadata(task.devMetadata),
       });
       return;
     }
@@ -135,12 +146,18 @@ export default function QuickCreateTaskModal({
         ? String(parentContext.projectId)
         : '';
     const lockedId = projectLocked ? frozenProject.id : '';
+    const inheritedCategory =
+      parentContext?.taskCategory && parentContext.taskCategory !== TASK_CATEGORIES.GENERAL
+        ? parentContext.taskCategory
+        : TASK_CATEGORIES.GENERAL;
     setForm({
       ...EMPTY_FORM,
       status: defaultStatus || 'SCHEDULED',
       projectId: lockedId || fromParent || (defaultProjectId ? String(defaultProjectId) : ''),
       assignerId: defaultAssignerId ? String(defaultAssignerId) : '',
       assigneeUserIds: [],
+      taskCategory: isSubtaskCreate ? inheritedCategory : TASK_CATEGORIES.GENERAL,
+      devMetadata: normalizeDevMetadata(null),
     });
   }, [defaultAssignerId, defaultProjectId, defaultStatus, frozenProject, isOpen, projectLocked, task, parentContext]);
 
@@ -164,6 +181,11 @@ export default function QuickCreateTaskModal({
       description: form.description.trim() || null,
       status: form.status,
       priority: form.priority,
+      taskCategory: form.taskCategory,
+      devMetadata:
+        form.taskCategory === TASK_CATEGORIES.DEVELOPMENT
+          ? devMetadataToPayload(form.devMetadata)
+          : null,
       startDate: form.startDate || null,
       scheduledDate: isRecurring ? null : form.scheduledDate || null,
       projectId: projectLocked ? frozenProject.id : form.projectId || null,
@@ -202,6 +224,20 @@ export default function QuickCreateTaskModal({
             Subtask of <span className="font-semibold">{parentContext.name || 'parent task'}</span>
           </p>
         ) : null}
+        <TaskCategorySwitch
+          value={form.taskCategory}
+          onChange={(next) =>
+            setForm((prev) => ({
+              ...prev,
+              taskCategory: next,
+              devMetadata:
+                next === TASK_CATEGORIES.DEVELOPMENT
+                  ? normalizeDevMetadata(prev.devMetadata)
+                  : normalizeDevMetadata(null),
+            }))
+          }
+          disabled={saving}
+        />
         <Input
           label="Task name"
           value={form.name}
@@ -217,6 +253,17 @@ export default function QuickCreateTaskModal({
           resize="none"
           placeholder="Add context, acceptance criteria, or notes"
         />
+
+        {form.taskCategory === TASK_CATEGORIES.DEVELOPMENT ? (
+          <TaskDevFormFields
+            value={form.devMetadata}
+            onChange={(next) => update('devMetadata', next)}
+            disabled={saving}
+            users={users}
+            showTeamRoles={!isSubtask}
+            isTicket={isSubtask}
+          />
+        ) : null}
 
         {!isSubtask ? (
           <TaskRecurrenceFormFields

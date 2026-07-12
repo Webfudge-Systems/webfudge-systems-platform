@@ -390,6 +390,8 @@ export function transformTask(strapiTask) {
       recurrenceWeekdays: t.recurrenceWeekdays,
       recurrenceCustomUnit: t.recurrenceCustomUnit,
     }),
+    taskCategory: t.taskCategory || 'general',
+    devMetadata: t.devMetadata && typeof t.devMetadata === 'object' ? t.devMetadata : null,
   };
 }
 
@@ -457,6 +459,8 @@ export function transformSubtask(strapiSubtask) {
     assigneeUserIds: singleAssignee?.id != null ? [singleAssignee.id] : [],
     collaborators: singleAssignee ? [singleAssignee] : [],
     parentId,
+    taskCategory: s.taskCategory || 'general',
+    devMetadata: s.devMetadata && typeof s.devMetadata === 'object' ? s.devMetadata : null,
   };
 }
 

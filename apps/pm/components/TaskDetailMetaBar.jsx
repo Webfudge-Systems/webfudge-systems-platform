@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { Avatar, formatRelativeTime } from '@webfudge/ui';
-import { Clock, Flag, FolderOpen } from 'lucide-react';
+import { Clock, Code2, Flag, FolderOpen } from 'lucide-react';
 import { getPriorityMeta } from './PMStatusBadge';
+import { isDevelopmentTask } from '../lib/taskDev';
 
 const AVATAR_RING = 'ring-2 ring-white';
 const MAX_VISIBLE_ASSIGNEES = 2;
@@ -87,6 +88,17 @@ export default function TaskDetailMetaBar({ task, className = '' }) {
       role="group"
       aria-label="Task summary"
     >
+      {isDevelopmentTask(task) ? (
+        <>
+          <MetaSegment>
+            <Code2 className="h-4 w-4 shrink-0 text-violet-600" strokeWidth={2} aria-hidden />
+            <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-violet-700">
+              Development
+            </span>
+          </MetaSegment>
+          <MetaDivider />
+        </>
+      ) : null}
       <MetaSegment>
         <FolderOpen className="h-4 w-4 shrink-0 text-gray-400" strokeWidth={2} aria-hidden />
         <span className="text-sm text-gray-500">Project:</span>

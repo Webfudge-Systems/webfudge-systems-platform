@@ -52,6 +52,8 @@ import TaskDetailMetaBar from '../../../components/TaskDetailMetaBar';
 import TaskDetailsCard from '../../../components/TaskDetailsCard';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
+import TaskDevDetailsPanel from '../../../components/TaskDevDetailsPanel';
+import DevTicketModal from '../../../components/DevTicketModal';
 import { usePmTableSort } from '../../../hooks/usePmTableSort';
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker';
 import { recurrencePayloadFromForm } from '../../../components/TaskRecurrenceFormFields';
@@ -82,9 +84,18 @@ import {
 import { usersForProjectTaskAssignment } from '../../../lib/api/projectAssignableUsers';
 import { fetchChatMentionUsers } from '../../../lib/api/chatMentionUsers';
 import { enrichTaskWithProjectManager } from '../../../lib/taskListUtils';
+import {
+  TASK_CATEGORIES,
+  devMetadataToPayload,
+  isDevelopmentMajorTask,
+  isDevelopmentTask,
+  normalizeDevMetadata,
+  pipelineStageToTaskPatch,
+} from '../../../lib/taskDev';
 
 const DETAIL_TABS = [
   { key: 'overview', label: 'Overview' },
+  { key: 'development', label: 'Development' },
   { key: 'subtasks', label: 'Subtasks' },
   { key: 'comments', label: 'Comments' },
   { key: 'activity', label: 'Activity' },
@@ -188,6 +199,8 @@ function taskToInlineDraft(task) {
         : '',
     recurrenceCustomUnit: task.recurrenceCustomUnit || 'day',
     recurrenceEndsAt: task.recurrenceEndsAt ? task.recurrenceEndsAt.slice(0, 10) : '',
+    taskCategory: task.taskCategory || TASK_CATEGORIES.GENERAL,
+    devMetadata: normalizeDevMetadata(task.devMetadata),
   };
 }
 
@@ -223,6 +236,7 @@ export default function TaskDetailPage() {
   const [commentCount, setCommentCount] = useState(0);
   const [fileCount, setFileCount] = useState(0);
   const [subtaskModalOpen, setSubtaskModalOpen] = useState(false);
+  const [devTicketModalOpen, setDevTicketModalOpen] = useState(false);
   const [subtaskEditModal, setSubtaskEditModal] = useState({ open: false, task: null });
   const [subtaskDeleteModal, setSubtaskDeleteModal] = useState({ open: false, task: null });
   const [promoteModal, setPromoteModal] = useState({ open: false, task: null });
@@ -385,7 +399,9 @@ export default function TaskDetailPage() {
                 ? commentCount || undefined
                 : tab.key === 'subtasks'
                   ? (task?.subtaskCount ?? task?.subtasks?.length) || undefined
-                  : undefined,
+                  : tab.key === 'development' && isDevelopmentMajorTask(task)
+                    ? (task?.subtasks?.length) || undefined
+                    : undefined,
       })),
     [activityCount, commentCount, fileCount, task?.subtaskCount, task?.subtasks]
   );
@@ -653,6 +669,11 @@ export default function TaskDetailPage() {
         assignerId: d.assignerId,
         assigneeUserIds: [...(d.assigneeUserIds || [])],
         projectId: d.projectId || null,
+        taskCategory: d.taskCategory || TASK_CATEGORIES.GENERAL,
+        devMetadata:
+          d.taskCategory === TASK_CATEGORIES.DEVELOPMENT
+            ? devMetadataToPayload(d.devMetadata)
+            : null,
         ...recurrencePayloadFromForm(d),
       });
       setEditingTaskInfo(false);
@@ -665,6 +686,82 @@ export default function TaskDetailPage() {
       setSaving(false);
     }
   }, [task, taskInfoDraft, currentUserId, loadTask, reloadTaskTimeline]);
+
+  const handlePipelineStageChange = useCallback(
+    async (stage) => {
+      if (!task || !canEditTaskInPm(task, currentUserId) || !isDevelopmentTask(task)) return;
+      const patch = pipelineStageToTaskPatch(stage);
+      const currentMeta = normalizeDevMetadata(task.devMetadata);
+      try {
+        setSaving(true);
+        await taskService.updateTask(task.id, {
+          status: patch.status,
+          devMetadata: devMetadataToPayload({
+            ...currentMeta,
+            pipelineStage: patch.pipelineStage,
+            reviewStatus: patch.reviewStatus,
+            qaStatus: patch.qaStatus,
+          }),
+        });
+        await loadTask();
+        await reloadTaskTimeline({ silent: true });
+      } catch (error) {
+        console.error('Pipeline stage update error:', error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [task, currentUserId, loadTask, reloadTaskTimeline]
+  );
+
+  const saveDevMetadata = useCallback(
+    async (formMeta) => {
+      if (!task || !canEditTaskInPm(task, currentUserId) || !isDevelopmentTask(task)) return;
+      const currentMeta = normalizeDevMetadata(task.devMetadata);
+      const merged = {
+        ...currentMeta,
+        ...normalizeDevMetadata(formMeta),
+        isDevTicket: currentMeta.isDevTicket,
+        ticketKey: currentMeta.ticketKey || normalizeDevMetadata(formMeta).ticketKey,
+      };
+      try {
+        setSaving(true);
+        await taskService.updateTask(task.id, {
+          devMetadata: devMetadataToPayload(merged),
+        });
+        await loadTask();
+        await reloadTaskTimeline({ silent: true });
+      } catch (error) {
+        console.error('Save dev metadata error:', error);
+        throw error;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [task, currentUserId, loadTask, reloadTaskTimeline]
+  );
+
+  const saveDevTicket = useCallback(
+    async (payload) => {
+      if (!task || !canCreateSubtasks) return;
+      try {
+        setSaving(true);
+        await taskService.createTask({
+          ...payload,
+          projectId: payload.projectId || task.projectId,
+        });
+        setDevTicketModalOpen(false);
+        await loadTask();
+        await reloadTaskTimeline({ silent: true });
+      } catch (error) {
+        console.error('Create dev ticket error:', error);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [task, canCreateSubtasks, loadTask, reloadTaskTimeline]
+  );
 
   const userSelectOptions = useMemo(
     () => users.map((u) => ({ value: String(u.id), label: userLabel(u) })),
@@ -1278,6 +1375,19 @@ export default function TaskDetailPage() {
         </div>
       ) : null}
 
+      {activeTab === 'development' ? (
+        <TaskDevDetailsPanel
+          task={displayTask}
+          users={users}
+          canEdit={canEditCurrentTask}
+          saving={saving}
+          onPipelineStageChange={handlePipelineStageChange}
+          onSaveDevMetadata={saveDevMetadata}
+          onAddTicket={() => setDevTicketModalOpen(true)}
+          onOpenTicket={(ticket) => router.push(`/tasks/${ticket.id}`)}
+        />
+      ) : null}
+
       {activeTab === 'files' ? (
         <EntityFilesPanel
           subjectType="task"
@@ -1304,6 +1414,19 @@ export default function TaskDetailPage() {
       />
       ) : null}
 
+      {canCreateSubtasks && isDevelopmentMajorTask(task) ? (
+      <DevTicketModal
+        isOpen={devTicketModalOpen}
+        onClose={() => setDevTicketModalOpen(false)}
+        onSubmit={saveDevTicket}
+        parentTask={task}
+        users={users}
+        assigneeUsers={taskProjectUsers}
+        ticketIndex={(task?.subtasks?.length || 0) + 1}
+        saving={saving}
+      />
+      ) : null}
+
       {canCreateSubtasks ? (
       <QuickCreateTaskModal
         isOpen={subtaskModalOpen}
@@ -1311,7 +1434,14 @@ export default function TaskDetailPage() {
         onSubmit={saveNewSubtask}
         task={null}
         parentContext={
-          task ? { id: task.id, name: task.name, projectId: task.projectId } : null
+          task
+            ? {
+                id: task.id,
+                name: task.name,
+                projectId: task.projectId,
+                taskCategory: task.taskCategory,
+              }
+            : null
         }
         projects={projects}
         users={users}
