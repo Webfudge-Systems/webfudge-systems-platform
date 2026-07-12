@@ -17,7 +17,6 @@ import {
   KPICard,
   TabsWithActions,
   Avatar,
-  Select,
   TableCellText,
   TableCellDateOnly,
   TableCellOrangePill,
@@ -26,6 +25,7 @@ import {
   Card,
   TableResultsCount,
 } from '@webfudge/ui'
+import { Select } from '../../../components/shared/HRSelect'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'

@@ -23,6 +23,8 @@
     "tds": { "type": "integer", "default": 0 },
     "net": { "type": "integer", "default": 0 },
     "deductionsTotal": { "type": "integer", "default": 0 },
+    "overtimePay": { "type": "integer", "default": 0 },
+    "overtimeHours": { "type": "decimal", "default": 0 },
     "missingSalaryStructure": { "type": "boolean", "default": false },
     "missingBankDetails": { "type": "boolean", "default": false },
     "tdsEstimate": { "type": "boolean", "default": true },

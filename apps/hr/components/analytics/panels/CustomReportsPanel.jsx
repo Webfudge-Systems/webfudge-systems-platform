@@ -1,7 +1,22 @@
 'use client'
 
+import { useState } from 'react'
 import { FileSpreadsheet, Sparkles } from 'lucide-react'
 import { Button, Card } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
+
+const METRIC_OPTIONS = [
+  { value: 'headcount', label: 'Headcount' },
+  { value: 'payroll', label: 'Payroll cost' },
+  { value: 'attendance', label: 'Attendance rate' },
+  { value: 'attrition', label: 'Attrition' },
+]
+
+const GROUP_BY_OPTIONS = [
+  { value: 'department', label: 'Department' },
+  { value: 'location', label: 'Location' },
+  { value: 'employment-type', label: 'Employment type' },
+]
 
 const SAVED_REPORTS = [
   { name: 'Monthly headcount — Engineering', updated: '2 days ago', type: 'Headcount' },
@@ -10,6 +25,9 @@ const SAVED_REPORTS = [
 ]
 
 export default function CustomReportsPanel() {
+  const [metric, setMetric] = useState('headcount')
+  const [groupBy, setGroupBy] = useState('department')
+
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
       <Card variant="elevated" padding={false} className="space-y-4 rounded-2xl p-5 sm:p-6 lg:col-span-3">
@@ -21,23 +39,20 @@ export default function CustomReportsPanel() {
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Metrics</label>
-            <select className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20">
-              <option>Headcount</option>
-              <option>Payroll cost</option>
-              <option>Attendance rate</option>
-              <option>Attrition</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Group by</label>
-            <select className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20">
-              <option>Department</option>
-              <option>Location</option>
-              <option>Employment type</option>
-            </select>
-          </div>
+          <Select
+            label="Metrics"
+            value={metric}
+            onChange={setMetric}
+            options={METRIC_OPTIONS}
+            allowEmpty={false}
+          />
+          <Select
+            label="Group by"
+            value={groupBy}
+            onChange={setGroupBy}
+            options={GROUP_BY_OPTIONS}
+            allowEmpty={false}
+          />
           <div className="sm:col-span-2">
             <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Date range</label>
             <input

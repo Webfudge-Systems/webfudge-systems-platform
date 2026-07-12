@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "attendance_records",
+  "info": {
+    "singularName": "attendance-record",
+    "pluralName": "attendance-records",
+    "displayName": "Attendance Record",
+    "description": "Daily employee attendance entries"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "attendanceDate": {
+      "type": "date",
+      "required": true
+    },
+    "clockIn": {
+      "type": "string"
+    },
+    "clockOut": {
+      "type": "string"
+    },
+    "durationMinutes": {
+      "type": "integer",
+      "default": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["present", "on_leave", "wfh", "absent"],
+      "default": "present"
+    },
+    "workShift": {
+      "type": "enumeration",
+      "enum": ["morning", "evening", "night"],
+      "default": "morning"
+    },
+    "location": {
+      "type": "string"
+    },
+    "late": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "text"
+    },
+    "organizationUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization-user.organization-user"
+    },
+    "employeeProfile": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::employee-profile.employee-profile"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

@@ -1,5 +1,8 @@
 'use client'
 
+import { readShiftConfigFromProfile } from './shiftShared'
+import { listDepartmentCatalog as listDepartmentsFromApi } from './api/departmentsService'
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === 'production' ? 'https://api.webfudge.in' : 'http://localhost:1338')
@@ -135,6 +138,18 @@ function normalizeEmployeeId(user, fallbackIndex) {
   return `WF-${1000 + fallbackIndex}`
 }
 
+function profileShiftFields(profile) {
+  const config = readShiftConfigFromProfile(profile)
+  return {
+    primaryShift: config.primaryShift,
+    assignedShifts: config.assignedShifts,
+    flexibleShift: config.flexibleShift,
+    shift: config.flexibleShift
+      ? `${config.assignedShifts.length} flexible shift(s)`
+      : config.primaryShift,
+  }
+}
+
 function userDisplayName(user) {
   const full = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
   if (full) return full
@@ -175,6 +190,7 @@ function toEmployeeRow(user, index, departmentsById, metaMap, profileByOrgUserId
     location: meta.location || '',
     workLocation: meta.workLocation || meta.location || '',
     joinDate: meta.joinDate || (user?.createdAt ? String(user.createdAt).slice(0, 10) : ''),
+    ...profileShiftFields(profile),
     userRaw: user,
   }
 }
@@ -200,28 +216,7 @@ function roleCodeFromReportingRole(reportingRole) {
 }
 
 export async function listDepartmentCatalog() {
-  const rows = normalizeRows(
-    await get('/departments', {
-      'pagination[pageSize]': 100,
-      sort: 'name:asc',
-    }),
-  )
-  const catalog = rows
-    .map((d) => ({
-      id: readField(d, 'id') ?? d.id,
-      name: String(readField(d, 'name') || '').trim(),
-      isActive: readField(d, 'isActive') !== false,
-    }))
-    .filter((d) => d.isActive && d.name)
-
-  // De-duplicate by lowercase label to avoid repeated departments in dropdowns.
-  const seen = new Set()
-  return catalog.filter((row) => {
-    const key = row.name.toLowerCase()
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
+  return listDepartmentsFromApi()
 }
 
 export async function listRoleCatalog() {
@@ -286,7 +281,8 @@ export async function createEmployeeFromForm(form, departments = []) {
     role: roleCode,
     permissions: {},
     directAdd: true,
-    sendWelcomeEmail: false,
+    directPassword: String(form.initialPassword || '').trim() || undefined,
+    sendWelcomeEmail: form.sendLoginEmail !== false,
     departmentIds: targetDepartment ? [targetDepartment.id] : [],
     primaryDepartmentId: targetDepartment?.id || null,
   }

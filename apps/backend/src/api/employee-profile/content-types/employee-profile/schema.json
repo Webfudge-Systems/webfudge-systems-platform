@@ -19,6 +19,13 @@
     "joinDate": { "type": "date" },
     "workLocation": { "type": "string" },
     "phone": { "type": "string" },
+    "primaryShift": {
+      "type": "enumeration",
+      "enum": ["morning", "evening", "night"],
+      "default": "morning"
+    },
+    "assignedShifts": { "type": "json", "default": ["morning"] },
+    "flexibleShift": { "type": "boolean", "default": false },
     "reportingRole": { "type": "enumeration", "enum": ["admin", "manager"], "default": "manager" },
     "status": { "type": "enumeration", "enum": ["Active", "Probation", "Notice", "Exited"], "default": "Active" },
     "bankAccountNumber": { "type": "string" },

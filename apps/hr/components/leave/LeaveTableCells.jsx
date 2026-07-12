@@ -17,7 +17,7 @@ const STATUS_PILL = {
 
 export function LeaveEmployeeCell({ row }) {
   const name = row.employeeName || row.name
-  const id = row.employeeId
+  const id = row.employeeCode || row.employeeId
   const initial = name?.charAt(0) || '?'
   return (
     <div className="flex min-w-[220px] items-center gap-3">
@@ -33,12 +33,7 @@ export function LeaveEmployeeCell({ row }) {
 }
 
 export function LeaveBalanceEmployeeCell({ row }) {
-  return (
-    <div className="min-w-[180px]">
-      <div className="truncate font-medium text-gray-900">{row.employeeName}</div>
-      <div className="truncate text-sm text-gray-500">{row.department}</div>
-    </div>
-  )
+  return <LeaveEmployeeCell row={row} />
 }
 
 export function LeaveTypeCell({ type }) {
@@ -49,15 +44,16 @@ export function LeaveTextCell({ value, emphasized = false }) {
   return <TableCellText value={value} emphasized={emphasized} nowrap />
 }
 
-export function LeaveStatusPill({ status }) {
+export function LeaveStatusPill({ status, useDeniedLabel = false }) {
   const raw = (status || 'Pending').toString().trim()
   const key = raw.toUpperCase()
   const tone = STATUS_PILL[key] || STATUS_PILL.PENDING
+  const label = useDeniedLabel && key === 'REJECTED' ? 'DENIED' : key.replace(/_/g, ' ')
   return (
     <Badge
       className={clsx('whitespace-nowrap border px-3 py-1 text-xs font-semibold uppercase tracking-wide', tone)}
     >
-      {key.replace(/_/g, ' ')}
+      {label}
     </Badge>
   )
 }

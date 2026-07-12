@@ -1,9 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
-import { Users, Calendar, Clock, Briefcase } from 'lucide-react'
 import HRDashboardKpiRow from '../../../components/dashboard/HRDashboardKpiRow'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
@@ -14,8 +13,11 @@ import WorkforceStatusWidget from '../../../components/dashboard/WorkforceStatus
 import PendingApprovalsWidget from '../../../components/dashboard/PendingApprovalsWidget'
 import AttendanceSnapshotWidget from '../../../components/dashboard/AttendanceSnapshotWidget'
 import DashboardSidebar from '../../../components/dashboard/sidebar/DashboardSidebarPanels'
-import { EMPLOYEES } from '../../../lib/mock-data/employees'
-import { DASHBOARD_KPIS, PENDING_APPROVALS } from '../../../lib/mock-data/dashboard'
+import { fetchDashboardSnapshot } from '../../../lib/dashboardSyncService'
+import { buildDashboardKpiStats } from '../../../lib/dashboardPage'
+import { LEAVE_UPDATED_EVENT } from '../../../lib/leaveShared'
+import { REGULARIZATION_UPDATED_EVENT } from '../../../lib/regularizationSyncService'
+import { ATTENDANCE_UPDATED_EVENT } from '../../../lib/attendanceShared'
 
 const TILE_CLASS = 'h-full min-h-0'
 const INSIGHT_TILE_CLASS = 'h-full min-h-[17.5rem]'
@@ -24,62 +26,69 @@ export default function DashboardPage() {
   const router = useRouter()
   const { user } = useAuth()
   const dateStr = getCurrentDate()
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [dashboardData, setDashboardData] = useState({
+    employees: [],
+    activeEmployeeCount: 0,
+    onLeaveToday: 0,
+    pendingApprovals: 0,
+    openPositions: 0,
+    attendanceSnapshot: null,
+  })
 
-  const activeCount = useMemo(
-    () => EMPLOYEES.filter((e) => e.status !== 'Exited').length,
-    []
-  )
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      try {
+        setLoading(true)
+        setLoadError('')
+        const snapshot = await fetchDashboardSnapshot()
+        if (!cancelled) setDashboardData(snapshot)
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error?.message || 'Failed to load dashboard data')
+          setDashboardData({
+            employees: [],
+            activeEmployeeCount: 0,
+            onLeaveToday: 0,
+            pendingApprovals: 0,
+            openPositions: 0,
+            attendanceSnapshot: null,
+          })
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+
+    const onRefresh = () => load()
+    window.addEventListener(LEAVE_UPDATED_EVENT, onRefresh)
+    window.addEventListener(REGULARIZATION_UPDATED_EVENT, onRefresh)
+    window.addEventListener(ATTENDANCE_UPDATED_EVENT, onRefresh)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener(LEAVE_UPDATED_EVENT, onRefresh)
+      window.removeEventListener(REGULARIZATION_UPDATED_EVENT, onRefresh)
+      window.removeEventListener(ATTENDANCE_UPDATED_EVENT, onRefresh)
+    }
+  }, [])
 
   const kpiStats = useMemo(
-    () => [
-      {
-        title: 'Total Employees',
-        value: String(activeCount),
-        subtitle:
-          activeCount === 0
-            ? 'No employees'
-            : activeCount === 1
-              ? '1 employee'
-              : `${activeCount} employees`,
-        icon: Users,
-        colorScheme: 'orange',
-        onClick: () => router.push('/employees'),
-      },
-      {
-        title: 'On Leave Today',
-        value: String(DASHBOARD_KPIS.onLeaveToday.value),
-        subtitle:
-          DASHBOARD_KPIS.onLeaveToday.value === 0
-            ? 'No one on leave'
-            : `${DASHBOARD_KPIS.onLeaveToday.value} on leave`,
-        icon: Calendar,
-        colorScheme: 'orange',
-        onClick: () => router.push('/leave'),
-      },
-      {
-        title: 'Pending Approvals',
-        value: String(PENDING_APPROVALS.length),
-        subtitle:
-          PENDING_APPROVALS.length === 0
-            ? 'None pending'
-            : `${PENDING_APPROVALS.length} pending`,
-        icon: Clock,
-        colorScheme: 'orange',
-        onClick: () => router.push('/leave'),
-      },
-      {
-        title: 'Open Positions',
-        value: String(DASHBOARD_KPIS.openPositions.value),
-        subtitle:
-          DASHBOARD_KPIS.openPositions.value === 0
-            ? 'No openings'
-            : `${DASHBOARD_KPIS.openPositions.value} open`,
-        icon: Briefcase,
-        colorScheme: 'orange',
-        onClick: () => router.push('/recruitment'),
-      },
-    ],
-    [activeCount, router]
+    () =>
+      buildDashboardKpiStats({
+        activeEmployeeCount: dashboardData.activeEmployeeCount,
+        onLeaveToday: dashboardData.onLeaveToday,
+        pendingApprovals: dashboardData.pendingApprovals,
+        openPositions: dashboardData.openPositions,
+        loading,
+        router,
+      }),
+    [dashboardData, loading, router],
   )
 
   return (
@@ -90,12 +99,16 @@ export default function DashboardPage() {
         breadcrumb={[{ label: 'Dashboard', href: '/dashboard' }]}
         showSearch
       />
+      {loadError ? <p className="text-sm text-red-600">{loadError}</p> : null}
       <HRDashboardKpiRow stats={kpiStats} />
       <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-3">
         <div className="flex min-h-0 flex-col gap-4 xl:col-span-2">
-          <HeadcountTrendChart employees={EMPLOYEES} />
+          <HeadcountTrendChart employees={dashboardData.employees} />
           <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2">
-            <WorkforceStatusWidget activeEmployeeCount={activeCount} className={TILE_CLASS} />
+            <WorkforceStatusWidget
+              activeEmployeeCount={dashboardData.activeEmployeeCount}
+              className={TILE_CLASS}
+            />
             <PendingApprovalsWidget className={TILE_CLASS} />
           </div>
         </div>
@@ -104,11 +117,12 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-3">
         <AttendanceSnapshotWidget
-          activeEmployeeCount={activeCount}
+          activeEmployeeCount={dashboardData.activeEmployeeCount}
+          attendanceSnapshot={dashboardData.attendanceSnapshot}
           className={`${INSIGHT_TILE_CLASS} xl:col-span-1`}
         />
         <DepartmentDistributionChart
-          employees={EMPLOYEES}
+          employees={dashboardData.employees}
           className={`${INSIGHT_TILE_CLASS} xl:col-span-2`}
         />
       </div>

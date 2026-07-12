@@ -28,6 +28,7 @@ import {
   ChatMessageText,
   TableResultsCount,
 } from '@webfudge/ui'
+import { Select } from '../../../components/shared/HRSelect'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
@@ -229,32 +230,26 @@ export default function HelpdeskPage() {
         afterTabs={
           activeTab === 'tickets' ? (
             <div className="hidden items-center gap-2 sm:flex">
-              <select
+              <Select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by status"
-              >
-                <option value="">All statuses</option>
-                {STATUS_FILTERS.filter(Boolean).map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-              <select
+                onChange={setStatusFilter}
+                options={[
+                  { value: '', label: 'All statuses' },
+                  ...STATUS_FILTERS.filter(Boolean).map((s) => ({ value: s, label: s })),
+                ]}
+                placeholder="All statuses"
+                containerClassName="min-w-[140px]"
+              />
+              <Select
                 value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                aria-label="Filter by priority"
-              >
-                <option value="">All priorities</option>
-                {PRIORITY_FILTERS.filter(Boolean).map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+                onChange={setPriorityFilter}
+                options={[
+                  { value: '', label: 'All priorities' },
+                  ...PRIORITY_FILTERS.filter(Boolean).map((p) => ({ value: p, label: p })),
+                ]}
+                placeholder="All priorities"
+                containerClassName="min-w-[140px]"
+              />
             </div>
           ) : null
         }

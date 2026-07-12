@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "hr_performance_workspaces",
+  "info": {
+    "singularName": "hr-performance-workspace",
+    "pluralName": "hr-performance-workspaces",
+    "displayName": "HR Performance Workspace",
+    "description": "Organization-scoped HR performance workspace payload for HR/ESS sync"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization",
+      "required": true
+    },
+    "payload": {
+      "type": "json",
+      "default": {}
+    }
+  }
+}
