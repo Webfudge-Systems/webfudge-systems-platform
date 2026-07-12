@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Download, FileText, Plus, RefreshCcw } from 'lucide-react'
+import { Download, FileStack, FileText, Plus, RefreshCcw } from 'lucide-react'
 import {
   Button,
   Table,
@@ -31,7 +31,7 @@ import {
   matchesPayslipTab,
   payslipSortValue,
 } from '../../lib/payrollPage'
-import { generatePayslip, downloadPayslip } from '../../lib/payrollSyncService'
+import { generatePayslip, generateAllPayslips, downloadPayslip } from '../../lib/payrollSyncService'
 
 const TABLE_SORT_STORAGE_KEY = 'hr.payroll.payslips.tableSort'
 const COLUMN_VISIBILITY_STORAGE_KEY = 'hr.payroll.payslips.tableColumnVisibility'
@@ -75,6 +75,8 @@ export default function PayrollPayslipsContent({
   const [searchQuery, setSearchQuery] = useState('')
   const [sortPickerOpen, setSortPickerOpen] = useState(false)
   const [generatingId, setGeneratingId] = useState(null)
+  const [generatingAll, setGeneratingAll] = useState(false)
+  const [generateAllProgress, setGenerateAllProgress] = useState(null)
   const [downloadingId, setDownloadingId] = useState(null)
   const [actionError, setActionError] = useState('')
   const [generateOpen, setGenerateOpen] = useState(false)
@@ -166,6 +168,27 @@ export default function PayrollPayslipsContent({
     [selectedRun, onReload],
   )
 
+  const handleGenerateAll = useCallback(async () => {
+    if (!selectedRun?.id || readOnlyRun || pendingRows.length === 0) return
+    try {
+      setGeneratingAll(true)
+      setGenerateAllProgress({ current: 0, total: pendingRows.length })
+      setActionError('')
+      await generateAllPayslips({
+        payrollRunId: selectedRun.id,
+        payrollLineItemIds: pendingRows.map((row) => row.payrollLineItemId),
+        onProgress: ({ current, total }) => setGenerateAllProgress({ current, total }),
+      })
+      await onReload?.(selectedRun.id)
+      setActiveTab('generated')
+    } catch (err) {
+      setActionError(err?.message || 'Failed to generate payslips')
+    } finally {
+      setGeneratingAll(false)
+      setGenerateAllProgress(null)
+    }
+  }, [selectedRun, readOnlyRun, pendingRows, onReload])
+
   const handleDownload = useCallback(async (row) => {
     if (!row.payslipId) return
     try {
@@ -255,7 +278,7 @@ export default function PayrollPayslipsContent({
                 variant="primary"
                 size="sm"
                 className="gap-1 bg-orange-500 hover:bg-orange-600"
-                disabled={readOnlyRun || generatingId === row.id}
+                disabled={readOnlyRun || generatingId === row.id || generatingAll}
                 onClick={() => handleGenerate(row)}
               >
                 <Plus className="h-4 w-4" />
@@ -266,7 +289,7 @@ export default function PayrollPayslipsContent({
         ),
       },
     ],
-    [readOnlyRun, generatingId, downloadingId, handleGenerate, handleDownload],
+    [readOnlyRun, generatingId, generatingAll, downloadingId, handleGenerate, handleDownload],
   )
 
   const visibleColumns = useMemo(() => {
@@ -317,6 +340,17 @@ export default function PayrollPayslipsContent({
 
   const emptyState = emptyCopy[activeTab] || emptyCopy.all
 
+  const showGenerateAll =
+    !readOnlyRun && selectedRun?.id && runStatus.canGenerate && pendingRows.length > 0
+
+  const generateAllLabel = generatingAll
+    ? generateAllProgress
+      ? `Generating ${generateAllProgress.current}/${generateAllProgress.total}…`
+      : 'Generating…'
+    : pendingRows.length === 1
+      ? 'Generate payslip'
+      : `Generate all (${pendingRows.length})`
+
   return (
     <>
       {actionError ? <p className="mb-3 text-sm text-red-600">{actionError}</p> : null}
@@ -325,6 +359,22 @@ export default function PayrollPayslipsContent({
           tabs={tabItems.map((item) => ({ key: item.key, label: item.label, badge: String(item.count) }))}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          afterTabs={
+            showGenerateAll ? (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                className="hidden shrink-0 gap-1.5 bg-orange-500 hover:bg-orange-600 sm:inline-flex"
+                disabled={generatingAll || generatingId != null}
+                onClick={handleGenerateAll}
+                title={`Generate payslips for all ${pendingRows.length} pending employees`}
+              >
+                <FileStack className="h-4 w-4" aria-hidden />
+                {generateAllLabel}
+              </Button>
+            ) : null
+          }
           showSearch
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -395,6 +445,22 @@ export default function PayrollPayslipsContent({
                 <Button variant="secondary" onClick={() => setActiveTab('generated')}>
                   View Generated tab
                 </Button>
+              ) : showGenerateAll ? (
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button
+                    variant="primary"
+                    className="gap-2 bg-orange-500 hover:bg-orange-600"
+                    disabled={generatingAll}
+                    onClick={handleGenerateAll}
+                  >
+                    <FileStack className="h-4 w-4" />
+                    {generateAllLabel}
+                  </Button>
+                  <Button variant="secondary" disabled={generatingAll} onClick={() => setGenerateOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Generate one
+                  </Button>
+                </div>
               ) : !readOnlyRun && selectedRun && runStatus.canGenerate ? (
                 <Button
                   variant="primary"

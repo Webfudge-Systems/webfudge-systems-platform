@@ -251,6 +251,7 @@ export default function PerformanceReviewsContent() {
               size="sm"
               className="p-2 text-orange-600 hover:bg-orange-50"
               title={isCustomReviewCycle(row) ? 'Edit cycle' : 'Sample cycle cannot be edited'}
+              disabled={!isCustomReviewCycle(row)}
               onClick={() => openEdit(row)}
             >
               <Edit className="h-4 w-4" />

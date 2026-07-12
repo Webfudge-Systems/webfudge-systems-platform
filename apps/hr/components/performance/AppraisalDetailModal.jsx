@@ -31,7 +31,13 @@ export default function AppraisalDetailModal({
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <Button variant="secondary" className="gap-2" onClick={() => onEdit?.(appraisal)}>
+        <Button
+          variant="secondary"
+          className="gap-2"
+          disabled={!canModify}
+          title={canModify ? 'Edit appraisal' : 'Sample appraisal cannot be edited'}
+          onClick={() => onEdit?.(appraisal)}
+        >
           <Edit className="h-4 w-4" aria-hidden />
           Edit
         </Button>

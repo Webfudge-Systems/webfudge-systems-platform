@@ -19,6 +19,11 @@ import {
   isPerformanceGoalsActive,
   isPerformanceSectionActive,
 } from './performanceNavigation'
+import {
+  HR_EXPENSES_NAV,
+  isExpensesClaimsActive,
+  isExpensesSectionActive,
+} from './expensesNavigation'
 
 /** Main 2×3 navigate grid — aligned with PM sidebar */
 export const HR_NAVIGATE_TILES = [
@@ -64,7 +69,7 @@ export const HR_NAVIGATE_SECTIONS = [
   {
     id: 'expenses',
     label: 'Expenses',
-    children: [{ id: 'expense-claims', label: 'Expenses', href: '/expenses', icon: Receipt }],
+    children: HR_EXPENSES_NAV,
   },
   {
     id: 'recruitment',
@@ -108,6 +113,7 @@ export function isNavItemActive(pathname, href) {
   if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/'
   if (href === '/payroll') return isPayrollOverviewActive(pathname)
   if (href === '/performance') return isPerformanceGoalsActive(pathname)
+  if (href === '/expenses') return isExpensesClaimsActive(pathname)
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -128,6 +134,9 @@ export function tileIsActive(pathname, item) {
   }
   if (item.id === 'performance') {
     return isPerformanceSectionActive(pathname)
+  }
+  if (item.id === 'expenses') {
+    return isExpensesSectionActive(pathname)
   }
   return item.href ? isNavItemActive(pathname, item.href) : false
 }

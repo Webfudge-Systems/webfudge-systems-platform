@@ -24,8 +24,12 @@ export function getLeaveTabItems({
   calendarCount = 0,
 } = {}) {
   const policyRows = policies.filter((policy) => policy.type !== 'WFH')
+  const approvedTabCount = requests.filter(
+    (request) => request.status === 'Approved' || request.status === 'Rejected',
+  ).length
   return [
     { key: 'requests', label: 'Requests', count: requests.length },
+    { key: 'approved', label: 'Approved', count: approvedTabCount },
     { key: 'balances', label: 'Balances', count: balances.length },
     { key: 'calendar', label: 'Calendar', count: calendarCount },
     { key: 'policies', label: 'Policies', count: policyRows.length },
@@ -44,6 +48,13 @@ export function filterLeaveRequests(requests, { search = '', statusFilter = '' }
       (r.employeeCode || '').toLowerCase().includes(q)
     )
   })
+}
+
+export function filterApprovedTabLeaveRequests(requests, { search = '' } = {}) {
+  return filterLeaveRequests(
+    requests.filter((request) => request.status === 'Approved' || request.status === 'Rejected'),
+    { search },
+  )
 }
 
 export function filterLeaveBalances(balances, search = '') {
@@ -90,7 +101,7 @@ export function leaveRequestSortValue(row, key) {
 
 export function leaveBalanceSortValue(row, key) {
   if (key === 'employee') return row.employeeName || ''
-  return Number(row[key] ?? 0)
+  return Number(row.used?.[key] ?? row[key] ?? 0)
 }
 
 export function leavePolicySortValue(row, key) {

@@ -5,6 +5,7 @@
  * Every Books content type uses this as its base and can override specific methods.
  */
 const { createCoreController } = require('@strapi/strapi').factories;
+const { resolveEntityPkForRouteParam } = require('./content-api-helpers');
 
 function relId(rel) {
   if (rel == null) return null;
@@ -47,7 +48,9 @@ function makeBooksCrudController(uid, { defaultPopulate = [], extraFilters = () 
     async findOne(ctx) {
       if (!ctx.state.user) return ctx.unauthorized();
       if (!ctx.state.orgId) return ctx.forbidden('No active organization');
-      const entry = await strapi.entityService.findOne(uid, ctx.params.id, {
+      const pk = await resolveEntityPkForRouteParam(strapi, uid, ctx.params.id);
+      if (!pk) return ctx.notFound();
+      const entry = await strapi.entityService.findOne(uid, pk, {
         populate: [...new Set([...defaultPopulate, 'organization'])],
       });
       if (!entry) return ctx.notFound();
@@ -68,23 +71,27 @@ function makeBooksCrudController(uid, { defaultPopulate = [], extraFilters = () 
     async update(ctx) {
       if (!ctx.state.user) return ctx.unauthorized();
       if (!ctx.state.orgId) return ctx.forbidden('No active organization');
-      const existing = await strapi.entityService.findOne(uid, ctx.params.id, { populate: ['organization'] });
+      const pk = await resolveEntityPkForRouteParam(strapi, uid, ctx.params.id);
+      if (!pk) return ctx.notFound();
+      const existing = await strapi.entityService.findOne(uid, pk, { populate: ['organization'] });
       if (!existing) return ctx.notFound();
       if (!sameOrgId(relId(existing.organization), ctx.state.orgId)) return ctx.forbidden();
       const body = ctx.request?.body || {};
       const data = { ...(body.data || body) };
       delete data.organization;
-      const entry = await strapi.entityService.update(uid, ctx.params.id, { data, populate: defaultPopulate });
+      const entry = await strapi.entityService.update(uid, pk, { data, populate: defaultPopulate });
       return { data: entry };
     },
 
     async delete(ctx) {
       if (!ctx.state.user) return ctx.unauthorized();
       if (!ctx.state.orgId) return ctx.forbidden('No active organization');
-      const existing = await strapi.entityService.findOne(uid, ctx.params.id, { populate: ['organization'] });
+      const pk = await resolveEntityPkForRouteParam(strapi, uid, ctx.params.id);
+      if (!pk) return ctx.notFound();
+      const existing = await strapi.entityService.findOne(uid, pk, { populate: ['organization'] });
       if (!existing) return ctx.notFound();
       if (!sameOrgId(relId(existing.organization), ctx.state.orgId)) return ctx.forbidden();
-      const entry = await strapi.entityService.delete(uid, ctx.params.id);
+      const entry = await strapi.entityService.delete(uid, pk);
       return { data: entry };
     },
   }));

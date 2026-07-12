@@ -1,8 +1,4 @@
-export const DEFAULT_SHIFTS = [
-  { id: 'morning', name: 'Morning', timing: '9:00 AM – 6:00 PM', employees: 0 },
-  { id: 'evening', name: 'Evening', timing: '2:00 PM – 11:00 PM', employees: 0 },
-  { id: 'night', name: 'Night', timing: '10:00 PM – 7:00 AM', employees: 0 },
-]
+export { DEFAULT_SHIFTS, WORK_SHIFTS, buildShiftCardsFromEmployees, formatShiftLabel } from './shiftShared'
 
 export const ATTENDANCE_STATUS_OPTIONS = [
   { value: 'present', label: 'Present' },

@@ -14,6 +14,7 @@ export function pipToForm(pip) {
   if (!pip) {
     return {
       employee: '',
+      employeeId: '',
       manager: '',
       start: '',
       duration: '90 days',
@@ -24,6 +25,7 @@ export function pipToForm(pip) {
 
   return {
     employee: pip.employee || '',
+    employeeId: pip.employeeId ? String(pip.employeeId) : '',
     manager: pip.manager || '',
     start: pip.start || '',
     duration: pip.duration || '',
@@ -32,7 +34,14 @@ export function pipToForm(pip) {
   }
 }
 
-export default function PipForm({ form, onChange }) {
+export default function PipForm({ form, onChange, employees = [] }) {
+  const employeeOptions = [
+    { value: '', label: 'Select employee' },
+    ...employees.map((employee) => ({
+      value: String(employee.id || ''),
+      label: employee.name || employee.email || 'Unknown employee',
+    })),
+  ]
   return (
     <FormSectionCard
       icon={AlertTriangle}
@@ -41,12 +50,18 @@ export default function PipForm({ form, onChange }) {
     >
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div>
-          <Input
+          <Select
             label="Employee *"
-            value={form.employee}
-            onChange={(event) => onChange('employee', event.target.value)}
-            placeholder="e.g. Rajesh Pillai"
-            required
+            value={form.employeeId}
+            onChange={(value) => {
+              const selected = employees.find((employee) => String(employee.id) === String(value))
+              onChange('employeeId', value)
+              onChange('employeeMembershipId', String(selected?.membershipId || selected?.id || value || ''))
+              onChange('employee', selected?.name || '')
+              if (selected?.manager) onChange('manager', selected.manager)
+            }}
+            options={employeeOptions}
+            placeholder="Select employee"
           />
         </div>
         <div>

@@ -46,7 +46,13 @@ export default function FeedbackDetailModal({
             Give Feedback
           </Button>
         ) : null}
-        <Button variant="secondary" className="gap-2" onClick={() => onEdit?.(item)}>
+        <Button
+          variant="secondary"
+          className="gap-2"
+          disabled={!canModify}
+          title={canModify ? 'Edit feedback' : 'Sample feedback cannot be edited'}
+          onClick={() => onEdit?.(item)}
+        >
           <Edit className="h-4 w-4" aria-hidden />
           Edit
         </Button>

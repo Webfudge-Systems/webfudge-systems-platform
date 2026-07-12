@@ -33,6 +33,7 @@ import {
   listPendingFeedback,
   listReceivedFeedback,
 } from '../../lib/performanceFeedbackService'
+import { listSyncedEmployees } from '../../lib/employeeSyncService'
 import {
   filterPendingFeedback,
   filterReceivedFeedback,
@@ -106,6 +107,7 @@ export default function PerformanceFeedbackContent() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [employeeOptions, setEmployeeOptions] = useState([])
 
   const isPendingTab = activeTab === 'pending'
 
@@ -138,6 +140,29 @@ export default function PerformanceFeedbackContent() {
   useEffect(() => {
     loadFeedback()
   }, [loadFeedback])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { employees } = await listSyncedEmployees()
+        if (!cancelled) {
+          setEmployeeOptions(
+            (employees || []).map((employee) => ({
+              id: String(employee.id || ''),
+              name: employee.name || '',
+              email: employee.email || '',
+            })),
+          )
+        }
+      } catch {
+        if (!cancelled) setEmployeeOptions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const onUpdated = () => loadFeedback()
@@ -312,6 +337,7 @@ export default function PerformanceFeedbackContent() {
               size="sm"
               className="p-2 text-orange-600 hover:bg-orange-50"
               title={isCustomFeedbackItem(row) ? 'Edit request' : 'Sample request cannot be edited'}
+              disabled={!isCustomFeedbackItem(row)}
               onClick={() => openEdit(row)}
             >
               <Edit className="h-4 w-4" />
@@ -384,6 +410,7 @@ export default function PerformanceFeedbackContent() {
               size="sm"
               className="p-2 text-orange-600 hover:bg-orange-50"
               title={isCustomFeedbackItem(row) ? 'Edit feedback' : 'Sample feedback cannot be edited'}
+              disabled={!isCustomFeedbackItem(row)}
               onClick={() => openEdit(row)}
             >
               <Edit className="h-4 w-4" />
@@ -551,7 +578,12 @@ export default function PerformanceFeedbackContent() {
         ) : null}
       </HRDataTableCard>
 
-      <AddFeedbackRequestModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={handleSaved} />
+      <AddFeedbackRequestModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSaved={handleSaved}
+        employees={employeeOptions}
+      />
 
       <FeedbackDetailModal
         item={selectedItem}
@@ -567,6 +599,7 @@ export default function PerformanceFeedbackContent() {
         item={editingItem}
         open={Boolean(editingItem)}
         mode={editMode}
+        employees={employeeOptions}
         onClose={closeEdit}
         onSaved={handleSaved}
       />

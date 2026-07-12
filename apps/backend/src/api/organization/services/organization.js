@@ -6,6 +6,7 @@
 
 const { createCoreService } = require('@strapi/strapi').factories;
 const { createOrganizationOwnerMembership } = require('../../../utils/organization-role');
+const { ensureDefaultDepartmentsForOrg } = require('../../../utils/org-departments-bootstrap');
 
 module.exports = createCoreService('api::organization.organization', ({ strapi }) => ({
   async createWithOnboarding({ userId, organizationData, appId, moduleIds, userCount, invitedEmails }) {
@@ -36,6 +37,8 @@ module.exports = createCoreService('api::organization.organization', ({ strapi }
         userId,
         organizationId: organization.id,
       });
+
+      await ensureDefaultDepartmentsForOrg(strapi, organization.id);
 
       // 3. Create subscription if app selected
       let subscription = null;

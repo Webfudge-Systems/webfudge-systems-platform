@@ -1,8 +1,9 @@
-import { PIPS } from './mock-data/performance'
+import { schedulePersistPerformanceWorkspace } from '@webfudge/utils/hrPerformance'
 
 const STORAGE_KEY = 'hr.performance.pips'
 
 export const PIPS_UPDATED_EVENT = 'hr:pips-updated'
+export const PIPS_ESS_UPDATED_EVENT = 'ess:performance-updated'
 
 function readCustomPips() {
   if (typeof window === 'undefined') return []
@@ -17,6 +18,8 @@ function writeCustomPips(rows) {
   if (typeof window === 'undefined') return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rows))
   window.dispatchEvent(new CustomEvent(PIPS_UPDATED_EVENT))
+  window.dispatchEvent(new CustomEvent(PIPS_ESS_UPDATED_EVENT))
+  schedulePersistPerformanceWorkspace()
 }
 
 function normalizeMilestones(value) {
@@ -31,6 +34,8 @@ function normalizePip(row) {
   return {
     id: row.id || `pip-${Date.now()}`,
     employee: row.employee || '',
+    employeeId: row.employeeId ? String(row.employeeId) : '',
+    employeeMembershipId: row.employeeMembershipId ? String(row.employeeMembershipId) : '',
     manager: row.manager || '',
     start: row.start || '',
     duration: row.duration || '',
@@ -41,9 +46,7 @@ function normalizePip(row) {
 }
 
 export function listPips() {
-  const custom = readCustomPips().map(normalizePip)
-  const seed = PIPS.map((row, index) => normalizePip({ ...row, id: `seed-${index}` }))
-  return [...custom, ...seed]
+  return readCustomPips().map(normalizePip)
 }
 
 export function isCustomPip(pip) {
@@ -60,6 +63,12 @@ export function createPip(payload) {
   const record = normalizePip({
     id: `pip-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     employee,
+    employeeId: payload.employeeId ? String(payload.employeeId) : '',
+    employeeMembershipId: payload.employeeMembershipId
+      ? String(payload.employeeMembershipId)
+      : payload.employeeId
+        ? String(payload.employeeId)
+        : '',
     manager,
     start: payload.start || '',
     duration: payload.duration || '',
@@ -90,6 +99,12 @@ export function updatePip(id, payload) {
   const updated = normalizePip({
     ...rows[index],
     employee,
+    employeeId: payload.employeeId ? String(payload.employeeId) : '',
+    employeeMembershipId: payload.employeeMembershipId
+      ? String(payload.employeeMembershipId)
+      : payload.employeeId
+        ? String(payload.employeeId)
+        : '',
     manager,
     start: payload.start || '',
     duration: payload.duration || '',
@@ -108,4 +123,10 @@ export function deletePip(id) {
   const rows = readCustomPips().map(normalizePip).filter((row) => row.id !== id)
   writeCustomPips(rows)
   return true
+}
+
+export function notifyPipsUpdated() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(PIPS_UPDATED_EVENT))
+  window.dispatchEvent(new CustomEvent(PIPS_ESS_UPDATED_EVENT))
 }

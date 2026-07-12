@@ -32,7 +32,13 @@ export default function GoalDetailModal({
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <Button variant="secondary" className="gap-2" onClick={() => onEdit?.(goal)}>
+        <Button
+          variant="secondary"
+          className="gap-2"
+          disabled={!canModify}
+          title={canModify ? 'Edit goal' : 'Sample goal cannot be edited'}
+          onClick={() => onEdit?.(goal)}
+        >
           <Edit className="h-4 w-4" aria-hidden />
           Edit
         </Button>

@@ -6,7 +6,7 @@ import { FileText, Plus, RefreshCcw } from 'lucide-react'
 import { Button, FormSectionCard, Modal } from '@webfudge/ui'
 import { Select } from '../shared/HRSelect'
 import { formatPayrollInr, getPayslipGenerationStatus } from '../../lib/payrollPage'
-import { generatePayslip } from '../../lib/payrollSyncService'
+import { generatePayslip, generateAllPayslips } from '../../lib/payrollSyncService'
 
 const ALL_PENDING_VALUE = 'all'
 
@@ -75,10 +75,15 @@ export default function GeneratePayslipModal({
     try {
       setIsSubmitting(true)
       setSubmitError('')
-      for (const row of targets) {
+      if (selection === ALL_PENDING_VALUE) {
+        await generateAllPayslips({
+          payrollRunId: selectedRun.id,
+          payrollLineItemIds: pendingRows.map((row) => row.payrollLineItemId),
+        })
+      } else {
         await generatePayslip({
           payrollRunId: selectedRun.id,
-          payrollLineItemId: row.payrollLineItemId,
+          payrollLineItemId: targets[0].payrollLineItemId,
         })
       }
       await onGenerated?.(selectedRun.id)

@@ -31,7 +31,13 @@ export default function ReviewCycleDetailModal({
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <Button variant="secondary" className="gap-2" onClick={() => onEdit?.(cycle)}>
+        <Button
+          variant="secondary"
+          className="gap-2"
+          disabled={!canModify}
+          title={canModify ? 'Edit review cycle' : 'Sample cycle cannot be edited'}
+          onClick={() => onEdit?.(cycle)}
+        >
           <Edit className="h-4 w-4" aria-hidden />
           Edit
         </Button>

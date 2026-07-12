@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   CheckCircle2,
   UserRound,
@@ -36,6 +37,8 @@ import {
   TableCellText,
   TableCellDateOnly,
   LoadingSpinner,
+  Modal,
+  TableResultsCount,
 } from '@webfudge/ui'
 import { Select } from '../shared/HRSelect'
 import HRDataTableCard from '../shared/HRDataTableCard'
@@ -46,6 +49,7 @@ import {
   fetchEmployeeCrossAppActivity,
 } from '../../lib/api/employeeActivityService'
 import { listAttendanceRecords } from '../../lib/attendanceSyncService'
+import { formatShiftLabel } from '../../lib/shiftShared'
 import {
   ATTENDANCE_UPDATED_EVENT,
   buildEmployeeMonthAttendanceLogs,
@@ -56,6 +60,9 @@ import {
   computeEmployeeLeaveBalanceRows,
   LEAVE_UPDATED_EVENT,
 } from '../../lib/leaveShared'
+import { listEmployeePayrollLineItems, deletePayrollLineItem } from '../../lib/payrollSyncService'
+import { mapEmployeePayrollHistoryRow, sortEmployeePayrollHistory } from '../../lib/payrollShared'
+import { buildEmployeePayrollColumns, employeePayrollViewHref } from './employeePayrollTableColumns'
 
 const UnifiedWorkspaceCalendar = dynamic(
   () => import('@webfudge/ui').then((m) => ({ default: m.UnifiedWorkspaceCalendar })),
@@ -533,7 +540,15 @@ export function EmployeeOverviewPanel({
                   <DetailValue value={employee.contractType || 'Permanent'} />
                 </DetailCell>
                 <DetailCell label="Shift" icon={Clock}>
-                  <DetailValue value={employee.shift || 'Morning (9–6)'} />
+                  <DetailValue
+                    value={
+                      employee.flexibleShift
+                        ? `Flexible — ${(employee.assignedShifts || ['morning'])
+                            .map((shiftId) => formatShiftLabel(shiftId))
+                            .join(', ')}`
+                        : formatShiftLabel(employee.primaryShift || employee.shift || 'morning')
+                    }
+                  />
                 </DetailCell>
               </GridRow>
 
@@ -1160,62 +1175,110 @@ export function EmployeeLeavePanel({ employee }) {
   )
 }
 
-export function EmployeePayrollPanel({ payslips }) {
+export function EmployeePayrollPanel({ employee }) {
+  const router = useRouter()
+  const [payslips, setPayslips] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+
+  const orgUserId = employee?.membershipId || employee?.id
+
+  const loadData = useCallback(async () => {
+    if (!orgUserId) {
+      setPayslips([])
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setLoadError('')
+      const rows = await listEmployeePayrollLineItems(orgUserId)
+      setPayslips(sortEmployeePayrollHistory(rows.map(mapEmployeePayrollHistoryRow)))
+    } catch (error) {
+      setLoadError(error?.message || 'Could not load payroll history')
+      setPayslips([])
+    } finally {
+      setLoading(false)
+    }
+  }, [orgUserId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
   const latestPayslip = payslips[0] || null
   const totalNet = payslips.reduce((sum, row) => sum + Number(row.net || 0), 0)
   const totalDeductions = payslips.reduce((sum, row) => sum + Number(row.deductions || 0), 0)
-  const columns = [
-    {
-      key: 'month',
-      label: 'MONTH',
-      width: 140,
-      render: (_, row) => <TableCellText value={row.month} className="font-medium" />,
+
+  const handleView = useCallback(
+    (row) => {
+      router.push(employeePayrollViewHref(row, employee))
     },
-    {
-      key: 'gross',
-      label: 'GROSS',
-      width: 110,
-      render: (_, row) => <TableCellText value={formatInr(row.gross)} className="tabular-nums" />,
-    },
-    {
-      key: 'deductions',
-      label: 'DEDUCTIONS',
-      width: 110,
-      render: (_, row) => <TableCellText value={formatInr(row.deductions)} className="tabular-nums" />,
-    },
-    {
-      key: 'net',
-      label: 'NET',
-      width: 110,
-      render: (_, row) => <TableCellText value={formatInr(row.net)} className="tabular-nums font-semibold" />,
-    },
-    {
-      key: 'status',
-      label: 'STATUS',
-      width: 100,
-      render: (_, row) => (
-        <Badge variant={employeeStatusBadgeVariant(row.status)} size="sm" className="capitalize">
-          {row.status}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      label: '',
-      width: 120,
-      render: () => (
-        <Link
-          href="/payroll"
-          className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-        >
-          View run
-        </Link>
-      ),
-    },
-  ]
+    [router, employee],
+  )
+
+  const handleDeleteRequest = useCallback((row) => {
+    setDeleteTarget(row)
+    setDeleteOpen(true)
+  }, [])
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget?.lineItemId) return
+    try {
+      setDeleting(true)
+      setDeletingId(deleteTarget.lineItemId)
+      setLoadError('')
+      await deletePayrollLineItem(deleteTarget.lineItemPk || deleteTarget.lineItemId)
+      setDeleteOpen(false)
+      setDeleteTarget(null)
+      await loadData()
+    } catch (error) {
+      setLoadError(error?.message || 'Failed to remove payroll record')
+    } finally {
+      setDeleting(false)
+      setDeletingId(null)
+    }
+  }, [deleteTarget, loadData])
+
+  const columns = useMemo(
+    () =>
+      buildEmployeePayrollColumns({
+        onView: handleView,
+        onDelete: handleDeleteRequest,
+        deletingId,
+      }),
+    [handleView, handleDeleteRequest, deletingId],
+  )
+
+  if (loading) {
+    return (
+      <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+        <LoadingSpinner message="Loading payroll history…" />
+      </Card>
+    )
+  }
+
+  if (!orgUserId) {
+    return (
+      <Card variant="elevated" className="rounded-xl p-8">
+        <EmptyState
+          icon={Wallet}
+          title="Payroll unavailable"
+          description="This employee is not linked to an organization membership yet."
+          className="py-2"
+        />
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-4">
+      {loadError ? <p className="text-sm text-red-600">{loadError}</p> : null}
       <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-orange-50/80 via-white to-white px-6 py-5">
           <div>
@@ -1261,9 +1324,73 @@ export function EmployeePayrollPanel({ payslips }) {
           </div>
         </div>
       </Card>
-      <HRDataTableCard>
-        <Table variant="modernEmbedded" columns={columns} data={payslips} keyField="month" />
-      </HRDataTableCard>
+      {payslips.length ? (
+        <>
+          <TableResultsCount count={payslips.length} />
+          <HRDataTableCard>
+            <Table
+              variant="modernEmbedded"
+              columns={columns}
+              data={payslips}
+              keyField="id"
+              onRowClick={(row) => handleView(row)}
+            />
+          </HRDataTableCard>
+        </>
+      ) : (
+        <Card variant="elevated" className="rounded-xl p-8">
+          <EmptyState
+            icon={Wallet}
+            title="No payroll history"
+            description="Payroll runs for this employee will appear here after the first run is calculated."
+            className="py-2"
+            action={
+              <Button as={Link} href="/payroll" variant="secondary" size="sm">
+                Open payroll hub
+              </Button>
+            }
+          />
+        </Card>
+      )}
+
+      <Modal
+        isOpen={deleteOpen}
+        onClose={() => {
+          if (deleting) return
+          setDeleteOpen(false)
+          setDeleteTarget(null)
+        }}
+        title="Remove payroll record"
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Remove{' '}
+          <span className="font-semibold text-gray-900">{deleteTarget?.month || 'this payroll record'}</span> from the
+          payroll run? This cannot be undone.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={deleting}
+            onClick={() => {
+              setDeleteOpen(false)
+              setDeleteTarget(null)
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="!bg-red-600 hover:!bg-red-700"
+            disabled={deleting}
+            onClick={handleDeleteConfirm}
+          >
+            {deleting ? 'Removing…' : 'Remove'}
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

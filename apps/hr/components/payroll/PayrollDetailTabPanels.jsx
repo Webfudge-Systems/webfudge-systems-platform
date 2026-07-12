@@ -65,6 +65,12 @@ export function PayrollRecordOverviewPanel({ record, month }) {
                 <InfoRow label="Department" value={record.dept} />
                 <InfoRow label="Employee ID" value={record.employeeId} emphasize />
                 <InfoRow label="Gross pay" value={formatPayrollInr(record.gross)} emphasize />
+                {Number(record.overtimePay || 0) > 0 ? (
+                  <InfoRow
+                    label="Overtime pay"
+                    value={`${formatPayrollInr(record.overtimePay)} (${record.overtimeHours || 0} hrs)`}
+                  />
+                ) : null}
               </div>
             </InfoSection>
 
@@ -90,6 +96,14 @@ export function PayrollRecordOverviewPanel({ record, month }) {
               <dt className="text-gray-500">Gross</dt>
               <dd className="font-semibold tabular-nums text-gray-900">{formatPayrollInr(record.gross)}</dd>
             </div>
+            {Number(record.overtimePay || 0) > 0 ? (
+              <div className="flex justify-between gap-2">
+                <dt className="text-gray-500">Includes overtime</dt>
+                <dd className="font-semibold tabular-nums text-gray-900">
+                  {formatPayrollInr(record.overtimePay)} ({record.overtimeHours || 0} hrs)
+                </dd>
+              </div>
+            ) : null}
             <div className="flex justify-between gap-2">
               <dt className="text-gray-500">Deductions</dt>
               <dd className="font-semibold tabular-nums text-gray-900">{formatPayrollInr(totalDeductions)}</dd>

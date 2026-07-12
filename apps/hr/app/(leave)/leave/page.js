@@ -16,7 +16,6 @@ import {
   KPICard,
   TabsWithActions,
   TableEmptyBelow,
-  TableColumnPicker,
   TableSortDropdown,
   useTableColumnPreferences,
   useTableSort,
@@ -38,6 +37,7 @@ import LeaveCalendarView from '../../../components/leave/LeaveCalendarView'
 import {
   computeLeaveStats,
   filterLeaveRequests,
+  filterApprovedTabLeaveRequests,
   filterLeaveBalances,
   filterLeavePolicies,
   getLeaveTabItems,
@@ -163,8 +163,6 @@ const POLICY_SORTABLE_KEYS = POLICY_SORT_COLUMN_OPTIONS.map((c) => c.key)
 const REQUEST_REORDERABLE_KEYS = REQUEST_TOGGLEABLE_COLUMNS.map((c) => c.key)
 const BALANCE_REORDERABLE_KEYS = BALANCE_TOGGLEABLE_COLUMNS.map((c) => c.key)
 const POLICY_REORDERABLE_KEYS = POLICY_TOGGLEABLE_COLUMNS.map((c) => c.key)
-
-const DATA_TABLE_TABS = new Set(['requests', 'balances', 'policies'])
 
 export default function LeavePage() {
   const [activeTab, setActiveTab] = useState('requests')
@@ -349,10 +347,12 @@ export default function LeavePage() {
     maxRules: policySortMaxRules,
   } = useTableSort({ storageKey: POLICY_SORT_STORAGE_KEY })
 
-  const requestRows = useMemo(
-    () => filterLeaveRequests(requests, { search: searchQuery, statusFilter }),
-    [requests, searchQuery, statusFilter],
-  )
+  const requestRows = useMemo(() => {
+    if (activeTab === 'approved') {
+      return filterApprovedTabLeaveRequests(requests, { search: searchQuery })
+    }
+    return filterLeaveRequests(requests, { search: searchQuery, statusFilter })
+  }, [requests, searchQuery, statusFilter, activeTab])
 
   const sortedRequestRows = useMemo(
     () => sortData(requestRows, (row, key) => leaveRequestSortValue(row, key)),
@@ -378,6 +378,10 @@ export default function LeavePage() {
     () => policySortData(policyRows, (row, key) => leavePolicySortValue(row, key)),
     [policyRows, policySortData, policySortRules],
   )
+
+  useEffect(() => {
+    setSortPickerOpen(false)
+  }, [activeTab])
 
   useEffect(() => {
     if (!columnPickerOpen && !balanceColumnPickerOpen && !policyColumnPickerOpen && !sortPickerOpen) {
@@ -470,8 +474,10 @@ export default function LeavePage() {
         onReject: handleReject,
         onView: setDetailRequest,
         onDelete: setDeleteTarget,
+        showApprovedTabActions: activeTab === 'approved',
+        useDeniedLabel: activeTab === 'approved',
       }),
-    [actionId, handleApprove, handleReject],
+    [actionId, handleApprove, handleReject, activeTab],
   )
 
   const balanceColumns = useMemo(() => buildLeaveBalanceColumns(), [])
@@ -573,7 +579,7 @@ export default function LeavePage() {
       }
     }
 
-    if (activeTab === 'requests') {
+    if (activeTab === 'requests' || activeTab === 'approved') {
       return {
         sortRules,
         sortColumnOptions: REQUEST_SORT_COLUMN_OPTIONS,
@@ -670,10 +676,9 @@ export default function LeavePage() {
     tableResizeProps,
   ])
 
-  const isDataTableTab = DATA_TABLE_TABS.has(activeTab)
 
   const resultCount =
-    activeTab === 'requests'
+    activeTab === 'requests' || activeTab === 'approved'
       ? requestRows.length
       : activeTab === 'balances'
         ? balanceRows.length
@@ -702,60 +707,48 @@ export default function LeavePage() {
         <KPICard title="Total Requests" value={stats.total} subtitle={`${stats.total} requests`} icon={CalendarDays} colorScheme="orange" />
       </HRKpiRow>
 
-      <div className="relative" ref={toolbarRef}>
+      <TabsWithActions
+        tabs={tabItems.map((item) => ({ key: item.key, label: item.label, badge: String(item.count) }))}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        variant="pill"
+      />
+
+      <div className="relative ml-auto w-fit max-w-full" ref={toolbarRef}>
         <TabsWithActions
-          tabs={tabItems.map((item) => ({ key: item.key, label: item.label, badge: String(item.count) }))}
+          showTabs={false}
           activeTab={activeTab}
-          onTabChange={setActiveTab}
           showSearch
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          searchPlaceholder="Search leave..."
-          showAdd={activeTab === 'requests'}
-          onAddClick={() => setCreateOpen(true)}
-          addTitle="Apply Leave"
-          showFilter={activeTab === 'requests'}
-          onFilterClick={() => setFilterOpen(true)}
-          hasActiveFilters={Boolean(statusFilter)}
-          showColumnVisibility={isDataTableTab}
-          onColumnVisibilityClick={() => {
-            setSortPickerOpen(false)
-            activeTableContext?.setColumnPickerOpen((open) => !open)
-          }}
-          showSort={isDataTableTab}
-          onSortClick={() => {
-            activeTableContext?.setColumnPickerOpen(false)
-            setSortPickerOpen((open) => !open)
-          }}
-          hasActiveSort={activeTableContext?.hasActiveSort ?? false}
+          searchPlaceholder={
+            activeTab === 'balances'
+              ? 'Search balances...'
+              : activeTab === 'policies'
+                ? 'Search policies...'
+                : activeTab === 'calendar'
+                  ? 'Search calendar...'
+                  : 'Search leave requests...'
+          }
+          showSort={Boolean(activeTableContext)}
+          onSortClick={() => setSortPickerOpen((open) => !open)}
+          hasActiveSort={Boolean(activeTableContext?.hasActiveSort)}
+          sortTitle="Sort"
           variant="glass"
         />
-        <TableSortDropdown
-          open={sortPickerOpen && isDataTableTab}
-          sortRules={activeTableContext?.sortRules ?? []}
-          columnOptions={activeTableContext?.sortColumnOptions ?? []}
-          onAddRule={activeTableContext?.addSortRule}
-          onRemoveRule={activeTableContext?.removeSortRule}
-          onSetDirection={activeTableContext?.setRuleDirection}
-          onMoveRule={activeTableContext?.moveSortRule}
-          onClear={activeTableContext?.clearSort}
-          maxRules={activeTableContext?.sortMaxRules}
-        />
-        <TableColumnPicker
-          open={Boolean(activeTableContext?.columnPickerOpen) && isDataTableTab}
-          description={activeTableContext?.pickerDescription ?? 'Fixed columns stay visible.'}
-          reorderableRows={activeTableContext?.reorderableColumns ?? []}
-          columnVisibility={activeTableContext?.columnVisibility ?? {}}
-          columnOrder={activeTableContext?.columnOrder ?? []}
-          columnDropIndicator={activeTableContext?.columnDropIndicator}
-          onSetVisible={activeTableContext?.setColumnVisible}
-          onDragStart={activeTableContext?.handleColumnDragStart}
-          onDragEnd={activeTableContext?.handleColumnDragEnd}
-          onRowDragOver={activeTableContext?.handleColumnRowDragOver}
-          onListDragLeave={activeTableContext?.handleColumnListDragLeave}
-          onDrop={activeTableContext?.handleColumnDrop}
-          onReset={activeTableContext?.resetColumnTablePreferences}
-        />
+        {activeTableContext ? (
+          <TableSortDropdown
+            open={sortPickerOpen}
+            sortRules={activeTableContext.sortRules}
+            columnOptions={activeTableContext.sortColumnOptions}
+            onAddRule={activeTableContext.addSortRule}
+            onRemoveRule={activeTableContext.removeSortRule}
+            onSetDirection={activeTableContext.setRuleDirection}
+            onMoveRule={activeTableContext.moveSortRule}
+            onClear={activeTableContext.clearSort}
+            maxRules={activeTableContext.sortMaxRules}
+          />
+        ) : null}
       </div>
 
       {actionError ? <p className="text-sm text-red-600">{actionError}</p> : null}
@@ -763,7 +756,7 @@ export default function LeavePage() {
 
       <TableResultsCount count={resultCount} />
 
-      {activeTab === 'requests' && (
+      {(activeTab === 'requests' || activeTab === 'approved') && (
         <HRDataTableCard>
           <Table
             columns={visibleRequestColumns}
@@ -775,14 +768,20 @@ export default function LeavePage() {
           />
           {!loading && requestRows.length === 0 ? (
             <TableEmptyBelow
-              icon={Palmtree}
-              title="No leave requests found"
-              description="Apply leave for an employee to get started."
+              icon={activeTab === 'approved' ? CheckCircle : Palmtree}
+              title={activeTab === 'approved' ? 'No approved or denied requests' : 'No leave requests found'}
+              description={
+                activeTab === 'approved'
+                  ? 'Approved and denied requests will appear here for review.'
+                  : 'Apply leave for an employee to get started.'
+              }
               action={
-                <Button variant="primary" className="gap-2 bg-orange-500 hover:bg-orange-600" onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  Apply Leave
-                </Button>
+                activeTab === 'requests' ? (
+                  <Button variant="primary" className="gap-2 bg-orange-500 hover:bg-orange-600" onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    Apply Leave
+                  </Button>
+                ) : null
               }
             />
           ) : null}

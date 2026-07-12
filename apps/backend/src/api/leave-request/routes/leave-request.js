@@ -15,4 +15,10 @@ module.exports = makeCoreRoutes('leave-requests', 'api::leave-request.leave-requ
     handler: 'api::leave-request.leave-request.reject',
     config: { auth: false },
   },
+  {
+    method: 'POST',
+    path: '/leave-requests/:id/cancel',
+    handler: 'api::leave-request.leave-request.cancel',
+    config: { auth: false },
+  },
 ]);

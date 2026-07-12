@@ -32,6 +32,7 @@ import {
   listPips,
   PIPS_UPDATED_EVENT,
 } from '../../lib/performancePipsService'
+import { listSyncedEmployees } from '../../lib/employeeSyncService'
 import {
   filterPips,
   getPipTabItems,
@@ -94,6 +95,7 @@ export default function PerformancePipsContent() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [employeeOptions, setEmployeeOptions] = useState([])
 
   const openDetail = (pip) => setSelectedPip(pip)
   const openEdit = (pip) => {
@@ -116,6 +118,30 @@ export default function PerformancePipsContent() {
   useEffect(() => {
     loadPips()
   }, [loadPips])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { employees } = await listSyncedEmployees()
+        if (!cancelled) {
+          setEmployeeOptions(
+            (employees || []).map((employee) => ({
+              id: String(employee.id || ''),
+              name: employee.name || '',
+              email: employee.email || '',
+              manager: employee.manager || '',
+            })),
+          )
+        }
+      } catch {
+        if (!cancelled) setEmployeeOptions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const onUpdated = () => loadPips()
@@ -269,6 +295,7 @@ export default function PerformancePipsContent() {
               size="sm"
               className="p-2 text-orange-600 hover:bg-orange-50"
               title={isCustomPip(row) ? 'Edit PIP' : 'Sample PIP cannot be edited'}
+              disabled={!isCustomPip(row)}
               onClick={() => openEdit(row)}
             >
               <Edit className="h-4 w-4" />
@@ -418,7 +445,12 @@ export default function PerformancePipsContent() {
         ) : null}
       </HRDataTableCard>
 
-      <AddPipModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={handlePipSaved} />
+      <AddPipModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSaved={handlePipSaved}
+        employees={employeeOptions}
+      />
 
       <PipDetailModal
         pip={selectedPip}
@@ -432,6 +464,7 @@ export default function PerformancePipsContent() {
       <PipEditModal
         pip={editingPip}
         open={Boolean(editingPip)}
+        employees={employeeOptions}
         onClose={closeEdit}
         onSaved={async (updated) => {
           handlePipSaved(updated)

@@ -7,6 +7,8 @@ import { HR_QUICK_FORM_ID } from './HRQuickFormFields'
 import { useHRQuickActions } from './HRQuickActionsContext'
 import { notifyLeaveUpdated } from '../../lib/leaveShared'
 import { createLeaveRequest } from '../../lib/leaveSyncService'
+import { createExpenseClaim } from '../../lib/expenseSyncService'
+import { notifyHrExpensesUpdated } from '../../lib/expensesShared'
 import AddEmployeeQuickForm from './AddEmployeeQuickForm'
 import ApplyLeaveQuickForm from './ApplyLeaveQuickForm'
 import NewExpenseQuickForm from './NewExpenseQuickForm'
@@ -34,6 +36,16 @@ export default function HRQuickActionDrawer() {
       if (activeAction === HR_QUICK_ACTION_IDS.APPLY_LEAVE) {
         await createLeaveRequest(payload)
         notifyLeaveUpdated()
+      } else if (activeAction === HR_QUICK_ACTION_IDS.NEW_EXPENSE) {
+        await createExpenseClaim({
+          category: payload.category,
+          amount: payload.amount,
+          submitted: payload.submitted,
+          description: payload.description,
+          receipt: payload.receipt,
+          status: 'Pending',
+        })
+        notifyHrExpensesUpdated()
       } else {
         console.log('[HR Quick action]', activeAction, payload)
       }

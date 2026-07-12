@@ -54,12 +54,14 @@ export function leaveDaysColumn({ visibilityKey } = {}) {
   }
 }
 
-export function leaveStatusColumn({ visibilityKey } = {}) {
+export function leaveStatusColumn({ visibilityKey, useDeniedLabel = false } = {}) {
   return {
     key: 'status',
     ...(visibilityKey ? { visibilityKey } : {}),
     label: 'STATUS',
-    render: (_, row) => <LeaveStatusPill status={row.status} />,
+    render: (_, row) => (
+      <LeaveStatusPill status={row.status} useDeniedLabel={useDeniedLabel} />
+    ),
   }
 }
 
@@ -68,7 +70,11 @@ export function leaveBalanceMetricColumn(key, label, { emphasized = false, visib
     key,
     ...(visibilityKey ? { visibilityKey } : {}),
     label,
-    render: (_, row) => <LeaveTextCell value={String(row[key])} emphasized={emphasized} />,
+    render: (_, row) => {
+      const used = Number(row.used?.[key] ?? 0)
+      const total = Number(row.totals?.[key] ?? 0)
+      return <LeaveTextCell value={`${used}/${total}`} emphasized={emphasized} />
+    },
   }
 }
 
@@ -115,7 +121,7 @@ export function buildLeaveRequestColumns(handlers) {
     leaveFromColumn({ visibilityKey: 'from' }),
     leaveToColumn({ visibilityKey: 'to' }),
     leaveDaysColumn({ visibilityKey: 'days' }),
-    leaveStatusColumn({ visibilityKey: 'status' }),
+    leaveStatusColumn({ visibilityKey: 'status', useDeniedLabel: handlers.useDeniedLabel }),
     {
       key: 'actions',
       label: 'ACTIONS',
@@ -147,6 +153,30 @@ export function buildLeaveRequestColumns(handlers) {
                 <X className="h-4 w-4" />
               </Button>
             </>
+          ) : null}
+          {handlers.showApprovedTabActions && row.status === 'Approved' ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-red-600 hover:bg-red-50"
+              title="Mark as denied"
+              disabled={handlers.actionId === row.id}
+              onClick={() => handlers.onReject(row.id)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {handlers.showApprovedTabActions && row.status === 'Rejected' ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2 text-emerald-600 hover:bg-emerald-50"
+              title="Mark as approved"
+              disabled={handlers.actionId === row.id}
+              onClick={() => handlers.onApprove(row.id)}
+            >
+              <Check className="h-4 w-4" />
+            </Button>
           ) : null}
           <Button
             variant="ghost"

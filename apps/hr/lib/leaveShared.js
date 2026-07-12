@@ -69,17 +69,25 @@ export function computeLeaveBalances(employees = [], requests = [], year = new D
     .map((employee) => {
       const key = String(employee.membershipId || employee.id || '')
       const used = usedByEmployee.get(key) || { cl: 0, sl: 0, pl: 0, compOff: 0, lop: 0 }
+      const totals = {
+        cl: POLICY_ENTITLEMENTS['Casual Leave'] || 0,
+        sl: POLICY_ENTITLEMENTS['Sick Leave'] || 0,
+        pl: POLICY_ENTITLEMENTS['Privilege Leave'] || 0,
+        compOff: POLICY_ENTITLEMENTS['Comp-Off'] || 0,
+        lop: 0,
+      }
       return {
         employeeId: key,
         employeeName: employee.name || 'Employee',
         employeeCode: employee.employeeId || '',
         department: employee.department || '—',
-        cl: Math.max(0, (POLICY_ENTITLEMENTS['Casual Leave'] || 0) - used.cl),
-        sl: Math.max(0, (POLICY_ENTITLEMENTS['Sick Leave'] || 0) - used.sl),
-        pl: Math.max(0, (POLICY_ENTITLEMENTS['Privilege Leave'] || 0) - used.pl),
-        compOff: Math.max(0, (POLICY_ENTITLEMENTS['Comp-Off'] || 0) - used.compOff),
+        cl: Math.max(0, totals.cl - used.cl),
+        sl: Math.max(0, totals.sl - used.sl),
+        pl: Math.max(0, totals.pl - used.pl),
+        compOff: Math.max(0, totals.compOff - used.compOff),
         lop: used.lop,
         used,
+        totals,
       }
     })
 }

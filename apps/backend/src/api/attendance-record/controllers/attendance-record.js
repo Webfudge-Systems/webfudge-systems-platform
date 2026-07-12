@@ -1,6 +1,7 @@
 'use strict';
 
 const { makeBooksCrudController, relId } = require('../../../utils/books-crud');
+const { assertSelfOrHrAdmin } = require('../../../utils/hr-self-scope');
 
 const UID = 'api::attendance-record.attendance-record';
 const ORG_USER_UID = 'api::organization-user.organization-user';
@@ -11,7 +12,36 @@ const LIST_POPULATE = {
   employeeProfile: true,
 };
 
-const SHIFT_START = '09:00';
+const SHIFT_START_BY_ID = {
+  morning: '09:00',
+  evening: '14:00',
+  night: '22:00',
+};
+
+function normalizeWorkShift(value) {
+  const raw = String(value || 'morning').toLowerCase();
+  return ['morning', 'evening', 'night'].includes(raw) ? raw : 'morning';
+}
+
+function parseAssignedShifts(source) {
+  if (Array.isArray(source)) {
+    return source.map(normalizeWorkShift).filter((id, index, list) => list.indexOf(id) === index);
+  }
+  return [];
+}
+
+function resolveWorkShiftForProfile(profile, requestedShift) {
+  const primary = normalizeWorkShift(profile?.primaryShift || 'morning');
+  const assigned = parseAssignedShifts(profile?.assignedShifts);
+  const normalized = assigned.length ? assigned : [primary];
+  if (!profile?.flexibleShift) return primary;
+  const picked = normalizeWorkShift(requestedShift);
+  return normalized.includes(picked) ? picked : primary;
+}
+
+function getShiftStart(workShift) {
+  return SHIFT_START_BY_ID[normalizeWorkShift(workShift)] || SHIFT_START_BY_ID.morning;
+}
 
 function normalizePayload(body = {}) {
   return body.data || body;
@@ -57,11 +87,25 @@ async function findProfileForOrgUser(strapi, orgUserId, orgId) {
   const rows = await strapi.entityService.findMany(PROFILE_UID, {
     filters: { organizationUser: orgUserId, organization: orgId },
     limit: 1,
+    populate: ['salaryStructure'],
   });
   return rows[0] || null;
 }
 
-function buildAttendanceData(payload, orgId, orgUserId, profileId, userId) {
+async function syncOvertimeForAttendance(strapi, attendance, orgId, actorUserId) {
+  if (!attendance?.organizationUser) return null;
+  const orgUserId = relId(attendance.organizationUser) || attendance.organizationUser;
+  const profile = await findProfileForOrgUser(strapi, orgUserId, orgId);
+  const { syncOvertimeFromAttendance } = require('../../../utils/overtime-utils');
+  return syncOvertimeFromAttendance(strapi, {
+    attendance,
+    profile,
+    orgId,
+    actorUserId,
+  });
+}
+
+function buildAttendanceData(payload, orgId, orgUserId, profile, userId) {
   const attendanceDate = payload.attendanceDate;
   const status = normalizeStatus(payload.status);
   const clockIn = status === 'present' || status === 'wfh' ? String(payload.clockIn || '').trim() : '';
@@ -70,6 +114,8 @@ function buildAttendanceData(payload, orgId, orgUserId, profileId, userId) {
     status === 'present' || status === 'wfh'
       ? Number(payload.durationMinutes || calcDurationMinutes(clockIn, clockOut) || 0)
       : 0;
+  const workShift = resolveWorkShiftForProfile(profile, payload.workShift);
+  const shiftStart = getShiftStart(workShift);
 
   return {
     attendanceDate,
@@ -77,11 +123,12 @@ function buildAttendanceData(payload, orgId, orgUserId, profileId, userId) {
     clockOut: clockOut || null,
     durationMinutes,
     status,
+    workShift,
     location: String(payload.location || '').trim() || null,
-    late: Boolean(payload.late) || (status === 'present' && isLateClockIn(clockIn)),
+    late: Boolean(payload.late) || (status === 'present' && isLateClockIn(clockIn, shiftStart)),
     notes: String(payload.notes || '').trim() || null,
     organizationUser: orgUserId,
-    employeeProfile: profileId,
+    employeeProfile: profile?.id || null,
     organization: orgId,
     createdByUser: userId,
   };
@@ -149,8 +196,12 @@ module.exports = (params) => {
       const orgUser = await resolveOrgUserOr403(strapi, orgUserId, ctx.state.orgId);
       if (!orgUser) return ctx.badRequest('Invalid employee for this organization');
 
+      if (!assertSelfOrHrAdmin(ctx, orgUserId)) {
+        return ctx.forbidden('You can only mark attendance for yourself');
+      }
+
       const profile = await findProfileForOrgUser(strapi, orgUserId, ctx.state.orgId);
-      const data = buildAttendanceData(payload, ctx.state.orgId, orgUserId, profile?.id || null, ctx.state.user.id);
+      const data = buildAttendanceData(payload, ctx.state.orgId, orgUserId, profile, ctx.state.user.id);
 
       const existing = await strapi.entityService.findMany(UID, {
         filters: {
@@ -168,12 +219,14 @@ module.exports = (params) => {
             clockOut: data.clockOut,
             durationMinutes: data.durationMinutes,
             status: data.status,
+            workShift: data.workShift,
             location: data.location,
             late: data.late,
             notes: data.notes,
           },
           populate: LIST_POPULATE,
         });
+        await syncOvertimeForAttendance(strapi, entry, ctx.state.orgId, ctx.state.user.id);
         return { data: entry };
       }
 
@@ -181,6 +234,7 @@ module.exports = (params) => {
         data,
         populate: LIST_POPULATE,
       });
+      await syncOvertimeForAttendance(strapi, entry, ctx.state.orgId, ctx.state.user.id);
       return { data: entry };
     },
 
@@ -200,6 +254,10 @@ module.exports = (params) => {
         payload.durationMinutes !== undefined
           ? Number(payload.durationMinutes || 0)
           : calcDurationMinutes(clockIn, clockOut) || existing.durationMinutes;
+      const orgUserId = relId(existing.organizationUser);
+      const profile = orgUserId ? await findProfileForOrgUser(strapi, orgUserId, ctx.state.orgId) : null;
+      const workShift = resolveWorkShiftForProfile(profile, payload.workShift ?? existing.workShift);
+      const shiftStart = getShiftStart(workShift);
 
       const entry = await strapi.entityService.update(UID, ctx.params.id, {
         data: {
@@ -208,15 +266,18 @@ module.exports = (params) => {
           clockOut: status === 'present' || status === 'wfh' ? clockOut : null,
           durationMinutes: status === 'present' || status === 'wfh' ? durationMinutes : 0,
           status,
+          workShift,
           ...(payload.location !== undefined ? { location: String(payload.location || '').trim() || null } : {}),
           late:
             payload.late !== undefined
               ? Boolean(payload.late)
-              : status === 'present' && isLateClockIn(clockIn),
+              : status === 'present' && isLateClockIn(clockIn, shiftStart),
           ...(payload.notes !== undefined ? { notes: String(payload.notes || '').trim() || null } : {}),
         },
         populate: LIST_POPULATE,
       });
+
+      await syncOvertimeForAttendance(strapi, entry, ctx.state.orgId, ctx.state.user.id);
 
       return { data: entry };
     },

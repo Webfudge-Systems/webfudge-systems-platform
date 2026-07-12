@@ -31,6 +31,7 @@ import {
   isCustomGoal,
   listGoals,
 } from '../../lib/performanceGoalsService'
+import { listSyncedEmployees } from '../../lib/employeeSyncService'
 import {
   getGoalAverageProgress,
   getGoalsTabItems,
@@ -92,6 +93,7 @@ export default function PerformanceGoalsContent() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [employeeOptions, setEmployeeOptions] = useState([])
 
   const openDetail = (goal) => setSelectedGoal(goal)
   const openEdit = (goal) => {
@@ -114,6 +116,29 @@ export default function PerformanceGoalsContent() {
   useEffect(() => {
     loadGoals()
   }, [loadGoals])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { employees } = await listSyncedEmployees()
+        if (!cancelled) {
+          setEmployeeOptions(
+            (employees || []).map((employee) => ({
+              id: String(employee.id || ''),
+              name: employee.name || '',
+              email: employee.email || '',
+            })),
+          )
+        }
+      } catch {
+        if (!cancelled) setEmployeeOptions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const onUpdated = () => loadGoals()
@@ -193,6 +218,9 @@ export default function PerformanceGoalsContent() {
       if (!q) return true
       return (
         okr.objective.toLowerCase().includes(q) ||
+        (okr.assigneeName || '').toLowerCase().includes(q) ||
+        (okr.department || '').toLowerCase().includes(q) ||
+        (okr.reviewCycle || '').toLowerCase().includes(q) ||
         okr.keyResults.some((keyResult) => keyResult.label.toLowerCase().includes(q))
       )
     })
@@ -431,7 +459,12 @@ export default function PerformanceGoalsContent() {
         ) : null}
       </HRDataTableCard>
 
-      <AddGoalModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={handleGoalSaved} />
+      <AddGoalModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSaved={handleGoalSaved}
+        employees={employeeOptions}
+      />
 
       <GoalDetailModal
         goal={selectedGoal}
@@ -446,6 +479,7 @@ export default function PerformanceGoalsContent() {
         goal={editingGoal}
         open={Boolean(editingGoal)}
         onClose={closeEdit}
+        employees={employeeOptions}
         onSaved={async (updated) => {
           handleGoalSaved(updated)
           await loadGoals()

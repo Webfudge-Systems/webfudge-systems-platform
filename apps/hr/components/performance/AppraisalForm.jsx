@@ -27,6 +27,7 @@ export function appraisalToForm(appraisal) {
   if (!appraisal) {
     return {
       employee: '',
+      employeeId: '',
       department: '',
       rating: '',
       revision: '',
@@ -38,6 +39,7 @@ export function appraisalToForm(appraisal) {
 
   return {
     employee: appraisal.employee || '',
+    employeeId: appraisal.employeeId ? String(appraisal.employeeId) : '',
     department: appraisal.department || '',
     rating: appraisal.rating ?? '',
     revision: appraisal.revision ?? '',
@@ -47,7 +49,14 @@ export function appraisalToForm(appraisal) {
   }
 }
 
-export default function AppraisalForm({ form, onChange }) {
+export default function AppraisalForm({ form, onChange, employees = [] }) {
+  const employeeOptions = [
+    { value: '', label: 'Select employee' },
+    ...employees.map((employee) => ({
+      value: String(employee.id || ''),
+      label: employee.name || employee.email || 'Unknown employee',
+    })),
+  ]
   return (
     <FormSectionCard
       icon={TrendingUp}
@@ -56,12 +65,18 @@ export default function AppraisalForm({ form, onChange }) {
     >
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div>
-          <Input
+          <Select
             label="Employee *"
-            value={form.employee}
-            onChange={(event) => onChange('employee', event.target.value)}
-            placeholder="e.g. Ankit Sharma"
-            required
+            value={form.employeeId}
+            onChange={(value) => {
+              const selected = employees.find((employee) => String(employee.id) === String(value))
+              onChange('employeeId', value)
+              onChange('employeeMembershipId', String(selected?.membershipId || selected?.id || value || ''))
+              onChange('employee', selected?.name || '')
+              if (selected?.department) onChange('department', selected.department)
+            }}
+            options={employeeOptions}
+            placeholder="Select employee"
           />
         </div>
         <div>

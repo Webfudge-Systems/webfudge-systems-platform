@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Input, Textarea, Checkbox } from '@webfudge/ui'
 import { Select } from '../shared/HRSelect'
-import { getExpenseCategories } from '../../lib/expensesPage'
+import { getExpenseCategoryOptions } from '../../lib/expensesShared'
 import { HRQuickForm, HRQuickFormSection } from './HRQuickFormFields'
 
 const EMPTY = {
@@ -20,7 +20,7 @@ export default function NewExpenseQuickForm({ onSuccess }) {
     submitted: new Date().toISOString().slice(0, 10),
   })
 
-  const categories = getExpenseCategories()
+  const categories = getExpenseCategoryOptions()
 
   const set = (field, value) => setForm((prev) => ({ ...prev, [field]: value }))
 
@@ -42,7 +42,7 @@ export default function NewExpenseQuickForm({ onSuccess }) {
           onChange={(value) => set('category', value)}
           options={[
             { value: '', label: 'Select category' },
-            ...categories.map((c) => ({ value: c, label: c })),
+            ...categories.map((c) => ({ value: c.value, label: c.label })),
           ]}
         />
         <Input

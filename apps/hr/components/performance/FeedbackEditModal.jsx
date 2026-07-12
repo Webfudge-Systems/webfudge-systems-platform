@@ -18,6 +18,7 @@ export default function FeedbackEditModal({
   onClose,
   onSaved,
   mode = 'edit',
+  employees = [],
 }) {
   const isPending = item?.kind === 'pending'
   const isGive = mode === 'give' && isPending
@@ -98,7 +99,7 @@ export default function FeedbackEditModal({
               pendingLabel={isGive ? item.label : item.sourceLabel}
             />
           ) : (
-            <FeedbackRequestForm form={form} onChange={handleChange} />
+            <FeedbackRequestForm form={form} onChange={handleChange} employees={employees} />
           )}
           {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
           <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 pt-5">

@@ -1,9 +1,10 @@
 export const ATTENDANCE_TAB_KEYS = ['today', 'monthly', 'shifts', 'overtime', 'reports']
 
-export function getAttendanceTabItems({ todayCount = 0, monthlyCount = 0, shiftsCount = 0, overtimeCount = 0 } = {}) {
+export function getAttendanceTabItems({ todayCount = 0, monthlyCount = 0, shiftsCount = 0, overtimeCount = 0, regularizationCount = 0 } = {}) {
   return [
     { key: 'today', label: 'Today', count: todayCount },
     { key: 'monthly', label: 'Monthly Log', count: monthlyCount },
+    { key: 'regularization', label: 'Regularization', count: regularizationCount },
     { key: 'shifts', label: 'Shifts', count: shiftsCount },
     { key: 'overtime', label: 'Overtime', count: overtimeCount },
     { key: 'reports', label: 'Reports', count: 0 },
@@ -21,6 +22,69 @@ export function filterAttendanceLog(log, { search = '', statusFilter = '' } = {}
       (row.location || '').toLowerCase().includes(q)
     )
   })
+}
+
+function monthlyRecordCalendarStatus(statusRaw = '') {
+  switch (String(statusRaw).toLowerCase()) {
+    case 'present':
+      return 'present'
+    case 'absent':
+      return 'absent'
+    case 'on_leave':
+      return 'leave'
+    case 'wfh':
+      return 'wfh'
+    default:
+      return 'default'
+  }
+}
+
+export function mapMonthlyAttendanceToCalendarEvents(records = []) {
+  return records.map((record) => {
+    const clockIn = record.clockIn && record.clockIn !== '—' ? record.clockIn : ''
+    const clockOut = record.clockOut && record.clockOut !== '—' ? record.clockOut : ''
+    const hours =
+      record.duration && record.duration !== '—'
+        ? record.duration
+        : clockIn && clockOut
+          ? `${clockIn} – ${clockOut}`
+          : clockIn
+            ? `In ${clockIn}`
+            : null
+
+    return {
+      id: String(record.id),
+      title: record.name || 'Employee',
+      start: record.attendanceDate,
+      allDay: true,
+      extendedProps: {
+        kind: 'attendance',
+        entity: {
+          status: monthlyRecordCalendarStatus(record.statusRaw),
+          label: record.status || 'Present',
+          summary: record.name || 'Employee',
+          hours,
+          note: record.notes || (record.late ? 'Late arrival' : null),
+          record,
+        },
+      },
+    }
+  })
+}
+
+export function summarizeMonthlyAttendanceRecords(records = []) {
+  return records.reduce(
+    (acc, record) => {
+      const key = String(record.statusRaw || '').toLowerCase()
+      if (key === 'present') acc.present += 1
+      else if (key === 'absent') acc.absent += 1
+      else if (key === 'on_leave') acc.onLeave += 1
+      else if (key === 'wfh') acc.wfh += 1
+      else acc.other += 1
+      return acc
+    },
+    { present: 0, absent: 0, onLeave: 0, wfh: 0, other: 0 },
+  )
 }
 
 export function filterShifts(shifts = [], search = '') {

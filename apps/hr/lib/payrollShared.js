@@ -123,6 +123,98 @@ export function formatPayrollRunStatus(status) {
   return 'Draft'
 }
 
+export function employeePayrollStatusLabel(runStatus) {
+  const value = String(runStatus || 'draft').toLowerCase()
+  if (value === 'disbursed') return 'Paid'
+  if (value === 'review') return 'Review'
+  if (value === 'locked') return 'Locked'
+  return 'Draft'
+}
+
+export function payrollLineItemRouteId(line) {
+  if (!line) return null
+  return line.id ?? line.documentId ?? null
+}
+
+export function payrollLineItemMatchesId(line, id) {
+  if (!line || id == null || id === '') return false
+  const target = String(id)
+  return [line.id, line.documentId].some((value) => value != null && String(value) === target)
+}
+
+export function buildPayrollRecordFromLine(line) {
+  const orgUser = line?.organizationUser || {}
+  const user = orgUser.user || {}
+  const profile = line?.employeeProfile || {}
+  const run = line?.payrollRun || {}
+  const name =
+    `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+    user.username ||
+    user.email ||
+    `Member ${orgUser.id || ''}`
+  const dept = orgUser?.primaryDepartment?.name || orgUser?.departments?.[0]?.name || '—'
+  const month = Number(run.month || 0)
+  const year = Number(run.year || 0)
+  const monthLabel =
+    month && year
+      ? new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })
+      : '—'
+
+  return {
+    record: {
+      id: payrollLineItemRouteId(line),
+      lineItemPk: line?.id ?? null,
+      employeeRefId: orgUser.id,
+      employeeId: profile.employeeCode || `WF-${1000 + Number(orgUser.id || 0)}`,
+      name,
+      designation: profile.designation || line?.salaryStructure?.name || '—',
+      dept,
+      gross: Number(line?.gross || 0),
+      pf: Number(line?.pf || 0),
+      esi: Number(line?.esi || 0),
+      pt: Number(line?.pt || 0),
+      tds: Number(line?.tds || 0),
+      net: Number(line?.net || 0),
+      status: employeePayrollStatusLabel(run.status || 'draft'),
+      runStatus: String(run.status || 'draft').toLowerCase(),
+    },
+    monthLabel,
+    run,
+    runId: run.id ?? null,
+  }
+}
+
+export function mapEmployeePayrollHistoryRow(line) {
+  const run = line.payrollRun || {}
+  const month = Number(run.month || 1)
+  const year = Number(run.year || new Date().getFullYear())
+  const monthLabel = new Date(year, month - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })
+  const deductions =
+    Number(line.deductionsTotal || 0) ||
+    Number(line.pf || 0) + Number(line.esi || 0) + Number(line.pt || 0) + Number(line.tds || 0)
+  const runStatus = String(run.status || 'draft').toLowerCase()
+
+  const routeId = payrollLineItemRouteId(line)
+
+  return {
+    id: routeId,
+    lineItemId: routeId,
+    lineItemPk: line.id ?? null,
+    month: monthLabel,
+    gross: Number(line.gross || 0),
+    deductions,
+    net: Number(line.net || 0),
+    status: employeePayrollStatusLabel(runStatus),
+    runStatus,
+    year,
+    monthNum: month,
+  }
+}
+
+export function sortEmployeePayrollHistory(rows) {
+  return [...rows].sort((a, b) => b.year - a.year || b.monthNum - a.monthNum)
+}
+
 export function getPayrollRecordDataReadiness(record = {}) {
   if (record.missingSalaryStructure) return 'Missing salary structure'
   if (record.missingBankDetails) return 'Missing bank details'
@@ -196,6 +288,8 @@ export function lineItemToRow(line, run) {
     designation: profile.designation || line.salaryStructure?.name || '—',
     dept,
     gross: Number(line.gross || 0),
+    overtimePay: Number(line.overtimePay || 0),
+    overtimeHours: Number(line.overtimeHours || 0),
     pf: Number(line.pf || 0),
     esi: Number(line.esi || 0),
     pt: Number(line.pt || 0),

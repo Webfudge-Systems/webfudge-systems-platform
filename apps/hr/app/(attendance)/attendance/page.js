@@ -23,7 +23,6 @@ import {
   Card,
   Modal,
   TableResultsCount,
-  Input,
 } from '@webfudge/ui'
 import { Select } from '../../../components/shared/HRSelect'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
@@ -31,6 +30,9 @@ import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'
 import HRDataTableCard from '../../../components/shared/HRDataTableCard'
 import MarkAttendanceModal from '../../../components/attendance/MarkAttendanceModal'
+import HRAttendanceHeaderPicker from '../../../components/attendance/HRAttendanceHeaderPicker'
+import HRMonthlyAttendanceLog from '../../../components/attendance/HRMonthlyAttendanceLog'
+import RegularizationPanel from '../../../components/attendance/RegularizationPanel'
 import {
   buildTodayAttendanceColumns,
   buildMonthlyAttendanceColumns,
@@ -49,15 +51,14 @@ import {
 } from '../../../lib/attendancePage'
 import {
   ATTENDANCE_UPDATED_EVENT,
-  DEFAULT_SHIFTS,
   buildAttendanceSnapshot,
   buildDailyAttendanceRoster,
   monthRange,
   notifyAttendanceUpdated,
   todayDateLabel,
   toDateInputValue,
-  monthDateLabel,
 } from '../../../lib/attendanceShared'
+import { buildShiftCardsFromEmployees, resolveAttendanceShift } from '../../../lib/shiftShared'
 import {
   approveOvertimeRecord,
   deleteAttendanceRecord,
@@ -69,6 +70,10 @@ import {
   upsertAttendanceRecord,
 } from '../../../lib/attendanceSyncService'
 import { listLeaveRequests } from '../../../lib/leaveSyncService'
+import {
+  listRegularizationRequests,
+  REGULARIZATION_UPDATED_EVENT,
+} from '../../../lib/regularizationSyncService'
 import { LEAVE_UPDATED_EVENT } from '../../../lib/leaveShared'
 import { listSyncedEmployees } from '../../../lib/employeeSyncService'
 import { HR_ROOT_BREADCRUMB } from '../../../lib/pageHeader'
@@ -207,6 +212,7 @@ export default function AttendancePage() {
   const [monthlyRecords, setMonthlyRecords] = useState([])
   const [leaveRequests, setLeaveRequests] = useState([])
   const [overtimeRecords, setOvertimeRecords] = useState([])
+  const [regularizationPendingCount, setRegularizationPendingCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [actionError, setActionError] = useState('')
   const [actionId, setActionId] = useState(null)
@@ -221,12 +227,13 @@ export default function AttendancePage() {
       const [year, month] = monthValue.split('-').map(Number)
       const { from, to } = monthRange(year, month)
 
-      const [{ employees: employeeRows }, dayRecords, monthRows, leaves, overtime] = await Promise.all([
+      const [{ employees: employeeRows }, dayRecords, monthRows, leaves, overtime, regularizations] = await Promise.all([
         listSyncedEmployees(),
         listAttendanceRecords({ date: selectedDate }),
         listAttendanceRecords({ from, to }),
         listLeaveRequests(),
         listOvertimeRecords(),
+        listRegularizationRequests({ status: 'pending', limit: 100 }),
       ])
 
       setEmployees(employeeRows || [])
@@ -234,6 +241,7 @@ export default function AttendancePage() {
       setMonthlyRecords(monthRows || [])
       setLeaveRequests(leaves || [])
       setOvertimeRecords(overtime || [])
+      setRegularizationPendingCount(regularizations?.length || 0)
     } catch (err) {
       setActionError(err?.message || 'Failed to load attendance data')
     } finally {
@@ -249,9 +257,11 @@ export default function AttendancePage() {
     const onUpdated = () => loadData()
     window.addEventListener(ATTENDANCE_UPDATED_EVENT, onUpdated)
     window.addEventListener(LEAVE_UPDATED_EVENT, onUpdated)
+    window.addEventListener(REGULARIZATION_UPDATED_EVENT, onUpdated)
     return () => {
       window.removeEventListener(ATTENDANCE_UPDATED_EVENT, onUpdated)
       window.removeEventListener(LEAVE_UPDATED_EVENT, onUpdated)
+      window.removeEventListener(REGULARIZATION_UPDATED_EVENT, onUpdated)
     }
   }, [loadData])
 
@@ -271,24 +281,7 @@ export default function AttendancePage() {
     [todayRoster, employees],
   )
 
-  const shiftCards = useMemo(() => {
-    const activeCount = employees.filter((e) => e.status !== 'Exited').length
-    return DEFAULT_SHIFTS.map((shift, index) => {
-      const assigned = index === 0 ? activeCount : 0
-      return {
-        ...shift,
-        shiftCode: shift.id.toUpperCase(),
-        employees: assigned,
-        assignedLabel:
-          assigned === 0
-            ? 'No employees'
-            : assigned === 1
-              ? '1 employee'
-              : `${assigned} employees`,
-        status: assigned > 0 ? 'Active' : 'Unassigned',
-      }
-    })
-  }, [employees])
+  const shiftCards = useMemo(() => buildShiftCardsFromEmployees(employees), [employees])
 
   const shiftRows = useMemo(
     () => filterShifts(shiftCards, searchQuery),
@@ -302,8 +295,9 @@ export default function AttendancePage() {
         monthlyCount: monthlyRecords.length,
         shiftsCount: shiftCards.length,
         overtimeCount: overtimeRecords.length,
+        regularizationCount: regularizationPendingCount,
       }),
-    [todayRoster.length, monthlyRecords.length, shiftCards.length, overtimeRecords.length],
+    [todayRoster.length, monthlyRecords.length, shiftCards.length, overtimeRecords.length, regularizationPendingCount],
   )
 
   const {
@@ -509,6 +503,7 @@ export default function AttendancePage() {
           clockOut: payload.clockOut,
           location: payload.location,
           notes: payload.notes,
+          workShift: payload.workShift,
         })
       } else {
         await upsertAttendanceRecord(payload)
@@ -526,12 +521,17 @@ export default function AttendancePage() {
       if (!orgUserId) return
       const rowKey = row.id || orgUserId
       const showClock = status === 'present' || status === 'wfh'
+      const employee = employees.find(
+        (item) => String(item.membershipId || item.id) === String(orgUserId),
+      )
       try {
         setActionId(rowKey)
         setActionError('')
+        const workShift = resolveAttendanceShift(employee, row.workShift)
         const payload = {
           attendanceDate: row.attendanceDate || selectedDate,
           status,
+          workShift,
           clockIn: showClock && row.clockIn && row.clockIn !== '—' ? row.clockIn : showClock ? '09:00' : '',
           clockOut: showClock && row.clockOut && row.clockOut !== '—' ? row.clockOut : showClock ? '18:00' : '',
           location: showClock && row.location && row.location !== '—' ? row.location : showClock ? 'Office' : '',
@@ -550,7 +550,7 @@ export default function AttendancePage() {
         setActionId(null)
       }
     },
-    [selectedDate, loadData],
+    [employees, selectedDate, loadData],
   )
 
   const handleDelete = useCallback(async () => {
@@ -868,7 +868,27 @@ export default function AttendancePage() {
     setColumnPickerOpen,
   ])
 
+  useEffect(() => {
+    setSortPickerOpen(false)
+  }, [activeTab])
+
+  useEffect(() => {
+    if (!sortPickerOpen) return undefined
+    const onDocMouseDown = (event) => {
+      if (toolbarRef.current?.contains(event.target)) return
+      setSortPickerOpen(false)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [sortPickerOpen, toolbarRef])
+
   const isDataTableTab = Boolean(activeTableContext)
+
+  const markModalDate = useMemo(() => {
+    if (activeTab !== 'monthly') return selectedDate
+    const today = toDateInputValue()
+    return today.startsWith(monthValue) ? today : `${monthValue}-01`
+  }, [activeTab, selectedDate, monthValue])
 
   const resultCount =
     activeTab === 'today'
@@ -879,7 +899,11 @@ export default function AttendancePage() {
           ? overtimeRows.length
           : activeTab === 'shifts'
             ? shiftRows.length
-            : 0
+            : activeTab === 'regularization'
+              ? regularizationPendingCount
+              : 0
+
+  const showResultsCount = ['today', 'shifts', 'overtime', 'regularization'].includes(activeTab)
 
   return (
     <HRModulePage className="!space-y-6">
@@ -888,12 +912,20 @@ export default function AttendancePage() {
         subtitle="Track daily attendance, shifts, overtime, and workforce presence across your organization"
         breadcrumb={[HR_ROOT_BREADCRUMB, { label: 'Attendance', href: '/attendance' }]}
         showProfile
-        showActions
-        onImportClick={() => setActionError('CSV import is not available yet. Use Mark attendance to add records.')}
-        onExportClick={() =>
-          exportAttendanceCsv(activeTab === 'monthly' ? monthlyRows : todayRows, {
-            dateLabel: activeTab === 'monthly' ? monthValue : todayDateLabel(selectedDate),
-          })
+        actions={
+          activeTab === 'today' ? (
+            <HRAttendanceHeaderPicker
+              mode="date"
+              value={selectedDate}
+              onChange={setSelectedDate}
+            />
+          ) : activeTab === 'monthly' ? (
+            <HRAttendanceHeaderPicker
+              mode="month"
+              value={monthValue}
+              onChange={setMonthValue}
+            />
+          ) : null
         }
       />
 
@@ -904,91 +936,49 @@ export default function AttendancePage() {
         <KPICard title="WFH" value={snapshot.wfh} subtitle={`${snapshot.wfh} remote`} icon={Home} colorScheme="orange" />
       </HRKpiRow>
 
-      {activeTab === 'today' ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-900">{todayDateLabel(selectedDate)}</p>
-            <p className="text-xs text-gray-500">
-              {snapshot.notMarked} not marked · {snapshot.markedPct}% explicitly marked
-            </p>
-          </div>
-          <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="max-w-[180px]" />
+      <TabsWithActions
+        tabs={tabItems.map((item) => ({ key: item.key, label: item.label, badge: String(item.count) }))}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        variant="pill"
+      />
+
+      {isDataTableTab && activeTableContext ? (
+        <div className="relative ml-auto w-fit max-w-full" ref={toolbarRef}>
+          <TabsWithActions
+            showTabs={false}
+            activeTab={activeTab}
+            showSearch
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            searchPlaceholder="Search attendance..."
+            showSort
+            onSortClick={() => {
+              activeTableContext.setColumnPickerOpen?.(false)
+              setSortPickerOpen((open) => !open)
+            }}
+            hasActiveSort={activeTableContext.hasActiveSort}
+            sortTitle="Sort"
+            variant="glass"
+          />
+          <TableSortDropdown
+            open={sortPickerOpen}
+            sortRules={activeTableContext.sortRules}
+            columnOptions={activeTableContext.sortColumnOptions}
+            onAddRule={activeTableContext.addSortRule}
+            onRemoveRule={activeTableContext.removeSortRule}
+            onSetDirection={activeTableContext.setRuleDirection}
+            onMoveRule={activeTableContext.moveSortRule}
+            onClear={activeTableContext.clearSort}
+            maxRules={activeTableContext.sortMaxRules}
+          />
         </div>
       ) : null}
-
-      {activeTab === 'monthly' ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
-          <div>
-            <p className="text-sm font-semibold text-gray-900">{monthDateLabel(monthValue)}</p>
-            <p className="text-xs text-gray-500">
-              {monthlyRecords.length} saved record{monthlyRecords.length === 1 ? '' : 's'}
-              {statusFilter || searchQuery ? ` · ${monthlyRows.length} matching filters` : ''}
-            </p>
-          </div>
-          <Input type="month" value={monthValue} onChange={(e) => setMonthValue(e.target.value)} className="max-w-[180px]" />
-        </div>
-      ) : null}
-
-      <div className="relative" ref={toolbarRef}>
-        <TabsWithActions
-          tabs={tabItems.map((item) => ({ key: item.key, label: item.label, badge: String(item.count) }))}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          showSearch
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          searchPlaceholder="Search attendance..."
-          showAdd={activeTab === 'today' || activeTab === 'monthly'}
-          onAddClick={() => openMarkModal(null)}
-          addTitle="Mark attendance"
-          showFilter={activeTab === 'today' || activeTab === 'monthly'}
-          onFilterClick={() => setFilterOpen(true)}
-          hasActiveFilters={Boolean(statusFilter)}
-          showColumnVisibility={isDataTableTab}
-          onColumnVisibilityClick={() => {
-            setSortPickerOpen(false)
-            activeTableContext?.setColumnPickerOpen((open) => !open)
-          }}
-          showSort={isDataTableTab}
-          onSortClick={() => {
-            activeTableContext?.setColumnPickerOpen(false)
-            setSortPickerOpen((open) => !open)
-          }}
-          hasActiveSort={activeTableContext?.hasActiveSort ?? false}
-          variant="glass"
-        />
-        <TableSortDropdown
-          open={sortPickerOpen && isDataTableTab}
-          sortRules={activeTableContext?.sortRules ?? []}
-          columnOptions={activeTableContext?.sortColumnOptions ?? []}
-          onAddRule={activeTableContext?.addSortRule}
-          onRemoveRule={activeTableContext?.removeSortRule}
-          onSetDirection={activeTableContext?.setRuleDirection}
-          onMoveRule={activeTableContext?.moveSortRule}
-          onClear={activeTableContext?.clearSort}
-          maxRules={activeTableContext?.sortMaxRules}
-        />
-        <TableColumnPicker
-          open={Boolean(activeTableContext?.columnPickerOpen) && isDataTableTab}
-          description="Employee name and actions stay visible."
-          reorderableRows={activeTableContext?.reorderableColumns ?? []}
-          columnVisibility={activeTableContext?.columnVisibility ?? {}}
-          columnOrder={activeTableContext?.columnOrder ?? []}
-          columnDropIndicator={activeTableContext?.columnDropIndicator}
-          onSetVisible={activeTableContext?.setColumnVisible}
-          onDragStart={activeTableContext?.handleColumnDragStart}
-          onDragEnd={activeTableContext?.handleColumnDragEnd}
-          onRowDragOver={activeTableContext?.handleColumnRowDragOver}
-          onListDragLeave={activeTableContext?.handleColumnListDragLeave}
-          onDrop={activeTableContext?.handleColumnDrop}
-          onReset={activeTableContext?.resetColumnTablePreferences}
-        />
-      </div>
 
       {actionError ? <p className="text-sm text-red-600">{actionError}</p> : null}
       {loading ? <p className="text-sm text-gray-500">Loading attendance…</p> : null}
 
-      <TableResultsCount count={resultCount} />
+      {showResultsCount ? <TableResultsCount count={resultCount} /> : null}
 
       {activeTab === 'today' && (
         <HRDataTableCard>
@@ -1000,28 +990,15 @@ export default function AttendancePage() {
       )}
 
       {activeTab === 'monthly' && (
-        <HRDataTableCard>
-          <Table
-            columns={visibleMonthlyColumns}
-            data={sortedMonthlyRows}
-            keyField="id"
-            variant="modernEmbedded"
-            {...monthlyTableResizeProps}
-          />
-          {!loading && monthlyRows.length === 0 ? (
-            <TableEmptyBelow
-              icon={FileSpreadsheet}
-              title="No monthly records"
-              description="Mark attendance during the month to build the log."
-              action={
-                <Button className="gap-2 bg-orange-500 hover:bg-orange-600" onClick={() => openMarkModal(null)}>
-                  <Plus className="h-4 w-4" />
-                  Mark attendance
-                </Button>
-              }
-            />
-          ) : null}
-        </HRDataTableCard>
+        <HRMonthlyAttendanceLog
+          records={sortedMonthlyRows}
+          monthValue={monthValue}
+          loading={loading}
+          actionId={actionId}
+          onMarkAttendance={() => openMarkModal(null)}
+          onEditRecord={openMarkModal}
+          onDeleteRecord={setDeleteTarget}
+        />
       )}
 
       {activeTab === 'shifts' && (
@@ -1056,10 +1033,14 @@ export default function AttendancePage() {
             <TableEmptyBelow
               icon={Clock}
               title="No overtime records"
-              description="Overtime entries can be added via API or future UI."
+              description="Overtime is calculated automatically when clock-out is later than shift end. Approve entries here, then recalculate payroll to include them in salary."
             />
           ) : null}
         </HRDataTableCard>
+      )}
+
+      {activeTab === 'regularization' && (
+        <RegularizationPanel onPendingCountChange={setRegularizationPendingCount} />
       )}
 
       {activeTab === 'reports' && (
@@ -1104,7 +1085,7 @@ export default function AttendancePage() {
         open={markOpen}
         onClose={() => { setMarkOpen(false); setEditRow(null) }}
         employees={employees}
-        selectedDate={selectedDate}
+        selectedDate={markModalDate}
         initialRow={editRow}
         onSaved={handleSaveAttendance}
       />

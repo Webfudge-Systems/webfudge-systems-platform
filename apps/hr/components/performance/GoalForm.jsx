@@ -3,7 +3,7 @@
 import { Plus, Target, Trash2 } from 'lucide-react'
 import { Button, FormSectionCard, Input } from '@webfudge/ui'
 import { Select } from '../shared/HRSelect'
-import { REVIEW_CYCLES } from '../../lib/mock-data/performance'
+import { listReviewCycles } from '../../lib/performanceReviewsService'
 
 const SCOPE_OPTIONS = [
   { value: 'company', label: 'Company' },
@@ -26,6 +26,8 @@ export function goalToForm(goal) {
       objective: '',
       scope: 'company',
       department: '',
+      assigneeId: '',
+      assigneeName: '',
       reviewCycle: '',
       keyResults: [{ label: '', progress: 0 }],
     }
@@ -35,6 +37,8 @@ export function goalToForm(goal) {
     objective: goal.objective || '',
     scope: goal.scope || 'company',
     department: goal.department || '',
+    assigneeId: goal.assigneeId ? String(goal.assigneeId) : '',
+    assigneeName: goal.assigneeName || '',
     reviewCycle: goal.reviewCycle || '',
     keyResults: goal.keyResults?.length
       ? goal.keyResults.map((keyResult) => ({
@@ -45,12 +49,20 @@ export function goalToForm(goal) {
   }
 }
 
-export default function GoalForm({ form, onChange, departments = DEPARTMENT_OPTIONS }) {
+export default function GoalForm({ form, onChange, departments = DEPARTMENT_OPTIONS, employees = [] }) {
+  const reviewCycles = listReviewCycles()
   const reviewCycleOptions = [
     { value: '', label: 'Select review cycle' },
-    ...REVIEW_CYCLES.map((cycle) => ({
+    ...reviewCycles.map((cycle) => ({
       value: cycle.name,
       label: `${cycle.name} (${cycle.period})`,
+    })),
+  ]
+  const employeeOptions = [
+    { value: '', label: 'Select employee' },
+    ...employees.map((employee) => ({
+      value: String(employee.id || ''),
+      label: employee.name || employee.email || 'Unknown employee',
     })),
   ]
 
@@ -107,6 +119,22 @@ export default function GoalForm({ form, onChange, departments = DEPARTMENT_OPTI
                 onChange={(value) => onChange('department', value)}
                 options={departments}
                 placeholder="Select department"
+              />
+            </div>
+          ) : null}
+          {form.scope === 'individual' ? (
+            <div>
+              <Select
+                label="Employee *"
+                value={form.assigneeId}
+                onChange={(value) => {
+                  const selected = employees.find((employee) => String(employee.id) === String(value))
+                  onChange('assigneeId', value)
+                  onChange('assigneeMembershipId', String(selected?.membershipId || selected?.id || value || ''))
+                  onChange('assigneeName', selected?.name || '')
+                }}
+                options={employeeOptions}
+                placeholder="Select employee"
               />
             </div>
           ) : null}

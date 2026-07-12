@@ -32,6 +32,7 @@ import {
   isCustomAppraisal,
   listAppraisals,
 } from '../../lib/performanceAppraisalsService'
+import { listSyncedEmployees } from '../../lib/employeeSyncService'
 import {
   appraisalSortValue,
   filterAppraisals,
@@ -94,6 +95,7 @@ export default function PerformanceAppraisalsContent() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [employeeOptions, setEmployeeOptions] = useState([])
 
   const openDetail = (appraisal) => setSelectedAppraisal(appraisal)
   const openEdit = (appraisal) => {
@@ -116,6 +118,30 @@ export default function PerformanceAppraisalsContent() {
   useEffect(() => {
     loadAppraisals()
   }, [loadAppraisals])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { employees } = await listSyncedEmployees()
+        if (!cancelled) {
+          setEmployeeOptions(
+            (employees || []).map((employee) => ({
+              id: String(employee.id || ''),
+              name: employee.name || '',
+              email: employee.email || '',
+              department: employee.department || '',
+            })),
+          )
+        }
+      } catch {
+        if (!cancelled) setEmployeeOptions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const onUpdated = () => loadAppraisals()
@@ -268,6 +294,7 @@ export default function PerformanceAppraisalsContent() {
               size="sm"
               className="p-2 text-orange-600 hover:bg-orange-50"
               title={isCustomAppraisal(row) ? 'Edit appraisal' : 'Sample appraisal cannot be edited'}
+              disabled={!isCustomAppraisal(row)}
               onClick={() => openEdit(row)}
             >
               <Edit className="h-4 w-4" />
@@ -417,7 +444,12 @@ export default function PerformanceAppraisalsContent() {
         ) : null}
       </HRDataTableCard>
 
-      <AddAppraisalModal open={addOpen} onClose={() => setAddOpen(false)} onSaved={handleAppraisalSaved} />
+      <AddAppraisalModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSaved={handleAppraisalSaved}
+        employees={employeeOptions}
+      />
 
       <AppraisalDetailModal
         appraisal={selectedAppraisal}
@@ -431,6 +463,7 @@ export default function PerformanceAppraisalsContent() {
       <AppraisalEditModal
         appraisal={editingAppraisal}
         open={Boolean(editingAppraisal)}
+        employees={employeeOptions}
         onClose={closeEdit}
         onSaved={async (updated) => {
           handleAppraisalSaved(updated)

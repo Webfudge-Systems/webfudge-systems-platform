@@ -187,13 +187,47 @@ export async function listPayrollLineItems(runId) {
   return rows
 }
 
+export async function listEmployeePayrollLineItems(organizationUserId) {
+  const query = buildQueryString({ organizationUser: organizationUserId, limit: 100 })
+  const rows = normalizeRows(await request(`/payroll-line-items?${query}`, { method: 'GET' }))
+  return rows
+}
+
 export async function deletePayrollLineItem(id) {
   await request(`/payroll-line-items/${id}`, { method: 'DELETE' })
 }
 
-export async function getPayrollLineItemById(id) {
-  const response = await request(`/payroll-line-items/${id}`, { method: 'GET' })
-  return response?.data || null
+async function findPayrollLineItemInRows(rows, id) {
+  return rows.find((row) => {
+    if (String(row.id) === String(id)) return true
+    if (row.documentId && String(row.documentId) === String(id)) return true
+    return false
+  }) || null
+}
+
+export async function resolvePayrollLineItem(id, { organizationUserId } = {}) {
+  if (id == null || id === '') return null
+
+  try {
+    const response = await request(`/payroll-line-items/${id}`, { method: 'GET' })
+    if (response?.data) return response.data
+  } catch {
+    // Fall through to list lookup when direct fetch fails.
+  }
+
+  if (organizationUserId) {
+    const employeeRows = await listEmployeePayrollLineItems(organizationUserId)
+    const fromEmployee = await findPayrollLineItemInRows(employeeRows, id)
+    if (fromEmployee) return fromEmployee
+  }
+
+  const query = buildQueryString({ limit: 200 })
+  const rows = normalizeRows(await request(`/payroll-line-items?${query}`, { method: 'GET' }))
+  return findPayrollLineItemInRows(rows, id)
+}
+
+export async function getPayrollLineItemById(id, options = {}) {
+  return resolvePayrollLineItem(id, options)
 }
 
 export async function updatePayrollLineItem(id, payload) {
@@ -221,6 +255,19 @@ export async function generatePayslip({ payrollRunId, payrollLineItemId }) {
     body: { payrollRunId, payrollLineItemId },
   })
   return response?.data || null
+}
+
+/** Generate payslips for multiple payroll line items in the same run (sequential). */
+export async function generateAllPayslips({ payrollRunId, payrollLineItemIds = [], onProgress }) {
+  const ids = payrollLineItemIds.filter(Boolean)
+  const results = []
+  for (let index = 0; index < ids.length; index += 1) {
+    const payrollLineItemId = ids[index]
+    const row = await generatePayslip({ payrollRunId, payrollLineItemId })
+    results.push(row)
+    onProgress?.({ current: index + 1, total: ids.length, payrollLineItemId })
+  }
+  return results
 }
 
 export function getPayslipDownloadUrl(payslipId) {

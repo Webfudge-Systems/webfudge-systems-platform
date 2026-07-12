@@ -31,7 +31,13 @@ export default function PipDetailModal({
         <Button variant="outline" onClick={onClose}>
           Close
         </Button>
-        <Button variant="secondary" className="gap-2" onClick={() => onEdit?.(pip)}>
+        <Button
+          variant="secondary"
+          className="gap-2"
+          disabled={!canModify}
+          title={canModify ? 'Edit PIP' : 'Sample PIP cannot be edited'}
+          onClick={() => onEdit?.(pip)}
+        >
           <Edit className="h-4 w-4" aria-hidden />
           Edit
         </Button>

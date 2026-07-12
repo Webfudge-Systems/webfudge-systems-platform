@@ -8,6 +8,7 @@ import { HRQuickActionsProvider } from './quick-actions/HRQuickActionsContext'
 import HRQuickActionDrawer from './quick-actions/HRQuickActionDrawer'
 import HRQuickActionsFab from './quick-actions/HRQuickActionsFab'
 import { HR_SITE } from '../lib/site'
+import PerformanceWorkspaceHydrator from './performance/PerformanceWorkspaceHydrator'
 
 const PUBLIC_PATHS = ['/login', '/unauthorized', '/coming-soon']
 
@@ -19,6 +20,7 @@ export default function LayoutContent({ children }) {
 
   return (
     <HRQuickActionsProvider>
+      <PerformanceWorkspaceHydrator />
       <WorkspaceLayoutContent
         sidebar={HRSidebar}
         sidebarBehavior="hide"

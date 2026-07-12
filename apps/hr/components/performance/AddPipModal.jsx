@@ -6,7 +6,7 @@ import { Button, Modal } from '@webfudge/ui'
 import PipForm, { pipToForm } from './PipForm'
 import { createPip } from '../../lib/performancePipsService'
 
-export default function AddPipModal({ open, onClose, onSaved }) {
+export default function AddPipModal({ open, onClose, onSaved, employees = [] }) {
   const [form, setForm] = useState(() => pipToForm(null))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -45,7 +45,7 @@ export default function AddPipModal({ open, onClose, onSaved }) {
       size="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
-        <PipForm form={form} onChange={handleChange} />
+        <PipForm form={form} onChange={handleChange} employees={employees} />
         {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
         <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 pt-5">
           <Button type="button" variant="outline" disabled={isSubmitting} onClick={onClose}>

@@ -1,8 +1,9 @@
-import { REVIEW_CYCLES } from './mock-data/performance'
+import { schedulePersistPerformanceWorkspace } from '@webfudge/utils/hrPerformance'
 
 const STORAGE_KEY = 'hr.performance.reviewCycles'
 
 export const REVIEWS_UPDATED_EVENT = 'hr:reviews-updated'
+export const REVIEWS_ESS_UPDATED_EVENT = 'ess:performance-updated'
 
 function readCustomCycles() {
   if (typeof window === 'undefined') return []
@@ -17,6 +18,8 @@ function writeCustomCycles(rows) {
   if (typeof window === 'undefined') return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rows))
   window.dispatchEvent(new CustomEvent(REVIEWS_UPDATED_EVENT))
+  window.dispatchEvent(new CustomEvent(REVIEWS_ESS_UPDATED_EVENT))
+  schedulePersistPerformanceWorkspace()
 }
 
 function normalizeCycle(row) {
@@ -32,9 +35,7 @@ function normalizeCycle(row) {
 }
 
 export function listReviewCycles() {
-  const custom = readCustomCycles().map(normalizeCycle)
-  const seed = REVIEW_CYCLES.map((row, index) => normalizeCycle({ ...row, id: `seed-${index}` }))
-  return [...custom, ...seed]
+  return readCustomCycles().map(normalizeCycle)
 }
 
 export function isCustomReviewCycle(cycle) {
@@ -97,4 +98,10 @@ export function deleteReviewCycle(id) {
   const rows = readCustomCycles().map(normalizeCycle).filter((row) => row.id !== id)
   writeCustomCycles(rows)
   return true
+}
+
+export function notifyReviewsUpdated() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(REVIEWS_UPDATED_EVENT))
+  window.dispatchEvent(new CustomEvent(REVIEWS_ESS_UPDATED_EVENT))
 }

@@ -1,8 +1,9 @@
-import { APPRAISALS } from './mock-data/performance'
+import { schedulePersistPerformanceWorkspace } from '@webfudge/utils/hrPerformance'
 
 const STORAGE_KEY = 'hr.performance.appraisals'
 
 export const APPRAISALS_UPDATED_EVENT = 'hr:appraisals-updated'
+export const APPRAISALS_ESS_UPDATED_EVENT = 'ess:performance-updated'
 
 function readCustomAppraisals() {
   if (typeof window === 'undefined') return []
@@ -17,12 +18,16 @@ function writeCustomAppraisals(rows) {
   if (typeof window === 'undefined') return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rows))
   window.dispatchEvent(new CustomEvent(APPRAISALS_UPDATED_EVENT))
+  window.dispatchEvent(new CustomEvent(APPRAISALS_ESS_UPDATED_EVENT))
+  schedulePersistPerformanceWorkspace()
 }
 
 function normalizeAppraisal(row) {
   return {
     id: row.id || `appraisal-${Date.now()}`,
     employee: row.employee || '',
+    employeeId: row.employeeId ? String(row.employeeId) : '',
+    employeeMembershipId: row.employeeMembershipId ? String(row.employeeMembershipId) : '',
     department: row.department || '',
     rating: Number(row.rating || 0),
     revision: Math.min(100, Math.max(0, Number(row.revision || 0))),
@@ -34,9 +39,7 @@ function normalizeAppraisal(row) {
 }
 
 export function listAppraisals() {
-  const custom = readCustomAppraisals().map(normalizeAppraisal)
-  const seed = APPRAISALS.map((row, index) => normalizeAppraisal({ ...row, id: `seed-${index}` }))
-  return [...custom, ...seed]
+  return readCustomAppraisals().map(normalizeAppraisal)
 }
 
 export function isCustomAppraisal(appraisal) {
@@ -50,6 +53,12 @@ export function createAppraisal(payload) {
   const record = normalizeAppraisal({
     id: `appraisal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     employee,
+    employeeId: payload.employeeId ? String(payload.employeeId) : '',
+    employeeMembershipId: payload.employeeMembershipId
+      ? String(payload.employeeMembershipId)
+      : payload.employeeId
+        ? String(payload.employeeId)
+        : '',
     department: payload.department || '',
     rating: payload.rating ?? 0,
     revision: payload.revision ?? 0,
@@ -78,6 +87,12 @@ export function updateAppraisal(id, payload) {
   const updated = normalizeAppraisal({
     ...rows[index],
     employee,
+    employeeId: payload.employeeId ? String(payload.employeeId) : '',
+    employeeMembershipId: payload.employeeMembershipId
+      ? String(payload.employeeMembershipId)
+      : payload.employeeId
+        ? String(payload.employeeId)
+        : '',
     department: payload.department || '',
     rating: payload.rating ?? 0,
     revision: payload.revision ?? 0,
@@ -97,4 +112,10 @@ export function deleteAppraisal(id) {
   const rows = readCustomAppraisals().map(normalizeAppraisal).filter((row) => row.id !== id)
   writeCustomAppraisals(rows)
   return true
+}
+
+export function notifyAppraisalsUpdated() {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(APPRAISALS_UPDATED_EVENT))
+  window.dispatchEvent(new CustomEvent(APPRAISALS_ESS_UPDATED_EVENT))
 }

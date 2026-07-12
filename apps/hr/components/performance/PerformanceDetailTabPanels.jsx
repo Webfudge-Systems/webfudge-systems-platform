@@ -120,6 +120,9 @@ export function GoalOverviewPanel({ goal }) {
             <InfoRow label="Scope">
               <TableCellOrangePill value={scopeLabel} />
             </InfoRow>
+            {goal.scope === 'individual' ? (
+              <InfoRow label="Employee" value={goal.assigneeName || '—'} />
+            ) : null}
             <InfoRow label="Review cycle" value={goal.reviewCycle || '—'} />
             <InfoRow label="Average progress" value={`${average}%`} emphasize />
             <InfoRow
@@ -242,6 +245,7 @@ export function PendingFeedbackOverviewPanel({ item }) {
 
         <InfoSection title="Request details" icon={MessageSquare} isFirst>
           <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+            {item.employeeName ? <InfoRow label="Employee" value={item.employeeName} /> : null}
             <InfoRow label="Type">
               <TableCellOrangePill value={item.type || 'Peer'} />
             </InfoRow>
@@ -290,6 +294,7 @@ export function ReceivedFeedbackOverviewPanel({ item }) {
             </blockquote>
             <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
               <InfoRow label="Period" value={item.period || '—'} emphasize />
+              {item.employeeName ? <InfoRow label="Employee" value={item.employeeName} /> : null}
               {item.sourceLabel ? (
                 <InfoRow label="Related request" value={item.sourceLabel} />
               ) : null}

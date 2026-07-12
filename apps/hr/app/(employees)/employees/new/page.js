@@ -8,6 +8,7 @@ import HRPageHeader from '../../../../components/layout/HRPageHeader'
 import EmployeeForm, { employeeToForm } from '../../../../components/employees/EmployeeForm'
 import { createEmployeeFromForm, listDepartmentCatalog, listRoleCatalog } from '../../../../lib/employeeSyncService'
 import { listSalaryStructures, upsertEmployeeProfileByMembership } from '../../../../lib/payrollSyncService'
+import { buildEmployeeProfileShiftPayload } from '../../../../lib/shiftShared'
 
 export default function AddEmployeePage() {
   const router = useRouter()
@@ -20,11 +21,13 @@ export default function AddEmployeePage() {
   ])
   const [salaryStructureOptions, setSalaryStructureOptions] = useState([{ value: '', label: 'Unassigned' }])
   const [submitError, setSubmitError] = useState('')
+  const [catalogError, setCatalogError] = useState('')
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
+        setCatalogError('')
         const [departmentRows, roleRows, structureRows] = await Promise.all([
           listDepartmentCatalog(),
           listRoleCatalog(),
@@ -32,6 +35,9 @@ export default function AddEmployeePage() {
         ])
         if (cancelled) return
         setDepartmentCatalog(departmentRows)
+        if (!departmentRows.length) {
+          setCatalogError('No departments found for this organization. Create them in Accounts → Departments, then refresh.')
+        }
         const managerRoles = roleRows
           .map((r) => ({
             value: String(r.code || r.name || '').toLowerCase(),
@@ -43,9 +49,10 @@ export default function AddEmployeePage() {
           { value: '', label: 'Unassigned' },
           ...structureRows.map((s) => ({ value: String(s.id), label: s.name })),
         ])
-      } catch {
+      } catch (error) {
         if (!cancelled) {
           setDepartmentCatalog([])
+          setCatalogError(error?.message || 'Failed to load departments')
           setManagerRoleOptions([
             { value: 'admin', label: 'Admin' },
             { value: 'manager', label: 'Manager' },
@@ -65,6 +72,11 @@ export default function AddEmployeePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const initialPassword = String(form.initialPassword || '').trim()
+    if (initialPassword && initialPassword.length < 8) {
+      setSubmitError('ESS login password must be at least 8 characters')
+      return
+    }
     try {
       setIsSubmitting(true)
       setSubmitError('')
@@ -84,6 +96,7 @@ export default function AddEmployeePage() {
           bankIfsc: form.bankIfsc || '',
           bankName: form.bankName || '',
           salaryStructure: form.salaryStructureId ? Number(form.salaryStructureId) : null,
+          ...buildEmployeeProfileShiftPayload(form),
         })
       }
       setIsSubmitting(false)
@@ -114,7 +127,9 @@ export default function AddEmployeePage() {
           departments={departmentCatalog.map((d) => d.name)}
           managerRoleOptions={managerRoleOptions}
           salaryStructureOptions={salaryStructureOptions}
+          showLoginSetup
         />
+        {catalogError ? <p className="text-sm text-amber-700">{catalogError}</p> : null}
         {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
 
         <div className="flex items-center justify-between border-t border-gray-200 pt-6">

@@ -44,15 +44,16 @@ export function LeaveTextCell({ value, emphasized = false }) {
   return <TableCellText value={value} emphasized={emphasized} nowrap />
 }
 
-export function LeaveStatusPill({ status }) {
+export function LeaveStatusPill({ status, useDeniedLabel = false }) {
   const raw = (status || 'Pending').toString().trim()
   const key = raw.toUpperCase()
   const tone = STATUS_PILL[key] || STATUS_PILL.PENDING
+  const label = useDeniedLabel && key === 'REJECTED' ? 'DENIED' : key.replace(/_/g, ' ')
   return (
     <Badge
       className={clsx('whitespace-nowrap border px-3 py-1 text-xs font-semibold uppercase tracking-wide', tone)}
     >
-      {key.replace(/_/g, ' ')}
+      {label}
     </Badge>
   )
 }

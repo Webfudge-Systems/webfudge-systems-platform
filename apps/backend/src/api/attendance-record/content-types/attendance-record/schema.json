@@ -31,6 +31,11 @@
       "enum": ["present", "on_leave", "wfh", "absent"],
       "default": "present"
     },
+    "workShift": {
+      "type": "enumeration",
+      "enum": ["morning", "evening", "night"],
+      "default": "morning"
+    },
     "location": {
       "type": "string"
     },

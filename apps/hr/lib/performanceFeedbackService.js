@@ -1,22 +1,10 @@
-import { PENDING_FEEDBACK, RECEIVED_FEEDBACK } from './performancePage'
+import { schedulePersistPerformanceWorkspace } from '@webfudge/utils/hrPerformance'
 
 const PENDING_STORAGE_KEY = 'hr.performance.feedback.pending'
 const RECEIVED_STORAGE_KEY = 'hr.performance.feedback.received'
-const COMPLETED_SEED_KEY = 'hr.performance.feedback.completedSeeds'
 
 export const FEEDBACK_UPDATED_EVENT = 'hr:feedback-updated'
-
-const SEED_PENDING = PENDING_FEEDBACK.map((row, index) => ({
-  ...row,
-  id: `seed-pending-${index}`,
-  kind: 'pending',
-}))
-
-const SEED_RECEIVED = RECEIVED_FEEDBACK.map((row, index) => ({
-  ...row,
-  id: `seed-received-${index}`,
-  kind: 'received',
-}))
+export const FEEDBACK_ESS_UPDATED_EVENT = 'ess:performance-updated'
 
 function readJson(key, fallback = []) {
   if (typeof window === 'undefined') return fallback
@@ -31,14 +19,8 @@ function writeJson(key, value) {
   if (typeof window === 'undefined') return
   localStorage.setItem(key, JSON.stringify(value))
   window.dispatchEvent(new CustomEvent(FEEDBACK_UPDATED_EVENT))
-}
-
-function readCompletedSeeds() {
-  return readJson(COMPLETED_SEED_KEY, [])
-}
-
-function writeCompletedSeeds(ids) {
-  writeJson(COMPLETED_SEED_KEY, ids)
+  window.dispatchEvent(new CustomEvent(FEEDBACK_ESS_UPDATED_EVENT))
+  schedulePersistPerformanceWorkspace()
 }
 
 function normalizePending(row) {
@@ -48,6 +30,9 @@ function normalizePending(row) {
     label: row.label || '',
     due: row.due || '',
     type: row.type === 'Manager' ? 'Manager' : 'Peer',
+    employeeId: row.employeeId ? String(row.employeeId) : '',
+    employeeMembershipId: row.employeeMembershipId ? String(row.employeeMembershipId) : '',
+    employeeName: row.employeeName || '',
     reviewCycle: row.reviewCycle || '',
     createdAt: row.createdAt || new Date().toISOString(),
   }
@@ -60,21 +45,20 @@ function normalizeReceived(row) {
     quote: row.quote || '',
     period: row.period || '',
     type: row.type === 'Manager' ? 'Manager' : 'Peer',
+    employeeId: row.employeeId ? String(row.employeeId) : '',
+    employeeMembershipId: row.employeeMembershipId ? String(row.employeeMembershipId) : '',
+    employeeName: row.employeeName || '',
     sourceLabel: row.sourceLabel || '',
     createdAt: row.createdAt || new Date().toISOString(),
   }
 }
 
 export function listPendingFeedback() {
-  const completed = readCompletedSeeds()
-  const custom = readJson(PENDING_STORAGE_KEY, []).map(normalizePending)
-  const seed = SEED_PENDING.filter((row) => !completed.includes(row.id))
-  return [...custom, ...seed]
+  return readJson(PENDING_STORAGE_KEY, []).map(normalizePending)
 }
 
 export function listReceivedFeedback() {
-  const custom = readJson(RECEIVED_STORAGE_KEY, []).map(normalizeReceived)
-  return [...custom, ...SEED_RECEIVED]
+  return readJson(RECEIVED_STORAGE_KEY, []).map(normalizeReceived)
 }
 
 export function isCustomFeedbackItem(item) {
@@ -82,18 +66,27 @@ export function isCustomFeedbackItem(item) {
 }
 
 export function isSeedPending(item) {
-  return Boolean(item?.id) && String(item.id).startsWith('seed-pending-')
+  return false
 }
 
 export function createFeedbackRequest(payload) {
   const label = String(payload.label || '').trim()
   if (!label) throw new Error('Request label is required')
+  const employeeName = String(payload.employeeName || '').trim()
+  if (!employeeName) throw new Error('Employee is required')
 
   const record = normalizePending({
     id: `feedback-pending-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     label,
     due: payload.due || '',
     type: payload.type || 'Peer',
+    employeeId: payload.employeeId ? String(payload.employeeId) : '',
+    employeeMembershipId: payload.employeeMembershipId
+      ? String(payload.employeeMembershipId)
+      : payload.employeeId
+        ? String(payload.employeeId)
+        : '',
+    employeeName,
     reviewCycle: payload.reviewCycle || '',
     createdAt: new Date().toISOString(),
   })
@@ -109,6 +102,8 @@ export function updateFeedbackRequest(id, payload) {
 
   const label = String(payload.label || '').trim()
   if (!label) throw new Error('Request label is required')
+  const employeeName = String(payload.employeeName || '').trim()
+  if (!employeeName) throw new Error('Employee is required')
 
   const rows = readJson(PENDING_STORAGE_KEY, []).map(normalizePending)
   const index = rows.findIndex((row) => row.id === id)
@@ -119,6 +114,13 @@ export function updateFeedbackRequest(id, payload) {
     label,
     due: payload.due || '',
     type: payload.type || 'Peer',
+    employeeId: payload.employeeId ? String(payload.employeeId) : '',
+    employeeMembershipId: payload.employeeMembershipId
+      ? String(payload.employeeMembershipId)
+      : payload.employeeId
+        ? String(payload.employeeId)
+        : '',
+    employeeName,
     reviewCycle: payload.reviewCycle || '',
   })
 
@@ -127,14 +129,6 @@ export function updateFeedbackRequest(id, payload) {
 }
 
 export function deleteFeedbackRequest(id) {
-  if (isSeedPending({ id })) {
-    const completed = readCompletedSeeds()
-    if (!completed.includes(id)) {
-      writeCompletedSeeds([...completed, id])
-    }
-    return true
-  }
-
   if (!isCustomFeedbackItem({ id })) throw new Error('This feedback request cannot be deleted')
 
   const rows = readJson(PENDING_STORAGE_KEY, []).map(normalizePending).filter((row) => row.id !== id)
@@ -155,6 +149,9 @@ export function submitFeedback(pendingId, payload) {
     quote,
     period: payload.period || pending.reviewCycle || '',
     type: pending.type || 'Peer',
+    employeeId: pending.employeeId || '',
+    employeeMembershipId: pending.employeeMembershipId || pending.employeeId || '',
+    employeeName: pending.employeeName || '',
     sourceLabel: pending.label,
     createdAt: new Date().toISOString(),
   })
@@ -163,15 +160,8 @@ export function submitFeedback(pendingId, payload) {
   receivedRows.unshift(received)
   writeJson(RECEIVED_STORAGE_KEY, receivedRows)
 
-  if (isSeedPending(pending)) {
-    const completed = readCompletedSeeds()
-    if (!completed.includes(pendingId)) {
-      writeCompletedSeeds([...completed, pendingId])
-    }
-  } else {
-    const rows = readJson(PENDING_STORAGE_KEY, []).map(normalizePending).filter((row) => row.id !== pendingId)
-    writeJson(PENDING_STORAGE_KEY, rows)
-  }
+  const rows = readJson(PENDING_STORAGE_KEY, []).map(normalizePending).filter((row) => row.id !== pendingId)
+  writeJson(PENDING_STORAGE_KEY, rows)
 
   return received
 }

@@ -9,6 +9,7 @@ const STATUS_MAP = {
   Verified: 'success',
   Connected: 'success',
   Completed: 'success',
+  Scheduled: 'orange',
   Resolved: 'success',
   Hired: 'success',
   Open: 'primary',

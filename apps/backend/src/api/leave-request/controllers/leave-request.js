@@ -1,6 +1,7 @@
 'use strict';
 
 const { makeBooksCrudController, relId } = require('../../../utils/books-crud');
+const { assertSelfOrHrAdmin } = require('../../../utils/hr-self-scope');
 
 const UID = 'api::leave-request.leave-request';
 const ORG_USER_UID = 'api::organization-user.organization-user';
@@ -95,6 +96,10 @@ module.exports = (params) => {
       const orgUser = await resolveOrgUserOr403(strapi, orgUserId, ctx.state.orgId);
       if (!orgUser) return ctx.badRequest('Invalid employee for this organization');
 
+      if (!assertSelfOrHrAdmin(ctx, orgUserId)) {
+        return ctx.forbidden('You can only apply leave for yourself');
+      }
+
       const fromDate = payload.fromDate;
       const toDate = payload.toDate || fromDate;
       if (!fromDate) return ctx.badRequest('fromDate is required');
@@ -171,6 +176,55 @@ module.exports = (params) => {
       });
 
       return { data: entry };
+    },
+
+    async cancel(ctx) {
+      if (!ctx.state.user) return ctx.unauthorized();
+      if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+
+      const id = Number(ctx.params.id);
+      if (!Number.isFinite(id)) return ctx.notFound();
+
+      const existing = await strapi.entityService.findOne(UID, id, {
+        populate: ['organization', 'organizationUser'],
+      });
+      if (!existing) return ctx.notFound();
+      if (String(relId(existing.organization)) !== String(ctx.state.orgId)) return ctx.forbidden();
+      if (existing.status !== 'pending') return ctx.badRequest('Only pending requests can be cancelled');
+
+      const orgUserId = relId(existing.organizationUser);
+      if (!assertSelfOrHrAdmin(ctx, orgUserId)) {
+        return ctx.forbidden('You can only cancel your own leave requests');
+      }
+
+      const entry = await strapi.entityService.update(UID, id, {
+        data: { status: 'cancelled' },
+        populate: LIST_POPULATE,
+      });
+
+      return { data: entry };
+    },
+
+    async delete(ctx) {
+      if (!ctx.state.user) return ctx.unauthorized();
+      if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+
+      const id = Number(ctx.params.id);
+      if (!Number.isFinite(id)) return ctx.notFound();
+
+      const existing = await strapi.entityService.findOne(UID, id, {
+        populate: ['organization', 'organizationUser'],
+      });
+      if (!existing) return ctx.notFound();
+      if (String(relId(existing.organization)) !== String(ctx.state.orgId)) return ctx.forbidden();
+
+      const orgUserId = relId(existing.organizationUser);
+      if (!assertSelfOrHrAdmin(ctx, orgUserId)) {
+        return ctx.forbidden('You can only delete your own leave requests');
+      }
+
+      await strapi.entityService.delete(UID, id);
+      return { data: { id } };
     },
   };
 };

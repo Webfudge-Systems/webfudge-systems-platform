@@ -6,7 +6,7 @@ import { Button, Modal } from '@webfudge/ui'
 import GoalForm, { goalToForm } from './GoalForm'
 import { createGoal } from '../../lib/performanceGoalsService'
 
-export default function AddGoalModal({ open, onClose, onSaved }) {
+export default function AddGoalModal({ open, onClose, onSaved, employees = [] }) {
   const [form, setForm] = useState(() => goalToForm(null))
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -18,7 +18,18 @@ export default function AddGoalModal({ open, onClose, onSaved }) {
   }, [open])
 
   const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+    setForm((prev) => {
+      if (field === 'scope') {
+        if (value === 'department') {
+          return { ...prev, scope: value, assigneeId: '', assigneeName: '' }
+        }
+        if (value === 'individual') {
+          return { ...prev, scope: value, department: '' }
+        }
+        return { ...prev, scope: value, department: '', assigneeId: '', assigneeName: '' }
+      }
+      return { ...prev, [field]: value }
+    })
   }
 
   const handleSubmit = async (event) => {
@@ -48,7 +59,7 @@ export default function AddGoalModal({ open, onClose, onSaved }) {
       size="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-5">
-        <GoalForm form={form} onChange={handleChange} />
+        <GoalForm form={form} onChange={handleChange} employees={employees} />
         {submitError ? <p className="text-sm text-red-600">{submitError}</p> : null}
         <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 pt-5">
           <Button type="button" variant="outline" disabled={isSubmitting} onClick={onClose}>

@@ -10,6 +10,13 @@ import {
   formatDurationMinutes,
   toDateInputValue,
 } from '../../lib/attendanceShared'
+import {
+  formatShiftLabel,
+  getShiftById,
+  getShiftOptionsForEmployee,
+  resolveAttendanceShift,
+  shouldShowShiftPicker,
+} from '../../lib/shiftShared'
 
 export default function MarkAttendanceModal({
   open,
@@ -26,6 +33,7 @@ export default function MarkAttendanceModal({
   const [clockOut, setClockOut] = useState('18:00')
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
+  const [workShift, setWorkShift] = useState('morning')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
@@ -50,6 +58,13 @@ export default function MarkAttendanceModal({
     return formatDurationMinutes(calcDurationMinutes(clockIn, clockOut))
   }, [status, clockIn, clockOut])
 
+  const shiftOptions = useMemo(
+    () => getShiftOptionsForEmployee(selectedEmployee),
+    [selectedEmployee],
+  )
+  const showShiftPicker = shouldShowShiftPicker(selectedEmployee)
+  const fixedShiftLabel = formatShiftLabel(resolveAttendanceShift(selectedEmployee, workShift))
+
   useEffect(() => {
     if (!open) return
     setSubmitError('')
@@ -57,26 +72,47 @@ export default function MarkAttendanceModal({
     setAttendanceDate(dateValue)
 
     if (initialRow) {
+      const employee = employees.find(
+        (row) => String(row.membershipId || row.id) === String(initialRow.organizationUserId || initialRow.employeeId || ''),
+      )
       setOrganizationUserId(String(initialRow.organizationUserId || initialRow.employeeId || ''))
       const rawStatus = String(initialRow.statusRaw || 'present').toLowerCase()
       const editableStatus =
         rawStatus === 'not_marked' || rawStatus === 'on_leave' ? 'present' : rawStatus
       setStatus(editableStatus)
-      setClockIn(initialRow.clockIn && initialRow.clockIn !== '—' ? initialRow.clockIn : '09:00')
-      setClockOut(initialRow.clockOut && initialRow.clockOut !== '—' ? initialRow.clockOut : '18:00')
+      const resolvedShift = resolveAttendanceShift(employee, initialRow.workShift)
+      setWorkShift(resolvedShift)
+      const shiftTimes = getShiftById(resolvedShift)
+      setClockIn(initialRow.clockIn && initialRow.clockIn !== '—' ? initialRow.clockIn : shiftTimes.shiftStart)
+      setClockOut(initialRow.clockOut && initialRow.clockOut !== '—' ? initialRow.clockOut : shiftTimes.shiftEnd)
       setLocation(initialRow.location && initialRow.location !== '—' ? initialRow.location : '')
       setNotes(initialRow.notes || '')
       return
     }
 
     const first = employees.find((row) => row.status !== 'Exited')
+    const resolvedShift = resolveAttendanceShift(first)
+    const shiftTimes = getShiftById(resolvedShift)
     setOrganizationUserId(first ? String(first.membershipId || first.id) : '')
     setStatus('present')
-    setClockIn('09:00')
-    setClockOut('18:00')
-    setLocation(selectedEmployee?.workLocation || selectedEmployee?.location || 'Office')
+    setWorkShift(resolvedShift)
+    setClockIn(shiftTimes.shiftStart)
+    setClockOut(shiftTimes.shiftEnd)
+    setLocation(first?.workLocation || first?.location || 'Office')
     setNotes('')
   }, [open, initialRow, selectedDate, employees])
+
+  useEffect(() => {
+    if (!open || initialRow || !selectedEmployee) return
+    setWorkShift(resolveAttendanceShift(selectedEmployee))
+  }, [open, initialRow, organizationUserId, selectedEmployee])
+
+  useEffect(() => {
+    if (!open || initialRow || !selectedEmployee) return
+    const shiftTimes = getShiftById(workShift)
+    setClockIn(shiftTimes.shiftStart)
+    setClockOut(shiftTimes.shiftEnd)
+  }, [open, initialRow, selectedEmployee, workShift])
 
   useEffect(() => {
     if (!open || initialRow || !selectedEmployee) return
@@ -98,6 +134,7 @@ export default function MarkAttendanceModal({
         organizationUserId,
         attendanceDate,
         status,
+        workShift: resolveAttendanceShift(selectedEmployee, workShift),
         clockIn: showClockFields ? clockIn : '',
         clockOut: showClockFields ? clockOut : '',
         location: showClockFields ? location : '',
@@ -153,6 +190,18 @@ export default function MarkAttendanceModal({
                   allowEmpty={false}
                   disabled={isSubmitting}
                 />
+                {showShiftPicker ? (
+                  <Select
+                    label="Shift *"
+                    value={workShift}
+                    onChange={setWorkShift}
+                    options={shiftOptions}
+                    allowEmpty={false}
+                    disabled={isSubmitting}
+                  />
+                ) : (
+                  <Input label="Shift" value={fixedShiftLabel} readOnly disabled />
+                )}
                 {showClockFields ? (
                   <>
                     <Input

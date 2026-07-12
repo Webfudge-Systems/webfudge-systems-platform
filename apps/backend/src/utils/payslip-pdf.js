@@ -253,6 +253,12 @@ async function buildPayslipPdfBuffer(payslip) {
     { label: 'Special Allowance', amount: row.specialAllowance },
     { label: 'Flexible Benefits (FBP)', amount: row.fbp },
   ];
+  if (Number(row.overtimePay || 0) > 0) {
+    earningsRows.push({
+      label: `Overtime Pay (${row.overtimeHours || 0} hrs)`,
+      amount: row.overtimePay,
+    });
+  }
   const deductionRows = [
     { label: 'Provident Fund (PF)', amount: row.pf },
     { label: 'Employee State Insurance (ESI)', amount: row.esi },

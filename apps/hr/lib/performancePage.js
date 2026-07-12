@@ -1,38 +1,9 @@
-import { COMPANY_OKRS, REVIEW_CYCLES, APPRAISALS, PIPS } from './mock-data/performance'
-
-export const PENDING_FEEDBACK = [
-  {
-    label: 'Peer review for Ankit Sharma',
-    due: '2026-06-10',
-    type: 'Peer',
-    reviewCycle: 'Q2 2026 Review',
-  },
-  {
-    label: 'Manager review for Priya Nair',
-    due: '2026-06-12',
-    type: 'Manager',
-    reviewCycle: 'Q2 2026 Review',
-  },
-]
-
-export const RECEIVED_FEEDBACK = [
-  {
-    quote: 'Strong technical leadership on the payments project.',
-    period: 'Q1 2026',
-    type: 'Peer',
-  },
-  {
-    quote: 'Excellent collaboration with cross-functional teams.',
-    period: 'Q1 2026',
-    type: 'Manager',
-  },
-]
-
 export function computePerformanceStats(
-  cycles = REVIEW_CYCLES,
-  appraisals = APPRAISALS,
-  pips = PIPS,
-  okrs = COMPANY_OKRS
+  cycles = [],
+  appraisals = [],
+  pips = [],
+  okrs = [],
+  pending = []
 ) {
   const activeCycle = cycles.find((c) => c.status === 'Active')
   const pendingAppraisals = appraisals.filter((a) => a.status === 'Pending').length
@@ -48,7 +19,7 @@ export function computePerformanceStats(
     totalAppraisals: appraisals.length,
     activePips,
     totalPips: pips.length,
-    pendingFeedback: PENDING_FEEDBACK.length,
+    pendingFeedback: pending.length,
   }
 }
 
@@ -57,7 +28,7 @@ function objectiveAvgProgress(okr) {
   return okr.keyResults.reduce((sum, keyResult) => sum + keyResult.progress, 0) / okr.keyResults.length
 }
 
-export function getGoalsTabItems(okrs = COMPANY_OKRS) {
+export function getGoalsTabItems(okrs = []) {
   const onTrack = okrs.filter((okr) => objectiveAvgProgress(okr) >= 50).length
   const atRisk = okrs.filter((okr) => objectiveAvgProgress(okr) < 50).length
   return [
@@ -81,7 +52,7 @@ export function getGoalAverageProgress(okr) {
 
 export function getGoalScopeLabel(okr) {
   if (okr.scope === 'department' && okr.department) return okr.department
-  if (okr.scope === 'individual') return 'Individual'
+  if (okr.scope === 'individual') return okr.assigneeName ? `Individual · ${okr.assigneeName}` : 'Individual'
   return 'Company'
 }
 
@@ -109,7 +80,7 @@ export function goalSortValue(row, key) {
   }
 }
 
-export function computeReviewStats(cycles = REVIEW_CYCLES) {
+export function computeReviewStats(cycles = []) {
   const activeCycles = cycles.filter((cycle) => cycle.status === 'Active')
   const closedCycles = cycles.filter((cycle) => cycle.status === 'Closed')
   const avgCompletion = cycles.length
@@ -127,7 +98,7 @@ export function computeReviewStats(cycles = REVIEW_CYCLES) {
   }
 }
 
-export function getReviewTabItems(cycles = REVIEW_CYCLES) {
+export function getReviewTabItems(cycles = []) {
   const active = cycles.filter((cycle) => cycle.status === 'Active').length
   const closed = cycles.filter((cycle) => cycle.status === 'Closed').length
   return [
@@ -145,8 +116,8 @@ export function matchesReviewTab(row, tabKey) {
 }
 
 export function getFeedbackTabItems(
-  pending = PENDING_FEEDBACK,
-  received = RECEIVED_FEEDBACK
+  pending = [],
+  received = []
 ) {
   return [
     { key: 'pending', label: 'Pending', count: pending.length },
@@ -154,7 +125,7 @@ export function getFeedbackTabItems(
   ]
 }
 
-export function computeFeedbackStats(pending = PENDING_FEEDBACK, received = RECEIVED_FEEDBACK) {
+export function computeFeedbackStats(pending = [], received = []) {
   const peerPending = pending.filter((row) => row.type === 'Peer').length
   const managerPending = pending.filter((row) => row.type === 'Manager').length
   const nextDue = [...pending]
@@ -228,7 +199,7 @@ export function receivedFeedbackSortValue(row, key) {
   }
 }
 
-export function computeAppraisalStats(appraisals = APPRAISALS) {
+export function computeAppraisalStats(appraisals = []) {
   const pending = appraisals.filter((row) => row.status === 'Pending')
   const approved = appraisals.filter((row) => row.status === 'Approved')
   const avgRating = appraisals.length
@@ -249,7 +220,7 @@ export function computeAppraisalStats(appraisals = APPRAISALS) {
   }
 }
 
-export function getAppraisalTabItems(appraisals = APPRAISALS) {
+export function getAppraisalTabItems(appraisals = []) {
   const pending = appraisals.filter((row) => row.status === 'Pending').length
   const approved = appraisals.filter((row) => row.status === 'Approved').length
   return [
@@ -276,7 +247,7 @@ export function parsePipMilestonePercent(milestones) {
   return Math.round((completed / total) * 100)
 }
 
-export function computePipStats(pips = PIPS) {
+export function computePipStats(pips = []) {
   const active = pips.filter((row) => row.status !== 'Terminated' && row.status !== 'Closed')
   const closed = pips.filter((row) => row.status === 'Closed')
   const terminated = pips.filter((row) => row.status === 'Terminated')
@@ -295,7 +266,7 @@ export function computePipStats(pips = PIPS) {
   }
 }
 
-export function getPipTabItems(pips = PIPS) {
+export function getPipTabItems(pips = []) {
   const active = pips.filter((row) => row.status !== 'Terminated' && row.status !== 'Closed').length
   const closed = pips.filter((row) => row.status === 'Terminated' || row.status === 'Closed').length
   return [

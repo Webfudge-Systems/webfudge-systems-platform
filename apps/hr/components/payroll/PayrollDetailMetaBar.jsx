@@ -2,6 +2,7 @@
 
 import { Briefcase, Hash, Calendar, Wallet } from 'lucide-react'
 import { PayrollStatusBadge } from './PayrollTableCells'
+import { formatPayrollInr } from '../../lib/payrollPage'
 
 function MetaDivider() {
   return <span className="hidden h-5 w-px shrink-0 bg-gray-200 sm:block" aria-hidden />
@@ -61,5 +62,3 @@ export default function PayrollDetailMetaBar({ record, month, className = '' }) 
     </div>
   )
 }
-
-import { formatPayrollInr } from '../../lib/payrollPage'
