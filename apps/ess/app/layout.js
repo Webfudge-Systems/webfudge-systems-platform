@@ -1,9 +1,10 @@
 import './globals.css'
 import { AuthProvider } from '@webfudge/auth'
 import LayoutContent from '../components/LayoutContent'
+import { ESS_SITE } from '../lib/site'
 
 export const viewport = {
-  themeColor: '#F5630F',
+  themeColor: ESS_SITE.themeColor,
   width: 'device-width',
   initialScale: 1,
 }
@@ -14,33 +15,52 @@ const shareDescription =
 
 export const metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: 'ESS', template: '%s | ESS' },
-  description: shareDescription,
-  applicationName: 'ESS',
+  title: {
+    default: ESS_SITE.name,
+    template: `%s | ${ESS_SITE.name}`,
+  },
+  description: ESS_SITE.description,
+  applicationName: ESS_SITE.name,
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'ESS',
+    title: ESS_SITE.name,
   },
-  formatDetection: { telephone: false },
-  keywords: ['employee portal', 'self-service', 'attendance', 'leave', 'payroll'],
-  alternates: { canonical: '/' },
+  formatDetection: {
+    telephone: false,
+  },
+  keywords: [
+    'employee portal',
+    'self-service',
+    'employee desk',
+    'attendance',
+    'leave',
+    'payroll',
+    'Webfudge',
+    'Fudge Desk',
+  ],
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
-    title: 'ESS',
+    title: ESS_SITE.name,
     description: shareDescription,
+    url: siteUrl,
+    siteName: ESS_SITE.name,
     type: 'website',
+    locale: 'en_IN',
     images: [
       {
         url: '/favicon/web-app-manifest-512x512.png',
         width: 512,
         height: 512,
-        alt: 'ESS',
+        alt: ESS_SITE.name,
       },
     ],
   },
   twitter: {
     card: 'summary',
-    title: 'ESS',
+    title: ESS_SITE.name,
     description: shareDescription,
     images: ['/favicon/web-app-manifest-512x512.png'],
   },
@@ -48,12 +68,17 @@ export const metadata = {
     index: false,
     follow: false,
     nocache: true,
-    googleBot: { index: false, follow: false, noimageindex: true },
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
   },
   icons: {
     icon: [
       { url: '/favicon/favicon.svg', type: 'image/svg+xml' },
       { url: '/favicon/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
     ],
     apple: [{ url: '/favicon/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     shortcut: ['/favicon/favicon.svg'],

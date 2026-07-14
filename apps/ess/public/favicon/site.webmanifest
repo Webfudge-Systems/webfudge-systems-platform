@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Fudge People",
-  "short_name": "People",
-  "description": "Fudge People for employees, payroll, attendance, leave, and workforce management.",
+  "name": "Fudge Desk",
+  "short_name": "Desk",
+  "description": "Fudge Desk for attendance, leave, payslips, and employee self-service.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,7 +10,7 @@
   "orientation": "any",
   "theme_color": "#F5630F",
   "background_color": "#FFFAF7",
-  "categories": ["business", "productivity"],
+  "categories": ["business", "productivity", "hr"],
   "icons": [
     {
       "src": "/favicon/web-app-manifest-192x192.png",
