@@ -1,0 +1,71 @@
+{
+  "kind": "collectionType",
+  "collectionName": "real_estate_projects",
+  "info": {
+    "singularName": "real-estate-project",
+    "pluralName": "real-estate-projects",
+    "displayName": "Real Estate Project",
+    "description": "Real-estate projects marketed via Meta ads campaigns"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "developerName": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "minPrice": {
+      "type": "biginteger"
+    },
+    "maxPrice": {
+      "type": "biginteger"
+    },
+    "configurations": {
+      "type": "json",
+      "default": []
+    },
+    "possessionDate": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["upcoming", "active", "sold_out", "archived"],
+      "default": "active"
+    },
+    "landingPageUrl": {
+      "type": "string"
+    },
+    "metaCampaignId": {
+      "type": "string"
+    },
+    "metaFormFieldMapping": {
+      "type": "json",
+      "default": {}
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "leads": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::real-estate-lead.real-estate-lead",
+      "mappedBy": "project"
+    },
+    "siteVisits": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::site-visit.site-visit",
+      "mappedBy": "project"
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "site_visits",
+  "info": {
+    "singularName": "site-visit",
+    "pluralName": "site-visits",
+    "displayName": "Site Visit",
+    "description": "Scheduled and completed real-estate site visits"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "scheduledAt": {
+      "type": "datetime"
+    },
+    "completedAt": {
+      "type": "datetime"
+    },
+    "outcome": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "lead": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::real-estate-lead.real-estate-lead",
+      "inversedBy": "siteVisits"
+    },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::real-estate-project.real-estate-project",
+      "inversedBy": "siteVisits"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

@@ -49,11 +49,20 @@ const HR_MODULES = {
   settings: 'Settings',
 }
 
+const REALESTATE_MODULES = {
+  dashboard: 'Dashboard',
+  leads: 'Leads',
+  pipeline: 'Pipeline',
+  projects: 'Projects',
+  site_visits: 'Site visits',
+  settings: 'Settings',
+}
+
 function moduleEntry(access) {
   return { access }
 }
 
-function matrixFromCrmPmHr(crmMap, pmMap, hrMap) {
+function matrixFromCrmPmHr(crmMap, pmMap, hrMap, realestateMap = {}) {
   const crm = { modules: {} }
   Object.keys(CRM_MODULES).forEach((key) => {
     crm.modules[key] = moduleEntry(crmMap[key] || ACCESS.NONE)
@@ -66,15 +75,22 @@ function matrixFromCrmPmHr(crmMap, pmMap, hrMap) {
   Object.keys(HR_MODULES).forEach((key) => {
     hr.modules[key] = moduleEntry(hrMap[key] || ACCESS.NONE)
   })
-  return { crm, pm, hr }
+  const realestate = { modules: {} }
+  Object.keys(REALESTATE_MODULES).forEach((key) => {
+    realestate.modules[key] = moduleEntry(realestateMap[key] || ACCESS.NONE)
+  })
+  return { crm, pm, hr, realestate }
 }
 
 const ALL_MANAGE_CRM = Object.fromEntries(Object.keys(CRM_MODULES).map((k) => [k, ACCESS.MANAGE]))
 const ALL_MANAGE_PM = Object.fromEntries(Object.keys(PM_MODULES).map((k) => [k, ACCESS.MANAGE]))
 const ALL_MANAGE_HR = Object.fromEntries(Object.keys(HR_MODULES).map((k) => [k, ACCESS.MANAGE]))
+const ALL_MANAGE_REALESTATE = Object.fromEntries(
+  Object.keys(REALESTATE_MODULES).map((k) => [k, ACCESS.MANAGE])
+)
 
 /** Admin: full CRM + PM */
-const ADMIN = matrixFromCrmPmHr(ALL_MANAGE_CRM, ALL_MANAGE_PM, ALL_MANAGE_HR)
+const ADMIN = matrixFromCrmPmHr(ALL_MANAGE_CRM, ALL_MANAGE_PM, ALL_MANAGE_HR, ALL_MANAGE_REALESTATE)
 
 /** Manager: operate CRM / PM except org-level CRM & PM settings (read-only) */
 const MANAGER_CRM = {
@@ -89,7 +105,11 @@ const MANAGER_HR = {
   ...ALL_MANAGE_HR,
   settings: ACCESS.READ,
 }
-const MANAGER = matrixFromCrmPmHr(MANAGER_CRM, MANAGER_PM, MANAGER_HR)
+const MANAGER_REALESTATE = {
+  ...ALL_MANAGE_REALESTATE,
+  settings: ACCESS.READ,
+}
+const MANAGER = matrixFromCrmPmHr(MANAGER_CRM, MANAGER_PM, MANAGER_HR, MANAGER_REALESTATE)
 
 /** Member: contribute to pipeline; limited financials; operational PM */
 const MEMBER_CRM = {
@@ -125,7 +145,15 @@ const MEMBER_HR = {
   payroll: ACCESS.NONE,
   settings: ACCESS.NONE,
 }
-const MEMBER = matrixFromCrmPmHr(MEMBER_CRM, MEMBER_PM, MEMBER_HR)
+const MEMBER_REALESTATE = {
+  dashboard: ACCESS.READ,
+  leads: ACCESS.WRITE,
+  pipeline: ACCESS.WRITE,
+  projects: ACCESS.READ,
+  site_visits: ACCESS.WRITE,
+  settings: ACCESS.NONE,
+}
+const MEMBER = matrixFromCrmPmHr(MEMBER_CRM, MEMBER_PM, MEMBER_HR, MEMBER_REALESTATE)
 
 function emptyMatrix() {
   const crm = { modules: {} }
@@ -140,7 +168,11 @@ function emptyMatrix() {
   Object.keys(HR_MODULES).forEach((k) => {
     hr.modules[k] = moduleEntry(ACCESS.READ)
   })
-  return { crm, pm, hr }
+  const realestate = { modules: {} }
+  Object.keys(REALESTATE_MODULES).forEach((k) => {
+    realestate.modules[k] = moduleEntry(ACCESS.READ)
+  })
+  return { crm, pm, hr, realestate }
 }
 
 function coerceAccess(raw) {
@@ -166,6 +198,10 @@ function normalizePermissions(raw) {
   Object.keys(HR_MODULES).forEach((k) => {
     const mod = raw.hr?.modules?.[k]
     base.hr.modules[k] = moduleEntry(coerceAccess(mod?.access ?? mod?.level))
+  })
+  Object.keys(REALESTATE_MODULES).forEach((k) => {
+    const mod = raw.realestate?.modules?.[k]
+    base.realestate.modules[k] = moduleEntry(coerceAccess(mod?.access ?? mod?.level))
   })
   return base
 }
@@ -202,6 +238,7 @@ function deriveAccessLevel(permissions) {
   scan(normalized.crm?.modules)
   scan(normalized.pm?.modules)
   scan(normalized.hr?.modules)
+  scan(normalized.realestate?.modules)
 
   if (best >= 3) return 'high'
   if (best >= 2) return 'high'
@@ -214,6 +251,7 @@ module.exports = {
   CRM_MODULES,
   PM_MODULES,
   HR_MODULES,
+  REALESTATE_MODULES,
   emptyMatrix,
   normalizePermissions,
   defaultPermissionsForSystemCode,

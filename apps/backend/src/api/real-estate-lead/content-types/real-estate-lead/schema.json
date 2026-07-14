@@ -1,0 +1,130 @@
+{
+  "kind": "collectionType",
+  "collectionName": "real_estate_leads",
+  "info": {
+    "singularName": "real-estate-lead",
+    "pluralName": "real-estate-leads",
+    "displayName": "Real Estate Lead",
+    "description": "Meta-ads and landing-page leads with qualification scoring"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "email"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["meta_instant_form", "meta_whatsapp", "landing_page", "manual"],
+      "default": "manual",
+      "required": true
+    },
+    "metaLeadId": {
+      "type": "string",
+      "unique": true
+    },
+    "metaCampaignId": {
+      "type": "string"
+    },
+    "metaAdsetId": {
+      "type": "string"
+    },
+    "metaAdId": {
+      "type": "string"
+    },
+    "budgetRange": {
+      "type": "text"
+    },
+    "timeline": {
+      "type": "enumeration",
+      "enum": ["immediate", "three_to_six_months", "browsing"]
+    },
+    "purpose": {
+      "type": "enumeration",
+      "enum": ["own_use", "investment"]
+    },
+    "configInterest": {
+      "type": "text"
+    },
+    "pageVisited": {
+      "type": "boolean",
+      "default": false
+    },
+    "pageTimeSeconds": {
+      "type": "integer"
+    },
+    "optionalAnswers": {
+      "type": "json"
+    },
+    "score": {
+      "type": "integer",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "tier": {
+      "type": "enumeration",
+      "enum": ["hot", "warm", "cold"],
+      "default": "cold"
+    },
+    "scoreBreakdown": {
+      "type": "json"
+    },
+    "scoredAt": {
+      "type": "datetime"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "new",
+        "contacted",
+        "site_visit_scheduled",
+        "site_visit_done",
+        "negotiating",
+        "booked",
+        "lost"
+      ],
+      "default": "new"
+    },
+    "assignedTo": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "lastContactedAt": {
+      "type": "datetime"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::real-estate-project.real-estate-project",
+      "inversedBy": "leads"
+    },
+    "activities": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::lead-activity.lead-activity",
+      "mappedBy": "lead"
+    },
+    "siteVisits": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::site-visit.site-visit",
+      "mappedBy": "lead"
+    }
+  }
+}

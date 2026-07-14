@@ -1477,6 +1477,33 @@ export interface ApiItemItem extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiLeadActivityLeadActivity extends Struct.CollectionTypeSchema {
+  collectionName: 'lead_activities'
+  info: {
+    description: 'Timeline events on real-estate leads (calls, notes, scoring, webhooks)'
+    displayName: 'Lead Activity'
+    pluralName: 'lead-activities'
+    singularName: 'lead-activity'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    lead: Schema.Attribute.Relation<'manyToOne', 'api::real-estate-lead.real-estate-lead'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::lead-activity.lead-activity'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    payload: Schema.Attribute.JSON
+    publishedAt: Schema.Attribute.DateTime
+    type: Schema.Attribute.String & Schema.Attribute.Required
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
   collectionName: 'lead_companies'
   info: {
@@ -2271,6 +2298,122 @@ export interface ApiPurchaseOrderPurchaseOrder extends Struct.CollectionTypeSche
   }
 }
 
+export interface ApiRealEstateLeadRealEstateLead extends Struct.CollectionTypeSchema {
+  collectionName: 'real_estate_leads'
+  info: {
+    description: 'Meta-ads and landing-page leads with qualification scoring'
+    displayName: 'Real Estate Lead'
+    pluralName: 'real-estate-leads'
+    singularName: 'real-estate-lead'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    activities: Schema.Attribute.Relation<'oneToMany', 'api::lead-activity.lead-activity'>
+    assignedTo: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    budgetRange: Schema.Attribute.Text
+    configInterest: Schema.Attribute.Text
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    email: Schema.Attribute.Email
+    lastContactedAt: Schema.Attribute.DateTime
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::real-estate-lead.real-estate-lead'
+    > &
+      Schema.Attribute.Private
+    metaAdId: Schema.Attribute.String
+    metaAdsetId: Schema.Attribute.String
+    metaCampaignId: Schema.Attribute.String
+    metaLeadId: Schema.Attribute.String & Schema.Attribute.Unique
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    optionalAnswers: Schema.Attribute.JSON
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    pageTimeSeconds: Schema.Attribute.Integer
+    pageVisited: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    phone: Schema.Attribute.String
+    project: Schema.Attribute.Relation<'manyToOne', 'api::real-estate-project.real-estate-project'>
+    publishedAt: Schema.Attribute.DateTime
+    purpose: Schema.Attribute.Enumeration<['own_use', 'investment']>
+    score: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 100
+          min: 0
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<0>
+    scoreBreakdown: Schema.Attribute.JSON
+    scoredAt: Schema.Attribute.DateTime
+    siteVisits: Schema.Attribute.Relation<'oneToMany', 'api::site-visit.site-visit'>
+    source: Schema.Attribute.Enumeration<
+      ['meta_instant_form', 'meta_whatsapp', 'landing_page', 'manual']
+    > &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<'manual'>
+    status: Schema.Attribute.Enumeration<
+      [
+        'new',
+        'contacted',
+        'site_visit_scheduled',
+        'site_visit_done',
+        'negotiating',
+        'booked',
+        'lost',
+      ]
+    > &
+      Schema.Attribute.DefaultTo<'new'>
+    tier: Schema.Attribute.Enumeration<['hot', 'warm', 'cold']> & Schema.Attribute.DefaultTo<'cold'>
+    timeline: Schema.Attribute.Enumeration<['immediate', 'three_to_six_months', 'browsing']>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
+export interface ApiRealEstateProjectRealEstateProject extends Struct.CollectionTypeSchema {
+  collectionName: 'real_estate_projects'
+  info: {
+    description: 'Real-estate projects marketed via Meta ads campaigns'
+    displayName: 'Real Estate Project'
+    pluralName: 'real-estate-projects'
+    singularName: 'real-estate-project'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    configurations: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    developerName: Schema.Attribute.String
+    landingPageUrl: Schema.Attribute.String
+    leads: Schema.Attribute.Relation<'oneToMany', 'api::real-estate-lead.real-estate-lead'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::real-estate-project.real-estate-project'
+    > &
+      Schema.Attribute.Private
+    location: Schema.Attribute.String
+    maxPrice: Schema.Attribute.BigInteger
+    metaCampaignId: Schema.Attribute.String
+    metaFormFieldMapping: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    minPrice: Schema.Attribute.BigInteger
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    possessionDate: Schema.Attribute.Date
+    publishedAt: Schema.Attribute.DateTime
+    siteVisits: Schema.Attribute.Relation<'oneToMany', 'api::site-visit.site-visit'>
+    status: Schema.Attribute.Enumeration<['upcoming', 'active', 'sold_out', 'archived']> &
+      Schema.Attribute.DefaultTo<'active'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiRecurringExpenseRecurringExpense extends Struct.CollectionTypeSchema {
   collectionName: 'recurring_expenses'
   info: {
@@ -2552,6 +2695,36 @@ export interface ApiServiceRecordServiceRecord extends Struct.CollectionTypeSche
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     vehicle: Schema.Attribute.Relation<'manyToOne', 'api::vehicle.vehicle'> &
       Schema.Attribute.Required
+  }
+}
+
+export interface ApiSiteVisitSiteVisit extends Struct.CollectionTypeSchema {
+  collectionName: 'site_visits'
+  info: {
+    description: 'Scheduled and completed real-estate site visits'
+    displayName: 'Site Visit'
+    pluralName: 'site-visits'
+    singularName: 'site-visit'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    completedAt: Schema.Attribute.DateTime
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    lead: Schema.Attribute.Relation<'manyToOne', 'api::real-estate-lead.real-estate-lead'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::site-visit.site-visit'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    outcome: Schema.Attribute.String
+    project: Schema.Attribute.Relation<'manyToOne', 'api::real-estate-project.real-estate-project'>
+    publishedAt: Schema.Attribute.DateTime
+    scheduledAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
 }
 
@@ -3337,6 +3510,7 @@ declare module '@strapi/strapi' {
       'api::invoice-line-item.invoice-line-item': ApiInvoiceLineItemInvoiceLineItem
       'api::invoice.invoice': ApiInvoiceInvoice
       'api::item.item': ApiItemItem
+      'api::lead-activity.lead-activity': ApiLeadActivityLeadActivity
       'api::lead-company.lead-company': ApiLeadCompanyLeadCompany
       'api::manual-journal.manual-journal': ApiManualJournalManualJournal
       'api::meeting.meeting': ApiMeetingMeeting
@@ -3353,6 +3527,8 @@ declare module '@strapi/strapi' {
       'api::project.project': ApiProjectProject
       'api::proposal.proposal': ApiProposalProposal
       'api::purchase-order.purchase-order': ApiPurchaseOrderPurchaseOrder
+      'api::real-estate-lead.real-estate-lead': ApiRealEstateLeadRealEstateLead
+      'api::real-estate-project.real-estate-project': ApiRealEstateProjectRealEstateProject
       'api::recurring-expense.recurring-expense': ApiRecurringExpenseRecurringExpense
       'api::recurring-invoice.recurring-invoice': ApiRecurringInvoiceRecurringInvoice
       'api::retainer-invoice.retainer-invoice': ApiRetainerInvoiceRetainerInvoice
@@ -3360,6 +3536,7 @@ declare module '@strapi/strapi' {
       'api::salary-structure.salary-structure': ApiSalaryStructureSalaryStructure
       'api::sales-order.sales-order': ApiSalesOrderSalesOrder
       'api::service-record.service-record': ApiServiceRecordServiceRecord
+      'api::site-visit.site-visit': ApiSiteVisitSiteVisit
       'api::subscription.subscription': ApiSubscriptionSubscription
       'api::task.task': ApiTaskTask
       'api::vehicle-event.vehicle-event': ApiVehicleEventVehicleEvent

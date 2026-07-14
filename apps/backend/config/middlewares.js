@@ -7,6 +7,7 @@ const allowedOrigins = [
   'http://localhost:3006', // PM
   'http://localhost:3007', // CRM
   'http://localhost:3008', // HR
+  'http://localhost:3009', // Real Estate CRM
   'https://webfudge.in',
   'https://www.webfudge.in',
   'https://crm.webfudge.in',

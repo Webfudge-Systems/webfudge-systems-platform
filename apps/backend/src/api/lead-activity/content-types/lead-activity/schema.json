@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "lead_activities",
+  "info": {
+    "singularName": "lead-activity",
+    "pluralName": "lead-activities",
+    "displayName": "Lead Activity",
+    "description": "Timeline events on real-estate leads (calls, notes, scoring, webhooks)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "type": {
+      "type": "string",
+      "required": true
+    },
+    "payload": {
+      "type": "json"
+    },
+    "lead": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::real-estate-lead.real-estate-lead",
+      "inversedBy": "activities"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}
