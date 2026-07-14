@@ -13,6 +13,7 @@ const allowedOrigins = [
   'https://www.webfudge.in',
   'https://crm.webfudge.in',
   'https://pm.webfudge.in',
+  'https://people.webfudge.in',
   'https://accounts.webfudge.in',
   'https://vendor.webfudge.in',
   'https://books.webfudge.in',

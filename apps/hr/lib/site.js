@@ -18,4 +18,5 @@ export const HR_SITE = {
   url: siteUrl,
   logoPath: '/logo/Vertical logo 1 bg removed.png',
   themeColor: '#F5630F',
+  backgroundColor: '#FFFAF7',
 }

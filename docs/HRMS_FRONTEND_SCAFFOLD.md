@@ -62,10 +62,10 @@ npm run dev:hr
 
 Open http://localhost:3008 — sign in with the same Strapi credentials as CRM/PM if the backend is running locally.
 
-Copy env from `apps/hr/.env.example`:
+Copy env from `apps/hr/.env.example` (production URL is **`https://people.webfudge.in`** — see [HR_PRODUCTION_DEPLOY.md](./HR_PRODUCTION_DEPLOY.md)):
 
 ```
-NEXT_PUBLIC_API_URL=http://localhost:1337
+NEXT_PUBLIC_API_URL=http://localhost:1338
 NEXT_PUBLIC_HR_APP_URL=http://localhost:3008
 ```
 

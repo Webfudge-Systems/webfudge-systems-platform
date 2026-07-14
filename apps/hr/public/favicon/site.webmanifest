@@ -10,7 +10,7 @@
   "orientation": "any",
   "theme_color": "#F5630F",
   "background_color": "#FFFAF7",
-  "categories": ["business", "productivity"],
+  "categories": ["business", "productivity", "hr"],
   "icons": [
     {
       "src": "/favicon/web-app-manifest-192x192.png",

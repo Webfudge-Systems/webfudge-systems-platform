@@ -29,6 +29,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[COMMANDS.md](./COMMANDS.md)**       | Complete command reference  | 15 min    | 🟡 Medium |
 | **[ENVIRONMENT.md](./ENVIRONMENT.md)** | Environment variables guide | 15 min    | 🟡 Medium |
 | **[ACCOUNTS_PRODUCTION_DEPLOY.md](./ACCOUNTS_PRODUCTION_DEPLOY.md)** | Accounts app production deploy (env, build, run) | 5 min | 🟡 Medium |
+| **[HR_PRODUCTION_DEPLOY.md](./HR_PRODUCTION_DEPLOY.md)** | Fudge People (`apps/hr`) production deploy — `people.webfudge.in`, env, SEO/branding, CORS | 5 min | 🟡 Medium |
 | **[RAILWAY_STRAPI_DEPLOY.md](./RAILWAY_STRAPI_DEPLOY.md)** | Strapi on Railway: Postgres variables, SSL, pool, crash-loop fixes | 5 min | 🔴 High |
 
 ### 📋 Project Management
