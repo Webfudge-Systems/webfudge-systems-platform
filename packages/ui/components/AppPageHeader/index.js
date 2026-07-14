@@ -62,6 +62,8 @@ export function AppPageHeader({
   renderGlobalSearchModal,
   searchInputClassName = DEFAULT_SEARCH_INPUT_CLASS,
   titleClassName,
+  onProfileClick,
+  onSettingsClick,
 }) {
   return (
     <WorkspaceHeader
@@ -87,6 +89,8 @@ export function AppPageHeader({
       notificationService={notificationService}
       renderGlobalSearchModal={renderGlobalSearchModal}
       searchInputClassName={searchInputClassName}
+      onProfileClick={onProfileClick}
+      onSettingsClick={onSettingsClick}
     >
       {children}
     </WorkspaceHeader>

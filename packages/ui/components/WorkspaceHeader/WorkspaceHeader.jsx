@@ -55,6 +55,8 @@ export function WorkspaceHeader({
   onBack,
   backLabel = 'Back',
   titleClassName,
+  onProfileClick,
+  onSettingsClick,
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -524,11 +526,23 @@ export function WorkspaceHeader({
                         <p className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-brand-text-light">
                           Account Actions
                         </p>
-                        <button className={profileMenuItemClass}>
+                        <button
+                          className={profileMenuItemClass}
+                          onClick={() => {
+                            setShowProfileDropdown(false)
+                            onProfileClick?.()
+                          }}
+                        >
                           <User className={profileMenuIconClass} />
                           <span>View Profile</span>
                         </button>
-                        <button className={profileMenuItemClass}>
+                        <button
+                          className={profileMenuItemClass}
+                          onClick={() => {
+                            setShowProfileDropdown(false)
+                            onSettingsClick?.()
+                          }}
+                        >
                           <Settings className={profileMenuIconClass} />
                           <span>Settings</span>
                         </button>
