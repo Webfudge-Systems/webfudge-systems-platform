@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Edit, Mail, Trash2, Wallet, TrendingDown, Banknote, FileText } from 'lucide-react'
 import { Button, Card, EmptyState, LoadingSpinner, Modal, TabsWithActions } from '@webfudge/ui'
@@ -16,10 +16,11 @@ import {
 } from '../../../../components/payroll/PayrollDetailTabPanels'
 import {
   deletePayrollLineItem,
-  getPayrollLineItemById,
-  getPayslipDownloadUrl,
+  downloadPayslip,
   listPayslips,
+  resolvePayrollLineItem,
 } from '../../../../lib/payrollSyncService'
+import { buildPayrollRecordFromLine } from '../../../../lib/payrollShared'
 import { formatPayrollInr } from '../../../../lib/payrollPage'
 
 const TABS = [
@@ -31,55 +32,53 @@ const TABS = [
 export default function PayrollRecordPage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const fromEmployee = searchParams.get('from') === 'employee'
+  const employeeId = searchParams.get('employeeId')
+  const employeeName = searchParams.get('employeeName') || 'Employee'
+  const employeeProfileHref = employeeId ? `/employees/${employeeId}?tab=payroll` : null
   const [tab, setTab] = useState('overview')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [record, setRecord] = useState(null)
   const [monthLabel, setMonthLabel] = useState('-')
   const [payslipId, setPayslipId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [downloading, setDownloading] = useState(false)
+  const [downloadError, setDownloadError] = useState('')
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
         setLoading(true)
-        const line = await getPayrollLineItemById(params.id)
-        if (!line || cancelled) return
-
-        const orgUser = line.organizationUser || {}
-        const user = orgUser.user || {}
-        const profile = line.employeeProfile || {}
-        const run = line.payrollRun || {}
-        const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || user.email || `Member ${orgUser.id || ''}`
-        const dept = orgUser?.primaryDepartment?.name || orgUser?.departments?.[0]?.name || '—'
-
-        setRecord({
-          id: line.id,
-          employeeRefId: orgUser.id,
-          employeeId: profile.employeeCode || `WF-${1000 + Number(orgUser.id || 0)}`,
-          name,
-          designation: profile.designation || line.salaryStructure?.name || '—',
-          dept,
-          gross: Number(line.gross || 0),
-          pf: Number(line.pf || 0),
-          esi: Number(line.esi || 0),
-          pt: Number(line.pt || 0),
-          tds: Number(line.tds || 0),
-          net: Number(line.net || 0),
-          status: run.status || 'draft',
-        })
-
-        if (run.month && run.year) {
-          setMonthLabel(
-            new Date(run.year, run.month - 1, 1).toLocaleString('en-US', {
-              month: 'long',
-              year: 'numeric',
-            }),
-          )
+        setLoadError('')
+        const line = await resolvePayrollLineItem(params.id)
+        if (!line || cancelled) {
+          if (!cancelled) setRecord(null)
+          return
         }
-        const slips = await listPayslips({ payrollRunId: run.id })
-        const slip = slips.find((s) => String(s.payrollLineItem?.id || s.payrollLineItem) === String(line.id))
-        setPayslipId(slip?.id || null)
+
+        const mapped = buildPayrollRecordFromLine(line)
+        setRecord(mapped.record)
+        setMonthLabel(mapped.monthLabel)
+
+        if (mapped.runId) {
+          const slips = await listPayslips({ payrollRunId: mapped.runId })
+          const slip = slips.find((row) =>
+            [row.payrollLineItemId, row.payrollLineItem?.id, row.payrollLineItem].some(
+              (value) => value != null && String(value) === String(line.id ?? params.id),
+            ),
+          )
+          setPayslipId(slip?.id || null)
+        } else {
+          setPayslipId(null)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(error?.message || 'Could not load payroll record')
+          setRecord(null)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -115,7 +114,7 @@ export default function PayrollRecordPage() {
         <Card variant="elevated" className="rounded-xl p-12">
           <EmptyState
             title="Payroll record not found"
-            description="The record may have been removed or the link is incorrect."
+            description={loadError || 'The record may have been removed or the link is incorrect.'}
             action={<Link href="/payroll" className="text-sm font-medium text-orange-600 hover:underline">Back to payroll</Link>}
           />
         </Card>
@@ -124,13 +123,44 @@ export default function PayrollRecordPage() {
   }
 
   const totalDeductions = (record.pf || 0) + (record.esi || 0) + (record.pt || 0) + (record.tds || 0)
-  const readOnly = ['locked', 'disbursed'].includes(String(record.status).toLowerCase())
+  const readOnly = ['locked', 'disbursed'].includes(String(record.runStatus || record.status || '').toLowerCase())
+  const deleteTargetId = record.lineItemPk || record.id
+
+  const handleDownloadPayslip = async () => {
+    if (!payslipId) return
+    try {
+      setDownloading(true)
+      setDownloadError('')
+      await downloadPayslip(payslipId)
+    } catch (err) {
+      setDownloadError(err?.message || 'Failed to download payslip')
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   const handleDelete = async () => {
-    await deletePayrollLineItem(record.id)
+    await deletePayrollLineItem(deleteTargetId)
     setDeleteOpen(false)
+    if (fromEmployee && employeeProfileHref) {
+      router.push(employeeProfileHref)
+      return
+    }
     router.push('/payroll')
   }
+
+  const breadcrumb = fromEmployee && employeeProfileHref
+    ? [
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Employees', href: '/employees' },
+        { label: employeeName, href: employeeProfileHref },
+        { label: monthLabel, href: `/payroll/${record.id}` },
+      ]
+    : [
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Payroll', href: '/payroll' },
+        { label: record.name, href: `/payroll/${record.id}` },
+      ]
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -138,11 +168,7 @@ export default function PayrollRecordPage() {
         <HRPageHeader
           title={record.name}
           subtitle={`${record.designation || record.dept} · ${monthLabel}`}
-          breadcrumb={[
-            { label: 'Dashboard', href: '/dashboard' },
-            { label: 'Payroll', href: '/payroll' },
-            { label: record.name, href: `/payroll/${record.id}` },
-          ]}
+          breadcrumb={breadcrumb}
           showProfile
         >
           <HRDetailHeaderActions
@@ -152,13 +178,13 @@ export default function PayrollRecordPage() {
                 title: 'Edit payroll record',
                 icon: Edit,
                 disabled: readOnly,
-                onClick: () => router.push(`/payroll/${record.id}/edit`),
+                onClick: () => router.push(`/payroll/${deleteTargetId}/edit`),
               },
               {
                 label: 'Employee',
-                title: 'View employee',
+                title: 'View employee profile',
                 icon: Mail,
-                onClick: () => router.push(`/employees/${record.employeeRefId || record.id}`),
+                onClick: () => router.push(employeeProfileHref || `/employees/${record.employeeRefId || record.id}`),
               },
               {
                 label: 'Remove',
@@ -209,10 +235,13 @@ export default function PayrollRecordPage() {
         <div className="space-y-4">
           <PayrollPayslipPanel record={record} month={monthLabel} />
           {payslipId ? (
-            <Button variant="secondary" onClick={() => window.open(getPayslipDownloadUrl(payslipId), '_blank')}>
-              <FileText className="mr-2 h-4 w-4" />
-              Download Payslip PDF
-            </Button>
+            <div className="space-y-2">
+              <Button variant="secondary" disabled={downloading} onClick={handleDownloadPayslip}>
+                <FileText className="mr-2 h-4 w-4" />
+                {downloading ? 'Downloading…' : 'Download Payslip PDF'}
+              </Button>
+              {downloadError ? <p className="text-sm text-red-600">{downloadError}</p> : null}
+            </div>
           ) : null}
         </div>
       )}

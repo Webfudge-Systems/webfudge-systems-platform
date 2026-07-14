@@ -12,6 +12,7 @@ import {
   updateEmployeeFromForm,
 } from '../../../../../lib/employeeSyncService'
 import { listSalaryStructures, upsertEmployeeProfileByMembership } from '../../../../../lib/payrollSyncService'
+import { buildEmployeeProfileShiftPayload } from '../../../../../lib/shiftShared'
 
 export default function EditEmployeePage() {
   const params = useParams()
@@ -120,6 +121,7 @@ export default function EditEmployeePage() {
           bankIfsc: form.bankIfsc || '',
           bankName: form.bankName || '',
           salaryStructure: form.salaryStructureId ? Number(form.salaryStructureId) : null,
+          ...buildEmployeeProfileShiftPayload(form),
         })
       }
       setIsSubmitting(false)

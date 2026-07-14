@@ -1,7 +1,9 @@
 'use client'
 
-import { Input, Select, FormSectionCard } from '@webfudge/ui'
-import { User, Briefcase, Mail, Phone, MapPin, Building2, Landmark } from 'lucide-react'
+import { Input, FormSectionCard, Checkbox } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
+import { User, Briefcase, Mail, Phone, MapPin, Building2, Landmark, Lock, KeyRound, Clock } from 'lucide-react'
+import { SHIFT_OPTIONS, normalizeShiftId } from '../../lib/shiftShared'
 
 const EMPLOYMENT_TYPES = [
   { value: 'Full-time', label: 'Full-time' },
@@ -27,6 +29,7 @@ export default function EmployeeForm({
   departments = [],
   managerRoleOptions = DEFAULT_MANAGER_ROLE_OPTIONS,
   salaryStructureOptions = [],
+  showLoginSetup = false,
 }) {
   const uniqueDepartments = Array.from(new Set((departments || []).filter(Boolean)))
   const departmentOptions = uniqueDepartments.map((d) => ({ value: d, label: d }))
@@ -37,6 +40,28 @@ export default function EmployeeForm({
 
   const handleChange = (field, value) => {
     onChange(field, value)
+  }
+
+  const assignedShifts = Array.isArray(form.assignedShifts) ? form.assignedShifts : ['morning']
+  const primaryShiftOptions = SHIFT_OPTIONS.filter((option) => assignedShifts.includes(option.value))
+
+  const toggleAssignedShift = (shiftId, checked) => {
+    const id = normalizeShiftId(shiftId)
+    const next = checked
+      ? Array.from(new Set([...assignedShifts, id]))
+      : assignedShifts.filter((value) => value !== id)
+    const safeAssigned = next.length ? next : [id]
+    handleChange('assignedShifts', safeAssigned)
+    if (!safeAssigned.includes(form.primaryShift)) {
+      handleChange('primaryShift', safeAssigned[0])
+    }
+  }
+
+  const handleFlexibleChange = (checked) => {
+    handleChange('flexibleShift', checked)
+    if (!checked && assignedShifts.length) {
+      handleChange('primaryShift', assignedShifts[0])
+    }
   }
 
   return (
@@ -96,6 +121,39 @@ export default function EmployeeForm({
           </div>
         </div>
       </FormSectionCard>
+
+      {showLoginSetup ? (
+        <FormSectionCard
+          icon={KeyRound}
+          title="ESS portal access"
+          description="Login credentials for the employee self-service portal"
+        >
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <Input
+                label="Login password"
+                type="password"
+                value={form.initialPassword || ''}
+                onChange={(e) => handleChange('initialPassword', e.target.value)}
+                placeholder="Min 8 characters (optional)"
+                icon={Lock}
+              />
+              <p className="mt-1.5 text-xs text-gray-500">
+                Leave blank to auto-generate a temporary password. The employee signs in at ESS with their work email and this password.
+              </p>
+            </div>
+            <div className="flex items-end pb-1">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3.5 w-full">
+                <Checkbox
+                  checked={form.sendLoginEmail !== false}
+                  onChange={(checked) => handleChange('sendLoginEmail', checked)}
+                  label="Email login credentials to work email"
+                />
+              </div>
+            </div>
+          </div>
+        </FormSectionCard>
+      ) : null}
 
       <FormSectionCard
         icon={Briefcase}
@@ -173,6 +231,49 @@ export default function EmployeeForm({
       </FormSectionCard>
 
       <FormSectionCard
+        icon={Clock}
+        title="Work shift"
+        description="Assign a fixed shift or allow the employee to pick from assigned shifts when marking attendance"
+      >
+        <div className="space-y-5">
+          <div>
+            <p className="mb-3 text-sm font-medium text-gray-700">Assigned shifts *</p>
+            <div className="flex flex-wrap gap-4">
+              {SHIFT_OPTIONS.map((option) => (
+                <Checkbox
+                  key={option.value}
+                  checked={assignedShifts.includes(option.value)}
+                  onChange={(checked) => toggleAssignedShift(option.value, checked)}
+                  label={option.label}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <Select
+              label={form.flexibleShift ? 'Default shift' : 'Fixed shift *'}
+              value={form.primaryShift || assignedShifts[0] || 'morning'}
+              onChange={(value) => handleChange('primaryShift', value)}
+              options={primaryShiftOptions.length ? primaryShiftOptions : SHIFT_OPTIONS}
+              allowEmpty={false}
+            />
+            <div className="flex items-end pb-1">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3.5 w-full">
+                <Checkbox
+                  checked={Boolean(form.flexibleShift)}
+                  onChange={handleFlexibleChange}
+                  label="Allow flexible shift at attendance"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  When enabled, the employee chooses one of the assigned shifts each time they mark attendance.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </FormSectionCard>
+
+      <FormSectionCard
         icon={Landmark}
         title="Payroll and bank details"
         description="Required before a payroll run can be locked"
@@ -227,6 +328,11 @@ export function employeeToForm(employee) {
       bankAccountNumber: '',
       bankIfsc: '',
       bankName: '',
+      initialPassword: '',
+      sendLoginEmail: true,
+      primaryShift: 'morning',
+      assignedShifts: ['morning'],
+      flexibleShift: false,
     }
   }
 
@@ -247,5 +353,8 @@ export function employeeToForm(employee) {
     bankAccountNumber: employee.bankAccountNumber || '',
     bankIfsc: employee.bankIfsc || '',
     bankName: employee.bankName || '',
+    primaryShift: employee.primaryShift || 'morning',
+    assignedShifts: Array.isArray(employee.assignedShifts) ? employee.assignedShifts : ['morning'],
+    flexibleShift: Boolean(employee.flexibleShift),
   }
 }

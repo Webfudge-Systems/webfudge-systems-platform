@@ -1,6 +1,7 @@
 'use strict';
 
 const { makeBooksCrudController, relId } = require('../../../utils/books-crud');
+const { sumApprovedOvertimeForMonth } = require('../../../utils/overtime-utils');
 const { generateSequence } = require('../../../utils/sequence');
 
 const UID = 'api::payroll-run.payroll-run';
@@ -151,6 +152,9 @@ async function deleteRunLineItems(strapi, runId) {
 
 async function recomputeRun(strapi, orgId, runId, actorUserId) {
   const { members, profileByOrgUserId } = await gatherMembersAndProfiles(strapi, orgId);
+  const run = await strapi.entityService.findOne(UID, runId, { fields: ['month', 'year'] });
+  const payrollMonth = Number(run?.month || 1);
+  const payrollYear = Number(run?.year || new Date().getFullYear());
   await deleteRunLineItems(strapi, runId);
 
   const blockers = [];
@@ -167,10 +171,18 @@ async function recomputeRun(strapi, orgId, runId, actorUserId) {
     const hasBankDetails =
       Boolean(profile?.bankAccountNumber) && Boolean(profile?.bankIfsc) && Boolean(profile?.bankName);
     const calc = calcFromStructure(structure, annualCtc);
+    const overtime = await sumApprovedOvertimeForMonth(strapi, orgId, member.id, payrollMonth, payrollYear);
+    const overtimePay = toMoney(overtime.overtimePay);
+    const grossWithOvertime = toMoney(calc.gross + overtimePay);
+    const netWithOvertime = toMoney(calc.net + overtimePay);
 
     const row = await strapi.entityService.create(LINE_UID, {
       data: {
         ...calc,
+        gross: grossWithOvertime,
+        net: netWithOvertime,
+        overtimePay,
+        overtimeHours: overtime.overtimeHours,
         missingBankDetails: !hasBankDetails,
         payrollRun: runId,
         organizationUser: member.id,
@@ -358,6 +370,26 @@ module.exports = (params) => {
           disbursedAt: new Date().toISOString(),
         },
       });
+
+      const OT_UID = 'api::overtime-record.overtime-record';
+      const payrollMonth = Number(resolved.run.month || 1);
+      const payrollYear = Number(resolved.run.year || new Date().getFullYear());
+      const monthStr = String(payrollMonth).padStart(2, '0');
+      const lastDay = new Date(payrollYear, payrollMonth, 0).getDate();
+      const from = `${payrollYear}-${monthStr}-01`;
+      const to = `${payrollYear}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
+      const otRows = await strapi.entityService.findMany(OT_UID, {
+        filters: {
+          organization: ctx.state.orgId,
+          status: 'approved',
+          recordDate: { $gte: from, $lte: to },
+        },
+        limit: 2000,
+      });
+      for (const row of otRows) {
+        await strapi.entityService.update(OT_UID, row.id, { data: { status: 'paid' } });
+      }
+
       const run = await loadRunWithLineItems(strapi, id);
       return { data: run };
     },

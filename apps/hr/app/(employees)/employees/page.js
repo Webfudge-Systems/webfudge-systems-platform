@@ -9,7 +9,6 @@ import {
   KPICard,
   LoadingSpinner,
   TabsWithActions,
-  Select,
   TableCellCreated,
   TableEmptyBelow,
   TableColumnPicker,
@@ -19,6 +18,7 @@ import {
   Modal,
   TableResultsCount,
 } from '@webfudge/ui'
+import { Select } from '../../../components/shared/HRSelect'
 import HRPageHeader from '../../../components/layout/HRPageHeader'
 import HRModulePage from '../../../components/layout/HRModulePage'
 import HRKpiRow from '../../../components/layout/HRKpiRow'

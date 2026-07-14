@@ -11,7 +11,7 @@ export const viewport: Viewport = {
   initialScale: 1,
 }
 
-const siteUrl = (process.env.NEXT_PUBLIC_RE_CRM_APP_URL || 'http://localhost:3009').replace(/\/$/, '')
+const siteUrl = (process.env.NEXT_PUBLIC_RE_CRM_APP_URL || 'http://localhost:3010').replace(/\/$/, '')
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

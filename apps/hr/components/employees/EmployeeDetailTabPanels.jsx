@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   CheckCircle2,
   UserRound,
@@ -15,7 +16,7 @@ import {
   Mail,
   Phone,
   MapPin,
-  Contact,
+  CreditCard,
   Banknote,
   TrendingDown,
   Trophy,
@@ -27,7 +28,6 @@ import {
   Avatar,
   Badge,
   Input,
-  Select,
   Table,
   EmptyState,
   EntityFilesPanel,
@@ -36,7 +36,11 @@ import {
   SidebarCardTitle,
   TableCellText,
   TableCellDateOnly,
+  LoadingSpinner,
+  Modal,
+  TableResultsCount,
 } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
 import HRDataTableCard from '../shared/HRDataTableCard'
 import { EmployeeStatusPill } from './EmployeeTableCells'
 import { employeeStatusBadgeVariant } from '../../lib/employeeStatus'
@@ -44,6 +48,18 @@ import {
   fetchEmployeeActivityTimeline,
   fetchEmployeeCrossAppActivity,
 } from '../../lib/api/employeeActivityService'
+import { listAttendanceRecords } from '../../lib/attendanceSyncService'
+import { formatShiftLabel } from '../../lib/shiftShared'
+import {
+  ATTENDANCE_UPDATED_EVENT,
+  buildEmployeeMonthAttendanceLogs,
+  toDateInputValue,
+} from '../../lib/attendanceShared'
+import { listLeaveRequests } from '../../lib/leaveSyncService'
+import { computeEmployeeLeaveBalanceRows, LEAVE_UPDATED_EVENT } from '../../lib/leaveShared'
+import { listEmployeePayrollLineItems, deletePayrollLineItem } from '../../lib/payrollSyncService'
+import { mapEmployeePayrollHistoryRow, sortEmployeePayrollHistory } from '../../lib/payrollShared'
+import { buildEmployeePayrollColumns, employeePayrollViewHref } from './employeePayrollTableColumns'
 
 const UnifiedWorkspaceCalendar = dynamic(
   () => import('@webfudge/ui').then((m) => ({ default: m.UnifiedWorkspaceCalendar })),
@@ -54,22 +70,45 @@ const UnifiedWorkspaceCalendar = dynamic(
         Loading attendance calendar…
       </div>
     ),
-  },
+  }
 )
 
-const ATTENDANCE_SUMMARY = { present: 18, absent: 1, leave: 2, wfh: 3 }
-const LEAVE_BALANCE = [
-  { id: 'cl', type: 'CL', entitlement: 12, used: 3, balance: 9 },
-  { id: 'sl', type: 'SL', entitlement: 12, used: 1, balance: 11 },
-  { id: 'pl', type: 'PL', entitlement: 21, used: 5, balance: 16 },
-]
+const ATTENDANCE_STATUS_META = {
+  present: {
+    label: 'Present',
+    dotClass: 'bg-emerald-400',
+    badgeClass: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  },
+  absent: {
+    label: 'Absent',
+    dotClass: 'bg-red-400',
+    badgeClass: 'bg-red-50 text-red-800 ring-red-200',
+  },
+  not_marked: {
+    label: 'Not Marked',
+    dotClass: 'bg-gray-300',
+    badgeClass: 'bg-gray-50 text-gray-700 ring-gray-200',
+  },
+  leave: {
+    label: 'On Leave',
+    dotClass: 'bg-orange-300',
+    badgeClass: 'bg-orange-50 text-orange-800 ring-orange-200',
+  },
+  wfh: {
+    label: 'WFH',
+    dotClass: 'bg-blue-400',
+    badgeClass: 'bg-blue-50 text-blue-800 ring-blue-200',
+  },
+}
 
 const detailLabelClass =
   'mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500'
 
 function DetailCell({ label, icon: Icon, children, className = '' }) {
   return (
-    <div className={`group min-w-0 bg-white px-6 py-5 transition-colors hover:bg-orange-50/35 ${className}`}>
+    <div
+      className={`group min-w-0 bg-white px-6 py-5 transition-colors hover:bg-orange-50/35 ${className}`}
+    >
       <div className={detailLabelClass}>
         {Icon ? (
           <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-400 ring-1 ring-gray-100 transition-colors group-hover:bg-orange-100 group-hover:text-orange-600 group-hover:ring-orange-200">
@@ -177,7 +216,12 @@ function SnapshotTile({ label, value, icon: Icon, accent = false }) {
       }`}
     >
       <div className="mb-2 flex items-center gap-2 text-xs font-medium text-gray-500">
-        {Icon ? <Icon className={accent ? 'h-4 w-4 text-orange-500' : 'h-4 w-4 text-gray-400'} aria-hidden /> : null}
+        {Icon ? (
+          <Icon
+            className={accent ? 'h-4 w-4 text-orange-500' : 'h-4 w-4 text-gray-400'}
+            aria-hidden
+          />
+        ) : null}
         <span>{label}</span>
       </div>
       <p className="truncate text-base font-semibold leading-snug text-gray-900">{value || '—'}</p>
@@ -196,7 +240,11 @@ function EmployeeStatusChip({ status }) {
         className="inline-flex items-center gap-2 rounded-xl border border-emerald-300/90 bg-gradient-to-br from-emerald-50 via-emerald-50 to-emerald-100 px-4 py-2.5 text-sm font-bold uppercase tracking-widest text-emerald-900 shadow-md ring-2 ring-emerald-200/70"
         role="status"
       >
-        <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" strokeWidth={2.25} aria-hidden />
+        <CheckCircle2
+          className="h-5 w-5 shrink-0 text-emerald-600"
+          strokeWidth={2.25}
+          aria-hidden
+        />
         {status}
       </span>
     )
@@ -266,7 +314,7 @@ export function EmployeeOverviewPanel({
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <HeaderPill icon={Briefcase} label={employee.department} />
-                    <HeaderPill icon={Contact} label={employee.employeeId} />
+                    <HeaderPill icon={CreditCard} label={employee.employeeId} />
                     <HeaderPill icon={MapPin} label={employee.workLocation || employee.location} />
                   </div>
                   <div className="mt-2 sm:hidden">
@@ -454,7 +502,9 @@ export function EmployeeOverviewPanel({
                 </InlineDetailCell>
               </GridRow>
 
-              {saveError ? <p className="px-6 pt-4 text-center text-sm text-red-600">{saveError}</p> : null}
+              {saveError ? (
+                <p className="px-6 pt-4 text-center text-sm text-red-600">{saveError}</p>
+              ) : null}
 
               <div className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-100 bg-gray-50/60 px-6 py-4">
                 <Button type="button" variant="primary" disabled={saving} onClick={onSaveEdit}>
@@ -500,7 +550,15 @@ export function EmployeeOverviewPanel({
                   <DetailValue value={employee.contractType || 'Permanent'} />
                 </DetailCell>
                 <DetailCell label="Shift" icon={Clock}>
-                  <DetailValue value={employee.shift || 'Morning (9–6)'} />
+                  <DetailValue
+                    value={
+                      employee.flexibleShift
+                        ? `Flexible — ${(employee.assignedShifts || ['morning'])
+                            .map((shiftId) => formatShiftLabel(shiftId))
+                            .join(', ')}`
+                        : formatShiftLabel(employee.primaryShift || employee.shift || 'morning')
+                    }
+                  />
                 </DetailCell>
               </GridRow>
 
@@ -511,7 +569,7 @@ export function EmployeeOverviewPanel({
                 <DetailCell label="Employment type" icon={Briefcase}>
                   <DetailValue value={employee.employmentType || '—'} />
                 </DetailCell>
-                <DetailCell label="Employee ID" icon={Contact}>
+                <DetailCell label="Employee ID" icon={CreditCard}>
                   <DetailValue value={employee.employeeId || '—'} emphasize />
                 </DetailCell>
               </GridRow>
@@ -523,7 +581,10 @@ export function EmployeeOverviewPanel({
               />
               <GridRow cols={3} className="border-b-0">
                 <DetailCell label="Annual CTC" icon={Wallet}>
-                  <DetailValue value={employee.annualCtc ? formatInr(employee.annualCtc) : '—'} emphasize />
+                  <DetailValue
+                    value={employee.annualCtc ? formatInr(employee.annualCtc) : '—'}
+                    emphasize
+                  />
                 </DetailCell>
                 <DetailCell label="Bank" icon={Wallet}>
                   <DetailValue value={employee.bankName || '—'} />
@@ -534,10 +595,10 @@ export function EmployeeOverviewPanel({
                 <DetailCell label="IFSC" icon={Wallet}>
                   <DetailValue value={employee.bankIfsc || '—'} />
                 </DetailCell>
-                <DetailCell label="PAN" icon={Contact}>
+                <DetailCell label="PAN" icon={CreditCard}>
                   <DetailValue value={employee.pan || '—'} />
                 </DetailCell>
-                <DetailCell label="UAN" icon={Contact}>
+                <DetailCell label="UAN" icon={CreditCard}>
                   <DetailValue value={employee.uan || '—'} />
                 </DetailCell>
               </GridRow>
@@ -581,12 +642,15 @@ export function EmployeeOverviewPanel({
               icon={MapPin}
             />
             <SnapshotTile
-              label="June attendance"
-              value={`${ATTENDANCE_SUMMARY.present} present`}
+              label="Attendance"
+              value="Open Attendance tab"
               icon={CheckCircle2}
               accent
             />
           </div>
+          <p className="border-t border-gray-100 px-5 py-3 text-center text-xs text-gray-500">
+            Live attendance and leave data are on the Attendance and Leave tabs.
+          </p>
         </Card>
 
         <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl">
@@ -595,28 +659,15 @@ export function EmployeeOverviewPanel({
             description="Available leave across active policies."
             icon={CalendarDays}
           />
-          <ul className="divide-y divide-gray-100 px-6">
-            {LEAVE_BALANCE.map((row) => (
-              <li key={row.id} className="py-4">
-                <div className="mb-2.5 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{row.type}</p>
-                    <p className="mt-0.5 text-xs text-gray-500">{row.used} used this cycle</p>
-                  </div>
-                  <span className="rounded-lg bg-orange-50 px-2.5 py-1 text-sm font-semibold tabular-nums text-orange-900 ring-1 ring-orange-200/70">
-                    {row.balance}
-                    <span className="font-medium text-orange-500"> / {row.entitlement}</span>
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-500"
-                    style={{ width: `${Math.min(100, Math.round((row.balance / row.entitlement) * 100))}%` }}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="px-6 py-8 text-center">
+            <p className="text-sm text-gray-500">Balances and requests sync from the Leave hub.</p>
+            <Link
+              href="/leave"
+              className="mt-3 inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            >
+              Open Leave tab
+            </Link>
+          </div>
         </Card>
       </div>
     </div>
@@ -693,60 +744,106 @@ export function EmployeeDocumentsPanel({ employee, documents = [], filesProps, c
   )
 }
 
-export function EmployeeAttendancePanel() {
+export function EmployeeAttendancePanel({ employee }) {
+  const [monthDate, setMonthDate] = useState(() => new Date())
+  const [records, setRecords] = useState([])
+  const [leaveRequests, setLeaveRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [selectedLog, setSelectedLog] = useState(null)
-  const statusMeta = {
-    present: {
-      label: 'Present',
-      dotClass: 'bg-emerald-400',
-      badgeClass: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
-      checkIn: '09:02 AM',
-      checkOut: '06:08 PM',
-      hours: '9h 6m',
-      note: 'Checked in from office.',
-    },
-    absent: {
-      label: 'Absent',
-      dotClass: 'bg-red-400',
-      badgeClass: 'bg-red-50 text-red-800 ring-red-200',
-      checkIn: '',
-      checkOut: '',
-      hours: '',
-      note: 'No attendance log recorded.',
-    },
-    leave: {
-      label: 'Leave',
-      dotClass: 'bg-orange-300',
-      badgeClass: 'bg-orange-50 text-orange-800 ring-orange-200',
-      checkIn: '',
-      checkOut: '',
-      hours: '',
-      note: 'Marked as approved leave.',
-    },
-    wfh: {
-      label: 'WFH',
-      dotClass: 'bg-blue-400',
-      badgeClass: 'bg-blue-50 text-blue-800 ring-blue-200',
-      checkIn: '09:18 AM',
-      checkOut: '06:01 PM',
-      hours: '8h 43m',
-      note: 'Remote work log submitted.',
-    },
-  }
-  const typeCycle = ['present', 'present', 'leave', 'wfh', 'present', 'absent', 'present']
-  const attendanceLogs = Array.from({ length: 28 }, (_, i) => {
-    const day = i + 1
-    const status = typeCycle[i % typeCycle.length]
-    const meta = statusMeta[status]
-    const date = `2026-06-${String(day).padStart(2, '0')}`
-    return {
-      id: `attendance-${date}`,
-      date,
-      status,
-      ...meta,
-      summary: `${meta.label}${meta.hours ? ` · ${meta.hours}` : ''}`,
+
+  const orgUserId = employee?.membershipId || employee?.id
+  const year = monthDate.getFullYear()
+  const month = monthDate.getMonth() + 1
+  const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const initialCalendarDate = `${year}-${String(month).padStart(2, '0')}-01`
+
+  const loadData = useCallback(async () => {
+    if (!orgUserId) {
+      setRecords([])
+      setLeaveRequests([])
+      setLoading(false)
+      return
     }
-  })
+
+    const from = `${year}-${String(month).padStart(2, '0')}-01`
+    const lastDay = new Date(year, month, 0).getDate()
+    const to = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+    try {
+      setLoading(true)
+      setLoadError('')
+      const [attendanceRows, leaveRows] = await Promise.all([
+        listAttendanceRecords({ organizationUser: orgUserId, from, to, limit: 62 }),
+        listLeaveRequests({ organizationUser: orgUserId, limit: 100 }),
+      ])
+      setRecords(attendanceRows)
+      setLeaveRequests(leaveRows)
+    } catch (error) {
+      setLoadError(error?.message || 'Could not load attendance')
+      setRecords([])
+      setLeaveRequests([])
+    } finally {
+      setLoading(false)
+    }
+  }, [orgUserId, year, month])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    const refresh = () => loadData()
+    window.addEventListener(ATTENDANCE_UPDATED_EVENT, refresh)
+    window.addEventListener(LEAVE_UPDATED_EVENT, refresh)
+    return () => {
+      window.removeEventListener(ATTENDANCE_UPDATED_EVENT, refresh)
+      window.removeEventListener(LEAVE_UPDATED_EVENT, refresh)
+    }
+  }, [loadData])
+
+  const attendanceLogs = useMemo(() => {
+    const rawLogs = buildEmployeeMonthAttendanceLogs({
+      employee,
+      records,
+      leaveRequests,
+      year,
+      month,
+    })
+
+    return rawLogs.map((log) => {
+      const meta = ATTENDANCE_STATUS_META[log.status] || ATTENDANCE_STATUS_META.not_marked
+      return {
+        ...log,
+        label: meta.label,
+        dotClass: meta.dotClass,
+        badgeClass: meta.badgeClass,
+      }
+    })
+  }, [employee, records, leaveRequests, year, month])
+
+  useEffect(() => {
+    if (!attendanceLogs.length) {
+      setSelectedLog(null)
+      return
+    }
+    const today = toDateInputValue(new Date())
+    const todayLog = attendanceLogs.find((log) => log.date === today)
+    setSelectedLog(todayLog || attendanceLogs[0])
+  }, [attendanceLogs])
+
+  const summary = useMemo(
+    () =>
+      attendanceLogs.reduce(
+        (acc, log) => {
+          acc[log.status] = (acc[log.status] || 0) + 1
+          return acc
+        },
+        { present: 0, absent: 0, leave: 0, wfh: 0, not_marked: 0 }
+      ),
+    [attendanceLogs]
+  )
+
   const events = attendanceLogs.map((log) => ({
     id: log.id,
     title: log.label,
@@ -757,19 +854,59 @@ export function EmployeeAttendancePanel() {
       entity: log,
     },
   }))
+
   const activeLog = selectedLog || attendanceLogs[0]
+
+  if (!employee?.membershipId && !employee?.id) {
+    return (
+      <Card variant="elevated" className="rounded-xl p-8">
+        <EmptyState
+          icon={Clock}
+          title="Attendance unavailable"
+          description="This employee must be synced with an organization membership before attendance can load."
+        />
+      </Card>
+    )
+  }
+
+  if (loading && !attendanceLogs.length) {
+    return (
+      <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+        <LoadingSpinner message="Loading attendance..." />
+      </Card>
+    )
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <Card variant="elevated" className="rounded-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-gray-900">June 2026</h3>
-            <p className="text-sm text-gray-500">Calendar view of attendance logs and daily status.</p>
+            <h3 className="text-base font-semibold text-gray-900">{monthLabel}</h3>
+            <p className="text-sm text-gray-500">
+              Calendar view with saved logs and approved leave auto-detected.
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              {summary.present} present · {summary.leave} on leave · {summary.not_marked} not marked
+              · {summary.absent} absent · {summary.wfh} WFH
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <Input
+              type="month"
+              value={`${year}-${String(month).padStart(2, '0')}`}
+              onChange={(event) => {
+                const [nextYear, nextMonth] = String(event.target.value || '')
+                  .split('-')
+                  .map(Number)
+                if (nextYear && nextMonth) {
+                  setMonthDate(new Date(nextYear, nextMonth - 1, 1))
+                }
+              }}
+              className="!w-auto"
+            />
             <div className="flex flex-wrap gap-2">
-              {Object.entries(statusMeta).map(([key, item]) => (
+              {Object.entries(ATTENDANCE_STATUS_META).map(([key, item]) => (
                 <span key={key} className="inline-flex items-center gap-1.5 text-xs text-gray-600">
                   <span className={`h-2.5 w-2.5 rounded-full ${item.dotClass}`} aria-hidden />
                   {item.label}
@@ -785,9 +922,15 @@ export function EmployeeAttendancePanel() {
           </div>
         </div>
 
+        {loadError ? (
+          <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {loadError}
+          </p>
+        ) : null}
+
         <UnifiedWorkspaceCalendar
           events={events}
-          initialDate="2026-06-01"
+          initialDate={initialCalendarDate}
           onEventClick={({ kind, entity }) => {
             if (kind === 'attendance') setSelectedLog(entity)
           }}
@@ -796,55 +939,119 @@ export function EmployeeAttendancePanel() {
       </Card>
 
       <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl">
-        <SidebarPanelHeader title="Marked log" description="Click any calendar entry to inspect the day." icon={Clock} />
-        <div className="space-y-4 p-5">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Selected date</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">
-              {new Date(`${activeLog.date}T00:00:00`).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </p>
+        <SidebarPanelHeader
+          title="Marked log"
+          description="Click any calendar entry to inspect the day."
+          icon={Clock}
+        />
+        {activeLog ? (
+          <div className="space-y-4 p-5">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Selected date
+              </p>
+              <p className="mt-1 text-lg font-semibold text-gray-900">
+                {new Date(`${activeLog.date}T12:00:00`).toLocaleDateString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
+            <span
+              className={`inline-flex rounded-lg px-3 py-1.5 text-sm font-semibold ring-1 ${activeLog.badgeClass}`}
+            >
+              {activeLog.label}
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-gray-500">Check in</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {activeLog.checkIn || '—'}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-gray-500">Check out</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {activeLog.checkOut || '—'}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-gray-500">Hours</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.hours || '—'}</p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs font-medium text-gray-500">Source</p>
+                <p className="mt-1 text-sm font-semibold text-gray-900">
+                  {activeLog.source || 'HR log'}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Note</p>
+              <p className="mt-1 text-sm text-orange-950">{activeLog.note}</p>
+            </div>
           </div>
-          <span
-            className={`inline-flex rounded-lg px-3 py-1.5 text-sm font-semibold ring-1 ${activeLog.badgeClass}`}
-          >
-            {activeLog.label}
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-gray-500">Check in</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.checkIn || '—'}</p>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-gray-500">Check out</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.checkOut || '—'}</p>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-gray-500">Hours</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">{activeLog.hours || '—'}</p>
-            </div>
-            <div className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
-              <p className="text-xs font-medium text-gray-500">Source</p>
-              <p className="mt-1 text-sm font-semibold text-gray-900">HR log</p>
-            </div>
+        ) : (
+          <div className="p-5">
+            <EmptyState
+              icon={Clock}
+              title="No logs"
+              description="No attendance data for this month yet."
+              className="py-4"
+            />
           </div>
-          <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Note</p>
-            <p className="mt-1 text-sm text-orange-950">{activeLog.note}</p>
-          </div>
-        </div>
+        )}
       </Card>
     </div>
   )
 }
 
-export function EmployeeLeavePanel({ leaveRequests }) {
-  const totalEntitlement = LEAVE_BALANCE.reduce((sum, row) => sum + row.entitlement, 0)
-  const totalUsed = LEAVE_BALANCE.reduce((sum, row) => sum + row.used, 0)
-  const totalBalance = LEAVE_BALANCE.reduce((sum, row) => sum + row.balance, 0)
+export function EmployeeLeavePanel({ employee }) {
+  const [leaveRequests, setLeaveRequests] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+
+  const orgUserId = employee?.membershipId || employee?.id
+
+  const loadData = useCallback(async () => {
+    if (!orgUserId) {
+      setLeaveRequests([])
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setLoadError('')
+      const rows = await listLeaveRequests({ organizationUser: orgUserId, limit: 100 })
+      setLeaveRequests(rows)
+    } catch (error) {
+      setLoadError(error?.message || 'Could not load leave requests')
+      setLeaveRequests([])
+    } finally {
+      setLoading(false)
+    }
+  }, [orgUserId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    const refresh = () => loadData()
+    window.addEventListener(LEAVE_UPDATED_EVENT, refresh)
+    return () => window.removeEventListener(LEAVE_UPDATED_EVENT, refresh)
+  }, [loadData])
+
+  const leaveBalance = useMemo(
+    () => computeEmployeeLeaveBalanceRows(employee, leaveRequests),
+    [employee, leaveRequests]
+  )
+
+  const totalEntitlement = leaveBalance.reduce((sum, row) => sum + row.entitlement, 0)
+  const totalUsed = leaveBalance.reduce((sum, row) => sum + row.used, 0)
+  const totalBalance = leaveBalance.reduce((sum, row) => sum + row.balance, 0)
   const pendingRequests = leaveRequests.filter((row) => row.status === 'Pending').length
   const requestColumns = [
     {
@@ -895,9 +1102,13 @@ export function EmployeeLeavePanel({ leaveRequests }) {
           <div>
             <div className="flex items-center gap-2">
               <CalendarDays className="h-5 w-5 text-orange-500" aria-hidden />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">Leave balance</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
+                Leave balance
+              </h3>
             </div>
-            <p className="mt-1.5 text-sm text-gray-500">Entitlement, usage, and available leave for this cycle.</p>
+            <p className="mt-1.5 text-sm text-gray-500">
+              Entitlement, usage, and available leave for this cycle.
+            </p>
           </div>
           <Link
             href="/leave"
@@ -909,7 +1120,9 @@ export function EmployeeLeavePanel({ leaveRequests }) {
 
         <div className="grid grid-cols-1 gap-3 border-b border-gray-100 p-5 sm:grid-cols-3">
           <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">Available</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">
+              Available
+            </p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-orange-950">{totalBalance}</p>
             <p className="text-xs text-orange-700">of {totalEntitlement} days</p>
           </div>
@@ -925,12 +1138,19 @@ export function EmployeeLeavePanel({ leaveRequests }) {
           </div>
         </div>
 
+        {loadError ? (
+          <p className="border-b border-gray-100 px-5 py-3 text-sm text-red-600">{loadError}</p>
+        ) : null}
+
         <div className="grid grid-cols-1 gap-4 p-5 lg:grid-cols-3">
-          {LEAVE_BALANCE.map((row) => {
+          {leaveBalance.map((row) => {
             const usedPercent = Math.min(100, Math.round((row.used / row.entitlement) * 100))
             const balancePercent = Math.min(100, Math.round((row.balance / row.entitlement) * 100))
             return (
-              <div key={row.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div
+                key={row.id}
+                className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-lg font-bold text-gray-900">{row.type}</p>
@@ -966,7 +1186,9 @@ export function EmployeeLeavePanel({ leaveRequests }) {
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-4">
           <div>
             <SidebarCardTitle title="Recent requests" icon={CalendarDays} />
-            <p className="-mt-2 text-sm text-gray-500">Employee-specific leave history and approvals.</p>
+            <p className="-mt-2 text-sm text-gray-500">
+              Employee-specific leave history and approvals.
+            </p>
           </div>
           <Link
             href="/leave"
@@ -977,7 +1199,12 @@ export function EmployeeLeavePanel({ leaveRequests }) {
         </div>
         {leaveRequests.length ? (
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <Table variant="modernEmbedded" columns={requestColumns} data={leaveRequests} keyField="id" />
+            <Table
+              variant="modernEmbedded"
+              columns={requestColumns}
+              data={leaveRequests}
+              keyField="id"
+            />
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/70 px-4 py-8 text-center">
@@ -999,70 +1226,122 @@ export function EmployeeLeavePanel({ leaveRequests }) {
   )
 }
 
-export function EmployeePayrollPanel({ payslips }) {
+export function EmployeePayrollPanel({ employee }) {
+  const router = useRouter()
+  const [payslips, setPayslips] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+
+  const orgUserId = employee?.membershipId || employee?.id
+
+  const loadData = useCallback(async () => {
+    if (!orgUserId) {
+      setPayslips([])
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setLoadError('')
+      const rows = await listEmployeePayrollLineItems(orgUserId)
+      setPayslips(sortEmployeePayrollHistory(rows.map(mapEmployeePayrollHistoryRow)))
+    } catch (error) {
+      setLoadError(error?.message || 'Could not load payroll history')
+      setPayslips([])
+    } finally {
+      setLoading(false)
+    }
+  }, [orgUserId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
   const latestPayslip = payslips[0] || null
   const totalNet = payslips.reduce((sum, row) => sum + Number(row.net || 0), 0)
   const totalDeductions = payslips.reduce((sum, row) => sum + Number(row.deductions || 0), 0)
-  const columns = [
-    {
-      key: 'month',
-      label: 'MONTH',
-      width: 140,
-      render: (_, row) => <TableCellText value={row.month} className="font-medium" />,
+
+  const handleView = useCallback(
+    (row) => {
+      router.push(employeePayrollViewHref(row, employee))
     },
-    {
-      key: 'gross',
-      label: 'GROSS',
-      width: 110,
-      render: (_, row) => <TableCellText value={formatInr(row.gross)} className="tabular-nums" />,
-    },
-    {
-      key: 'deductions',
-      label: 'DEDUCTIONS',
-      width: 110,
-      render: (_, row) => <TableCellText value={formatInr(row.deductions)} className="tabular-nums" />,
-    },
-    {
-      key: 'net',
-      label: 'NET',
-      width: 110,
-      render: (_, row) => <TableCellText value={formatInr(row.net)} className="tabular-nums font-semibold" />,
-    },
-    {
-      key: 'status',
-      label: 'STATUS',
-      width: 100,
-      render: (_, row) => (
-        <Badge variant={employeeStatusBadgeVariant(row.status)} size="sm" className="capitalize">
-          {row.status}
-        </Badge>
-      ),
-    },
-    {
-      key: 'actions',
-      label: '',
-      width: 120,
-      render: () => (
-        <Link
-          href="/payroll"
-          className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
-        >
-          View run
-        </Link>
-      ),
-    },
-  ]
+    [router, employee]
+  )
+
+  const handleDeleteRequest = useCallback((row) => {
+    setDeleteTarget(row)
+    setDeleteOpen(true)
+  }, [])
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget?.lineItemId) return
+    try {
+      setDeleting(true)
+      setDeletingId(deleteTarget.lineItemId)
+      setLoadError('')
+      await deletePayrollLineItem(deleteTarget.lineItemPk || deleteTarget.lineItemId)
+      setDeleteOpen(false)
+      setDeleteTarget(null)
+      await loadData()
+    } catch (error) {
+      setLoadError(error?.message || 'Failed to remove payroll record')
+    } finally {
+      setDeleting(false)
+      setDeletingId(null)
+    }
+  }, [deleteTarget, loadData])
+
+  const columns = useMemo(
+    () =>
+      buildEmployeePayrollColumns({
+        onView: handleView,
+        onDelete: handleDeleteRequest,
+        deletingId,
+      }),
+    [handleView, handleDeleteRequest, deletingId]
+  )
+
+  if (loading) {
+    return (
+      <Card variant="elevated" className="flex justify-center rounded-xl p-12">
+        <LoadingSpinner message="Loading payroll history…" />
+      </Card>
+    )
+  }
+
+  if (!orgUserId) {
+    return (
+      <Card variant="elevated" className="rounded-xl p-8">
+        <EmptyState
+          icon={Wallet}
+          title="Payroll unavailable"
+          description="This employee is not linked to an organization membership yet."
+          className="py-2"
+        />
+      </Card>
+    )
+  }
 
   return (
     <div className="space-y-4">
+      {loadError ? <p className="text-sm text-red-600">{loadError}</p> : null}
       <Card variant="elevated" padding={false} className="overflow-hidden rounded-xl">
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 bg-gradient-to-r from-orange-50/80 via-white to-white px-6 py-5">
           <div>
             <div className="flex items-center gap-2">
               <Wallet className="h-5 w-5 text-orange-500" aria-hidden />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">Payroll summary</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
+                Payroll summary
+              </h3>
             </div>
-            <p className="mt-1.5 text-sm text-gray-500">Latest pay, deductions, and payslip history.</p>
+            <p className="mt-1.5 text-sm text-gray-500">
+              Latest pay, deductions, and payslip history.
+            </p>
           </div>
           <Link
             href="/payroll"
@@ -1080,14 +1359,18 @@ export function EmployeePayrollPanel({ payslips }) {
             <p className="mt-1 text-2xl font-bold tabular-nums text-orange-950">
               {latestPayslip ? formatInr(latestPayslip.net) : '—'}
             </p>
-            <p className="text-xs text-orange-700">{latestPayslip?.month || 'No payroll run yet'}</p>
+            <p className="text-xs text-orange-700">
+              {latestPayslip?.month || 'No payroll run yet'}
+            </p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
               <TrendingDown className="h-4 w-4" aria-hidden />
               Deductions
             </div>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{formatInr(totalDeductions)}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+              {formatInr(totalDeductions)}
+            </p>
             <p className="text-xs text-gray-500">across {payslips.length} payslips</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
@@ -1095,14 +1378,82 @@ export function EmployeePayrollPanel({ payslips }) {
               <Wallet className="h-4 w-4" aria-hidden />
               Net paid
             </div>
-            <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{formatInr(totalNet)}</p>
+            <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">
+              {formatInr(totalNet)}
+            </p>
             <p className="text-xs text-gray-500">recorded in history</p>
           </div>
         </div>
       </Card>
-      <HRDataTableCard>
-        <Table variant="modernEmbedded" columns={columns} data={payslips} keyField="month" />
-      </HRDataTableCard>
+      {payslips.length ? (
+        <>
+          <TableResultsCount count={payslips.length} />
+          <HRDataTableCard>
+            <Table
+              variant="modernEmbedded"
+              columns={columns}
+              data={payslips}
+              keyField="id"
+              onRowClick={(row) => handleView(row)}
+            />
+          </HRDataTableCard>
+        </>
+      ) : (
+        <Card variant="elevated" className="rounded-xl p-8">
+          <EmptyState
+            icon={Wallet}
+            title="No payroll history"
+            description="Payroll runs for this employee will appear here after the first run is calculated."
+            className="py-2"
+            action={
+              <Button as={Link} href="/payroll" variant="secondary" size="sm">
+                Open payroll hub
+              </Button>
+            }
+          />
+        </Card>
+      )}
+
+      <Modal
+        isOpen={deleteOpen}
+        onClose={() => {
+          if (deleting) return
+          setDeleteOpen(false)
+          setDeleteTarget(null)
+        }}
+        title="Remove payroll record"
+        size="sm"
+      >
+        <p className="text-sm text-gray-600">
+          Remove{' '}
+          <span className="font-semibold text-gray-900">
+            {deleteTarget?.month || 'this payroll record'}
+          </span>{' '}
+          from the payroll run? This cannot be undone.
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={deleting}
+            onClick={() => {
+              setDeleteOpen(false)
+              setDeleteTarget(null)
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="!bg-red-600 hover:!bg-red-700"
+            disabled={deleting}
+            onClick={handleDeleteConfirm}
+          >
+            {deleting ? 'Removing…' : 'Remove'}
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -1120,9 +1471,13 @@ export function EmployeePerformancePanel({ okrs }) {
           <div>
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-orange-500" aria-hidden />
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">Performance snapshot</h3>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
+                Performance snapshot
+              </h3>
             </div>
-            <p className="mt-1.5 text-sm text-gray-500">Review score, goal progress, and current OKRs.</p>
+            <p className="mt-1.5 text-sm text-gray-500">
+              Review score, goal progress, and current OKRs.
+            </p>
           </div>
           <Link
             href="/performance"
@@ -1141,12 +1496,16 @@ export function EmployeePerformancePanel({ okrs }) {
             <p className="text-xs text-orange-700">Reviewed by Ravi Menon</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Goal progress</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Goal progress
+            </p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{avgProgress}%</p>
             <p className="text-xs text-gray-500">average completion</p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Near completion</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Near completion
+            </p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{completedGoals}</p>
             <p className="text-xs text-gray-500">goals at 90%+</p>
           </div>
@@ -1157,14 +1516,19 @@ export function EmployeePerformancePanel({ okrs }) {
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-4">
           <div>
             <SidebarCardTitle title="Goals & OKRs" icon={Target} />
-            <p className="-mt-2 text-sm text-gray-500">Active objectives for the current review cycle.</p>
+            <p className="-mt-2 text-sm text-gray-500">
+              Active objectives for the current review cycle.
+            </p>
           </div>
         </div>
 
         {okrs.length ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {okrs.map((o) => (
-              <div key={o.title} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div
+                key={o.title}
+                className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm"
+              >
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <p className="text-sm font-semibold leading-snug text-gray-900">{o.title}</p>
                   <span className="rounded-lg bg-orange-50 px-2 py-1 text-xs font-bold tabular-nums text-orange-900 ring-1 ring-orange-200/70">
@@ -1173,7 +1537,11 @@ export function EmployeePerformancePanel({ okrs }) {
                 </div>
                 <ProgressBar value={o.progress} />
                 <p className="mt-2 text-xs text-gray-500">
-                  {o.progress >= 90 ? 'Nearly complete' : o.progress >= 50 ? 'On track' : 'Needs attention'}
+                  {o.progress >= 90
+                    ? 'Nearly complete'
+                    : o.progress >= 50
+                      ? 'On track'
+                      : 'Needs attention'}
                 </p>
               </div>
             ))}
@@ -1235,7 +1603,12 @@ export function EmployeeActivityPanel({ employee, fallbackActivities = [] }) {
 
   const activityCount = activities.length
   const lastActivity = activities[0]?.createdAt
-    ? new Date(activities[0].createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    ? new Date(activities[0].createdAt).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
     : '—'
   const appCounts = activities.reduce((acc, row) => {
     const type = String(row.subjectType || 'workspace').toLowerCase()
@@ -1256,9 +1629,17 @@ export function EmployeeActivityPanel({ employee, fallbackActivities = [] }) {
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 pb-4">
           <div>
             <SidebarCardTitle title="Activity summary" icon={Activity} />
-            <p className="-mt-2 text-sm text-gray-500">User activity across CRM, PM, and workspace apps.</p>
+            <p className="-mt-2 text-sm text-gray-500">
+              User activity across CRM, PM, and workspace apps.
+            </p>
           </div>
-          <Button type="button" variant="secondary" size="sm" onClick={loadActivities} disabled={loading}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={loadActivities}
+            disabled={loading}
+          >
             Refresh
           </Button>
         </div>
@@ -1273,7 +1654,10 @@ export function EmployeeActivityPanel({ employee, fallbackActivities = [] }) {
           </div>
           {Object.entries(appCounts).length ? (
             Object.entries(appCounts).map(([app, count]) => (
-              <div key={app} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+              <div
+                key={app}
+                className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5"
+              >
                 <span className="text-xs font-medium text-gray-600">{app}</span>
                 <span className="text-xs font-semibold tabular-nums text-gray-800">{count}</span>
               </div>
@@ -1289,7 +1673,9 @@ export function EmployeeActivityPanel({ employee, fallbackActivities = [] }) {
       <Card variant="elevated" className="rounded-xl space-y-4 lg:col-span-3">
         <div className="border-b border-gray-100 pb-4">
           <SidebarCardTitle title="Timeline" icon={Clock} />
-          <p className="-mt-2 text-sm text-gray-500">Same activity timeline style used by CRM and PM details.</p>
+          <p className="-mt-2 text-sm text-gray-500">
+            Same activity timeline style used by CRM and PM details.
+          </p>
         </div>
         <ActivitiesTimeline items={activities} loading={loading} error={error} />
       </Card>

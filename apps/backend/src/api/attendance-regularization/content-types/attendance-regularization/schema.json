@@ -1,0 +1,63 @@
+{
+  "kind": "collectionType",
+  "collectionName": "attendance_regularizations",
+  "info": {
+    "singularName": "attendance-regularization",
+    "pluralName": "attendance-regularizations",
+    "displayName": "Attendance Regularization",
+    "description": "Employee attendance correction requests"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "attendanceDate": {
+      "type": "date",
+      "required": true
+    },
+    "requestedStatus": {
+      "type": "enumeration",
+      "enum": ["present", "wfh"],
+      "default": "present"
+    },
+    "clockIn": {
+      "type": "string"
+    },
+    "clockOut": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "text",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "approved", "rejected"],
+      "default": "pending"
+    },
+    "hrComment": {
+      "type": "text"
+    },
+    "organizationUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization-user.organization-user"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "reviewedByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

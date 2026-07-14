@@ -122,8 +122,13 @@ export async function createSalaryStructure(payload) {
 }
 
 export async function getSalaryStructureById(id) {
-  const response = await request(`/salary-structures/${id}`, { method: 'GET' })
-  return response?.data ? mapSalaryStructure(response.data) : null
+  try {
+    const response = await request(`/salary-structures/${id}`, { method: 'GET' })
+    return response?.data ? mapSalaryStructure(response.data) : null
+  } catch {
+    const list = await listSalaryStructures()
+    return list.find((row) => String(row.id) === String(id)) || null
+  }
 }
 
 export async function updateSalaryStructure(id, payload) {
@@ -182,13 +187,47 @@ export async function listPayrollLineItems(runId) {
   return rows
 }
 
+export async function listEmployeePayrollLineItems(organizationUserId) {
+  const query = buildQueryString({ organizationUser: organizationUserId, limit: 100 })
+  const rows = normalizeRows(await request(`/payroll-line-items?${query}`, { method: 'GET' }))
+  return rows
+}
+
 export async function deletePayrollLineItem(id) {
   await request(`/payroll-line-items/${id}`, { method: 'DELETE' })
 }
 
-export async function getPayrollLineItemById(id) {
-  const response = await request(`/payroll-line-items/${id}`, { method: 'GET' })
-  return response?.data || null
+async function findPayrollLineItemInRows(rows, id) {
+  return rows.find((row) => {
+    if (String(row.id) === String(id)) return true
+    if (row.documentId && String(row.documentId) === String(id)) return true
+    return false
+  }) || null
+}
+
+export async function resolvePayrollLineItem(id, { organizationUserId } = {}) {
+  if (id == null || id === '') return null
+
+  try {
+    const response = await request(`/payroll-line-items/${id}`, { method: 'GET' })
+    if (response?.data) return response.data
+  } catch {
+    // Fall through to list lookup when direct fetch fails.
+  }
+
+  if (organizationUserId) {
+    const employeeRows = await listEmployeePayrollLineItems(organizationUserId)
+    const fromEmployee = await findPayrollLineItemInRows(employeeRows, id)
+    if (fromEmployee) return fromEmployee
+  }
+
+  const query = buildQueryString({ limit: 200 })
+  const rows = normalizeRows(await request(`/payroll-line-items?${query}`, { method: 'GET' }))
+  return findPayrollLineItemInRows(rows, id)
+}
+
+export async function getPayrollLineItemById(id, options = {}) {
+  return resolvePayrollLineItem(id, options)
 }
 
 export async function updatePayrollLineItem(id, payload) {
@@ -202,9 +241,12 @@ export async function createPayrollLineItem(payload) {
 }
 
 export async function listPayslips({ payrollRunId } = {}) {
-  const query = buildQueryString({ payrollRun: payrollRunId, limit: 1000 })
+  const query = buildQueryString({ payrollRun: payrollRunId, limit: 200 })
   const rows = normalizeRows(await request(`/payslips?${query}`, { method: 'GET' }))
-  return rows
+  return rows.map((row) => ({
+    ...row,
+    payrollLineItemId: relationId(row.payrollLineItem),
+  }))
 }
 
 export async function generatePayslip({ payrollRunId, payrollLineItemId }) {
@@ -215,8 +257,51 @@ export async function generatePayslip({ payrollRunId, payrollLineItemId }) {
   return response?.data || null
 }
 
+/** Generate payslips for multiple payroll line items in the same run (sequential). */
+export async function generateAllPayslips({ payrollRunId, payrollLineItemIds = [], onProgress }) {
+  const ids = payrollLineItemIds.filter(Boolean)
+  const results = []
+  for (let index = 0; index < ids.length; index += 1) {
+    const payrollLineItemId = ids[index]
+    const row = await generatePayslip({ payrollRunId, payrollLineItemId })
+    results.push(row)
+    onProgress?.({ current: index + 1, total: ids.length, payrollLineItemId })
+  }
+  return results
+}
+
 export function getPayslipDownloadUrl(payslipId) {
   return `${API_BASE_URL}/api/payslips/${payslipId}/download`
+}
+
+export async function downloadPayslip(payslipId, { filename } = {}) {
+  const token = getToken()
+  const orgId = getOrgId()
+  const response = await fetch(`${API_BASE_URL}/api/payslips/${payslipId}/download`, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(orgId ? { 'X-Organization-Id': orgId } : {}),
+    },
+  })
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    const err = data?.error || data
+    throw new Error(err?.message || (typeof err === 'string' ? err : `Download failed (HTTP ${response.status})`))
+  }
+
+  const blob = await response.blob()
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const match = disposition.match(/filename="?([^";]+)"?/)
+  const resolvedName = filename || match?.[1] || `payslip-${payslipId}.pdf`
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = resolvedName
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
 }
 
 export async function listEmployeeProfiles() {

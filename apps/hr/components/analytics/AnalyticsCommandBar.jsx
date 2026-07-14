@@ -2,6 +2,13 @@
 
 import { Download, CalendarRange } from 'lucide-react'
 import { Button, Card } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
+
+const PERIOD_OPTIONS = [
+  { value: 'fy2526', label: 'FY 2025–26' },
+  { value: 'last12', label: 'Last 12 months' },
+  { value: 'q2', label: 'Q2 2026' },
+]
 
 export default function AnalyticsCommandBar({
   tabs,
@@ -37,19 +44,14 @@ export default function AnalyticsCommandBar({
           })}
         </nav>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-lg border border-white/60 bg-white/70 px-3 py-2 text-sm text-gray-700 shadow-sm">
-            <CalendarRange className="h-4 w-4 text-orange-500" aria-hidden />
-            <select
-              value={period}
-              onChange={(e) => onPeriodChange(e.target.value)}
-              className="bg-transparent text-sm font-medium focus:outline-none"
-              aria-label="Reporting period"
-            >
-              <option value="fy2526">FY 2025–26</option>
-              <option value="last12">Last 12 months</option>
-              <option value="q2">Q2 2026</option>
-            </select>
-          </div>
+          <Select
+            value={period}
+            onChange={onPeriodChange}
+            options={PERIOD_OPTIONS}
+            allowEmpty={false}
+            icon={CalendarRange}
+            containerClassName="min-w-[160px]"
+          />
           <Button variant="secondary" size="sm" onClick={onExport} className="gap-2">
             <Download className="h-4 w-4" />
             Export

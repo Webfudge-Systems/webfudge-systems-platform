@@ -14,7 +14,7 @@ import { booksPillTrackClassName, booksPillTrackHugClassName, booksModernToolbar
  * - pill — white pill-shaped track, evenly spaced tabs; active = solid orange pill, inactive = text only (detail pages)
  */
 export function TabsWithActions({
-  tabs,
+  tabs = [],
   activeTab,
   onTabChange,
 
@@ -60,6 +60,9 @@ export function TabsWithActions({
 
   /** Rendered immediately after the tab buttons (e.g. list/table/kanban icons), still left of search/actions */
   afterTabs = null,
+
+  /** When false, only the action toolbar (search, add, filter, etc.) is rendered — no tab buttons. */
+  showTabs = true,
 
   // Styling
   className,
@@ -398,6 +401,9 @@ export function TabsWithActions({
     </div>
   )
 
+  const showTabNav = showTabs && tabs.length > 0
+  const toolbarOnly = !showTabs && hasRightPanel && !isPill
+
   if (isPill) {
     return (
       <div
@@ -409,7 +415,7 @@ export function TabsWithActions({
         )}
         {...props}
       >
-        {tabRow}
+        {showTabNav ? tabRow : null}
         {hasRightPanel ? rightPanel : null}
       </div>
     )
@@ -417,10 +423,14 @@ export function TabsWithActions({
 
   return (
     <div
-      className={clsx(containerClasses[variant] || containerClasses.glass, className)}
+      className={clsx(
+        containerClasses[variant] || containerClasses.glass,
+        toolbarOnly && 'ml-auto w-fit max-w-full',
+        className
+      )}
       {...props}
     >
-      {tabRow}
+      {showTabNav ? tabRow : null}
       {rightPanel}
     </div>
   )

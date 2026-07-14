@@ -13,6 +13,17 @@ import {
   LifeBuoy,
   Settings,
 } from 'lucide-react'
+import { HR_PAYROLL_NAV, isPayrollOverviewActive, isPayrollSectionActive } from './payrollNavigation'
+import {
+  HR_PERFORMANCE_NAV,
+  isPerformanceGoalsActive,
+  isPerformanceSectionActive,
+} from './performanceNavigation'
+import {
+  HR_EXPENSES_NAV,
+  isExpensesClaimsActive,
+  isExpensesSectionActive,
+} from './expensesNavigation'
 
 /** Main 2×3 navigate grid — aligned with PM sidebar */
 export const HR_NAVIGATE_TILES = [
@@ -53,12 +64,12 @@ export const HR_NAVIGATE_SECTIONS = [
   {
     id: 'payroll',
     label: 'Payroll',
-    children: [{ id: 'payroll-runs', label: 'Payroll', href: '/payroll', icon: Wallet }],
+    children: HR_PAYROLL_NAV,
   },
   {
     id: 'expenses',
     label: 'Expenses',
-    children: [{ id: 'expense-claims', label: 'Expenses', href: '/expenses', icon: Receipt }],
+    children: HR_EXPENSES_NAV,
   },
   {
     id: 'recruitment',
@@ -68,7 +79,7 @@ export const HR_NAVIGATE_SECTIONS = [
   {
     id: 'performance',
     label: 'Performance',
-    children: [{ id: 'performance-reviews', label: 'Performance', href: '/performance', icon: Target }],
+    children: HR_PERFORMANCE_NAV,
   },
 ]
 
@@ -100,6 +111,9 @@ export const HR_PRIMARY_BOX_ITEMS = HR_NAVIGATE_TILES
 export function isNavItemActive(pathname, href) {
   if (!href) return false
   if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/'
+  if (href === '/payroll') return isPayrollOverviewActive(pathname)
+  if (href === '/performance') return isPerformanceGoalsActive(pathname)
+  if (href === '/expenses') return isExpensesClaimsActive(pathname)
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -114,6 +128,15 @@ export function isEmployeeSectionActive(pathname) {
 export function tileIsActive(pathname, item) {
   if (item.id === 'employees') {
     return isEmployeeSectionActive(pathname)
+  }
+  if (item.id === 'payroll') {
+    return isPayrollSectionActive(pathname)
+  }
+  if (item.id === 'performance') {
+    return isPerformanceSectionActive(pathname)
+  }
+  if (item.id === 'expenses') {
+    return isExpensesSectionActive(pathname)
   }
   return item.href ? isNavItemActive(pathname, item.href) : false
 }

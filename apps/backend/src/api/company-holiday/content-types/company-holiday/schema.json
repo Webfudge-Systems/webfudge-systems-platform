@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "company_holidays",
+  "info": {
+    "singularName": "company-holiday",
+    "pluralName": "company-holidays",
+    "displayName": "Company Holiday",
+    "description": "Organization-wide declared holidays"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

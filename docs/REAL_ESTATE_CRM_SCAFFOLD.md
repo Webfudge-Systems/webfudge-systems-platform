@@ -12,7 +12,7 @@ Stage 1 of a six-stage build. This stage delivers the app shell, auth/RBAC wirin
 
 - **New app:** `apps/real-estate-crm` (Next.js 14 App Router, TypeScript, Tailwind)
 - **Backend edits:**
-  - `apps/backend/config/middlewares.js` — CORS origin `http://localhost:3009`
+  - `apps/backend/config/middlewares.js` — CORS origin `http://localhost:3010`
   - `apps/backend/src/constants/rbac-app-matrix.js` — new `realestate` app matrix
   - `apps/backend/src/utils/rbac.js` — `realestate` registered in `APP_MODULES`
 - **Root:** `package.json` — `dev:recrm` script
@@ -68,7 +68,7 @@ Frontend gating mirrors the CRM app: `components/LayoutContent.tsx` blocks route
 ## How to run
 
 ```bash
-npm run dev:recrm        # from repo root → http://localhost:3009
+npm run dev:recrm        # from repo root → http://localhost:3010
 # or
 npm run dev --workspace=@webfudge/real-estate-crm
 ```

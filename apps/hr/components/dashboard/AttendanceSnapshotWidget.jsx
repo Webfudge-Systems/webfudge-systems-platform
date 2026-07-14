@@ -106,12 +106,16 @@ function AttendanceDonutChart({ snap }) {
   )
 }
 
-export default function AttendanceSnapshotWidget({ activeEmployeeCount, className = '' }) {
+export default function AttendanceSnapshotWidget({
+  activeEmployeeCount,
+  attendanceSnapshot = null,
+  className = '',
+}) {
   const router = useRouter()
-  const snap = useMemo(
-    () => buildAttendanceSnapshot(activeEmployeeCount),
-    [activeEmployeeCount]
-  )
+  const snap = useMemo(() => {
+    if (attendanceSnapshot) return attendanceSnapshot
+    return buildAttendanceSnapshot(activeEmployeeCount)
+  }, [attendanceSnapshot, activeEmployeeCount])
 
   return (
     <HRDashboardInsightShell

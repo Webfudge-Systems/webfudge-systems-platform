@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { PieChart as PieChartIcon } from 'lucide-react'
 import { EmptyState } from '@webfudge/ui'
+import { Select } from '../shared/HRSelect'
 import HRDashboardInsightShell, { HRInsightCountBadge } from './HRDashboardInsightShell'
 import HRDepartmentDistributionDonut, {
   HR_SEGMENT_COLORS,
@@ -73,20 +74,14 @@ export default function DepartmentDistributionChart({ employees, className = '' 
       subtitle={`${total} active · ${slices.length} teams`}
       action={
         slices.length > 1 ? (
-          <label className="flex items-center">
-            <span className="sr-only">Sort departments</span>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <Select
+            value={sortOrder}
+            onChange={setSortOrder}
+            options={SORT_OPTIONS}
+            allowEmpty={false}
+            containerClassName="w-[120px]"
+            className="py-1 text-[11px]"
+          />
         ) : null
       }
     >

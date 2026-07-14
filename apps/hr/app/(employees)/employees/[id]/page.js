@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Edit, Mail, Trash2 } from 'lucide-react'
 import { Button, Card, EmptyState, LoadingSpinner, Modal, TabsWithActions } from '@webfudge/ui'
@@ -20,7 +20,6 @@ import {
 } from '../../../../components/employees/EmployeeDetailTabPanels'
 import { EMPLOYEE_DOCUMENTS, EMPLOYEE_OKRS } from '../../../../lib/mock-data/employees'
 import { EMPLOYEE_ACTIVITIES } from '../../../../lib/mock-data/activities'
-import { LEAVE_REQUESTS } from '../../../../lib/mock-data/leave'
 import { getSyncedEmployeeById, softDeleteEmployee, updateEmployeeFromForm } from '../../../../lib/employeeSyncService'
 import { listSalaryStructures, upsertEmployeeProfileByMembership } from '../../../../lib/payrollSyncService'
 import { entityFilesPanelProps } from '../../../../lib/entityMedia'
@@ -35,16 +34,12 @@ const TABS = [
   { id: 'activity', label: 'Activity' },
 ]
 
-const PAYSLIPS = [
-  { month: 'June 2026', gross: 95000, deductions: 20513, net: 74487, status: 'Draft' },
-  { month: 'May 2026', gross: 95000, deductions: 20100, net: 74900, status: 'Paid' },
-  { month: 'April 2026', gross: 95000, deductions: 19800, net: 75200, status: 'Paid' },
-]
-
 export default function EmployeeProfilePage() {
   const params = useParams()
   const router = useRouter()
-  const [tab, setTab] = useState('overview')
+  const searchParams = useSearchParams()
+  const initialTab = TABS.some((item) => item.id === searchParams.get('tab')) ? searchParams.get('tab') : 'overview'
+  const [tab, setTab] = useState(initialTab)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [employee, setEmployee] = useState(null)
   const [departmentCatalog, setDepartmentCatalog] = useState([])
@@ -58,6 +53,13 @@ export default function EmployeeProfilePage() {
   const [savingEmployeeInfo, setSavingEmployeeInfo] = useState(false)
   const [employeeInfoSaveError, setEmployeeInfoSaveError] = useState('')
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const requestedTab = searchParams.get('tab')
+    if (requestedTab && TABS.some((item) => item.id === requestedTab)) {
+      setTab(requestedTab)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     let cancelled = false
@@ -136,7 +138,7 @@ export default function EmployeeProfilePage() {
     createdAt: new Date().toISOString(),
     actor: { username: 'System' },
   }))
-  const leaveRequests = LEAVE_REQUESTS.filter((r) => r.employeeId === employee.id)
+  const leaveRequests = []
 
   const handleDelete = async () => {
     try {
@@ -275,9 +277,9 @@ export default function EmployeeProfilePage() {
       {tab === 'documents' && (
         <EmployeeDocumentsPanel employee={employee} documents={docs} filesProps={entityFilesPanelProps} />
       )}
-      {tab === 'attendance' && <EmployeeAttendancePanel />}
-      {tab === 'leave' && <EmployeeLeavePanel leaveRequests={leaveRequests} />}
-      {tab === 'payroll' && <EmployeePayrollPanel payslips={PAYSLIPS} />}
+      {tab === 'attendance' && <EmployeeAttendancePanel employee={employee} />}
+      {tab === 'leave' && <EmployeeLeavePanel employee={employee} />}
+      {tab === 'payroll' && <EmployeePayrollPanel employee={employee} />}
       {tab === 'performance' && <EmployeePerformancePanel okrs={okrs} />}
       {tab === 'activity' && <EmployeeActivityPanel employee={employee} fallbackActivities={activities} />}
 

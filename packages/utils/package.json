@@ -9,7 +9,8 @@
     "./formatters": "./src/formatters/index.js",
     "./formatters/calendarDate": "./src/formatters/calendarDate.js",
     "./crmShared": "./src/crmShared/index.js",
-    "./api/paginateStrapiList": "./src/api/paginateStrapiList.js"
+    "./api/paginateStrapiList": "./src/api/paginateStrapiList.js",
+    "./hrPerformance": "./src/hrPerformance/index.js"
   },
   "scripts": {
     "lint": "eslint src",

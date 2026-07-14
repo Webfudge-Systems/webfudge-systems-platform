@@ -1,17 +1,17 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CreditCard, Receipt, TrendingUp, Users } from 'lucide-react'
 import BooksListPageShell from '@/app/_components/BooksListPageShell'
 import BooksDeleteItemModal from '@/app/_components/BooksDeleteItemModal'
 import { useBooksPurchaseDocTableColumns } from '@/app/_components/booksPurchasesTableColumns'
-import { useBooksPaymentsMadeStore } from '@/lib/mock-data/purchases/stores'
 import type { PurchaseDocRow } from '@/lib/mock-data/purchases/seeds'
 import {
   countPurchaseDocTab,
   matchesPurchaseDocStatuses,
   purchaseDocStatusOptions,
 } from '@/lib/purchases/listHelpers'
+import { deletePaymentMade, listPaymentsMade } from '@/lib/paymentsMadeSync'
 
 const BASE = '/purchases/payments-made'
 const STATUS_GROUPS = {
@@ -20,13 +20,38 @@ const STATUS_GROUPS = {
 }
 
 export default function PaymentsMadePage() {
-  const { paymentsMade, deleteRecord, getById } = useBooksPaymentsMadeStore()
+  const [paymentsMade, setPaymentsMade] = useState<PurchaseDocRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
 
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setLoadError('')
+      const rows = await listPaymentsMade()
+      setPaymentsMade(rows)
+    } catch (err) {
+      setPaymentsMade([])
+      setLoadError(err instanceof Error ? err.message : 'Failed to load payments')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
   const vendorCount = useMemo(
-    () => new Set(paymentsMade.map((p) => p.vendor)).size,
-    [paymentsMade]
+    () => new Set(paymentsMade.map((p) => p.vendor).filter((v) => v && v !== '—')).size,
+    [paymentsMade],
+  )
+
+  const reimbursementCount = useMemo(
+    () => paymentsMade.filter((p) => p.vendor === 'Employee reimbursement').length,
+    [paymentsMade],
   )
 
   const handleRequestDelete = useCallback((row: PurchaseDocRow) => setDeleteId(row.id), [])
@@ -41,26 +66,36 @@ export default function PaymentsMadePage() {
     if (deleteId == null || deletingId) return
     try {
       setDeletingId(deleteId)
-      deleteRecord(deleteId)
+      await deletePaymentMade(deleteId)
       setDeleteId(null)
+      await loadData()
     } finally {
       setDeletingId(null)
     }
-  }, [deleteId, deleteRecord, deletingId])
+  }, [deleteId, deletingId, loadData])
 
   const tabs = useMemo(
     () => [
       { key: 'all', label: 'All Payments', count: paymentsMade.length },
       { key: 'paid', label: 'Paid', count: countPurchaseDocTab(paymentsMade, 'paid', STATUS_GROUPS) },
     ],
-    [paymentsMade]
+    [paymentsMade],
   )
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm text-gray-500">
+        Loading payments…
+      </div>
+    )
+  }
 
   return (
     <>
+      {loadError ? <p className="mb-4 text-sm text-red-600">{loadError}</p> : null}
       <BooksListPageShell
         title="Payments Made"
-        subtitle="Track outgoing vendor payments."
+        subtitle="Track outgoing vendor and employee reimbursement payments."
         kpis={[
           {
             title: 'All Payments',
@@ -74,8 +109,13 @@ export default function PaymentsMadePage() {
             subtitle: 'Completed payments',
             icon: Receipt,
           },
-          { title: 'This Month', value: paymentsMade.length, subtitle: 'May 2026', icon: TrendingUp },
-          { title: 'Vendors', value: vendorCount, subtitle: `${vendorCount} vendors`, icon: Users },
+          {
+            title: 'Reimbursements',
+            value: reimbursementCount,
+            subtitle: 'From HR expense payouts',
+            icon: TrendingUp,
+          },
+          { title: 'Vendors', value: vendorCount, subtitle: `${vendorCount} payees`, icon: Users },
         ]}
         tabs={tabs}
         tabFilter={(row, tab) => matchesPurchaseDocStatuses(row, tab, STATUS_GROUPS)}
@@ -87,7 +127,7 @@ export default function PaymentsMadePage() {
         onRowClickHref={(row) => `${BASE}/${row.id}`}
         emptyIcon={CreditCard}
         emptyTitle="No payments yet"
-        emptyDescription="Payments will appear here when recorded."
+        emptyDescription="HR expense payouts and vendor payments will appear here when recorded."
         addHref={`${BASE}/new`}
         addLabel="Record payment"
         searchPlaceholder="Search payments..."
@@ -96,7 +136,7 @@ export default function PaymentsMadePage() {
       />
       <BooksDeleteItemModal
         isOpen={deleteId != null}
-        itemName={getById(deleteId ?? 0)?.number}
+        itemName={paymentsMade.find((row) => row.id === deleteId)?.number}
         entityLabel="Payment"
         deleting={deletingId != null}
         onClose={() => {

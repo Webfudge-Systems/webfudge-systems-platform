@@ -448,6 +448,96 @@ export interface ApiAppApp extends Struct.CollectionTypeSchema {
   }
 }
 
+export interface ApiAttendanceRecordAttendanceRecord extends Struct.CollectionTypeSchema {
+  collectionName: 'attendance_records'
+  info: {
+    description: 'Daily employee attendance entries'
+    displayName: 'Attendance Record'
+    pluralName: 'attendance-records'
+    singularName: 'attendance-record'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    attendanceDate: Schema.Attribute.Date & Schema.Attribute.Required
+    clockIn: Schema.Attribute.String
+    clockOut: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    durationMinutes: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    employeeProfile: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::employee-profile.employee-profile'
+    >
+    late: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::attendance-record.attendance-record'
+    > &
+      Schema.Attribute.Private
+    location: Schema.Attribute.String
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUser: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::organization-user.organization-user'
+    >
+    publishedAt: Schema.Attribute.DateTime
+    status: Schema.Attribute.Enumeration<['present', 'on_leave', 'wfh', 'absent']> &
+      Schema.Attribute.DefaultTo<'present'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    workShift: Schema.Attribute.Enumeration<['morning', 'evening', 'night']> &
+      Schema.Attribute.DefaultTo<'morning'>
+  }
+}
+
+export interface ApiAttendanceRegularizationAttendanceRegularization
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'attendance_regularizations'
+  info: {
+    description: 'Employee attendance correction requests'
+    displayName: 'Attendance Regularization'
+    pluralName: 'attendance-regularizations'
+    singularName: 'attendance-regularization'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    attendanceDate: Schema.Attribute.Date & Schema.Attribute.Required
+    clockIn: Schema.Attribute.String
+    clockOut: Schema.Attribute.String
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    hrComment: Schema.Attribute.Text
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::attendance-regularization.attendance-regularization'
+    > &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUser: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::organization-user.organization-user'
+    >
+    publishedAt: Schema.Attribute.DateTime
+    reason: Schema.Attribute.Text & Schema.Attribute.Required
+    requestedStatus: Schema.Attribute.Enumeration<['present', 'wfh']> &
+      Schema.Attribute.DefaultTo<'present'>
+    reviewedByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    status: Schema.Attribute.Enumeration<['pending', 'approved', 'rejected']> &
+      Schema.Attribute.DefaultTo<'pending'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiBankAccountBankAccount extends Struct.CollectionTypeSchema {
   collectionName: 'bank_accounts'
   info: {
@@ -722,6 +812,32 @@ export interface ApiClientAccountClientAccount extends Struct.CollectionTypeSche
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     website: Schema.Attribute.String
     zipCode: Schema.Attribute.String
+  }
+}
+
+export interface ApiCompanyHolidayCompanyHoliday extends Struct.CollectionTypeSchema {
+  collectionName: 'company_holidays'
+  info: {
+    description: 'Organization-wide declared holidays'
+    displayName: 'Company Holiday'
+    pluralName: 'company-holidays'
+    singularName: 'company-holiday'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    date: Schema.Attribute.Date & Schema.Attribute.Required
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::company-holiday.company-holiday'> &
+      Schema.Attribute.Private
+    name: Schema.Attribute.String & Schema.Attribute.Required
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
 }
 
@@ -1067,6 +1183,7 @@ export interface ApiEmployeeProfileEmployeeProfile extends Struct.CollectionType
   }
   attributes: {
     annualCtc: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    assignedShifts: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<['morning']>
     bankAccountNumber: Schema.Attribute.String
     bankIfsc: Schema.Attribute.String
     bankName: Schema.Attribute.String
@@ -1077,6 +1194,7 @@ export interface ApiEmployeeProfileEmployeeProfile extends Struct.CollectionType
     employeeCode: Schema.Attribute.String & Schema.Attribute.Required
     employmentType: Schema.Attribute.Enumeration<['Full-time', 'Contract', 'Intern']> &
       Schema.Attribute.DefaultTo<'Full-time'>
+    flexibleShift: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
     joinDate: Schema.Attribute.Date
     locale: Schema.Attribute.String & Schema.Attribute.Private
     localizations: Schema.Attribute.Relation<
@@ -1090,6 +1208,8 @@ export interface ApiEmployeeProfileEmployeeProfile extends Struct.CollectionType
       'api::organization-user.organization-user'
     >
     phone: Schema.Attribute.String
+    primaryShift: Schema.Attribute.Enumeration<['morning', 'evening', 'night']> &
+      Schema.Attribute.DefaultTo<'morning'>
     publishedAt: Schema.Attribute.DateTime
     reportingRole: Schema.Attribute.Enumeration<['admin', 'manager']> &
       Schema.Attribute.DefaultTo<'manager'>
@@ -1292,6 +1412,36 @@ export interface ApiExpenseExpense extends Struct.CollectionTypeSchema {
     updatedAt: Schema.Attribute.DateTime
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     vendor: Schema.Attribute.Relation<'manyToOne', 'api::vendor.vendor'>
+  }
+}
+
+export interface ApiHrPerformanceWorkspaceHrPerformanceWorkspace
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'hr_performance_workspaces'
+  info: {
+    description: 'Organization-scoped HR performance workspace payload for HR/ESS sync'
+    displayName: 'HR Performance Workspace'
+    pluralName: 'hr-performance-workspaces'
+    singularName: 'hr-performance-workspace'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::hr-performance-workspace.hr-performance-workspace'
+    > &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'> &
+      Schema.Attribute.Required
+    payload: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<{}>
+    publishedAt: Schema.Attribute.DateTime
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
 }
 
@@ -1553,6 +1703,57 @@ export interface ApiLeadCompanyLeadCompany extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
     website: Schema.Attribute.String
     zipCode: Schema.Attribute.String
+  }
+}
+
+export interface ApiLeaveRequestLeaveRequest extends Struct.CollectionTypeSchema {
+  collectionName: 'leave_requests'
+  info: {
+    description: 'Employee leave and WFH requests'
+    displayName: 'Leave Request'
+    pluralName: 'leave-requests'
+    singularName: 'leave-request'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    appliedOn: Schema.Attribute.Date
+    approvedAt: Schema.Attribute.DateTime
+    approvedByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    days: Schema.Attribute.Integer &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1
+        },
+        number
+      > &
+      Schema.Attribute.DefaultTo<1>
+    employeeProfile: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::employee-profile.employee-profile'
+    >
+    fromDate: Schema.Attribute.Date & Schema.Attribute.Required
+    leaveType: Schema.Attribute.String & Schema.Attribute.Required
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::leave-request.leave-request'> &
+      Schema.Attribute.Private
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUser: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::organization-user.organization-user'
+    >
+    publishedAt: Schema.Attribute.DateTime
+    reason: Schema.Attribute.Text
+    rejectionReason: Schema.Attribute.Text
+    status: Schema.Attribute.Enumeration<['pending', 'approved', 'rejected', 'cancelled']> &
+      Schema.Attribute.DefaultTo<'pending'>
+    toDate: Schema.Attribute.Date & Schema.Attribute.Required
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
   }
 }
 
@@ -1919,6 +2120,47 @@ export interface ApiOrganizationOrganization extends Struct.CollectionTypeSchema
   }
 }
 
+export interface ApiOvertimeRecordOvertimeRecord extends Struct.CollectionTypeSchema {
+  collectionName: 'overtime_records'
+  info: {
+    description: 'Employee overtime hours and payout tracking'
+    displayName: 'Overtime Record'
+    pluralName: 'overtime-records'
+    singularName: 'overtime-record'
+  }
+  options: {
+    draftAndPublish: false
+  }
+  attributes: {
+    amount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
+    attendanceRecord: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::attendance-record.attendance-record'
+    >
+    autoGenerated: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>
+    createdAt: Schema.Attribute.DateTime
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+    createdByUser: Schema.Attribute.Relation<'manyToOne', 'plugin::users-permissions.user'>
+    locale: Schema.Attribute.String & Schema.Attribute.Private
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::overtime-record.overtime-record'> &
+      Schema.Attribute.Private
+    notes: Schema.Attribute.Text
+    organization: Schema.Attribute.Relation<'manyToOne', 'api::organization.organization'>
+    organizationUser: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::organization-user.organization-user'
+    >
+    overtimeHours: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    publishedAt: Schema.Attribute.DateTime
+    recordDate: Schema.Attribute.Date & Schema.Attribute.Required
+    regularHours: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<8>
+    status: Schema.Attribute.Enumeration<['pending', 'approved', 'paid']> &
+      Schema.Attribute.DefaultTo<'pending'>
+    updatedAt: Schema.Attribute.DateTime
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private
+  }
+}
+
 export interface ApiPaymentMadePaymentMade extends Struct.CollectionTypeSchema {
   collectionName: 'payments_made'
   info: {
@@ -2040,6 +2282,8 @@ export interface ApiPayrollLineItemPayrollLineItem extends Struct.CollectionType
       'manyToOne',
       'api::organization-user.organization-user'
     >
+    overtimeHours: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>
+    overtimePay: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
     payrollRun: Schema.Attribute.Relation<'manyToOne', 'api::payroll-run.payroll-run'>
     payslipGeneratedAt: Schema.Attribute.DateTime
     pf: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>
@@ -3487,12 +3731,15 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser
       'api::allocation.allocation': ApiAllocationAllocation
       'api::app.app': ApiAppApp
+      'api::attendance-record.attendance-record': ApiAttendanceRecordAttendanceRecord
+      'api::attendance-regularization.attendance-regularization': ApiAttendanceRegularizationAttendanceRegularization
       'api::bank-account.bank-account': ApiBankAccountBankAccount
       'api::bank-transaction.bank-transaction': ApiBankTransactionBankTransaction
       'api::bill-line-item.bill-line-item': ApiBillLineItemBillLineItem
       'api::bill.bill': ApiBillBill
       'api::chart-of-account.chart-of-account': ApiChartOfAccountChartOfAccount
       'api::client-account.client-account': ApiClientAccountClientAccount
+      'api::company-holiday.company-holiday': ApiCompanyHolidayCompanyHoliday
       'api::contact.contact': ApiContactContact
       'api::credit-note.credit-note': ApiCreditNoteCreditNote
       'api::crm-activity.crm-activity': ApiCrmActivityCrmActivity
@@ -3506,12 +3753,14 @@ declare module '@strapi/strapi' {
       'api::estimate-line-item.estimate-line-item': ApiEstimateLineItemEstimateLineItem
       'api::estimate.estimate': ApiEstimateEstimate
       'api::expense.expense': ApiExpenseExpense
+      'api::hr-performance-workspace.hr-performance-workspace': ApiHrPerformanceWorkspaceHrPerformanceWorkspace
       'api::invitation.invitation': ApiInvitationInvitation
       'api::invoice-line-item.invoice-line-item': ApiInvoiceLineItemInvoiceLineItem
       'api::invoice.invoice': ApiInvoiceInvoice
       'api::item.item': ApiItemItem
       'api::lead-activity.lead-activity': ApiLeadActivityLeadActivity
       'api::lead-company.lead-company': ApiLeadCompanyLeadCompany
+      'api::leave-request.leave-request': ApiLeaveRequestLeaveRequest
       'api::manual-journal.manual-journal': ApiManualJournalManualJournal
       'api::meeting.meeting': ApiMeetingMeeting
       'api::module.module': ApiModuleModule
@@ -3519,6 +3768,7 @@ declare module '@strapi/strapi' {
       'api::organization-role.organization-role': ApiOrganizationRoleOrganizationRole
       'api::organization-user.organization-user': ApiOrganizationUserOrganizationUser
       'api::organization.organization': ApiOrganizationOrganization
+      'api::overtime-record.overtime-record': ApiOvertimeRecordOvertimeRecord
       'api::payment-made.payment-made': ApiPaymentMadePaymentMade
       'api::payment-received.payment-received': ApiPaymentReceivedPaymentReceived
       'api::payroll-line-item.payroll-line-item': ApiPayrollLineItemPayrollLineItem
