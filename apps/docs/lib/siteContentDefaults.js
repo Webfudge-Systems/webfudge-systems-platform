@@ -1,0 +1,187 @@
+/** Default editable site content — used when data/site-content.json is missing. */
+
+export const DEFAULT_SITE_CONTENT = {
+  home: {
+    category: 'Getting Started',
+    title: 'Webfudge Platform',
+    description:
+      'A modular business operating system — CRM, project management, accounts, finance, and vendor workflows in one connected monorepo.',
+    callout: {
+      variant: 'tip',
+      title: 'UI-first milestone complete',
+      body: 'The documentation shell is live. Upload README.md files from the admin panel to populate pages dynamically.',
+    },
+    blocks: [
+      {
+        id: 'home-h1',
+        type: 'heading',
+        level: 2,
+        text: 'Who should read this?',
+        style: { align: 'left' },
+      },
+      {
+        id: 'home-table-1',
+        type: 'table',
+        headers: ['Audience', 'Primary Apps', 'Role'],
+        rows: [
+          ['Organization Admin', 'Accounts', 'Admin'],
+          ['Sales & Client Teams', 'CRM', 'Manager / Member'],
+          ['Delivery Teams', 'PM', 'Manager / Member'],
+          ['IT / Operations', 'All apps + Strapi Admin', 'All'],
+        ],
+      },
+      {
+        id: 'home-h2',
+        type: 'heading',
+        level: 2,
+        text: 'About this docs app',
+        style: { align: 'left' },
+      },
+      {
+        id: 'home-p1',
+        type: 'paragraph',
+        text:
+          'Platform documentation is managed through the Admin panel — accessible to Super Admins and Admins. Upload a README.md for any app, set the application, category, and status to published. The page will appear in the sidebar automatically.',
+        style: { align: 'left' },
+      },
+    ],
+  },
+  systemOverview: {
+    category: 'Architecture',
+    title: 'System Overview',
+    description:
+      'Multiple Next.js workspace apps sharing one Strapi API backend, each serving a different business function.',
+    blocks: [
+      {
+        id: 'sys-diagram',
+        type: 'appDiagram',
+        apps: [
+          { name: 'CRM', port: '3007' },
+          { name: 'PM', port: '3006' },
+          { name: 'Accounts', port: '3003' },
+        ],
+        backend: { name: 'Strapi API', subtitle: 'Auth · RBAC · Data', port: '1337' },
+      },
+      {
+        id: 'sys-h1',
+        type: 'heading',
+        level: 2,
+        text: 'Application Reference',
+      },
+      {
+        id: 'sys-table',
+        type: 'table',
+        headers: ['Product Name', 'Package', 'Purpose'],
+        rows: [
+          ['Fudge Grow', 'apps/crm', 'CRM — leads, deals, contacts, proposals'],
+          ['Fudge Flow', 'apps/pm', 'Project management — tasks, calendar, inbox'],
+          ['Fudge Base', 'apps/accounts', 'Organization admin — users, roles, billing'],
+        ],
+      },
+    ],
+  },
+  navigation: [
+    {
+      key: 'getting-started',
+      title: 'Getting Started',
+      items: [
+        { label: 'Introduction', href: '/' },
+        { label: 'System Overview', href: '/system-overview' },
+      ],
+    },
+    {
+      key: 'user-roles',
+      title: 'User Roles',
+      items: [
+        { label: 'User Types & Roles', href: '/user-types' },
+        { label: 'Permissions & Access', href: '/permissions' },
+      ],
+    },
+    {
+      key: 'applications',
+      title: 'Product Docs',
+      items: [
+        { label: 'CRM — Fudge Grow', href: '/applications/crm' },
+        { label: 'PM — Fudge Flow', href: '/applications/pm' },
+        { label: 'Accounts — Fudge Base', href: '/applications/accounts' },
+      ],
+    },
+    {
+      key: 'reference',
+      title: 'Reference',
+      items: [
+        { label: 'Component Catalog', href: '/components' },
+        { label: 'Troubleshooting & FAQ', href: '/troubleshooting' },
+        { label: 'Glossary', href: '/glossary' },
+      ],
+    },
+  ],
+  applications: {
+    crm: {
+      name: 'Fudge Grow',
+      slug: 'crm',
+      tagline: 'CRM — Sales workspace for leads, deals, contacts, and proposals',
+      description:
+        'A powerful CRM workspace designed for sales teams to manage leads, track deals, maintain client relationships, and close more business.',
+      color: '#F5630F',
+      features: [
+        { title: 'Lead Management', description: 'Capture, qualify, and nurture leads through your pipeline' },
+        { title: 'Deal Tracking', description: 'Monitor deals through every stage from prospect to close' },
+        { title: 'Contact Management', description: 'Maintain detailed profiles of all your business contacts' },
+        { title: 'Client Accounts', description: 'Organize contacts into company accounts for better visibility' },
+        { title: 'Proposal Generation', description: 'Create and send professional proposals directly from deals' },
+        { title: 'Sales Pipeline', description: 'Visual pipeline management with custom stages and forecasting' },
+      ],
+      gettingStarted: [
+        { title: 'Create your first lead', description: 'Import contacts or add leads manually to start building your pipeline' },
+        { title: 'Set up your pipeline stages', description: 'Customize deal stages to match your sales process' },
+        { title: 'Create your first deal', description: 'Convert leads into deals and move them through your pipeline' },
+        { title: 'Generate a proposal', description: 'Use deal data to create professional proposals for clients' },
+      ],
+    },
+    pm: {
+      name: 'Fudge Flow',
+      slug: 'pm',
+      tagline: 'PM — Project delivery workspace for tasks, calendar, and collaboration',
+      description:
+        'Fudge Flow is a modern project delivery workspace built for teams that need clarity from kickoff to handoff. It brings project planning, task ownership, milestones, calendars, and team communication into one shared operating surface, helping managers understand progress in real time while giving contributors a clear view of priorities, blockers, and deadlines. With structured workflows for planning, collaboration, time tracking, and delivery visibility, Fudge Flow keeps teams aligned so work moves forward predictably and projects ship on time.',
+      color: '#6366f1',
+      features: [
+        { title: 'Project Planning', description: 'Create projects with timelines, milestones, and deliverables' },
+        { title: 'Task Management', description: 'Assign tasks, set priorities, and track completion' },
+        { title: 'Team Inbox', description: 'Centralized inbox for all project communications' },
+        { title: 'Calendar Integration', description: 'Visual project calendar with deadlines and milestones' },
+        { title: 'Time Tracking', description: 'Log time against tasks and projects for accurate billing' },
+        { title: 'Team Collaboration', description: 'Comments, mentions, and real-time updates for your team' },
+      ],
+      gettingStarted: [
+        { title: 'Create your first project', description: 'Set up a project with clear goals and timeline' },
+        { title: 'Add team members', description: 'Invite your team and assign roles and permissions' },
+        { title: 'Create tasks and milestones', description: 'Break down projects into manageable tasks' },
+        { title: 'Track progress', description: 'Monitor completion and adjust timelines as needed' },
+      ],
+    },
+    accounts: {
+      name: 'Fudge Base',
+      slug: 'accounts',
+      tagline: 'Accounts — Organization administration for users, roles, and billing',
+      description:
+        'Fudge Base is the secure administration workspace that anchors the Webfudge platform. It gives operations and admin teams one place to manage users, organizations, departments, roles, permissions, security policies, billing, and audit activity across every connected app. By centralizing identity, access control, subscription settings, and compliance visibility, Fudge Base helps teams keep their workspace organized, protected, and ready to scale as more products and users come online.',
+      color: '#059669',
+      features: [
+        { title: 'User Management', description: 'Create users, manage profiles, and control access' },
+        { title: 'Role-based Access', description: 'Define roles and permissions across all applications' },
+        { title: 'Organization Settings', description: 'Configure company details, branding, and preferences' },
+        { title: 'Security Controls', description: 'Two-factor authentication, SSO, and audit logging' },
+        { title: 'Billing & Subscriptions', description: 'Manage plans, payments, and usage across apps' },
+        { title: 'Audit Logs', description: 'Track all activity across your organization for compliance' },
+      ],
+      gettingStarted: [
+        { title: 'Set up your organization', description: 'Configure company details and branding' },
+        { title: 'Create user accounts', description: 'Add team members and assign initial roles' },
+        { title: 'Configure security policies', description: 'Set up 2FA, password policies, and access controls' },
+        { title: 'Review billing setup', description: 'Choose your plan and configure payment methods' },
+      ],
+    },
+  },
+};

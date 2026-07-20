@@ -1,0 +1,1 @@
+export { DocsFeedback } from './DocsFeedback';
