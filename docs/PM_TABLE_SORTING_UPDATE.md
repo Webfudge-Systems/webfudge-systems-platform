@@ -40,6 +40,12 @@ Added client-side **single- and multi-column sorting** to PM data tables: clicka
 2. **Multi-sort:** Hold **Shift** and click another header, or open the **Sort** button (↕) in the toolbar and add rules. Rules run **top to bottom** (first rule = highest priority).
 3. **Clear:** Use **Clear all sorts** in the sort panel, or click the active column header until sort is removed.
 
+### Client account status
+
+Client account **Status** uses a lifecycle rank (not A–Z). **Descending** order:
+
+Active → Onboarding → At Risk → Paused → Completed → Inactive → Churned
+
 ## Migration
 
 No API or schema changes. Existing column visibility / order preferences are unchanged. Users may clear sort via the panel if a stored rule behaves unexpectedly.

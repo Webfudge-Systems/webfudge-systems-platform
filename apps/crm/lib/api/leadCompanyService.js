@@ -241,8 +241,12 @@ export default {
    * POST /lead-companies/:id/convert
    * Returns { data: { leadCompany, clientAccount } }
    */
-  async convertToClient(id) {
-    const response = await strapiClient.post(`${ENDPOINT}/${id}/convert`, {});
+  async convertToClient(id, options = {}) {
+    const body = {};
+    if (options?.clientAccountId != null) {
+      body.clientAccountId = options.clientAccountId;
+    }
+    const response = await strapiClient.post(`${ENDPOINT}/${id}/convert`, body);
     const raw = response?.data ?? response;
     return {
       data: {

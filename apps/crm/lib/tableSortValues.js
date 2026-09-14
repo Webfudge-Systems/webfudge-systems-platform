@@ -1,14 +1,14 @@
 /** Sort value getters for CRM entities. */
 
+/** Descending status order: Converted > Qualified > Contacted > New > Lost */
 const LEAD_STATUS_ORDER = {
-  new:          1,
-  contacted:    2,
-  qualified:    3,
-  proposal:     4,
-  negotiation:  5,
-  won:          6,
-  lost:         7,
-  inactive:     8,
+  converted: 5,
+  qualified: 4,
+  contacted: 3,
+  new: 2,
+  lost: 1,
+  // Legacy CLIENT maps to Qualified rank
+  client: 4,
 };
 
 const DEAL_STAGE_ORDER = {
@@ -18,6 +18,17 @@ const DEAL_STAGE_ORDER = {
   negotiation:  4,
   won:          5,
   lost:         6,
+};
+
+/** Higher = first when sorting status descending (Active → … → Churned). */
+const ACCOUNT_STATUS_ORDER = {
+  ACTIVE: 7,
+  ONBOARDING: 6,
+  AT_RISK: 5,
+  PAUSED: 4,
+  COMPLETED: 3,
+  INACTIVE: 2,
+  CHURNED: 1,
 };
 
 const PRIORITY_ORDER = { high: 3, medium: 2, low: 1 };
@@ -44,8 +55,16 @@ export function getLeadCompanySortValue(row, key) {
   switch (key) {
     case 'companyName':
       return stringValue(row.companyName || row.name);
-    case 'status':
-      return LEAD_STATUS_ORDER[String(row.status || '').toLowerCase()] ?? 99;
+    case 'status': {
+      const raw = String(row.status || '').toLowerCase();
+      const statusKey =
+        raw === 'client'
+          ? row.convertedAccount
+            ? 'converted'
+            : 'qualified'
+          : raw;
+      return LEAD_STATUS_ORDER[statusKey] ?? 99;
+    }
     case 'source':
       return stringValue(row.source);
     case 'dealValue':
@@ -149,14 +168,64 @@ export function getDealSortValue(row, key) {
   }
 }
 
+/** Client account row sort value. */
+export function getClientAccountSortValue(row, key) {
+  switch (key) {
+    case 'company':
+    case 'companyName':
+      return stringValue(row.companyName || row.name);
+    case 'primaryContact': {
+      const pc =
+        row.primaryContact ||
+        row.contacts?.find((c) => c.isPrimaryContact) ||
+        row.contacts?.[0];
+      if (!pc) return null;
+      return stringValue(
+        [pc.firstName, pc.lastName].filter(Boolean).join(' ') || pc.name || pc.email
+      );
+    }
+    case 'healthScore':
+      return numValue(row.healthScore);
+    case 'dealValue':
+      return numValue(row.dealValue);
+    case 'contactsCount':
+      return Array.isArray(row.contacts) ? row.contacts.length : numValue(row.contactsCount) ?? 0;
+    case 'location': {
+      const parts = [row.city, row.state, row.country].filter(Boolean);
+      return parts.length ? parts.join(', ').toLowerCase() : null;
+    }
+    case 'industry':
+      return stringValue(row.industry);
+    case 'assignedTo':
+      return stringValue(
+        row.assignedTo?.name || row.assignedTo?.email || row.assignedToName
+      );
+    case 'status':
+      return ACCOUNT_STATUS_ORDER[String(row.status || '').toUpperCase()] ?? 0;
+    case 'createdAt':
+      return dateValue(row.createdAt);
+    case 'updatedAt':
+      return dateValue(row.updatedAt);
+    case 'accountType':
+      return stringValue(row.accountType);
+    case 'billingCycle':
+      return stringValue(row.billingCycle);
+    case 'website':
+      return stringValue(row.website);
+    default:
+      return row[key];
+  }
+}
+
 const VALUE_GETTERS = {
   leadCompany: getLeadCompanySortValue,
   contact:     getContactSortValue,
   deal:        getDealSortValue,
+  clientAccount: getClientAccountSortValue,
 };
 
 /**
- * @param {'leadCompany' | 'contact' | 'deal'} entity
+ * @param {'leadCompany' | 'contact' | 'deal' | 'clientAccount'} entity
  * @param {Record<string, unknown>} row
  * @param {string} key
  */

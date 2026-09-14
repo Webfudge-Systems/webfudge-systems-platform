@@ -339,18 +339,10 @@ export default function LeadCompanyDetailPage() {
     setConverting(true);
     setConvertError('');
     try {
-      const res = await leadCompanyService.convertToClient(id);
-      const clientAccount = res?.data?.clientAccount;
-      setLead((prev) =>
-        prev ? { ...prev, status: 'CONVERTED', convertedAccount: clientAccount } : prev
-      );
       setConvertModalOpen(false);
-      const newId = clientAccount?.id ?? clientAccount?.documentId;
-      if (newId) {
-        router.push(`/clients/accounts/${newId}`);
-      }
+      router.push(`/clients/accounts/new?fromLead=${encodeURIComponent(id)}`);
     } catch (err) {
-      setConvertError(err?.message || 'Failed to convert. Please try again.');
+      setConvertError(err?.message || 'Failed to open Add Client. Please try again.');
     } finally {
       setConverting(false);
     }
@@ -565,8 +557,8 @@ export default function LeadCompanyDetailPage() {
   const subtitle = useMemo(() => {
     if (!lead || loading) return null;
     const typeBit = humanizeSource(lead.type || lead.industry || 'Lead');
-    const isConverted = lead?.status === 'CONVERTED' || lead?.status === 'CLIENT' || lead?.convertedAccount != null;
-    const status = isConverted ? 'CLIENT' : (lead.status || 'NEW').toString().replace(/_/g, ' ');
+    const isConverted = lead?.status === 'CONVERTED' || lead?.convertedAccount != null;
+    const status = isConverted ? 'CONVERTED' : (lead.status === 'CLIENT' ? 'QUALIFIED' : (lead.status || 'NEW')).toString().replace(/_/g, ' ');
     return `${typeBit} • ${status} ${isConverted ? '' : 'Lead'}`.trim();
   }, [lead, loading]);
 
@@ -574,14 +566,14 @@ export default function LeadCompanyDetailPage() {
     if (!lead) return 'NEW';
     const isConverted =
       lead?.status === 'CONVERTED' ||
-      lead?.status === 'CLIENT' ||
       lead?.convertedAccount != null;
-    if (isConverted) return lead?.convertedAccount?.id ? 'CLIENT' : 'CONVERTED';
+    if (isConverted) return 'CONVERTED';
+    if (lead.status === 'CLIENT') return 'QUALIFIED';
     return (lead.status || 'NEW').toString().replace(/_/g, ' ').trim();
   }, [lead]);
 
   const isLeadStatusConverted = useMemo(
-    () => leadStatusDisplay === 'CLIENT' || leadStatusDisplay === 'CONVERTED',
+    () => leadStatusDisplay === 'CONVERTED',
     [leadStatusDisplay]
   );
 
@@ -800,6 +792,7 @@ export default function LeadCompanyDetailPage() {
       state: lead.state ?? '',
       country: lead.country ?? '',
       description: lead.description ?? '',
+      notes: lead.notes ?? '',
     });
     setCompanyInfoSaveError('');
     setEditingCompanyInfo(true);
@@ -837,6 +830,7 @@ export default function LeadCompanyDetailPage() {
         state: companyInfoDraft.state.trim(),
         country: companyInfoDraft.country.trim(),
         description: companyInfoDraft.description.trim(),
+        notes: companyInfoDraft.notes.trim(),
       };
       const res = await leadCompanyService.update(id, payload);
       onIndustrySaved(payload.industry);
@@ -1647,6 +1641,22 @@ export default function LeadCompanyDetailPage() {
                         />
                       </section>
 
+                      <section className="border-t border-gray-100 pt-4">
+                        <div className="mb-2 flex items-center gap-2">
+                          <ClipboardList className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
+                          <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                            Notes
+                          </h3>
+                        </div>
+                        <Textarea
+                          rows={3}
+                          value={companyInfoDraft.notes}
+                          onChange={(e) => setDraftField('notes', e.target.value)}
+                          className="mt-1 text-base"
+                          placeholder="Additional notes about this lead..."
+                        />
+                      </section>
+
                       {companyInfoSaveError ? (
                         <p className="mt-3 text-center text-sm text-red-600">{companyInfoSaveError}</p>
                       ) : null}
@@ -1732,6 +1742,22 @@ export default function LeadCompanyDetailPage() {
                               {isPresent(lead.description) ? (
                                 <p className="mt-2.5 whitespace-pre-wrap text-base font-normal leading-relaxed text-gray-800">
                                   {lead.description}
+                                </p>
+                              ) : (
+                                <p className="mt-2.5 text-base font-normal text-gray-400">—</p>
+                              )}
+                            </section>
+
+                            <section className="border-t border-gray-100 pt-4">
+                              <div className="mb-2 flex items-center gap-2">
+                                <ClipboardList className="h-5 w-5 shrink-0 text-orange-500" aria-hidden />
+                                <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+                                  Notes
+                                </h3>
+                              </div>
+                              {isPresent(lead.notes) ? (
+                                <p className="mt-2.5 whitespace-pre-wrap text-base font-normal leading-relaxed text-gray-800">
+                                  {lead.notes}
                                 </p>
                               ) : (
                                 <p className="mt-2.5 text-base font-normal text-gray-400">—</p>
@@ -2436,22 +2462,22 @@ export default function LeadCompanyDetailPage() {
               <div className="flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 p-4">
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
                 <p className="text-sm text-orange-900">
-                  <span className="font-semibold">This action cannot be undone</span>
+                  <span className="font-semibold">You will continue on the Add Client page</span>
+                  {' '}with this lead&apos;s details filled in.
                 </p>
               </div>
               <p className="text-sm text-gray-700">
-                Are you sure you want to convert{' '}
+                Convert{' '}
                 <span className="font-semibold text-gray-900">{name}</span> to a client account?
               </p>
               <div className="rounded-xl border border-orange-100 bg-orange-50/60 p-4">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-orange-700">
-                  ✨ This will:
+                  This will:
                 </p>
                 <ul className="space-y-1 text-sm text-orange-900">
-                  <li>• Move the company to Client Accounts section</li>
-                  <li>• Preserve all contacts and their information</li>
-                  <li>• Maintain all deals and proposals</li>
-                  <li>• Keep activity history and notes</li>
+                  <li>• Open Add Client with company and contact details prefilled</li>
+                  <li>• Mark the lead as Converted when you save the client</li>
+                  <li>• Link contacts and keep deal/activity history</li>
                   <li>• Enable client-specific features and billing</li>
                 </ul>
               </div>
@@ -2478,11 +2504,11 @@ export default function LeadCompanyDetailPage() {
                   className="w-full min-w-[10rem] rounded-xl border-0 bg-gradient-to-r from-orange-500 to-pink-500 py-2.5 font-semibold text-white shadow-md hover:opacity-95 disabled:opacity-60 sm:w-auto"
                 >
                   {converting ? (
-                    'Converting…'
+                    'Opening…'
                   ) : (
                     <>
                       <CheckCircle2 className="mr-2 h-4 w-4" />
-                      Convert to Client
+                      Continue to Add Client
                     </>
                   )}
                 </Button>

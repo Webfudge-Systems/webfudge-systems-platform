@@ -23,7 +23,6 @@ export const LEAD_PIPELINE_STAGES = [
   { key: 'qualified', label: 'Qualified' },
   { key: 'lost', label: 'Lost' },
   { key: 'converted', label: 'Converted' },
-  { key: 'client', label: 'Client' },
 ];
 
 const STAGE_STYLES = {
@@ -56,12 +55,6 @@ const STAGE_STYLES = {
     text: 'text-amber-700',
     badge: 'bg-amber-100 text-amber-700',
     dropActive: 'border-amber-400 bg-amber-50/80 shadow-lg shadow-amber-100',
-  },
-  client: {
-    header: 'bg-orange-50 border-orange-200',
-    text: 'text-orange-700',
-    badge: 'bg-orange-100 text-orange-700',
-    dropActive: 'border-orange-400 bg-orange-50/80 shadow-lg shadow-orange-100',
   },
 };
 

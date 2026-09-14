@@ -41,11 +41,15 @@ import {
   Modal,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableSortDropdown as CrmTableSortDropdown,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import clientAccountService from '../../../lib/api/clientAccountService';
 import contactService from '../../../lib/api/contactService';
 import { canManageCRM, canWriteCRM } from '../../../lib/rbac';
+import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
+
+const TABLE_SORT_STORAGE_KEY = 'crm.clientAccounts.tableSort';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.clientAccounts.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.clientAccounts.tableColumnOrder';
@@ -194,6 +198,7 @@ export default function ClientAccountsPage() {
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [draftFilters, setDraftFilters] = useState(initialFilters);
   const [loadingActions, setLoadingActions] = useState({});
+  const [sortPickerOpen, setSortPickerOpen] = useState(false);
   const canCreateClientAccounts = canWriteCRM('client_accounts');
   const itemsPerPage = 15;
 
@@ -227,15 +232,16 @@ export default function ClientAccountsPage() {
   }, []);
 
   useEffect(() => {
-    if (!columnPickerOpen) return;
+    if (!columnPickerOpen && !sortPickerOpen) return;
     const onDocMouseDown = (e) => {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target)) {
         setColumnPickerOpen(false);
+        setSortPickerOpen(false);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
     return () => document.removeEventListener('mousedown', onDocMouseDown);
-  }, [columnPickerOpen]);
+  }, [columnPickerOpen, sortPickerOpen]);
 
   const fetchAccounts = async () => {
     try {
@@ -460,9 +466,27 @@ export default function ClientAccountsPage() {
     return matchesSearch && matchesTab && matchesAdvanced;
   });
 
+  const {
+    sortedData: sortedFilteredAccounts,
+    bindSortableColumns,
+    hasActiveSort,
+    sortRules,
+    columnOptions: sortColumnOptions,
+    addSortRule,
+    removeSortRule,
+    setRuleDirection,
+    moveSortRule,
+    clearSort,
+    maxRules: sortMaxRules,
+  } = useCrmTableSort({
+    entity: 'clientAccount',
+    storageKey: TABLE_SORT_STORAGE_KEY,
+    data: filteredAccounts,
+  });
+
   // Pagination
-  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage);
-  const paginatedAccounts = filteredAccounts.slice(
+  const totalPages = Math.ceil(sortedFilteredAccounts.length / itemsPerPage);
+  const paginatedAccounts = sortedFilteredAccounts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -882,8 +906,8 @@ export default function ClientAccountsPage() {
       if (columnVisibility[key] && byKey[key]) out.push(byKey[key]);
     }
     if (byKey.actions) out.push(byKey.actions);
-    return out;
-  }, [allTableColumns, columnVisibility, columnOrder]);
+    return bindSortableColumns(out);
+  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -947,11 +971,32 @@ export default function ClientAccountsPage() {
           showFilter={true}
           onFilterClick={openFilterModal}
           showColumnVisibility={true}
-          onColumnVisibilityClick={() => setColumnPickerOpen((o) => !o)}
+          onColumnVisibilityClick={() => {
+            setSortPickerOpen(false);
+            setColumnPickerOpen((o) => !o);
+          }}
           columnVisibilityTitle="Show or hide columns"
+          showSort={true}
+          onSortClick={() => {
+            setColumnPickerOpen(false);
+            setSortPickerOpen((o) => !o);
+          }}
+          hasActiveSort={hasActiveSort}
+          sortTitle="Sort accounts (Shift+click headers for multi-sort)"
           showExport={true}
           onExportClick={() => console.log('Export clicked')}
           exportTitle="Export"
+        />
+        <CrmTableSortDropdown
+          open={sortPickerOpen}
+          sortRules={sortRules}
+          columnOptions={sortColumnOptions}
+          onAddRule={addSortRule}
+          onRemoveRule={removeSortRule}
+          onSetDirection={setRuleDirection}
+          onMoveRule={moveSortRule}
+          onClear={clearSort}
+          maxRules={sortMaxRules}
         />
         <TableColumnPicker
           open={columnPickerOpen}
@@ -972,8 +1017,8 @@ export default function ClientAccountsPage() {
 
       {/* Results Count */}
       <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredAccounts.length}</span> result
-        {filteredAccounts.length !== 1 ? 's' : ''}
+        Showing <span className="font-semibold text-gray-900">{sortedFilteredAccounts.length}</span> result
+        {sortedFilteredAccounts.length !== 1 ? 's' : ''}
       </div>
 
       {/* Table */}
@@ -1018,7 +1063,7 @@ export default function ClientAccountsPage() {
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={filteredAccounts.length}
+                  totalItems={sortedFilteredAccounts.length}
                   itemsPerPage={itemsPerPage}
                   onPageChange={setCurrentPage}
                 />

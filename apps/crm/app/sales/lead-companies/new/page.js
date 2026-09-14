@@ -107,7 +107,7 @@ export default function AddLeadCompanyPage() {
   ];
 
   const statusOptions = LEAD_STATUS_OPTIONS.filter(
-    (opt) => opt.value !== 'CONVERTED' && opt.value !== 'CLIENT'
+    (opt) => opt.value !== 'CONVERTED'
   );
 
   const contactRoleOptions = [

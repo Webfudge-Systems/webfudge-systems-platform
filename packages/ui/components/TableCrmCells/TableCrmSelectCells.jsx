@@ -13,7 +13,6 @@ export const LEAD_STATUS_OPTIONS = [
   { value: 'QUALIFIED', label: 'Qualified' },
   { value: 'LOST', label: 'Lost' },
   { value: 'CONVERTED', label: 'Converted' },
-  { value: 'CLIENT', label: 'Client' },
 ];
 
 export const TASK_STATUS_OPTIONS = [
@@ -89,7 +88,6 @@ const LEAD_STATUS_FILL_CLASS = {
   QUALIFIED: 'border-green-200 bg-green-50 text-green-800 hover:bg-green-100',
   LOST: 'border-red-200 bg-red-50 text-red-800 hover:bg-red-100',
   CONVERTED: 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100',
-  CLIENT: 'border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100',
 };
 
 const TASK_STATUS_FILL_CLASS = {
@@ -267,7 +265,7 @@ export function crmInvoiceTableSelectFillProps(status) {
 
 function isLeadConverted(company) {
   const status = (company?.status || '').toString().toUpperCase();
-  return status === 'CLIENT' || status === 'CONVERTED' || Boolean(company?.convertedAccount);
+  return status === 'CONVERTED' || Boolean(company?.convertedAccount);
 }
 
 function taskStatusBadgeVariant(status) {

@@ -14,7 +14,7 @@ CRM and PM data tables can use **`useTableColumnPreferences`** and **`TableColum
 Lead Companies, Contacts, Deals, Client Accounts, Client Projects, Client Tasks, Client Invoices, Client Proposals, Automations, Meetings
 
 ### PM list pages
-Projects, My Tasks, Client Accounts
+Projects, My Tasks, Client Accounts, Project detail → Tasks tab (resize; sorting already via `usePmTableSort`)
 
 ### Accounts list pages
 Users, Departments, Roles, Audit Logs, App Access

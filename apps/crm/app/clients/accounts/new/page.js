@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Button,
   Card,
@@ -17,6 +17,7 @@ import {
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import contactService from '../../../../lib/api/contactService';
+import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import { contactFieldsFromClientAccount } from '@webfudge/utils';
 import strapiClient from '../../../../lib/strapiClient';
 import { canWriteCRM } from '../../../../lib/rbac';
@@ -27,6 +28,7 @@ import {
   resolveIndustryForSave,
 } from '@webfudge/utils';
 import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
+import { primaryContactForLeadCompany } from '../../../../lib/leadCompanyContacts';
 import {
   Building2,
   Globe,
@@ -105,6 +107,8 @@ const initialContactRow = {
 
 export default function NewClientAccountPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromLeadId = String(searchParams?.get('fromLead') || '').trim();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -112,6 +116,8 @@ export default function NewClientAccountPage() {
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [users, setUsers] = useState([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(Boolean(fromLeadId));
+  const leadPrefillApplied = useRef(false);
   const canCreateClientAccounts = canWriteCRM('client_accounts');
 
   const { options: industrySelectOptions, onIndustrySaved } = useIndustrySelectOptions({
@@ -154,6 +160,107 @@ export default function NewClientAccountPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (!fromLeadId || leadPrefillApplied.current) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setPrefillLoading(true);
+        const res = await leadCompanyService.getOne(fromLeadId, {
+          populate: ['contacts', 'assignedTo'],
+        });
+        const lead = res?.data ?? res;
+        if (cancelled || !lead) return;
+
+        const primary = primaryContactForLeadCompany(lead);
+        const leadContacts = Array.isArray(lead.contacts) ? lead.contacts : [];
+        const industryValue = lead.industry ? String(lead.industry) : '';
+
+        setForm((prev) => ({
+          ...prev,
+          companyName: lead.companyName || lead.name || '',
+          industry: industryValue,
+          type: lead.type || '',
+          website: lead.website || '',
+          phone: lead.phone || primary.phone || '',
+          email: lead.email || primary.email || '',
+          description: lead.description || '',
+          address: lead.address || '',
+          city: lead.city || '',
+          state: lead.state || '',
+          zipCode: lead.zipCode || '',
+          country: lead.country || '',
+          employees: lead.employees || '',
+          dealValue:
+            lead.dealValue != null && lead.dealValue !== ''
+              ? String(lead.dealValue)
+              : '',
+          healthScore:
+            lead.healthScore != null && lead.healthScore !== ''
+              ? String(lead.healthScore)
+              : prev.healthScore,
+          founded: lead.founded || '',
+          linkedIn: lead.linkedIn || '',
+          twitter: lead.twitter || '',
+          notes: lead.notes || '',
+          assignedTo:
+            lead.assignedTo?.id != null
+              ? String(lead.assignedTo.id)
+              : prev.assignedTo,
+        }));
+
+        if (leadContacts.length > 0) {
+          setContacts(
+            leadContacts.map((c, index) => ({
+              id: index + 1,
+              firstName: c.firstName || '',
+              lastName: c.lastName || '',
+              email: c.email || '',
+              phone: c.phone || '',
+              jobTitle: c.jobTitle || '',
+              department: c.department || '',
+              role: c.contactRole || (index === 0 || c.isPrimaryContact ? 'PRIMARY_CONTACT' : 'CONTACT'),
+              isPrimary: Boolean(c.isPrimaryContact) || index === 0,
+            }))
+          );
+        } else if (primary.contact || primary.name || primary.email) {
+          const nameParts = String(primary.name || '').trim().split(/\s+/);
+          const firstName = primary.contact?.firstName || nameParts[0] || '';
+          const lastName =
+            primary.contact?.lastName ||
+            (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+          setContacts([
+            {
+              ...initialContactRow,
+              firstName,
+              lastName,
+              email: primary.email || '',
+              phone: primary.phone || '',
+              jobTitle: primary.contact?.jobTitle || '',
+            },
+          ]);
+        }
+
+        leadPrefillApplied.current = true;
+      } catch (err) {
+        console.error('Failed to prefill client from lead:', err);
+        if (!cancelled) {
+          setErrors((prev) => ({
+            ...prev,
+            submit: 'Could not load lead details for conversion. You can still fill the form manually.',
+          }));
+        }
+      } finally {
+        if (!cancelled) setPrefillLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fromLeadId]);
 
   const fetchUsers = async () => {
     try {
@@ -350,7 +457,23 @@ export default function NewClientAccountPage() {
       onIndustrySaved(payload.industry);
       const newId = res?.id ?? res?.data?.id;
 
-      if (newId && contactService?.create) {
+      if (fromLeadId && newId) {
+        try {
+          await leadCompanyService.convertToClient(fromLeadId, {
+            clientAccountId: newId,
+          });
+        } catch (linkErr) {
+          console.error('Failed to mark lead as converted:', linkErr);
+          setErrors({
+            submit:
+              linkErr?.message ||
+              'Client was created, but linking the lead as Converted failed. You can convert the lead from its detail page.',
+          });
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setIsSubmitting(false);
+          return;
+        }
+      } else if (newId && contactService?.create) {
         const companyFields = contactFieldsFromClientAccount({
           companyName: form.companyName.trim(),
           website: form.website,
@@ -501,18 +624,28 @@ export default function NewClientAccountPage() {
 
       <div className="p-4 space-y-6">
         <CRMPageHeader
-          title="Add New Client Account"
-          subtitle="Create a new client company account with contacts, billing, and profile details"
+          title={fromLeadId ? 'Convert Lead to Client' : 'Add New Client Account'}
+          subtitle={
+            fromLeadId
+              ? 'Review and complete the client account. Saving will mark the lead as Converted.'
+              : 'Create a new client company account with contacts, billing, and profile details'
+          }
           breadcrumb={[
             { label: 'Dashboard', href: '/' },
             { label: 'Clients', href: '/clients' },
             { label: 'Client Accounts', href: '/clients/accounts' },
-            { label: 'Add New', href: '/clients/accounts/new' },
+            { label: fromLeadId ? 'Convert from Lead' : 'Add New', href: '/clients/accounts/new' },
           ]}
           showProfile={true}
           showSearch={false}
           showActions={false}
         />
+
+        {prefillLoading ? (
+          <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+            Loading lead details…
+          </div>
+        ) : null}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {Object.keys(errors).length > 0 && !errors.submit && (

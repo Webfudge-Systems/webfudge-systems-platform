@@ -196,6 +196,20 @@ export default function LeadsAssignedWidget({ className = '' }) {
       return
     }
 
+    if (String(newStatus).toUpperCase() === 'CONVERTED') {
+      const name = target?.companyName || 'this lead'
+      if (
+        typeof window !== 'undefined' &&
+        !window.confirm(
+          `Convert ${name} to a client account? You will continue on the Add Client page with lead details filled in.`
+        )
+      ) {
+        return
+      }
+      window.location.href = `/clients/accounts/new?fromLead=${encodeURIComponent(companyId)}`
+      return
+    }
+
     const key = String(companyId)
     setSavingByLeadId((prev) => ({ ...prev, [key]: true }))
     try {

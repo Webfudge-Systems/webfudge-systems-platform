@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Avatar,
@@ -21,6 +21,7 @@ import {
   ownerDisplayFromUser,
   TableCellTaskStatusSelect,
   PM_TASK_STATUS_OPTIONS,
+  useTableColumnPreferences,
 } from '@webfudge/ui';
 import {
   CheckSquare,
@@ -50,7 +51,47 @@ import { isTaskDueOverdue } from '@webfudge/utils';
 import { filterMajorTasks } from '../lib/taskListUtils';
 
 const TABLE_SORT_STORAGE_KEY = 'pm.projectTasks.tableSort';
+const COLUMN_VISIBILITY_STORAGE_KEY = 'pm.projectTasks.tableColumnVisibility';
+const COLUMN_ORDER_STORAGE_KEY = 'pm.projectTasks.tableColumnOrder';
+const COLUMN_WIDTHS_STORAGE_KEY = 'pm.projectTasks.tableColumnWidths';
 const TABLE_PAGE_SIZE = 12;
+
+/** Default pixel widths for resizable table columns (keyed by column `key`). */
+const DEFAULT_COLUMN_WIDTHS = {
+  name: 300,
+  status: 170,
+  priority: 140,
+  assigner: 180,
+  assignees: 140,
+  startDate: 120,
+  dueDate: 120,
+  actions: 220,
+};
+
+const MIN_COLUMN_WIDTHS = {
+  actions: 220,
+};
+
+const DEFAULT_COLUMN_VISIBILITY = {
+  name: true,
+  status: true,
+  priority: true,
+  assigner: true,
+  assignees: true,
+  startDate: true,
+  dueDate: true,
+  actions: true,
+};
+
+const REORDERABLE_COLUMN_KEYS = [
+  'name',
+  'status',
+  'priority',
+  'assigner',
+  'assignees',
+  'startDate',
+  'dueDate',
+];
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Tasks' },
@@ -167,7 +208,16 @@ export default function ProjectTasksPanel({
   const [sortPickerOpen, setSortPickerOpen] = useState(false);
   const [promoteModal, setPromoteModal] = useState({ open: false, task: null });
   const [tablePage, setTablePage] = useState(1);
-  const toolbarRef = useRef(null);
+
+  const { toolbarRef, tableResizeProps } = useTableColumnPreferences({
+    visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
+    orderStorageKey: COLUMN_ORDER_STORAGE_KEY,
+    widthsStorageKey: COLUMN_WIDTHS_STORAGE_KEY,
+    defaultVisibility: DEFAULT_COLUMN_VISIBILITY,
+    reorderableKeys: REORDERABLE_COLUMN_KEYS,
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    minWidths: MIN_COLUMN_WIDTHS,
+  });
 
   const handleApproveAssignment = useCallback(
     async (task) => {
@@ -398,8 +448,8 @@ export default function ProjectTasksPanel({
       {
         key: 'name',
         label: 'TASK NAME',
-        headerClassName: 'max-w-[14rem] sm:max-w-[17rem] lg:max-w-[20rem]',
-        className: 'max-w-[14rem] sm:max-w-[17rem] lg:max-w-[20rem] align-top',
+        defaultWidth: '300px',
+        className: 'align-top',
         render: (_, row) => {
           const initial = (row.name || 'T').trim().charAt(0).toUpperCase() || 'T';
           const commentCount = Number(commentCountsByTaskId[String(row.id)] || 0);
@@ -461,6 +511,7 @@ export default function ProjectTasksPanel({
       {
         key: 'status',
         label: 'STATUS',
+        defaultWidth: '170px',
         render: (_, row) => (
           <TableCellTaskStatusSelect
             status={row.strapiStatus}
@@ -474,6 +525,7 @@ export default function ProjectTasksPanel({
       {
         key: 'priority',
         label: 'PRIORITY',
+        defaultWidth: '140px',
         render: (_, row) => (
           <div onClick={(event) => event.stopPropagation()}>
             <Select
@@ -491,6 +543,7 @@ export default function ProjectTasksPanel({
       {
         key: 'assigner',
         label: 'REPORTER',
+        defaultWidth: '180px',
         render: (_, row) => {
           const assignerUser = row.assigner || assignerStrapiShape(row, users);
           const derived = ownerDisplayFromUser(assignerUser);
@@ -519,6 +572,7 @@ export default function ProjectTasksPanel({
       {
         key: 'assignees',
         label: 'ASSIGNEES',
+        defaultWidth: '140px',
         render: (_, row) => (
           <div className="min-w-[140px] py-0.5" onClick={(event) => event.stopPropagation()}>
             {row.assignmentPending ? (
@@ -563,11 +617,13 @@ export default function ProjectTasksPanel({
       {
         key: 'startDate',
         label: 'START DATE',
+        defaultWidth: '120px',
         render: (_, row) => <TableCellCreated dateString={row.startDate} dateMode="calendar" />,
       },
       {
         key: 'dueDate',
         label: 'DUE DATE',
+        defaultWidth: '120px',
         render: (_, row) => (
           <div className={isTaskOverdue(row) ? '[&_.font-semibold]:text-red-700 [&_.text-gray-500]:text-red-600/90' : ''}>
             <TableCellCreated dateString={row.dueDate} dateMode="calendar" />
@@ -577,7 +633,10 @@ export default function ProjectTasksPanel({
       {
         key: 'actions',
         label: 'ACTIONS',
-        className: 'w-[220px]',
+        resizable: false,
+        defaultWidth: '220px',
+        headerClassName: 'whitespace-nowrap',
+        className: 'whitespace-nowrap align-middle',
         render: (_, row) => (
           <div className="flex min-w-[220px] items-center gap-0.5" onClick={(event) => event.stopPropagation()}>
             <PMRowActions
@@ -718,7 +777,7 @@ export default function ProjectTasksPanel({
         )}
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
         {tasksLoading ? (
           <div className="p-12">
             <TableSkeleton rows={5} columns={8} />
@@ -731,6 +790,7 @@ export default function ProjectTasksPanel({
               keyField="id"
               variant="modern"
               onRowClick={(row) => router.push(`/tasks/${row.id}`)}
+              {...tableResizeProps}
               renderAfterRow={(row) => (
                 <TaskSubtasksAfterRow
                   row={row}

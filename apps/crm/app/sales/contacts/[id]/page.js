@@ -399,7 +399,7 @@ export default function ContactDetailPage() {
     const lc = contact?.leadCompany;
     if (!lc || typeof lc !== 'object') return false;
     const status = (lc.status || '').toString().toUpperCase();
-    return status === 'CONVERTED' || status === 'CLIENT' || lc.convertedAccount != null;
+    return status === 'CONVERTED' || lc.convertedAccount != null;
   }, [contact]);
 
   const companyIndustry = useMemo(() => {

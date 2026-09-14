@@ -305,25 +305,22 @@ const leadStatusConfig = {
   qualified: { variant: 'success', label: 'Qualified' },
   lost: { variant: 'danger', label: 'Lost' },
   converted: { variant: 'success', label: 'Converted' },
-  client: { variant: 'success', label: 'Client' },
+  // Legacy CLIENT status is treated as Qualified in the pipeline.
+  client: { variant: 'success', label: 'Qualified' },
 };
 
 /**
- * Lead company row status (pipeline + converted/client).
+ * Lead company row status (pipeline + converted).
  */
 export function TableCellLeadStatus({ company, className }) {
   const isConverted =
     company?.status?.toUpperCase() === 'CONVERTED' ||
-    company?.status?.toUpperCase() === 'CLIENT' ||
     Boolean(company?.convertedAccount);
   if (isConverted) {
-    const statusUpper = (company?.status || '').toString().toUpperCase();
-    const label =
-      statusUpper === 'CLIENT' || company?.convertedAccount ? 'CLIENT' : 'CONVERTED';
     return (
       <div className={className}>
         <Badge variant="success" className="font-semibold">
-          {label}
+          CONVERTED
         </Badge>
       </div>
     );

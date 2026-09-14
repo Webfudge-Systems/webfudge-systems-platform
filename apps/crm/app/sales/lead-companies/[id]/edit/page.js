@@ -101,7 +101,7 @@ export default function EditLeadCompanyPage() {
   const [deleteContactSubmitting, setDeleteContactSubmitting] = useState(false);
   const canEditLeadCompany = lead ? canEditCRMRecord('leads', lead) : false;
 
-  const statusOptions = LEAD_STATUS_OPTIONS;
+  const statusOptions = LEAD_STATUS_OPTIONS.filter((opt) => opt.value !== 'CONVERTED');
 
   const employeeSizeOptions = useMemo(
     () => [

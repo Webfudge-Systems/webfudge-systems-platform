@@ -357,6 +357,7 @@ export default function LeadCompaniesPage() {
     sortRules,
     columnOptions: sortColumnOptions,
     hasActiveSort,
+    sortedData,
     addSortRule,
     removeSortRule,
     setRuleDirection,
@@ -368,6 +369,8 @@ export default function LeadCompaniesPage() {
   const sortApiParam = useMemo(() => {
     if (!sortRules?.length) return 'createdAt:desc';
     const rule = sortRules[0];
+    // Custom pipeline order for status is applied client-side via sortedData
+    if (rule.key === 'status') return 'createdAt:desc';
     return `${rule.key}:${rule.direction}`;
   }, [sortRules]);
 
@@ -481,7 +484,7 @@ export default function LeadCompaniesPage() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [orgUsers]);
 
-  const paginatedCompanies = leadCompanies;
+  const paginatedCompanies = sortedData;
 
   useEffect(() => {
     if (!paginatedCompanies?.length) return;
@@ -568,18 +571,47 @@ export default function LeadCompaniesPage() {
         alert('You can only update lead companies assigned to you.');
         return;
       }
-      const loadingKey = `${companyId}-${newStatus.toLowerCase()}`;
+      const normalizedNewStatus = String(newStatus || '').toLowerCase();
+
+      // Converted requires confirmation, then Add Client with lead details prefilled
+      if (normalizedNewStatus === 'converted') {
+        setConvertError('');
+        setCompanyToConvert(targetCompany);
+        setConvertModalOpen(true);
+        return;
+      }
+
+      const loadingKey = `${companyId}-${normalizedNewStatus}`;
       setLoadingActions((prev) => ({ ...prev, [loadingKey]: true }));
 
       try {
         await leadCompanyService.update(companyId, {
-          status: newStatus.toUpperCase(),
+          status: normalizedNewStatus.toUpperCase(),
         });
-        setLeadCompanies((prevCompanies) =>
-          prevCompanies.map((company) =>
-            company?.id === companyId ? { ...company, status: newStatus.toLowerCase() } : company
-          )
-        );
+
+        // Status tabs / status filter are server-filtered. If the new status no longer
+        // matches the current view, remove the row so it transfers out immediately.
+        const statusTabs = ['new', 'contacted', 'qualified', 'lost', 'converted'];
+        const viewStatusFilter = appliedFilters?.status
+          ? String(appliedFilters.status).toLowerCase()
+          : statusTabs.includes(activeTab)
+            ? activeTab
+            : null;
+        const leavesCurrentView =
+          viewStatusFilter != null && viewStatusFilter !== normalizedNewStatus;
+
+        if (leavesCurrentView) {
+          setLeadCompanies((prevCompanies) =>
+            prevCompanies.filter((company) => company?.id !== companyId)
+          );
+          setTotalItems((prev) => Math.max(0, prev - 1));
+        } else {
+          setLeadCompanies((prevCompanies) =>
+            prevCompanies.map((company) =>
+              company?.id === companyId ? { ...company, status: normalizedNewStatus } : company
+            )
+          );
+        }
         await fetchStats();
       } catch (error) {
         console.error('Error updating status:', error);
@@ -588,7 +620,7 @@ export default function LeadCompaniesPage() {
         setLoadingActions((prev) => ({ ...prev, [loadingKey]: false }));
       }
     },
-    [fetchStats, leadCompanies]
+    [fetchStats, leadCompanies, activeTab, appliedFilters]
   );
 
   const kanbanStatusColumns = useMemo(() => {
@@ -597,7 +629,8 @@ export default function LeadCompaniesPage() {
       by[key] = [];
     });
     leadCompanies.forEach((c) => {
-      const k = (c.status || 'new').toLowerCase();
+      let k = (c.status || 'new').toLowerCase();
+      if (k === 'client') k = c.convertedAccount ? 'converted' : 'qualified';
       if (!by[k]) by[k] = [];
       by[k].push(c);
     });
@@ -607,7 +640,7 @@ export default function LeadCompaniesPage() {
       companies: by[key] || [],
     }));
     if (activeTab === 'all' || activeTab === 'my') return cols;
-    if (['new', 'contacted', 'qualified', 'lost', 'converted', 'client'].includes(activeTab)) {
+    if (['new', 'contacted', 'qualified', 'lost', 'converted'].includes(activeTab)) {
       return cols.filter((c) => c.key === activeTab);
     }
     return cols;
@@ -617,10 +650,36 @@ export default function LeadCompaniesPage() {
     async (leadIdStr, newStatus) => {
       const row = leadCompanies.find((c) => String(c.id) === String(leadIdStr));
       if (!row) return;
+      if (String(newStatus || '').toLowerCase() === 'converted') {
+        setConvertError('');
+        setCompanyToConvert(row);
+        setConvertModalOpen(true);
+        return;
+      }
       await handleStatusUpdate(row.id, newStatus);
     },
     [leadCompanies, handleStatusUpdate]
   );
+
+  const handleConvertToClient = useCallback(async () => {
+    if (!companyToConvert?.id || converting) return;
+    if (!canEditCRMRecord('leads', companyToConvert)) {
+      setConvertError('You can only convert lead companies assigned to you.');
+      return;
+    }
+    setConverting(true);
+    setConvertError('');
+    try {
+      const leadId = companyToConvert.id;
+      setConvertModalOpen(false);
+      setCompanyToConvert(null);
+      router.push(`/clients/accounts/new?fromLead=${encodeURIComponent(leadId)}`);
+    } catch (err) {
+      setConvertError(err?.message || 'Failed to open Add Client. Please try again.');
+    } finally {
+      setConverting(false);
+    }
+  }, [companyToConvert, converting, router]);
 
   const leadsViewSwitcher = (
     <ViewToggleGroup aria-label="Lead companies layout">
@@ -674,37 +733,6 @@ export default function LeadCompaniesPage() {
       setLoadingActions((prev) => ({ ...prev, [loadingKey]: false }));
     }
   };
-
-  const handleConvertToClient = useCallback(async () => {
-    if (!companyToConvert?.id || converting) return;
-    if (!canEditCRMRecord('leads', companyToConvert)) {
-      setConvertError('You can only convert lead companies assigned to you.');
-      return;
-    }
-    setConverting(true);
-    setConvertError('');
-    try {
-      const res = await leadCompanyService.convertToClient(companyToConvert.id);
-      const clientAccount = res?.data?.clientAccount ?? null;
-      setLeadCompanies((prev) =>
-        prev.map((company) =>
-          company?.id === companyToConvert.id
-            ? { ...company, status: 'CONVERTED', convertedAccount: clientAccount }
-            : company
-        )
-      );
-      await fetchStats();
-      setConvertModalOpen(false);
-      setCompanyToConvert(null);
-      if (clientAccount?.id) {
-        router.push(`/clients/accounts/${clientAccount.id}`);
-      }
-    } catch (err) {
-      setConvertError(err?.message || 'Failed to convert. Please try again.');
-    } finally {
-      setConverting(false);
-    }
-  }, [companyToConvert, converting, fetchStats, router]);
 
   const openCommentComposer = useCallback(async (companyId, anchor) => {
     const mode = anchor?.mode === 'nextConnect' ? 'nextConnect' : 'general';
@@ -1177,14 +1205,14 @@ export default function LeadCompaniesPage() {
           const canEditLeadCompany = canEditCRMRecord('leads', company);
           const canDeleteLeadCompany = canManageCRM('leads');
           const currentStatus = (company.status || 'NEW').toUpperCase();
-          const isClient =
-            currentStatus === 'CLIENT' ||
+          const isConverted =
             currentStatus === 'CONVERTED' ||
             Boolean(company?.convertedAccount);
           const convertedAccountId =
             company?.convertedAccount && typeof company.convertedAccount === 'object'
               ? company.convertedAccount.id ?? company.convertedAccount.documentId
               : company?.convertedAccount;
+          const mailTo = primaryContactForLeadCompany(company).email;
           return (
             <div className="flex min-w-[220px] items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
               {/* Order matches contacts table: More → Edit → Mail → Delete */}
@@ -1207,7 +1235,7 @@ export default function LeadCompaniesPage() {
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </div>
-              {isClient ? (
+              {isConverted ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1241,11 +1269,11 @@ export default function LeadCompaniesPage() {
                 variant="ghost"
                 size="sm"
                 className="p-2 text-orange-600 hover:bg-orange-50 disabled:opacity-40"
-                title="Send mail"
-                disabled={!company.email}
+                title={mailTo ? `Send mail to ${mailTo}` : 'No email available'}
+                disabled={!mailTo}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (company.email) window.location.href = `mailto:${company.email}`;
+                  if (mailTo) window.location.href = `mailto:${encodeURIComponent(mailTo)}`;
                 }}
               >
                 <Mail className="h-4 w-4" />
@@ -1595,11 +1623,12 @@ export default function LeadCompaniesPage() {
           <div className="flex items-start gap-3 rounded-xl border border-orange-200 bg-orange-50 p-4">
             <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
             <p className="text-sm text-orange-900">
-              <span className="font-semibold">This action cannot be undone</span>
+              <span className="font-semibold">You will continue on the Add Client page</span>
+              {' '}with this lead&apos;s details filled in.
             </p>
           </div>
           <p className="text-sm text-gray-700">
-            Are you sure you want to convert{' '}
+            Convert{' '}
             <span className="font-semibold text-gray-900">
               {companyToConvert?.companyName || 'this lead company'}
             </span>{' '}
@@ -1607,13 +1636,12 @@ export default function LeadCompaniesPage() {
           </p>
           <div className="rounded-xl border border-orange-100 bg-orange-50/60 p-4">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-orange-700">
-              ✨ This will:
+              This will:
             </p>
             <ul className="space-y-1 text-sm text-orange-900">
-              <li>• Move the company to Client Accounts section</li>
-              <li>• Preserve all contacts and their information</li>
-              <li>• Maintain all deals and proposals</li>
-              <li>• Keep activity history and notes</li>
+              <li>• Open Add Client with company and contact details prefilled</li>
+              <li>• Mark the lead as Converted when you save the client</li>
+              <li>• Link contacts and keep deal/activity history</li>
               <li>• Enable client-specific features and billing</li>
             </ul>
           </div>
@@ -1645,11 +1673,11 @@ export default function LeadCompaniesPage() {
               className="w-full min-w-[10rem] rounded-xl border-0 bg-gradient-to-r from-orange-500 to-pink-500 py-2.5 font-semibold text-white shadow-md hover:opacity-95 disabled:opacity-60 sm:w-auto"
             >
               {converting ? (
-                'Converting…'
+                'Opening…'
               ) : (
                 <>
                   <CheckCircle className="mr-2 h-4 w-4" />
-                  Convert to Client
+                  Continue to Add Client
                 </>
               )}
             </Button>

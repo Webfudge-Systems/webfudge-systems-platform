@@ -18,6 +18,17 @@ const PROJECT_STATUS_ORDER = {
   CANCELLED: 6,
 };
 
+/** Higher = first when sorting status descending (Active → … → Churned). */
+const ACCOUNT_STATUS_ORDER = {
+  ACTIVE: 7,
+  ONBOARDING: 6,
+  AT_RISK: 5,
+  PAUSED: 4,
+  COMPLETED: 3,
+  INACTIVE: 2,
+  CHURNED: 1,
+};
+
 const PRIORITY_ORDER = { high: 3, medium: 2, low: 1 };
 
 function dateValue(value) {
@@ -152,7 +163,9 @@ export function getClientAccountSortValue(row, key) {
         row.assignedTo?.name || row.assignedTo?.email || row.assignedToName
       );
     case 'status':
-      return stringValue(row.status);
+      return (
+        ACCOUNT_STATUS_ORDER[String(row.status || '').toUpperCase()] ?? 0
+      );
     case 'createdAt':
       return dateValue(row.createdAt);
     case 'updatedAt':

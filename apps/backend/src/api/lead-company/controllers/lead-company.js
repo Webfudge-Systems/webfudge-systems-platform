@@ -27,7 +27,7 @@ const {
 const UID = 'api::lead-company.lead-company';
 const CONTACT_UID = 'api::contact.contact';
 const CLIENT_ACCOUNT_UID = 'api::client-account.client-account';
-const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST', 'CONVERTED', 'CLIENT'];
+const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST', 'CONVERTED'];
 
 /** Allowed populate keys for lead-company — unknown keys cause 500s in Strapi 5 */
 const LEAD_POPULATE_FALLBACK = ['assignedTo', 'organization'];
@@ -42,12 +42,23 @@ function normalizeLeadStatus(value) {
   return normalized || null;
 }
 
+/** Legacy CLIENT → QUALIFIED (or CONVERTED when already linked to a client account). */
+function remapLegacyClientStatus(status, hasConvertedAccount) {
+  const normalized = normalizeLeadStatus(status);
+  if (normalized !== 'CLIENT') return normalized;
+  return hasConvertedAccount ? 'CONVERTED' : 'QUALIFIED';
+}
+
 function validateAndApplyLeadStatus(ctx, data) {
   if (!Object.prototype.hasOwnProperty.call(data, 'status')) return;
-  const normalized = normalizeLeadStatus(data.status);
+  let normalized = normalizeLeadStatus(data.status);
   if (!normalized) {
     delete data.status;
     return;
+  }
+  // Accept legacy CLIENT writes and store as QUALIFIED
+  if (normalized === 'CLIENT') {
+    normalized = 'QUALIFIED';
   }
   if (!LEAD_STATUSES.includes(normalized)) {
     return ctx.badRequest(
@@ -56,6 +67,27 @@ function validateAndApplyLeadStatus(ctx, data) {
   }
   data.status = normalized;
   return null;
+}
+
+/** Persist remapped CLIENT statuses so list/stats stay consistent. */
+async function persistRemappedClientStatuses(strapi, rows) {
+  if (!Array.isArray(rows) || !rows.length) return rows;
+  for (const row of rows) {
+    if (!row || normalizeLeadStatus(row.status) !== 'CLIENT') continue;
+    const next = remapLegacyClientStatus(row.status, Boolean(row.convertedAccount));
+    try {
+      await strapi.entityService.update(UID, row.id, { data: { status: next } });
+      row.status = next;
+    } catch (err) {
+      strapi.log.warn(
+        'lead-company CLIENT→%s remap failed for %s: %s',
+        next,
+        row.id,
+        err?.message || String(err)
+      );
+    }
+  }
+  return rows;
 }
 
 function canManageLeadCompanies(ctx) {
@@ -69,6 +101,19 @@ function buildLeadListFilters(orgId, extra) {
 
   const merged = { ...extra };
   delete merged.organization;
+
+  // QUALIFIED tab should include legacy CLIENT rows until remapped
+  if (merged.status != null) {
+    const statusVal =
+      typeof merged.status === 'object' && merged.status.$eq != null
+        ? String(merged.status.$eq).toUpperCase()
+        : String(merged.status).toUpperCase();
+    if (statusVal === 'QUALIFIED') {
+      merged.status = { $in: ['QUALIFIED', 'CLIENT'] };
+    } else if (statusVal === 'CLIENT') {
+      merged.status = { $in: ['QUALIFIED', 'CLIENT'] };
+    }
+  }
 
   const keys = Object.keys(merged).filter((k) => merged[k] != null && merged[k] !== '');
   if (!keys.length) return orgFilter;
@@ -140,6 +185,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         byStatus[status] = await safeCount(strapi, UID, { ...base, status }, 0);
       })
     );
+    // Fold legacy CLIENT into QUALIFIED until records are remapped
+    const legacyClientCount = await safeCount(strapi, UID, { ...base, status: 'CLIENT' }, 0);
+    byStatus.QUALIFIED = (byStatus.QUALIFIED || 0) + legacyClientCount;
     byStatus.total = await safeCount(strapi, UID, base, 0);
 
     let facets = { sources: [], types: [] };
@@ -194,6 +242,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     if (results.length > 0) {
       results = await attachRelationsToLeadCompanies(strapi, ctx.state.orgId, results);
+      results = await persistRemappedClientStatuses(strapi, results);
     }
 
     const total = await safeCount(strapi, UID, filters, results.length);
@@ -219,6 +268,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     entry = await attachRelationsToLeadCompanies(strapi, ctx.state.orgId, [entry]).then(
       (rows) => rows[0]
     );
+    await persistRemappedClientStatuses(strapi, [entry]);
     return { data: entry };
   },
 
@@ -325,8 +375,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
   /**
    * POST /lead-companies/:id/convert
-   * Creates a client-account from this lead company, marks the lead as CONVERTED,
-   * and links all contacts to the new client account (keeping lead-company link).
+   * Creates a client-account from this lead company (or links an existing one via
+   * body.clientAccountId), marks the lead as CONVERTED, and links contacts.
    */
   async convertToClient(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
@@ -334,6 +384,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const denied = requireModuleAccess(ctx, 'crm', 'leads', 'write');
     if (denied) return denied;
     const { id } = ctx.params;
+    const body = ctx.request?.body?.data || ctx.request?.body || {};
+    const existingClientAccountId =
+      body.clientAccountId ?? body.clientAccount?.id ?? null;
 
     const leadCompany = await strapi.entityService.findOne(UID, id, {
       populate: ['organization', 'assignedTo', 'contacts', 'convertedAccount'],
@@ -354,37 +407,63 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       return ctx.badRequest('Lead company is already converted to a client account');
     }
 
-    const clientAccountData = {
-      companyName: leadCompany.companyName,
-      industry: leadCompany.industry || null,
-      type: leadCompany.type || null,
-      website: leadCompany.website || null,
-      phone: leadCompany.phone || null,
-      email: leadCompany.email || null,
-      address: leadCompany.address || null,
-      city: leadCompany.city || null,
-      state: leadCompany.state || null,
-      country: leadCompany.country || null,
-      zipCode: leadCompany.zipCode || null,
-      employees: leadCompany.employees || null,
-      founded: leadCompany.founded || null,
-      description: leadCompany.description || null,
-      linkedIn: leadCompany.linkedIn || null,
-      twitter: leadCompany.twitter || null,
-      notes: leadCompany.notes || null,
-      dealValue: leadCompany.dealValue || 0,
-      healthScore: leadCompany.healthScore || 75,
-      status: 'ACTIVE',
-      conversionDate: new Date(),
-      organization: ctx.state.orgId,
-      assignedTo: leadCompany.assignedTo?.id ?? ctx.state.user.id,
-    };
+    let clientAccount;
+    if (existingClientAccountId != null) {
+      clientAccount = await strapi.entityService.findOne(
+        CLIENT_ACCOUNT_UID,
+        existingClientAccountId,
+        { populate: ['organization', 'convertedFromLead'] }
+      );
+      if (!clientAccount) return ctx.notFound('Client account not found');
+      if (orgIdFromRelation(clientAccount.organization) !== ctx.state.orgId) {
+        return ctx.forbidden('Access denied');
+      }
+      if (clientAccount.convertedFromLead != null) {
+        return ctx.badRequest('Client account is already linked to a lead company');
+      }
+      clientAccount = await strapi.entityService.update(
+        CLIENT_ACCOUNT_UID,
+        clientAccount.id,
+        {
+          data: {
+            convertedFromLead: id,
+            conversionDate: clientAccount.conversionDate || new Date(),
+          },
+        }
+      );
+    } else {
+      const clientAccountData = {
+        companyName: leadCompany.companyName,
+        industry: leadCompany.industry || null,
+        type: leadCompany.type || null,
+        website: leadCompany.website || null,
+        phone: leadCompany.phone || null,
+        email: leadCompany.email || null,
+        address: leadCompany.address || null,
+        city: leadCompany.city || null,
+        state: leadCompany.state || null,
+        country: leadCompany.country || null,
+        zipCode: leadCompany.zipCode || null,
+        employees: leadCompany.employees || null,
+        founded: leadCompany.founded || null,
+        description: leadCompany.description || null,
+        linkedIn: leadCompany.linkedIn || null,
+        twitter: leadCompany.twitter || null,
+        notes: leadCompany.notes || null,
+        dealValue: leadCompany.dealValue || 0,
+        healthScore: leadCompany.healthScore || 75,
+        status: 'ACTIVE',
+        conversionDate: new Date(),
+        organization: ctx.state.orgId,
+        assignedTo: leadCompany.assignedTo?.id ?? ctx.state.user.id,
+      };
 
-    const clientAccount = await strapi.entityService.create(CLIENT_ACCOUNT_UID, {
-      data: clientAccountData,
-    });
+      clientAccount = await strapi.entityService.create(CLIENT_ACCOUNT_UID, {
+        data: clientAccountData,
+      });
+    }
 
-    // Mark lead as CONVERTED and link to the new client account
+    // Mark lead as CONVERTED and link to the client account
     const updatedLead = await strapi.entityService.update(UID, id, {
       data: {
         status: 'CONVERTED',
