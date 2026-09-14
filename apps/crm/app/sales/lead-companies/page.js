@@ -366,13 +366,27 @@ export default function LeadCompaniesPage() {
     bindSortableColumns,
   } = useCrmTableSort({ entity: 'leadCompany', storageKey: TABLE_SORT_STORAGE_KEY, data: leadCompanies });
 
+  /** Status / primary contact need full-list client sort (custom order or nested fields). */
+  const usesClientSideSort = useMemo(() => {
+    const key = sortRules?.[0]?.key;
+    return key === 'status' || key === 'primaryContact';
+  }, [sortRules]);
+
   const sortApiParam = useMemo(() => {
     if (!sortRules?.length) return 'createdAt:desc';
     const rule = sortRules[0];
-    // Custom pipeline order for status is applied client-side via sortedData
-    if (rule.key === 'status') return 'createdAt:desc';
-    return `${rule.key}:${rule.direction}`;
+    if (rule.key === 'status' || rule.key === 'primaryContact') {
+      // Order applied client-side after a bulk fetch
+      return 'createdAt:desc';
+    }
+    const apiKey =
+      rule.key === 'company' || rule.key === 'companyName' ? 'companyName' : rule.key;
+    return `${apiKey}:${rule.direction}`;
   }, [sortRules]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [usesClientSideSort, sortApiParam]);
 
   const persistLeadView = useCallback((mode) => {
     try {
@@ -406,9 +420,10 @@ export default function LeadCompaniesPage() {
     try {
       setLoading(true);
       const isBulkView = leadViewMode === 'kanban' || leadViewMode === 'members';
+      const fetchAllForClientSort = !isBulkView && usesClientSideSort;
       const params = leadCompanyService.buildListParams({
-        page: isBulkView ? 1 : currentPage,
-        pageSize: isBulkView ? 500 : itemsPerPage,
+        page: isBulkView || fetchAllForClientSort ? 1 : currentPage,
+        pageSize: isBulkView || fetchAllForClientSort ? 5000 : itemsPerPage,
         activeTab,
         searchQuery: debouncedSearch,
         appliedFilters,
@@ -419,14 +434,30 @@ export default function LeadCompaniesPage() {
       const rows = Array.isArray(res.data) ? res.data : [];
       setLeadCompanies(rows);
       const pag = res?.meta?.pagination;
-      setTotalItems(isBulkView ? rows.length : (pag?.total ?? 0));
-      setTotalPages(isBulkView ? 1 : Math.max(pag?.pageCount ?? 1, 1));
+      if (isBulkView || fetchAllForClientSort) {
+        setTotalItems(rows.length);
+        setTotalPages(
+          isBulkView ? 1 : Math.max(1, Math.ceil(rows.length / itemsPerPage))
+        );
+      } else {
+        setTotalItems(pag?.total ?? 0);
+        setTotalPages(Math.max(pag?.pageCount ?? 1, 1));
+      }
     } catch (err) {
       console.error('Error fetching lead companies:', err);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, activeTab, debouncedSearch, appliedFilters, sortApiParam, itemsPerPage, leadViewMode]);
+  }, [
+    usesClientSideSort ? 1 : currentPage,
+    activeTab,
+    debouncedSearch,
+    appliedFilters,
+    sortApiParam,
+    itemsPerPage,
+    leadViewMode,
+    usesClientSideSort,
+  ]);
 
   useEffect(() => {
     fetchStats();
@@ -484,7 +515,13 @@ export default function LeadCompaniesPage() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [orgUsers]);
 
-  const paginatedCompanies = sortedData;
+  const paginatedCompanies = useMemo(() => {
+    if (leadViewMode !== 'table' || !usesClientSideSort) {
+      return sortedData;
+    }
+    const start = (currentPage - 1) * itemsPerPage;
+    return sortedData.slice(start, start + itemsPerPage);
+  }, [sortedData, currentPage, itemsPerPage, leadViewMode, usesClientSideSort]);
 
   useEffect(() => {
     if (!paginatedCompanies?.length) return;

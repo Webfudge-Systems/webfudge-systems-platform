@@ -1,20 +1,21 @@
 /** Sortable column metadata per CRM table context. */
 
 export const LEAD_COMPANY_SORT_COLUMNS = [
-  { key: 'companyName', label: 'Company name' },
-  { key: 'status',      label: 'Status' },
-  { key: 'source',      label: 'Source' },
-  { key: 'dealValue',   label: 'Deal value' },
+  { key: 'company', label: 'Company' },
+  { key: 'primaryContact', label: 'Primary contact' },
+  { key: 'status', label: 'Status' },
+  { key: 'source', label: 'Source' },
+  { key: 'dealValue', label: 'Deal value' },
   { key: 'contactsCount', label: 'Contacts' },
-  { key: 'assignedTo',  label: 'Assigned to' },
-  { key: 'type',        label: 'Type' },
-  { key: 'industry',    label: 'Industry' },
-  { key: 'score',       label: 'Score' },
+  { key: 'assignedTo', label: 'Assigned to' },
+  { key: 'type', label: 'Type' },
+  { key: 'industry', label: 'Industry' },
+  { key: 'score', label: 'Score' },
   { key: 'healthScore', label: 'Health score' },
-  { key: 'city',        label: 'City' },
-  { key: 'country',     label: 'Country' },
-  { key: 'createdAt',   label: 'Created' },
-  { key: 'updatedAt',   label: 'Last updated' },
+  { key: 'city', label: 'City' },
+  { key: 'country', label: 'Country' },
+  { key: 'createdAt', label: 'Created' },
+  { key: 'updatedAt', label: 'Last updated' },
 ];
 
 export const CONTACT_SORT_COLUMNS = [

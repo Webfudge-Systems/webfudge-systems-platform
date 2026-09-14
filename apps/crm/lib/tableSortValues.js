@@ -53,8 +53,23 @@ function numValue(v) {
 /** Lead company row sort value. */
 export function getLeadCompanySortValue(row, key) {
   switch (key) {
+    case 'company':
     case 'companyName':
       return stringValue(row.companyName || row.name);
+    case 'primaryContact': {
+      const contacts = Array.isArray(row.contacts) ? row.contacts : [];
+      const pc =
+        contacts.find((c) => c?.isPrimaryContact) || contacts[0] || null;
+      if (pc) {
+        return stringValue(
+          [pc.firstName, pc.lastName].filter(Boolean).join(' ') ||
+            pc.name ||
+            pc.email ||
+            pc.phone
+        );
+      }
+      return stringValue(row.contactName || row.email || row.phone);
+    }
     case 'status': {
       const raw = String(row.status || '').toLowerCase();
       const statusKey =
@@ -63,7 +78,7 @@ export function getLeadCompanySortValue(row, key) {
             ? 'converted'
             : 'qualified'
           : raw;
-      return LEAD_STATUS_ORDER[statusKey] ?? 99;
+      return LEAD_STATUS_ORDER[statusKey] ?? 0;
     }
     case 'source':
       return stringValue(row.source);
