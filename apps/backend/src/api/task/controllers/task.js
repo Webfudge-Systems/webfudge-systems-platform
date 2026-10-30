@@ -37,7 +37,7 @@ const {
   randomUUID,
 } = require('../../../utils/task-recurrence');
 
-const { relId } = require('../../../utils/books-crud');
+const { relId } = require('../../../utils/org-crud');
 const {
   isCrmTaskEntity,
   crmTaskScopeFilter,

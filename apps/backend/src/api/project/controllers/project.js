@@ -26,7 +26,6 @@ const {
   userCanViewProjectRow,
 } = require('../../../utils/rbac');
 
-const { relId } = require('../../../utils/books-crud');
 
 const UID = 'api::project.project';
 const TASK_UID = 'api::task.task';
@@ -344,93 +343,6 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       /* best-effort */
     }
     return { data: entry };
-  },
-
-  async summary(ctx) {
-    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
-    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
-
-    const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
-    if (pk == null) return ctx.notFound();
-
-    const project = await strapi.entityService.findOne(UID, pk, {
-      populate: ['organization', 'customer'],
-    });
-    if (!project) return ctx.notFound();
-    if (orgIdFromRelation(project.organization) !== ctx.state.orgId) {
-      return ctx.forbidden('Access denied');
-    }
-    if (!isPmOrgAdminRole(ctx) && ctx.state.user?.id) {
-      const gate = await strapi.entityService.findOne(UID, pk, {
-        populate: ['teamMembers', 'projectManager'],
-        fields: ['isPrivate'],
-      });
-      if (!userCanViewProjectRow(ctx, gate, ctx.state.user.id)) {
-        return ctx.forbidden('Access denied');
-      }
-    }
-
-    const tasks = await strapi.entityService
-      .findMany(TASK_UID, {
-        filters: { timeProject: pk, organization: ctx.state.orgId },
-        limit: 10000,
-      })
-      .catch(() => []);
-
-    const totalLoggedHours = tasks.reduce((s, t) => s + (parseFloat(t.hoursLogged) || 0), 0);
-    const billableHours = tasks
-      .filter((t) => t.billable && !t.invoiced)
-      .reduce((s, t) => s + (parseFloat(t.hoursLogged) || 0), 0);
-
-    const invoices = await strapi.entityService
-      .findMany('api::invoice.invoice', {
-        filters: { project: pk, organization: ctx.state.orgId },
-        limit: 1000,
-      })
-      .catch(() => []);
-
-    const paymentsReceived = await strapi.entityService
-      .findMany('api::payment-received.payment-received', {
-        filters: { organization: ctx.state.orgId },
-        populate: ['invoice'],
-        limit: 5000,
-      })
-      .catch(() => []);
-
-    const invoiceIds = new Set(invoices.map((i) => i.id));
-    const totalRevenue = paymentsReceived
-      .filter((p) => p.invoice && invoiceIds.has(relId(p.invoice)))
-      .reduce((s, p) => s + (p.amount || 0), 0);
-
-    const expenses = await strapi.entityService
-      .findMany('api::expense.expense', {
-        filters: { project: pk, organization: ctx.state.orgId },
-        limit: 1000,
-      })
-      .catch(() => []);
-    const totalExpenses = expenses.reduce((s, e) => s + (e.amount || 0), 0);
-
-    return ctx.send({
-      data: {
-        totalLoggedHours: Math.round(totalLoggedHours * 100) / 100,
-        billableHours: Math.round(billableHours * 100) / 100,
-        unbilledHours: Math.round(
-          (totalLoggedHours -
-            tasks
-              .filter((t) => t.invoiced)
-              .reduce((s, t) => s + (parseFloat(t.hoursLogged) || 0), 0)) *
-            100
-        ) / 100,
-        totalRevenue,
-        totalExpenses,
-        profitability: totalRevenue - totalExpenses,
-        budgetBurnPercent: project.budgetAmount
-          ? Math.round((totalExpenses / project.budgetAmount) * 100)
-          : 0,
-        invoiceCount: invoices.length,
-        paidInvoiceCount: invoices.filter((i) => i.status === 'paid' || i.status === 'PAID').length,
-      },
-    });
   },
 }));
 

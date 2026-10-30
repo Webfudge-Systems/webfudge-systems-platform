@@ -7,6 +7,7 @@ import { buildWorkspaceCalendarEvents, filterWorkspaceCalendarEvents } from '@we
 import { Button, Card } from '@webfudge/ui';
 import { CalendarRange, Loader2 } from 'lucide-react';
 import PMPageHeader from '../../components/PMPageHeader';
+import { getCrmAppBaseUrl } from '../../lib/crmAppUrl';
 import { loadWorkspaceCalendarData } from '../../lib/loadWorkspaceCalendar';
 
 const UnifiedWorkspaceCalendar = dynamic(() => import('@webfudge/ui').then(m => ({ default: m.UnifiedWorkspaceCalendar })), {
@@ -93,7 +94,7 @@ export default function WorkspaceCalendarPage() {
 
   const onEventClick = useCallback(
     ({ kind, entity }) => {
-      const crmBase = (process.env.NEXT_PUBLIC_CRM_APP_URL || 'http://localhost:3001').replace(/\/$/, '');
+      const crmBase = getCrmAppBaseUrl();
       if (kind === 'meeting' && entity?.id) {
         window.location.href = `${crmBase}/meetings/${entity.id}`;
         return;

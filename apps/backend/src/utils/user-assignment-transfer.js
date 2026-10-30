@@ -87,7 +87,7 @@ async function removeUserFromManyToMany(strapi, uid, organizationId, field, user
 }
 
 /**
- * Reassign CRM, PM, org-structure, and books ownership fields from one org member to another.
+ * Reassign CRM, PM, and org-structure ownership fields from one org member to another.
  * @returns {Promise<Record<string, number>>} counts per entity group
  */
 async function transferUserAssignments(strapi, { organizationId, fromUserId, toUserId }) {

@@ -11,7 +11,6 @@ export { Checkbox } from './Checkbox';
 export { Textarea } from './Textarea';
 
 // DISPLAY COMPONENTS
-export { Accordion } from './Accordion';
 export { Card } from './Card';
 export { Badge } from './Badge';
 export { Avatar } from './Avatar';
@@ -23,7 +22,6 @@ export { EmptyState } from './EmptyState';
 export { TableResultsCount, TableEmptyBelow } from './TableEmptyBelow';
 export { KPICard } from './KPICard';
 export { FormSectionCard } from './FormSectionCard';
-export { SidebarTrialUpsell } from './SidebarTrialUpsell';
 export { PwaInstallPrompt } from './PwaInstallPrompt';
 export { WorkspaceHeader } from './WorkspaceHeader';
 export {
@@ -82,7 +80,6 @@ export {
   TableCellCrmRowActions,
   crmTableActionsColumn,
 } from './TableCrmCells';
-export { crmTableCellTheme } from '../utils/crmTableCellTheme';
 export {
   NextConnectFlag,
   getNextConnectFlagVariant,
@@ -122,7 +119,6 @@ export { ActivitiesTimeline } from './ActivitiesTimeline';
 export { EntityActivityPanel } from './EntityActivityPanel';
 export { EntityFilesPanel } from './EntityFilesPanel';
 export { ChatMessageAttachments } from './ChatMessageAttachments';
-export { LinkifiedText } from './LinkifiedText';
 export { ChatMessageText } from './ChatMessageText';
 export { MentionComposer } from './MentionComposer';
 

@@ -1,5 +1,5 @@
 /**
- * Paginate Strapi list API responses across all apps (PM, CRM, Books).
+ * Paginate Strapi list API responses across all apps (PM, CRM, Accounts).
  * Handles stale meta.pagination.total from cached first pages.
  */
 

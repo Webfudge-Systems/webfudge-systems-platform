@@ -14,7 +14,6 @@ export {
   Checkbox,
   Textarea,
   // Display Components
-  Accordion,
   Card,
   Badge,
   Avatar,
@@ -27,7 +26,6 @@ export {
   TableEmptyBelow,
   KPICard,
   FormSectionCard,
-  SidebarTrialUpsell,
   PwaInstallPrompt,
   LoginBrandCorner,
   LoginProductCredit,
@@ -87,7 +85,6 @@ export {
   TableCellInvoiceStatusSelect,
   TableCellCrmRowActions,
   crmTableActionsColumn,
-  crmTableCellTheme,
   TableRowActionMenuPortal,
   // Navigation Components
   Tabs,
@@ -103,7 +100,6 @@ export {
   EntityActivityPanel,
   EntityFilesPanel,
   ChatMessageAttachments,
-  LinkifiedText,
   ChatMessageText,
   MentionComposer,
   UnifiedWorkspaceCalendar,

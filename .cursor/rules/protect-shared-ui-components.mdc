@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Protect Shared UI Components
 
-`packages/ui/` is the shared design system for PM, CRM, Books, Accounts, HR, and other apps.
+`packages/ui/` is the shared design system for PM, CRM, Accounts, Vendor, and Landing.
 
 ## UI changes — do not modify by default
 

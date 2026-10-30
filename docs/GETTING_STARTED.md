@@ -25,7 +25,6 @@ We have comprehensive documentation to help you:
 
 | Document | Purpose | When to Read |
 |----------|---------|--------------|
-| **[README.md](./README.md)** | Project overview and structure | Start here |
 | **[INSTALLATION.md](./INSTALLATION.md)** | Detailed installation steps | Setting up for the first time |
 | **[QUICKSTART.md](./QUICKSTART.md)** | Quick reference guide | Need to start quickly |
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)** | System architecture | Understanding the system |
@@ -64,8 +63,8 @@ npm run dev
 
 ### 5. Access Applications
 - Landing: http://localhost:3000
-- CRM: http://localhost:3001
-- PM: http://localhost:3002
+- CRM: http://localhost:3007
+- PM: http://localhost:3006
 - Accounts: http://localhost:3003
 - Vendor: http://localhost:3004
 - Backend: http://localhost:1337/admin
@@ -407,7 +406,6 @@ For general Next.js/Strapi questions.
 ## ✅ Checklist for First Time Setup
 
 - [ ] Read this document
-- [ ] Read [README.md](./README.md)
 - [ ] Follow [INSTALLATION.md](./INSTALLATION.md)
 - [ ] Verify all apps are running
 - [ ] Create Strapi admin user
@@ -439,7 +437,6 @@ You're now ready to start developing with the Webfudge Platform!
 ---
 
 **Quick Links**:
-- [README](./README.md) | [Installation](./INSTALLATION.md) | [Quick Start](./QUICKSTART.md)
 - [Architecture](./ARCHITECTURE.md) | [Commands](./COMMANDS.md) | [Environment](./ENVIRONMENT.md)
 - [Checklist](./PROJECT_CHECKLIST.md) | [Setup Summary](./SETUP_SUMMARY.md)
 

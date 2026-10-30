@@ -1,9 +1,11 @@
+import { getAppUrl } from '@webfudge/utils'
+
 /**
  * CRM app base URL for cross-app links from PM (contacts, deals, leads).
  * Set NEXT_PUBLIC_CRM_APP_URL in apps/pm/.env.local (e.g. http://localhost:3007).
  */
 export function getCrmAppBaseUrl() {
-  return (process.env.NEXT_PUBLIC_CRM_APP_URL || 'http://localhost:3007').replace(/\/$/, '')
+  return getAppUrl('crm')
 }
 
 export function crmContactUrl(contactId) {

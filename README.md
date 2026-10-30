@@ -2,7 +2,7 @@
 
 **The operating system for modern businesses** — built by [Webfudge Systems](https://webfudgesystems.in).
 
-Webfudge Systems builds custom software and productized business tools: CRM, project management, finance, automation, ERP-style workflows, and admin panels. This monorepo is the shared codebase for that platform—multiple Next.js apps, one Strapi API, and reusable packages used across products.
+Webfudge Systems builds custom software and productized business tools: CRM, project management, automation, and admin panels. This monorepo is the shared codebase for that platform—multiple Next.js apps, one Strapi API, and reusable packages used across products.
 
 ---
 
@@ -15,8 +15,7 @@ We design and ship:
 - **CRM & sales** — leads, contacts, deals, proposals, invoices, pipelines
 - **Project management** — projects, tasks, timelines, team workload
 - **Accounts & billing** — organizations, users, roles, subscriptions
-- **Finance (Books)** — sales, purchases, accounting workflows
-- **Custom solutions** — dashboards, ERP-style modules, automation, and industry-specific apps (e.g. automobile / VLM)
+- **Vendor portal** — vendor / license oversight
 
 **Vision:** A future where operations, data, and teams live on one central platform—not scattered across dozens of SaaS logins.
 
@@ -32,15 +31,13 @@ We design and ship:
 | App | Package | Default port | Role |
 | --- | --- | ---: | --- |
 | Landing | `apps/landing` | 3000 | Marketing site, signup, product pages |
-| CRM | `apps/crm` | 3001 | Sales, leads, deals, clients, proposals |
-| PM | `apps/pm` | 3002 | Projects, tasks, delivery |
 | Accounts | `apps/accounts` | 3003 | Orgs, users, billing, RBAC |
 | Vendor | `apps/vendor` | 3004 | Vendor / license oversight |
-| Books | `apps/books` | 3005 | Finance & accounting UI |
-| Backend | `apps/backend` | 1337 | Strapi CMS & REST API |
-| VLM (automobile) | `apps/(automobile)/vlm` | — | Vehicle / warranty vertical |
+| PM | `apps/pm` | 3006 | Projects, tasks, delivery |
+| CRM | `apps/crm` | 3007 | Sales, leads, deals, clients, proposals |
+| Backend | `apps/backend` | 1338 | Strapi CMS & REST API |
 
-All frontends share **`@webfudge/ui`**, **`@webfudge/auth`**, and the same Tailwind preset; the backend is the single source of truth for content and auth.
+All frontends share **`@webfudge/ui`**, **`@webfudge/auth`**, **`@webfudge/utils`**, and the same Tailwind preset (`packages/config`); cross-app links use `getAppUrl()` from `@webfudge/utils`; the backend is the single source of truth for content and auth.
 
 ---
 
@@ -56,16 +53,12 @@ webfudge-platform/
 │   ├── pm/                   # Project management
 │   ├── accounts/             # Account & org admin
 │   ├── vendor/               # Vendor portal
-│   ├── books/                # Finance / Books
-│   ├── backend/              # Strapi API
-│   └── (automobile)/vlm/     # Vertical: vehicle lifecycle
+│   └── backend/              # Strapi API
 ├── packages/
 │   ├── ui/                   # Shared components (tables, charts, layout)
 │   ├── auth/                 # Auth provider & helpers
-│   ├── billing/              # Billing utilities
 │   ├── config/               # Tailwind preset, brand tokens
-│   ├── hooks/                # Shared React hooks
-│   └── utils/                # Shared utilities
+│   └── utils/                # Shared utilities (API, formatters, app URLs)
 ├── docs/                     # Architecture, features, change logs
 └── tooling/                  # ESLint, Prettier, TS config
 ```
@@ -78,7 +71,7 @@ webfudge-platform/
 | --- | --- |
 | Frontend | Next.js 14 (App Router), React, Tailwind CSS |
 | UI | `@webfudge/ui` component library |
-| Backend | Strapi 4, REST API, JWT auth |
+| Backend | Strapi 5, REST API, JWT auth |
 | Data | SQLite (dev) / PostgreSQL (production) |
 | Tooling | Turborepo, npm workspaces, ESLint, Prettier |
 
@@ -99,7 +92,7 @@ npm install
 
 ### Development
 
-Run the whole workspace (excluding backend and automobile apps by default):
+Run all frontends (backend excluded by default):
 
 ```bash
 npm run dev
@@ -110,7 +103,9 @@ Run individual products:
 ```bash
 npm run dev:crm
 npm run dev:pm
-npm run dev:books
+npm run dev:accounts
+npm run dev:landing
+npm run dev:vendor
 npm run dev:backend
 ```
 
@@ -121,7 +116,7 @@ cd apps/crm && npm run dev
 cd apps/backend && npm run develop
 ```
 
-Strapi admin: `http://localhost:1337/admin`
+Strapi admin: `http://localhost:1338/admin`
 
 ### Build & production
 
@@ -139,7 +134,7 @@ Each app has its own `.env.example`. Copy and fill before running:
 cp apps/backend/.env.example apps/backend/.env
 cp apps/crm/.env.example apps/crm/.env
 cp apps/pm/.env.example apps/pm/.env
-# … same pattern for landing, accounts, books, vendor
+# … same pattern for landing, accounts, vendor
 ```
 
 See **[docs/ENVIRONMENT.md](./docs/ENVIRONMENT.md)** for variable details.
@@ -160,10 +155,8 @@ See **[docs/ENVIRONMENT.md](./docs/ENVIRONMENT.md)** for variable details.
 
 - **`@webfudge/ui`** — Buttons, tables, dashboard charts, layout shells, feedback loaders
 - **`@webfudge/auth`** — Session/org context for workspace apps
-- **`@webfudge/billing`** — Subscription and billing helpers
 - **`@webfudge/config`** — Brand colors and Tailwind preset
-- **`@webfudge/utils`** — Calendar, formatting, API helpers
-- **`@webfudge/hooks`** — Shared React hooks
+- **`@webfudge/utils`** — Calendar, formatting, API helpers, cross-app URLs (`getAppUrl`)
 
 Import example:
 
@@ -187,7 +180,7 @@ Technical docs live under **`docs/`**:
 | **[docs/COMMANDS.md](./docs/COMMANDS.md)** | Command reference |
 | **[docs/ENVIRONMENT.md](./docs/ENVIRONMENT.md)** | Environment variables |
 
-Feature-specific notes (CRM dashboards, PM tasks, Books UI, shared component refactors, etc.) are also listed in the documentation index.
+Feature-specific notes (CRM dashboards, PM tasks, shared component refactors, etc.) are also listed in the documentation index.
 
 ---
 

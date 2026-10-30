@@ -1,7 +1,6 @@
 import React from 'react'
 import { clsx } from 'clsx'
 import { Card } from '../Card'
-import { booksKpiCardClassName } from '../../themes/booksSurface'
 
 /**
  * KPICard Component
@@ -37,10 +36,7 @@ const KPICard = ({
   onClick,
   className = '',
   compact = false,
-  /** `books` uses `--books-*` tokens for Books app light/dark surfaces. */
-  theme = 'default',
 }) => {
-  const isBooks = theme === 'books'
   const colorClasses = {
     orange: {
       iconBg: 'bg-brand-primary/10',
@@ -86,48 +82,27 @@ const KPICard = ({
 
   const colors = colorClasses[colorScheme] || colorClasses.blue
 
-  const paddingClass = compact
-    ? 'pl-5 pt-3 pb-0 pr-0 sm:pl-6 sm:pt-4'
-    : isBooks
-      ? booksKpiCardClassName
-      : 'p-6 pb-0 pr-0'
+  const paddingClass = compact ? 'pl-5 pt-3 pb-0 pr-0 sm:pl-6 sm:pt-4' : 'p-6 pb-0 pr-0'
   const showFooter = !compact && (change || (!change && subtitle))
 
   const iconBoxClass =
     'relative h-32 w-32 shrink-0 self-start overflow-hidden rounded-2xl rounded-bl-[0] rounded-tr-[0]'
   const iconImgClass = 'absolute -bottom-7 -right-7 h-32 w-32'
 
-  const titleClass = isBooks
-    ? 'mb-2 text-sm font-medium text-[var(--books-text-secondary,#6b7280)]'
-    : 'mb-2 text-sm font-medium text-gray-600'
-  const valueClass = isBooks
-    ? clsx(
-        'max-w-full truncate text-3xl font-bold tracking-tight text-[var(--books-text-primary,#111827)] sm:text-4xl',
-        showFooter && 'mb-2'
-      )
-    : clsx(
-        'max-w-full truncate text-3xl font-bold sm:text-4xl text-gray-900',
-        showFooter && 'mb-2'
-      )
-  const footerClass = isBooks
-    ? 'flex items-center gap-1.5 text-sm text-[var(--books-text-secondary,#6b7280)]'
-    : 'flex items-center gap-1.5 text-sm text-gray-500'
-  const booksDot = 'h-2 w-2 rounded-full bg-[var(--books-brand,#ea580c)]'
+  const titleClass = 'mb-2 text-sm font-medium text-gray-600'
+  const valueClass = clsx(
+    'max-w-full truncate text-3xl font-bold sm:text-4xl text-gray-900',
+    showFooter && 'mb-2'
+  )
+  const footerClass = 'flex items-center gap-1.5 text-sm text-gray-500'
+  const dotClass = `h-2 w-2 rounded-full ${colors.dotColor}`
   const changeClass =
-    changeType === 'increase'
-      ? isBooks
-        ? 'font-medium text-[var(--books-green,#059669)]'
-        : 'font-medium text-green-600'
-      : isBooks
-        ? 'font-medium text-red-600 dark:text-red-400'
-        : 'font-medium text-red-600'
+    changeType === 'increase' ? 'font-medium text-green-600' : 'font-medium text-red-600'
 
   return (
     <Card
       variant="elevated"
-      surface={isBooks ? 'books' : undefined}
       className={clsx(
-        isBooks && booksKpiCardClassName,
         paddingClass,
         onClick &&
           'cursor-pointer hover:shadow-[0_6px_26px_rgba(15,23,42,0.13),0_3px_8px_rgba(15,23,42,0.07)] transition-shadow',
@@ -143,32 +118,24 @@ const KPICard = ({
           </p>
           {showFooter && change && (
             <div className={footerClass}>
-              <span className={isBooks ? booksDot : `h-2 w-2 rounded-full ${colors.dotColor}`} aria-hidden />
+              <span className={dotClass} aria-hidden />
               <span className={changeClass}>{change}</span>
-              {change !== '0' && <span className={isBooks ? 'ml-0.5' : 'ml-1'}>this period</span>}
+              {change !== '0' && <span className="ml-1">this period</span>}
             </div>
           )}
           {showFooter && !change && subtitle && (
             <div className={footerClass}>
-              <span className={isBooks ? booksDot : `h-2 w-2 rounded-full ${colors.dotColor}`} aria-hidden />
+              <span className={dotClass} aria-hidden />
               <span>{subtitle}</span>
             </div>
           )}
         </div>
         {Icon && (
           <div
-            className={clsx(
-              iconBoxClass,
-              isBooks
-                ? 'bg-[var(--books-orange-bg,rgba(234,88,12,0.1))]'
-                : colors.iconBg
-            )}
+            className={clsx(iconBoxClass, colors.iconBg)}
           >
             <Icon
-              className={clsx(
-                iconImgClass,
-                isBooks ? 'text-[var(--books-orange-text,#ea580c)]' : colors.iconColor
-              )}
+              className={clsx(iconImgClass, colors.iconColor)}
               aria-hidden
             />
           </div>

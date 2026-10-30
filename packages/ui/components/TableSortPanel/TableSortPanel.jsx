@@ -29,9 +29,7 @@ export function TableSortPanel({
   onClear,
   maxRules = 5,
   className,
-  theme = 'light',
 }) {
-  const isBooks = theme === 'books'
   const usedKeys = new Set(sortRules.map((r) => r.key))
   const available = columnOptions.filter((c) => !usedKeys.has(c.key))
   const canAddMore = sortRules.length < maxRules && available.length > 0
@@ -47,9 +45,7 @@ export function TableSortPanel({
     <div
       className={clsx(
         'w-[min(100vw-2rem,22rem)] rounded-xl border p-2.5 shadow-xl',
-        isBooks
-          ? 'border-[color:var(--books-border,rgba(255,255,255,0.08))] bg-[var(--books-bg-elevated,#252830)] shadow-[var(--books-shell-shadow)]'
-          : 'border-gray-200 bg-white',
+        'border-gray-200 bg-white',
         className
       )}
       role="dialog"
@@ -60,7 +56,7 @@ export function TableSortPanel({
           <p
             className={clsx(
               'text-xs font-semibold uppercase tracking-wide',
-              isBooks ? 'text-[var(--books-text-secondary,#9ca3af)]' : 'text-gray-500'
+              'text-gray-500'
             )}
           >
             Sort
@@ -68,7 +64,7 @@ export function TableSortPanel({
           <p
             className={clsx(
               'mt-0.5 text-xs leading-snug',
-              isBooks ? 'text-[var(--books-text-tertiary,#6b7280)]' : 'text-gray-500'
+              'text-gray-500'
             )}
           >
             Rules apply top to bottom. Click a column header to sort; hold Shift for multiple columns.
@@ -80,9 +76,7 @@ export function TableSortPanel({
             onClick={onClear}
             className={clsx(
               'shrink-0 rounded-md p-1',
-              isBooks
-                ? 'text-[var(--books-text-tertiary)] hover:bg-[var(--books-bg-card)] hover:text-[var(--books-text-secondary)]'
-                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+              'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
             )}
             title="Clear all sorts"
             aria-label="Clear all sorts"
@@ -96,9 +90,7 @@ export function TableSortPanel({
         <p
           className={clsx(
             'mb-2 rounded-lg border border-dashed px-3 py-2 text-xs',
-            isBooks
-              ? 'border-[color:var(--books-border)] bg-[var(--books-bg-card)] text-[var(--books-text-secondary)]'
-              : 'border-gray-200 bg-gray-50 text-gray-500'
+            'border-gray-200 bg-gray-50 text-gray-500'
           )}
         >
           No sort applied. Add a rule below or click a column header.
@@ -112,9 +104,7 @@ export function TableSortPanel({
                 key={rule.key}
                 className={clsx(
                   'flex items-center gap-1 rounded-lg border pr-1',
-                  isBooks
-                    ? 'border-[color:var(--books-border)] bg-[var(--books-bg-card)]'
-                    : 'border-gray-100 bg-gray-50/80'
+                  'border-gray-100 bg-gray-50/80'
                 )}
               >
                 <span
@@ -127,7 +117,7 @@ export function TableSortPanel({
                   <span
                     className={clsx(
                       'truncate text-sm font-medium',
-                      isBooks ? 'text-[var(--books-text-primary,#f8fafc)]' : 'text-gray-800'
+                      'text-gray-800'
                     )}
                   >
                     {label}
@@ -139,12 +129,8 @@ export function TableSortPanel({
                       className={clsx(
                         'inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase',
                         rule.direction === 'asc'
-                          ? isBooks
-                            ? 'bg-[var(--books-orange-bg)] text-[var(--books-orange-text)]'
-                            : 'bg-orange-100 text-orange-800'
-                          : isBooks
-                            ? 'text-[var(--books-text-secondary)] hover:bg-[var(--books-surface-muted)]'
-                            : 'text-gray-500 hover:bg-gray-100'
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'text-gray-500 hover:bg-gray-100'
                       )}
                     >
                       <ArrowUp className="h-3 w-3" />
@@ -156,12 +142,8 @@ export function TableSortPanel({
                       className={clsx(
                         'inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase',
                         rule.direction === 'desc'
-                          ? isBooks
-                            ? 'bg-[var(--books-orange-bg)] text-[var(--books-orange-text)]'
-                            : 'bg-orange-100 text-orange-800'
-                          : isBooks
-                            ? 'text-[var(--books-text-secondary)] hover:bg-[var(--books-surface-muted)]'
-                            : 'text-gray-500 hover:bg-gray-100'
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'text-gray-500 hover:bg-gray-100'
                       )}
                     >
                       <ArrowDown className="h-3 w-3" />
@@ -176,9 +158,7 @@ export function TableSortPanel({
                     onClick={() => onMoveRule?.(index, index - 1)}
                     className={clsx(
                       'rounded p-1 disabled:opacity-30',
-                      isBooks
-                        ? 'text-[var(--books-text-tertiary)] hover:bg-[var(--books-surface-muted)] hover:text-[var(--books-text-secondary)]'
-                        : 'text-gray-400 hover:bg-white hover:text-gray-700'
+                      'text-gray-400 hover:bg-white hover:text-gray-700'
                     )}
                     title="Move up (higher priority)"
                     aria-label={`Move ${label} up`}
@@ -191,9 +171,7 @@ export function TableSortPanel({
                     onClick={() => onMoveRule?.(index, index + 1)}
                     className={clsx(
                       'rounded p-1 disabled:opacity-30',
-                      isBooks
-                        ? 'text-[var(--books-text-tertiary)] hover:bg-[var(--books-surface-muted)] hover:text-[var(--books-text-secondary)]'
-                        : 'text-gray-400 hover:bg-white hover:text-gray-700'
+                      'text-gray-400 hover:bg-white hover:text-gray-700'
                     )}
                     title="Move down (lower priority)"
                     aria-label={`Move ${label} down`}
@@ -206,9 +184,7 @@ export function TableSortPanel({
                   onClick={() => onRemoveRule?.(rule.key)}
                   className={clsx(
                     'mr-0.5 rounded p-1.5',
-                    isBooks
-                      ? 'text-[var(--books-text-tertiary)] hover:bg-red-500/10 hover:text-red-400'
-                      : 'text-gray-400 hover:bg-red-50 hover:text-red-600'
+                    'text-gray-400 hover:bg-red-50 hover:text-red-600'
                   )}
                   title="Remove sort"
                   aria-label={`Remove sort by ${label}`}
@@ -224,15 +200,13 @@ export function TableSortPanel({
       {canAddMore ? (
         <div className="flex items-center gap-2">
           <Plus
-            className={clsx('h-4 w-4 shrink-0', isBooks ? 'text-[var(--books-text-tertiary)]' : 'text-gray-400')}
+            className={clsx('h-4 w-4 shrink-0', 'text-gray-400')}
             aria-hidden
           />
           <select
             className={clsx(
               'min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20',
-              isBooks
-                ? 'border-[color:var(--books-border)] bg-[var(--books-input-bg,#252830)] text-[var(--books-input-text,#f0f0f0)] focus:border-orange-400/70'
-                : 'border-gray-200 bg-white text-gray-800 focus:border-orange-400'
+              'border-gray-200 bg-white text-gray-800 focus:border-orange-400'
             )}
             defaultValue=""
             onChange={handleAddSelect}
@@ -252,7 +226,7 @@ export function TableSortPanel({
 
       {sortRules.length > 0 ? (
         <div
-          className={clsx('mt-2 border-t pt-2', isBooks ? 'border-[color:var(--books-border)]' : 'border-gray-100')}
+          className={clsx('mt-2 border-t pt-2', 'border-gray-100')}
         >
           <Button
             type="button"
@@ -260,9 +234,7 @@ export function TableSortPanel({
             size="sm"
             className={clsx(
               'w-full text-sm font-medium',
-              isBooks
-                ? 'border-[color:var(--books-orange-text)] text-[var(--books-orange-text)] hover:bg-[var(--books-orange-bg)]'
-                : 'text-gray-700'
+              'text-gray-700'
             )}
             onClick={onClear}
           >

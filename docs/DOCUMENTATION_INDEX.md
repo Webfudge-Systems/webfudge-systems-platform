@@ -18,7 +18,6 @@ Your complete guide to the Webfudge Platform documentation.
 
 | Document                                   | Description                             | Read Time | Priority  |
 | ------------------------------------------ | --------------------------------------- | --------- | --------- |
-| **[README.md](./README.md)**               | Project overview and structure          | 10 min    | 🔴 High   |
 | **[ARCHITECTURE.md](./ARCHITECTURE.md)**   | System design and architecture diagrams | 20 min    | 🟡 Medium |
 | **[SETUP_SUMMARY.md](./SETUP_SUMMARY.md)** | Detailed summary of what's initialized  | 10 min    | 🟡 Medium |
 
@@ -29,8 +28,6 @@ Your complete guide to the Webfudge Platform documentation.
 | **[COMMANDS.md](./COMMANDS.md)**       | Complete command reference  | 15 min    | 🟡 Medium |
 | **[ENVIRONMENT.md](./ENVIRONMENT.md)** | Environment variables guide | 15 min    | 🟡 Medium |
 | **[ACCOUNTS_PRODUCTION_DEPLOY.md](./ACCOUNTS_PRODUCTION_DEPLOY.md)** | Accounts app production deploy (env, build, run) | 5 min | 🟡 Medium |
-| **[HR_PRODUCTION_DEPLOY.md](./HR_PRODUCTION_DEPLOY.md)** | Fudge People (`apps/hr`) production deploy — `people.webfudge.in`, env, SEO/branding, CORS | 5 min | 🟡 Medium |
-| **[ESS_PRODUCTION_DEPLOY.md](./ESS_PRODUCTION_DEPLOY.md)** | Fudge Desk (`apps/ess`) production deploy — `desk.webfudge.in`, env, SEO/branding, CORS | 5 min | 🟡 Medium |
 | **[RAILWAY_STRAPI_DEPLOY.md](./RAILWAY_STRAPI_DEPLOY.md)** | Strapi on Railway: Postgres variables, SSL, pool, crash-loop fixes | 5 min | 🔴 High |
 
 ### 📋 Project Management
@@ -45,42 +42,8 @@ Your complete guide to the Webfudge Platform documentation.
 | Document                                                                                                 | Description                                                                                                                                                                   |
 | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **[CRM_LEAD_STATUS_CONVERTED_UPDATE.md](./CRM_LEAD_STATUS_CONVERTED_UPDATE.md)**                           | CRM leads: remove Client status (remap to Qualified), Converted → confirm → Add Client prefill + link on save; status desc sort Converted → Qualified → Contacted → New → Lost |
-| **[REAL_ESTATE_PROJECT_ACTIVITY.md](./REAL_ESTATE_PROJECT_ACTIVITY.md)**                                 | Fudge Estate: functional project Activity tab — backend logs create/update (field diffs) into shared `crm_activities` under `real_estate_project`, new `GET /real-estate-projects/:id/activities`, rendered via shared `ActivitiesTimeline` merged with lead/visit events |
-| **[REAL_ESTATE_CRM_LEADS_TABLE.md](./REAL_ESTATE_CRM_LEADS_TABLE.md)**                                   | Fudge Estate: Leads list upgraded to match CRM lead-companies — `TabsWithActions` toolbar (search/add/filter/columns/sort), tab count badges, resizable + reorderable columns (`useTableColumnPreferences`/`TableColumnPicker`), sortable headers (`useTableSort`/`TableSortDropdown`), row actions + delete modal |
-| **[REAL_ESTATE_CRM_PAGE_HEADER.md](./REAL_ESTATE_CRM_PAGE_HEADER.md)**                                   | Fudge Estate: shared `EstatePageHeader` (CRM-style `AppPageHeader`) added to every authenticated page — title/subtitle/breadcrumb/notifications/profile; CRM tile-grid sidebar restyle; new org-scoped `notificationService` |
-| **[REAL_ESTATE_CRM_UI_STAGE5.md](./REAL_ESTATE_CRM_UI_STAGE5.md)**                                       | Fudge Estate Stage 5: full UI — leads table (filters/bulk/score sort), lead detail (score breakdown + timeline + actions), projects funnel, site-visit outcomes, Meta integration settings, dashboard chart |
-| **[META_ADS_INTEGRATION.md](./META_ADS_INTEGRATION.md)**                                                 | Fudge Estate Stage 4: `@webfudge/meta-ads` Graph client, signed Meta webhook + landing enrichment routes, secret-gated `/api/re-webhooks/*` ingestion, CAPI scored-lead feedback |
-| **[LEAD_SCORING_PACKAGE.md](./LEAD_SCORING_PACKAGE.md)**                                                 | Fudge Estate Stage 3: pure TS `@webfudge/lead-scoring` package — 0-100 score, hot/warm/cold tiers, additive-only landing-page boost (no-penalty rule), 15 vitest tests |
-| **[REAL_ESTATE_CRM_BACKEND_SCHEMA.md](./REAL_ESTATE_CRM_BACKEND_SCHEMA.md)**                             | Fudge Estate Stage 2: 4 org-scoped Strapi content types (projects, leads, site visits, lead activities), CRM-pattern controllers/routes, index migration |
-| **[REAL_ESTATE_CRM_SCAFFOLD.md](./REAL_ESTATE_CRM_SCAFFOLD.md)**                                         | Fudge Estate (`apps/real-estate-crm`): Stage 1 scaffold on port 3009 — Next 14 + TS, leads/contacts/pipeline/settings, `realestate` RBAC matrix, org-scoped client |
 | **[S3_FILE_UPLOAD_UPDATE.md](./S3_FILE_UPLOAD_UPDATE.md)**                                               | AWS S3 via Strapi upload provider; entity attachments API; chat file attach; CRM/PM Files & Documents tabs |
-| **[BOOKS_MOCK_DATA_UPDATE.md](./BOOKS_MOCK_DATA_UPDATE.md)**                                             | Books app: centralized `lib/mock-data` for all list/dashboard pages; no Supabase usage |
-| **[BOOKS_REPORTS_CHARTS_REDESIGN.md](./BOOKS_REPORTS_CHARTS_REDESIGN.md)**                               | Books Reports hub: Items-style KPIs + chart grid (`BooksChartViewSwitcher`, `FinanceDualChart`, cash flow, expense donut, banking) |
-| **[BOOKS_ITEMS_PRICE_LISTS_INVENTORY_CRUD.md](./BOOKS_ITEMS_PRICE_LISTS_INVENTORY_CRUD.md)**           | Price Lists & Inventory Adjustments: All Items parity (KPIs, tabs, table, add/view/edit/delete, localStorage stores) |
 | **[SHARED_COMPONENT_CLEANUP_2026.md](./SHARED_COMPONENT_CLEANUP_2026.md)**                               | CRM dashboard charts → `@webfudge/ui`; shared `QuickActionsFab`; Accounts status badge via `Badge`; missing `.env.example` files for PM, Books, VLM |
-| **[HRMS_FRONTEND_SCAFFOLD.md](./HRMS_FRONTEND_SCAFFOLD.md)**                                             | WF People (`apps/hr`): full HRMS UI scaffold on port 3008 — 13 routes, mock data, CRM/PM shell and `@webfudge/ui` components; no backend yet                                  |
-| **[HR_MODULE_UI_CRM_ALIGNMENT.md](./HR_MODULE_UI_CRM_ALIGNMENT.md)**                                       | HR module pages (except dashboard) aligned to CRM/PM: `HRModulePage`, `HRKpiRow`, `HRDataTableCard`, global search header, `TableResultsCount`                               |
-| **[HR_EMPLOYEE_PM_ALIGNMENT.md](./HR_EMPLOYEE_PM_ALIGNMENT.md)**                                             | HR Analytics coming-soon, employee create/edit/detail PM patterns, table delete actions                                                                                        |
-| **[HR_SIDEBAR_PM_ALIGNMENT.md](./HR_SIDEBAR_PM_ALIGNMENT.md)**                                             | HR sidebar restyled to match PM: Navigate tiles, Workforce panel, Tools panel, hide-mode shell, `@webfudge/ui` branding                                                       |
-| **[HR_TOPBAR_PM_ALIGNMENT.md](./HR_TOPBAR_PM_ALIGNMENT.md)**                                               | HR topbar aligned to PM: `HRPageHeader` parity, dashboard greeting, `WorkspaceSearchInput`, page shell spacing                                                                |
-| **[SHARED_UI_REVERT_HRMS.md](./SHARED_UI_REVERT_HRMS.md)**                                               | Reverted HR-driven `@webfudge/ui` visual changes; HR wrappers (`HRDashboardKpiRow`, `HRDashboardInsightShell`); `.cursor/rules/protect-shared-ui-components.mdc` |
-| **[HR_DEPARTMENT_DISTRIBUTION_CHART_UPDATE.md](./HR_DEPARTMENT_DISTRIBUTION_CHART_UPDATE.md)**             | HR department donut chart; component now lives in `apps/hr` as `HRDepartmentDistributionDonut` (not shared)                                                          |
-| **[HR_ATTENDANCE_LEAVE_PM_ALIGNMENT.md](./HR_ATTENDANCE_LEAVE_PM_ALIGNMENT.md)**                         | HR Attendance & Leave pages aligned to Employees/PM: glass tab bar, KPI row, sort/column picker, shared table cells                                                             |
-| **[HR_EMPLOYEE_ACCOUNTS_SYNC.md](./HR_EMPLOYEE_ACCOUNTS_SYNC.md)**                                       | HR Employees now sync with Accounts Users via org APIs; department catalog and reporting-manager role dropdown aligned with Accounts |
-| **[HR_DEPARTMENTS_FIX.md](./HR_DEPARTMENTS_FIX.md)**                                                     | HR employee department dropdown: shared `/departments` API with Accounts; auto-seed default org departments when empty |
-| **[HR_PAYROLL_FUNCTIONAL_BUILD.md](./HR_PAYROLL_FUNCTIONAL_BUILD.md)**                                   | HR Payroll full-stack functional build: salary structures, payroll runs lifecycle, line-item computation, payslip generation/download |
-| **[HR_PAYROLL_SUBNAV_UPDATE.md](./HR_PAYROLL_SUBNAV_UPDATE.md)**                                         | HR Payroll tabs split into separate routes; sub-sidebar navigation for Overview, Structures, Payslips, Compliance, Loans |
-| **[HR_PAYSLIP_PDF_UI_UPDATE.md](./HR_PAYSLIP_PDF_UI_UPDATE.md)**                                         | Payslip PDF download: branded header, employee details card, earnings/deductions tables, net pay highlight |
-| **[HR_LEAVE_FUNCTIONAL_BUILD.md](./HR_LEAVE_FUNCTIONAL_BUILD.md)**                                       | HR Leave: Strapi leave-request API, sync service, requests CRUD, approve/reject, balances, export CSV |
-| **[HR_ATTENDANCE_FUNCTIONAL_BUILD.md](./HR_ATTENDANCE_FUNCTIONAL_BUILD.md)**                             | HR Attendance: attendance-record API, daily roster, leave sync, mark/edit, monthly log, overtime, export |
-| **[HR_PERFORMANCE_GOALS_FUNCTIONAL_SYNC.md](./HR_PERFORMANCE_GOALS_FUNCTIONAL_SYNC.md)**                 | HR Performance goals: functional CRUD, modal consistency using shared UI, and ESS employee sync for individual goals |
-| **[HR_PERFORMANCE_REVIEWS_FUNCTIONAL_SYNC.md](./HR_PERFORMANCE_REVIEWS_FUNCTIONAL_SYNC.md)**             | HR Performance reviews: functional cycle CRUD, modal action consistency, and ESS sync signaling for review-cycle updates |
-| **[HR_PERFORMANCE_FEEDBACK_FUNCTIONAL_SYNC.md](./HR_PERFORMANCE_FEEDBACK_FUNCTIONAL_SYNC.md)**           | HR Performance feedback: functional requests/responses CRUD, modal action consistency, and ESS employee-scoped feedback sync |
-| **[HR_PERFORMANCE_APPRAISALS_FUNCTIONAL_SYNC.md](./HR_PERFORMANCE_APPRAISALS_FUNCTIONAL_SYNC.md)**       | HR Performance appraisals: functional CRUD, modal action consistency, employee linkage, and ESS appraisal sync by employee id |
-| **[HR_PERFORMANCE_PIPS_FUNCTIONAL_SYNC.md](./HR_PERFORMANCE_PIPS_FUNCTIONAL_SYNC.md)**                   | HR Performance PIPs: functional CRUD, modal action consistency, employee linkage, and ESS PIP sync by employee id |
-| **[HR_ESS_PERFORMANCE_MOCK_DATA_REMOVAL.md](./HR_ESS_PERFORMANCE_MOCK_DATA_REMOVAL.md)**                 | Removed performance seed/mock datasets from HR+ESS modules; all performance views now use persisted records only with generic empty states |
-| **[HR_ESS_PERFORMANCE_SYNC_FIX.md](./HR_ESS_PERFORMANCE_SYNC_FIX.md)**                                   | HR↔ESS performance sync via org API workspace; fixes cross-port localStorage gap and employee ID matching for goals, appraisals, PIPs, feedback |
-| **[HR_EMPLOYEE_ESS_PORTAL.md](./HR_EMPLOYEE_ESS_PORTAL.md)**                                             | Employee Self-Service app (`apps/ess`, `@webfudge/ess`, port 3009): overview, attendance, leave, payroll, activity; synced with HR admin via shared Strapi backend |
 | **[CROSS_APP_UI_CONSOLIDATION.md](./CROSS_APP_UI_CONSOLIDATION.md)**                                     | PM→CRM→Accounts consolidation: TableSortDropdown, AccessDeniedPanel, WorkspaceLayoutContent, shared utils (leadCompanyProfileOptions, contactCompanyFields, industryVisuals) |
 | **[WORKSPACE_SIDEBAR_BRANDING_HIDE_BACK.md](./WORKSPACE_SIDEBAR_BRANDING_HIDE_BACK.md)**               | Sidebar branding via per-app site config, hide-mode sidebar with top bar, and shared WorkspaceBackButton on inner pages |
 | **[ACCOUNTS_USERS_PAGE_SYNC.md](./ACCOUNTS_USERS_PAGE_SYNC.md)**                                       | Accounts users page: edit password, suspend/remove with assignment transfer, backend membership APIs aligned with Xtrawrkx |
@@ -184,8 +147,6 @@ Your complete guide to the Webfudge Platform documentation.
 | **[CRM_CONTENT_API_SERVICES.md](./CRM_CONTENT_API_SERVICES.md)**                                         | Shared `strapiContentApi.js`: Strapi 5 `populate`, `buildListQuery`, normalized list/one responses across CRM \*Service modules                                               |
 | **[BACKEND_CONTENT_API_CONTROLLERS.md](./BACKEND_CONTENT_API_CONTROLLERS.md)**                           | Strapi org-scoped CRM controllers/routes: `content-api-helpers.js`, task/project tenancy, deal `deliveryProject` populate                                                     |
 | **[CRM_THREADS_PAGE.md](./CRM_THREADS_PAGE.md)**                                                         | Threads page rebuilt: two-panel conversation hub, global comments feed, entity-grouped threads, real-time reply, `?type=` filter on `/crm-activities/feed`                    |
-| **[VLM_APP_AND_STRAPI.md](./VLM_APP_AND_STRAPI.md)**                                                     | New VLM app (`apps/(automobile)/vlm`) + Strapi collections (`vehicles`, `vehicle-events`, `allocations`, `service-records`, `warranty-records`) with event-driven lifecycle     |
-| **[VLM_UI_CRM_ALIGNMENT.md](./VLM_UI_CRM_ALIGNMENT.md)**                                                 | VLM UI/UX aligned to CRM/PM/HR: `WorkspaceLayoutContent`, tile sidebar, `AppPageHeader`, KPI rows, shared tables, detail layout, reports dashboard                               |
 | **[ACCOUNTS_APP_FOUNDATION.md](./ACCOUNTS_APP_FOUNDATION.md)**                                           | Accounts app foundation in `apps/accounts`: CRM/PM-aligned app shell, auth/layout wiring, sidebar/header, org-aware API client, and core module route scaffolds               |
 | **[ACCOUNTS_USERS_PAGE_TABLE_UI.md](./ACCOUNTS_USERS_PAGE_TABLE_UI.md)**                                 | Accounts `/users` page upgraded from scaffold to CRM-style functional list: KPI cards, tabs, search, org-scoped users table, pagination                                   |
 | **[ORG_CREATOR_ADMIN_USERS_SYNC.md](./ORG_CREATOR_ADMIN_USERS_SYNC.md)**                                 | Org creation now auto-adds creator as Admin membership; Accounts users switched to org-members API; landing profile now sets active `current-org-id` for app/org navigation |
@@ -194,30 +155,8 @@ Your complete guide to the Webfudge Platform documentation.
 | **[ACCOUNTS_ROLES_AND_PERMISSIONS_RBAC.md](./ACCOUNTS_ROLES_AND_PERMISSIONS_RBAC.md)**                   | Accounts `/roles` functional: CRM/PM permission matrix, system templates + org-scoped custom roles, org role CRUD APIs, Users page assigns roles by id/code              |
 | **[ACCOUNTS_AUDIT_LOGS_PAGE.md](./ACCOUNTS_AUDIT_LOGS_PAGE.md)**                                          | Accounts `/audit-logs` upgraded to org-wide audit center (CRM/PM/Accounts) with enterprise filters, table + timeline view switcher, and details modal with before/after JSON |
 | **[ACCOUNTS_AUDIT_LOG_USER_EVENTS.md](./ACCOUNTS_AUDIT_LOG_USER_EVENTS.md)**                               | Backend writes user add/invite/membership-update events to the shared activity feed so Audit Logs shows Accounts user management actions                                      |
-| **[BOOKS_MODULES_REFERENCE.md](./BOOKS_MODULES_REFERENCE.md)**                                           | Per-module Books reference: routes, UI logic, API wiring status, backend behavior (Sales, Purchases, Items, Banking, Time, Accountant, Reports, Documents, Threads)     |
-| **[BOOKS_SITEMAP.md](./BOOKS_SITEMAP.md)**                                                                 | Books app complete sitemap: 52 routes, sidebar nav, redirects, create URLs, missing/planned paths                                                                            |
-| **[BOOKS_MODULES_PRODUCT_ANALYSIS.md](./BOOKS_MODULES_PRODUCT_ANALYSIS.md)**                               | Books module requirements, use cases, benefits, POC assessment (L0–L4), roadmap, and improvement recommendations (agency-focused)                                          |
-| **[BOOKS_MODULES_LOGIC_REFERENCE.md](./BOOKS_MODULES_LOGIC_REFERENCE.md)**                                 | Books app module-by-module reference: routes, UI logic, KPIs/tabs/filters, API mapping, backend behavior, integration status per module                                    |
-| **[BOOKS_FUNCTIONALITY_GUIDE.md](./BOOKS_FUNCTIONALITY_GUIDE.md)**                                       | Books app current state, integration matrix, phased plan to wire UI to Strapi (creates, lists, dashboard, reports)                                                          |
 | **[MODAL_NAV_PANEL_BOOKS_CRM.md](./MODAL_NAV_PANEL_BOOKS_CRM.md)**                                     | `Modal` `navPanel` variant for Books/CRM module nav; default modal `subtitle` support                                                                         |
-| **[BOOKS_DASHBOARD_QUICK_ACCESS_TEMPLATES_ACTIVITY.md](./BOOKS_DASHBOARD_QUICK_ACCESS_TEMPLATES_ACTIVITY.md)** | Books dashboard “Dashboard” tab: Quick Access cards + Templates + Recent Activity (CRM-mirrored UI)                                                                |
-| **[BOOKS_FINANCIAL_CHARTS_MOVED_TO_SYSTEM.md](./BOOKS_FINANCIAL_CHARTS_MOVED_TO_SYSTEM.md)** | Books dashboard charts moved to `System → Analytics` (`/reports`); Dashboard now shows Sales Analytics + Invoices Pipeline blocks |
-| **[BOOKS_SYSTEM_ANALYTICS_UI_UPDATE.md](./BOOKS_SYSTEM_ANALYTICS_UI_UPDATE.md)** | Books “System Analytics” (`/reports`) upgraded to a full KPI + charts dashboard using `@webfudge/ui` components |
 | **[UI_SELECT_CRM_STYLE_ALIGNMENT.md](./UI_SELECT_CRM_STYLE_ALIGNMENT.md)** | `@webfudge/ui` `Select` styling aligned to match CRM dropdown controls |
-| **[BOOKS_SALES_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_SALES_PAGES_CRM_UI_ALIGNMENT.md)** | Books Sales pages (`/sales/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
-| **[BOOKS_PURCHASES_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_PURCHASES_PAGES_CRM_UI_ALIGNMENT.md)** | Books Purchases pages (`/purchases/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
-| **[BOOKS_ACCOUNTANT_PAGES_CRM_UI_ALIGNMENT.md](./BOOKS_ACCOUNTANT_PAGES_CRM_UI_ALIGNMENT.md)** | Books Accountant pages (`/accountant/*`) aligned to CRM list-page patterns using `@webfudge/ui` |
-| **[BOOKS_CRM_STYLE_ADD_PAGES.md](./BOOKS_CRM_STYLE_ADD_PAGES.md)** | CRM-style “Add” pages for Sales/Purchases/Accountant, consistent create UI using `@webfudge/ui` |
-| **[BOOKS_TABLE_COLUMN_PICKER.md](./BOOKS_TABLE_COLUMN_PICKER.md)** | CRM-style column visibility dropdown (eye icon) on Books Sales/Purchases/Accountant list bars |
-| **[BOOKS_HOME_GETTING_STARTED_TABS.md](./BOOKS_HOME_GETTING_STARTED_TABS.md)** | Home page tabs: Getting Started onboarding UI + Announcements / Recent Updates empty states |
-| **[BOOKS_HOME_KPI_CRM_ALIGNMENT.md](./BOOKS_HOME_KPI_CRM_ALIGNMENT.md)** | Books home KPI row uses `@webfudge/ui` `KPICard` (CRM-style) instead of `FintechMetricsQuad` |
-| **[BOOKS_HOME_HUB_PAGES.md](./BOOKS_HOME_HUB_PAGES.md)** | Separate `/home/activity`, `/home/announcements`, `/home/recent-updates` hub pages (Zoho Books–style UI, frontend-only) |
-| **[BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md](./BOOKS_THREADS_LATEST_CONVERSATIONS_UPDATE.md)** | Added Books `/threads` (“Conversations”) page aligned with CRM latest conversations UI |
-| **[BOOKS_SHELL_TABS_HEADER_SIDEBAR_REFACTOR.md](./BOOKS_SHELL_TABS_HEADER_SIDEBAR_REFACTOR.md)** | Books shell refactor: floating sidebar groups, route-driven sub-page tabs, and grouped top header actions |
-| **[BOOKS_HEADER_SHELL_UX_UPDATE.md](./BOOKS_HEADER_SHELL_UX_UPDATE.md)** | Books header UX: clickable breadcrumbs, tab dropdown, CRM-style toolbar/profile/notifications |
-| **[BOOKS_THEME_TOGGLE.md](./BOOKS_THEME_TOGGLE.md)** | Books light/dark theme: CSS variables, `BooksThemeProvider`, sidebar toggle, FOUC script; dashboard + list pages use `@webfudge/ui/book-components` and `TabsWithActions` `booksModern` for matching card surfaces |
-| **[BOOKS_DARK_LIST_UI_CONSISTENCY.md](./BOOKS_DARK_LIST_UI_CONSISTENCY.md)** | Books list/hub dark UI: shared `BooksListPageShell`, `booksModern` toolbar tokens, Recent Activities search, reports hub, ModulePage KPI+modal pattern |
-| **[BOOKS_UI_COMPONENT_CONSOLIDATION.md](./BOOKS_UI_COMPONENT_CONSOLIDATION.md)** | Books uses shared `@webfudge/ui` Card/KPICard/Table with `theme`/`surface="books"`; `book-components` keeps domain widgets only |
 
 ---
 
@@ -231,7 +170,6 @@ Your complete guide to the Webfudge Platform documentation.
 2. [INSTALLATION.md](./INSTALLATION.md) - Install and configure
 3. [QUICKSTART.md](./QUICKSTART.md) - Start development
 
-**Day 2 - Understanding:** 4. [README.md](./README.md) - Project structure 5. [ARCHITECTURE.md](./ARCHITECTURE.md) - System design 6. [COMMANDS.md](./COMMANDS.md) - Learn commands
 
 **Day 3 onwards:** 7. [ENVIRONMENT.md](./ENVIRONMENT.md) - Configure environments 8. [PROJECT_CHECKLIST.md](./PROJECT_CHECKLIST.md) - Track tasks
 
@@ -246,7 +184,6 @@ Your complete guide to the Webfudge Platform documentation.
 
 **Optional:**
 
-- [README.md](./README.md) - General overview
 
 ### For DevOps Engineers
 
@@ -259,7 +196,6 @@ Your complete guide to the Webfudge Platform documentation.
 
 **Optional:**
 
-- [README.md](./README.md) - Project overview
 
 ### For Architects
 
@@ -267,7 +203,6 @@ Your complete guide to the Webfudge Platform documentation.
 
 1. [ARCHITECTURE.md](./ARCHITECTURE.md) - Complete architecture
 2. [SETUP_SUMMARY.md](./SETUP_SUMMARY.md) - Technical stack
-3. [README.md](./README.md) - Project structure
 
 **Optional:**
 
@@ -286,7 +221,6 @@ Your complete guide to the Webfudge Platform documentation.
 
 ### Understanding the System
 
-- [README.md](./README.md) - Project overview
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System design
 - [SETUP_SUMMARY.md](./SETUP_SUMMARY.md) - What's included
 
@@ -380,7 +314,6 @@ Fully Informed! 📊
 
 | Looking for        | Document                                       | Section           |
 | ------------------ | ---------------------------------------------- | ----------------- |
-| Project structure  | [README.md](./README.md)                       | Project Structure |
 | App configurations | [SETUP_SUMMARY.md](./SETUP_SUMMARY.md)         | Applications      |
 | Command list       | [COMMANDS.md](./COMMANDS.md)                   | All sections      |
 | Environment vars   | [ENVIRONMENT.md](./ENVIRONMENT.md)             | All sections      |
@@ -390,7 +323,6 @@ Fully Informed! 📊
 
 | Topic               | Document                                       | Section      |
 | ------------------- | ---------------------------------------------- | ------------ |
-| Webfudge Platform   | [README.md](./README.md)                       | Overview     |
 | System architecture | [ARCHITECTURE.md](./ARCHITECTURE.md)           | Architecture |
 | Each application    | [SETUP_SUMMARY.md](./SETUP_SUMMARY.md)         | Applications |
 | Current status      | [COMPLETION_REPORT.md](./COMPLETION_REPORT.md) | Summary      |
@@ -567,5 +499,4 @@ _Last Updated: May 27, 2026_
 | Document | Description | Date |
 |----------|-------------|------|
 | **[LANDING_PREMIUM_REDESIGN.md](./LANDING_PREMIUM_REDESIGN.md)** | Complete premium redesign of the landing page — new design system, animations, all sections | May 2026 |
-| **[LANDING_CONTENT_UPDATE_2026.md](./LANDING_CONTENT_UPDATE_2026.md)** | Full content refresh — brand repositioning, 5 core services, updated copy across all sections | May 2026 |
 | **[LANDING_INDUSTRIES_UPDATE.md](./LANDING_INDUSTRIES_UPDATE.md)** | New Industries section (8 industries), expanded Why Choose Us to 6 cards, fixed Navbar dead links | May 2026 |

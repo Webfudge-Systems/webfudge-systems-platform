@@ -77,7 +77,14 @@
     },
     "billingMethod": {
       "type": "enumeration",
-      "enum": ["hourly", "daily_rate_per_user", "fixed_cost", "based_on_tasks", "milestone", "non_billable"],
+      "enum": [
+        "hourly",
+        "daily_rate_per_user",
+        "fixed_cost",
+        "based_on_tasks",
+        "milestone",
+        "non_billable"
+      ],
       "default": "hourly"
     },
     "budgetAmount": {
@@ -86,7 +93,10 @@
     },
     "budgetType": {
       "type": "enumeration",
-      "enum": ["hours", "amount"],
+      "enum": [
+        "hours",
+        "amount"
+      ],
       "default": "amount"
     },
     "hourlyRate": {
@@ -99,7 +109,10 @@
     },
     "billableStatus": {
       "type": "enumeration",
-      "enum": ["billable", "non_billable"],
+      "enum": [
+        "billable",
+        "non_billable"
+      ],
       "default": "billable"
     },
     "totalLoggedHours": {
@@ -116,11 +129,6 @@
     },
     "projectCode": {
       "type": "string"
-    },
-    "booksStatus": {
-      "type": "enumeration",
-      "enum": ["active", "completed", "archived"],
-      "default": "active"
     },
     "customer": {
       "type": "relation",

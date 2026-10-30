@@ -4,8 +4,6 @@ const {
   ACCESS,
   CRM_MODULES,
   PM_MODULES,
-  HR_MODULES,
-  REALESTATE_MODULES,
   defaultPermissionsForSystemCode,
   normalizePermissions,
 } = require('../constants/rbac-app-matrix');
@@ -20,8 +18,6 @@ const ACCESS_RANK = {
 const APP_MODULES = {
   crm: CRM_MODULES,
   pm: PM_MODULES,
-  hr: HR_MODULES,
-  realestate: REALESTATE_MODULES,
 };
 
 function clone(value) {

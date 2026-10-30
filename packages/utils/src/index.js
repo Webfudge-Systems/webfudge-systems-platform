@@ -1,3 +1,6 @@
+// Cross-app base URLs
+export { getAppUrl } from './appUrls';
+
 // Export all formatters
 export * from './formatters';
 

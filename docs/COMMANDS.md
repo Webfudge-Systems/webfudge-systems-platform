@@ -697,7 +697,6 @@ npx turbo --help
 ---
 
 For more information, see:
-- [README.md](./README.md)
 - [QUICKSTART.md](./QUICKSTART.md)
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
 

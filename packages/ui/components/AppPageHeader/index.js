@@ -2,7 +2,7 @@
 
 /**
  * AppPageHeader — shared WorkspaceHeader wrapper used by every workspace app
- * (PM, CRM, Accounts, Books …).
+ * (PM, CRM, Accounts, Vendor).
  *
  * Each app passes its own `notificationService` and `renderGlobalSearchModal`
  * so the header stays generic while the data layer stays in the app.

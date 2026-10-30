@@ -38,7 +38,12 @@ export function TableRowActionMenuPortal({
 
   useEffect(() => {
     if (!open) return;
-    const onScroll = () => onClose();
+    // Capture-phase so table/page scroll closes the menu; ignore scrolls inside the menu
+    // (e.g. Next Connect notes timeline) so inner overflow-y-auto does not dismiss it.
+    const onScroll = (e) => {
+      if (menuRef.current?.contains(e.target)) return;
+      onClose();
+    };
     window.addEventListener('scroll', onScroll, true);
     return () => window.removeEventListener('scroll', onScroll, true);
   }, [open, onClose]);

@@ -4,19 +4,16 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "apps/[(]automobile[)]/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev --filter=!backend --filter=!./apps/[(]automobile[)]/*",
+    "dev": "turbo run dev --filter=!backend",
     "dev:all": "turbo run dev",
-    "dev:books": "turbo run dev --filter=@webfudge/books",
+    "dev:accounts": "turbo run dev --filter=@webfudge/accounts",
     "dev:crm": "turbo run dev --filter=@webfudge/crm",
     "dev:pm": "turbo run dev --filter=@webfudge/pm",
-    "dev:hr": "turbo run dev --filter=@webfudge/hr",
-    "dev:ess": "turbo run dev --filter=@webfudge/ess",
-    "dev:recrm": "turbo run dev --filter=@webfudge/real-estate-crm",
-    "dev:auto": "turbo run dev --filter=./apps/[(]automobile[)]/*",
+    "dev:landing": "turbo run dev --filter=@webfudge/landing",
+    "dev:vendor": "turbo run dev --filter=@webfudge/vendor",
     "dev:backend": "turbo run dev --filter=backend",
     "build": "turbo run build",
     "build:accounts": "turbo run build --filter=@webfudge/accounts",

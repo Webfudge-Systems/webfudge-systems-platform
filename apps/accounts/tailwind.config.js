@@ -8,7 +8,6 @@ module.exports = {
     '../../packages/ui/src/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/components/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/layouts/**/*.{js,ts,jsx,tsx,mdx}',
-    '../../packages/ui/book-components/**/*.{ts,tsx}',
     '../../packages/ui/utils/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/feedback/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/themes/**/*.{js,ts,jsx,tsx,mdx}',

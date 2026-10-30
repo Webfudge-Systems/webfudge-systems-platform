@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getAppUrl } from '@webfudge/utils';
 import apiService from '../../services/api';
 import {
   OnboardingModal,
@@ -74,22 +75,12 @@ export default function ProfilePage() {
         localStorage.setItem('current-org-id', String(matchingOrg.id));
       }
       // Redirect to app
-      window.location.href = `http://localhost:${getAppPort(app.slug)}`;
+      window.location.href = getAppUrl(app.slug);
     } else {
       // Show onboarding
       setSelectedApp(app);
       setShowOnboarding(true);
     }
-  };
-
-  const getAppPort = (slug) => {
-    const ports = {
-      'crm': 3001,
-      'pm': 3002,
-      'accounts': 3003,
-      'vendor': 3004
-    };
-    return ports[slug] || 3000;
   };
 
   const handleOnboardingComplete = () => {
@@ -104,7 +95,7 @@ export default function ProfilePage() {
       localStorage.setItem('current-org-id', String(org.id));
     }
     // Redirect to Accounts app
-    window.location.href = `http://localhost:3003?org=${org.id}`;
+    window.location.href = `${getAppUrl('accounts')}?org=${org.id}`;
   };
 
   const handleLogout = () => {

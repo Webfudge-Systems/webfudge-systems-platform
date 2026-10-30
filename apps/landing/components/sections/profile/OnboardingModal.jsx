@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Icon } from '@iconify/react'
 import { Button, Modal, Input, Select } from '@webfudge/ui'
+import { getAppUrl } from '@webfudge/utils'
 import apiService from '../../../services/api'
 
 export default function OnboardingModal({ app, onClose, onComplete }) {
@@ -139,14 +140,7 @@ export default function OnboardingModal({ app, onClose, onComplete }) {
       }
 
       // Redirect to app after successful onboarding
-      const appPorts = {
-        crm: 3001,
-        pm: 3002,
-        accounts: 3003,
-        vendor: 3004,
-      }
-      const port = appPorts[app.slug] || 3000
-      window.location.href = `http://localhost:${port}`
+      window.location.href = getAppUrl(app.slug)
     } catch (err) {
       setError(err.message || 'Failed to activate app')
       setFieldError(err.field || null)

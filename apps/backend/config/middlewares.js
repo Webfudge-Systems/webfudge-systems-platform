@@ -1,23 +1,15 @@
 const allowedOrigins = [
   'http://localhost:3000', // Landing
-  'http://localhost:3002', // VLM (automobile)
   'http://localhost:3003', // Accounts
   'http://localhost:3004', // Vendor
-  'http://localhost:3005', // Books
   'http://localhost:3006', // PM
   'http://localhost:3007', // CRM
-  'http://localhost:3008', // HR
-  'http://localhost:3009', // ESS
-  'http://localhost:3010', // Real Estate CRM
   'https://webfudge.in',
   'https://www.webfudge.in',
   'https://crm.webfudge.in',
   'https://pm.webfudge.in',
-  'https://people.webfudge.in',
-  'https://desk.webfudge.in',
   'https://accounts.webfudge.in',
   'https://vendor.webfudge.in',
-  'https://books.webfudge.in',
   'https://api.webfudge.in',
   'https://webfudgesystems.in',
   'https://www.webfudgesystems.in',

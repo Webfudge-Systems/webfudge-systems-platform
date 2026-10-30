@@ -118,7 +118,7 @@ function buildEntityTimelineParams(entityType, subjectId) {
   return null
 }
 
-/** Optional: set NEXT_PUBLIC_CRM_ORIGIN (e.g. http://localhost:3001) for "Open in CRM" in entity drawer. */
+/** Optional: set NEXT_PUBLIC_CRM_ORIGIN (e.g. http://localhost:3007) for "Open in CRM" in entity drawer. */
 function entityRecordExternalHref(entityType, subjectId) {
   const origin = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_CRM_ORIGIN : ''
   if (!origin || subjectId == null || subjectId === '') return null

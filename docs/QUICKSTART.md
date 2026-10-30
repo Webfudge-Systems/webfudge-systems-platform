@@ -58,8 +58,8 @@ npm run dev
 
 This starts all applications concurrently:
 - Landing: http://localhost:3000
-- CRM: http://localhost:3001
-- PM: http://localhost:3002
+- CRM: http://localhost:3007
+- PM: http://localhost:3006
 - Accounts: http://localhost:3003
 - Vendor: http://localhost:3004
 - Backend API: http://localhost:1337
@@ -85,14 +85,14 @@ Access: http://localhost:3000
 cd apps/crm
 npm run dev
 ```
-Access: http://localhost:3001
+Access: http://localhost:3007
 
 **Project Management:**
 ```bash
 cd apps/pm
 npm run dev
 ```
-Access: http://localhost:3002
+Access: http://localhost:3006
 
 **Accounts:**
 ```bash
@@ -122,8 +122,8 @@ Access: http://localhost:3004
 Visit each application to see the initialized pages:
 
 - **Landing (3000)**: Marketing and public-facing pages
-- **CRM (3001)**: Customer relationship management
-- **PM (3002)**: Project and task management
+- **CRM (3007)**: Customer relationship management
+- **PM (3006)**: Project and task management
 - **Accounts (3003)**: User accounts and billing
 - **Vendor (3004)**: Vendor management portal
 
@@ -216,7 +216,6 @@ npm run develop
 
 ## 🆘 Need Help?
 
-- Check the main [README.md](./README.md)
 - Review app-specific documentation in each app folder
 - Visit Strapi docs: https://docs.strapi.io
 - Visit Next.js docs: https://nextjs.org/docs

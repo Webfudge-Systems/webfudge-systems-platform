@@ -6,7 +6,6 @@
   "types": "./index.d.ts",
   "exports": {
     ".": "./index.js",
-    "./book-components": "./book-components/index.ts",
     "./components": "./components/index.js",
     "./components/*": "./components/*/index.js",
     "./layouts": "./layouts/index.js",

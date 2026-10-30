@@ -1,5 +1,5 @@
 /**
- * Strapi media upload helpers (shared across CRM, PM, Books).
+ * Strapi media upload helpers (shared across CRM, PM, Accounts).
  */
 
 export function pickUploadedFile(response) {

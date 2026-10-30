@@ -12,16 +12,11 @@ export function FormSectionCard({
   iconClassName,
   headerClassName,
   headerAction,
-  /** `books` uses Books CSS variable surfaces and typography. */
-  theme = 'default',
 }) {
-  const isBooks = theme === 'books'
-
   return (
     <Card
       variant="elevated"
       padding={false}
-      surface={isBooks ? 'books' : undefined}
       className={clsx('rounded-2xl p-6', cardClassName, className)}
     >
       <div
@@ -36,9 +31,7 @@ export function FormSectionCard({
             <div
               className={clsx(
                 'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm',
-                isBooks
-                  ? 'bg-[var(--books-brand,#ea580c)]'
-                  : 'bg-brand-primary',
+                'bg-brand-primary',
                 iconContainerClassName
               )}
             >
@@ -48,20 +41,14 @@ export function FormSectionCard({
           <div className="min-w-0">
             {title ? (
               <h3
-                className={clsx(
-                  'text-lg font-semibold',
-                  isBooks ? 'text-[var(--books-text-primary,#f8fafc)]' : 'text-gray-900'
-                )}
+                className="text-lg font-semibold text-gray-900"
               >
                 {title}
               </h3>
             ) : null}
             {description ? (
               <p
-                className={clsx(
-                  'text-sm',
-                  isBooks ? 'text-[var(--books-text-secondary,#9ca3af)]' : 'text-gray-600'
-                )}
+                className="text-sm text-gray-600"
               >
                 {description}
               </p>

@@ -459,7 +459,6 @@ After installation, follow this learning path:
 ## 📚 Next Steps
 
 1. **Read Documentation**:
-   - [README.md](./README.md) - Project overview
    - [QUICKSTART.md](./QUICKSTART.md) - Quick reference
    - [ARCHITECTURE.md](./ARCHITECTURE.md) - Architecture details
 
