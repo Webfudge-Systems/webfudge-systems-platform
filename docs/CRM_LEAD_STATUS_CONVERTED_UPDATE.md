@@ -33,7 +33,7 @@ Allowed statuses: `NEW`, `CONTACTED`, `QUALIFIED`, `LOST`, `CONVERTED`.
 
 `LEAD_STATUS_ORDER` ranks Converted highest through Lost lowest. Descending status sort uses that order.
 
-Status and primary-contact sorts fetch the full filtered set (up to 5000) and order + paginate client-side, so Converted/Qualified are not buried behind a `createdAt` page of New leads. Company sorts via API `companyName`. Table headers for Company, Primary contact, and Status are sortable.
+Status and primary-contact sorts fetch the full filtered set via `leadCompanyService.fetchAll()` (pages of 500 until complete) and order + paginate client-side, so Converted/Qualified are not buried behind a `createdAt` page of New leads. Company sorts via API `companyName`. Table headers for Company, Primary contact, and Status are sortable.
 
 ## Usage
 

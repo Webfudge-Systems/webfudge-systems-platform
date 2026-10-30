@@ -36,6 +36,8 @@ import {
   TableRowActionMenuPortal,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableResultsCount,
+  TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import taskService from '../../../lib/api/taskService';
@@ -1118,10 +1120,7 @@ export default function ClientsTasksPage() {
         />
       </div>
 
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredTasks.length}</span> result
-        {filteredTasks.length !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={filteredTasks.length} />
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
@@ -1139,21 +1138,23 @@ export default function ClientsTasksPage() {
               {...tableResizeProps}
             />
             {paginatedTasks.length === 0 && (
-              <div className="border-t border-gray-200 p-12 text-center">
-                <ClipboardList className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-                <h3 className="mb-2 text-lg font-semibold text-gray-700">No tasks found</h3>
-                <p className="mb-4 text-sm text-gray-500">
-                  {searchQuery || activeTab !== 'all' || hasActiveFilters
+              <TableEmptyBelow
+                icon={ClipboardList}
+                title="No tasks found"
+                description={
+                  searchQuery || activeTab !== 'all' || hasActiveFilters
                     ? 'Try adjusting search or filters'
-                    : 'Create a task to track delivery work'}
-                </p>
-                {!searchQuery && activeTab === 'all' && !hasActiveFilters && (
-                  <Button variant="primary" onClick={openCreate}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add task
-                  </Button>
-                )}
-              </div>
+                    : 'Create a task to track delivery work'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' && !hasActiveFilters ? (
+                    <Button variant="primary" onClick={openCreate}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add task
+                    </Button>
+                  ) : null
+                }
+              />
             )}
             {totalPages > 1 && (
               <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">

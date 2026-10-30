@@ -48,6 +48,8 @@ import {
   ViewToggleButton,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableResultsCount,
+  TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import { DealsKanbanBoard, DEAL_PIPELINE_STAGES } from '../../../components/DealsKanbanBoard';
@@ -1034,10 +1036,7 @@ export default function DealsPage() {
         />
       </div>
 
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{sortedDeals.length}</span> result
-        {sortedDeals.length !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={sortedDeals.length} />
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
@@ -1056,33 +1055,35 @@ export default function DealsPage() {
               {...tableResizeProps}
             />
             {paginatedDeals.length === 0 && (
-              <div className="border-t border-gray-200 p-12 text-center">
-                <Briefcase className="mx-auto mb-3 h-12 w-12 text-gray-400 opacity-50" />
-                <h3 className="mb-2 text-lg font-semibold text-gray-700">No deals found</h3>
-                <p className="mb-4 text-sm text-gray-500">
-                  {searchQuery || activeTab !== 'all'
+              <TableEmptyBelow
+                icon={Briefcase}
+                title="No deals found"
+                description={
+                  searchQuery || activeTab !== 'all'
                     ? 'Try adjusting your filters'
                     : canCreateDeals
                       ? 'Create your first deal to get started'
-                      : 'No deals are available yet.'}
-                </p>
-                {!searchQuery && activeTab === 'all' && (
-                  <div className="flex flex-wrap justify-center gap-3">
-                    {canCreateDeals ? (
-                      <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Deal
+                      : 'No deals are available yet.'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' ? (
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {canCreateDeals ? (
+                        <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Deal
+                        </Button>
+                      ) : null}
+                      <Button variant="outline" onClick={() => handleDealViewChange('kanban')}>
+                        Board view
                       </Button>
-                    ) : null}
-                    <Button variant="outline" onClick={() => handleDealViewChange('kanban')}>
-                      Board view
-                    </Button>
-                    <Button variant="outline" onClick={goToPipelineRoute}>
-                      Full pipeline
-                    </Button>
-                  </div>
-                )}
-              </div>
+                      <Button variant="outline" onClick={goToPipelineRoute}>
+                        Full pipeline
+                      </Button>
+                    </div>
+                  ) : null
+                }
+              />
             )}
             {totalPages > 1 && (
               <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
@@ -1097,30 +1098,33 @@ export default function DealsPage() {
             )}
           </>
         ) : sortedDeals.length === 0 ? (
-          <div className="p-12 text-center">
-            <Briefcase className="mx-auto mb-3 h-12 w-12 text-gray-400 opacity-50" />
-            <h3 className="mb-2 text-lg font-semibold text-gray-700">No deals found</h3>
-            <p className="mb-4 text-sm text-gray-500">
-              {searchQuery || activeTab !== 'all'
+          <TableEmptyBelow
+            bordered={false}
+            icon={Briefcase}
+            title="No deals found"
+            description={
+              searchQuery || activeTab !== 'all'
                 ? 'Try adjusting your filters'
                 : canCreateDeals
                   ? 'Create your first deal to get started'
-                  : 'No deals are available yet.'}
-            </p>
-            {!searchQuery && activeTab === 'all' && (
-              <div className="flex flex-wrap justify-center gap-3">
-                {canCreateDeals ? (
-                  <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Deal
+                  : 'No deals are available yet.'
+            }
+            action={
+              !searchQuery && activeTab === 'all' ? (
+                <div className="flex flex-wrap justify-center gap-3">
+                  {canCreateDeals ? (
+                    <Button variant="primary" onClick={() => router.push('/sales/deals/new')}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Deal
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" onClick={() => handleDealViewChange('table')}>
+                    Table view
                   </Button>
-                ) : null}
-                <Button variant="outline" onClick={() => handleDealViewChange('table')}>
-                  Table view
-                </Button>
-              </div>
-            )}
-          </div>
+                </div>
+              ) : null
+            }
+          />
         ) : (
           <DealsKanbanBoard
             stageColumns={kanbanStageColumns}

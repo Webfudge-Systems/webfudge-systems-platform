@@ -27,42 +27,41 @@ export function TableResultsCount({ count, className }) {
 }
 
 /**
- * Empty block below a `Table` (border-t), matching CRM list pages (e.g. lead companies).
+ * Empty block below a `Table` (border-t by default), matching CRM/PM list pages.
+ * Pass `bordered={false}` for standalone empties (e.g. empty kanban shell).
  */
-export function TableEmptyBelow({ icon: Icon, title, description, action, className }) {
+export function TableEmptyBelow({
+  icon: Icon,
+  title,
+  description,
+  action,
+  bordered = true,
+  className,
+}) {
   return (
-    <div className={clsx('bg-transparent p-12 text-center', className)}>
+    <div
+      className={clsx(
+        'p-12 text-center',
+        bordered && 'border-t border-gray-200',
+        className
+      )}
+    >
       {Icon ? (
-        <div
-          className={clsx(
-            'mx-auto mb-4 flex h-14 w-14 items-center justify-center',
-            'text-gray-400'
-          )}
-        >
-          <Icon className="h-10 w-10 opacity-90" strokeWidth={1.25} aria-hidden />
+        <div className="mb-2 text-gray-400">
+          <Icon
+            className="mx-auto mb-3 h-12 w-12 opacity-50"
+            strokeWidth={1.25}
+            aria-hidden
+          />
         </div>
       ) : null}
       {title ? (
-        <h3
-          className={clsx(
-            'text-base font-semibold',
-            'text-gray-900'
-          )}
-        >
-          {title}
-        </h3>
+        <h3 className="mb-2 text-lg font-semibold text-gray-700">{title}</h3>
       ) : null}
       {description ? (
-        <p
-          className={clsx(
-            'mx-auto mt-1.5 max-w-md text-sm leading-relaxed',
-            'text-gray-500'
-          )}
-        >
-          {description}
-        </p>
+        <p className="mb-4 text-sm text-gray-500">{description}</p>
       ) : null}
-      {action ? <div className="mt-6">{action}</div> : null}
+      {action ? <div>{action}</div> : null}
     </div>
   )
 }

@@ -28,6 +28,8 @@ import {
   PROJECT_STATUS_OPTIONS,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableResultsCount,
+  TableEmptyBelow,
 } from '@webfudge/ui';
 import { clsx } from 'clsx';
 import {
@@ -1161,10 +1163,7 @@ export default function ProjectsPage() {
         />
       </div>
 
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{displayTotal}</span> result
-        {displayTotal !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={displayTotal} />
 
       {loading ? (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -1175,15 +1174,16 @@ export default function ProjectsPage() {
       ) : activeView === 'kanban' ? (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-gray-50/60">
           {displayTotal === 0 ? (
-            <div className="p-12 text-center">
-              <FolderOpen className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="text-lg font-semibold text-gray-700">No projects found</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                {searchQuery || activeTab !== 'all' || hasActiveFilters
+            <TableEmptyBelow
+              icon={FolderOpen}
+              title="No projects found"
+              description={
+                searchQuery || activeTab !== 'all' || hasActiveFilters
                   ? 'Try adjusting your filters or search'
-                  : 'Create your first project to get started'}
-              </p>
-            </div>
+                  : 'Create your first project to get started'
+              }
+              bordered={false}
+            />
           ) : (
             <ProjectsKanbanBoard
               projects={sortedProjects}
@@ -1205,23 +1205,23 @@ export default function ProjectsPage() {
               onRowClick={(row) => router.push(`/projects/${row.slug || row.id}`)}
             />
             {displayTotal === 0 ? (
-              <div className="border-t border-gray-200 p-12 text-center">
-                <div className="mb-2 text-gray-400">
-                  <FolderOpen className="mx-auto mb-3 h-12 w-12 opacity-50" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-gray-700">No projects found</h3>
-                <p className="mb-4 text-sm text-gray-500">
-                  {searchQuery || activeTab !== 'all' || hasActiveFilters
+              <TableEmptyBelow
+                icon={FolderOpen}
+                title="No projects found"
+                description={
+                  searchQuery || activeTab !== 'all' || hasActiveFilters
                     ? 'Try adjusting your filters or search'
-                    : 'Create your first project to get started'}
-                </p>
-                {!searchQuery && activeTab === 'all' && !hasActiveFilters && canShowAddProject ? (
-                  <Button variant="primary" onClick={() => router.push('/projects/add')} className="gap-2">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Project
-                  </Button>
-                ) : null}
-              </div>
+                    : 'Create your first project to get started'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' && !hasActiveFilters && canShowAddProject ? (
+                    <Button variant="primary" onClick={() => router.push('/projects/add')} className="gap-2">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Project
+                    </Button>
+                  ) : undefined
+                }
+              />
             ) : null}
             {totalPages > 1 ? (
               <Pagination

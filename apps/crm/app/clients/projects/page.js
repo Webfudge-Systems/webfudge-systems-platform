@@ -35,6 +35,8 @@ import {
   TableRowActionMenuPortal,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableResultsCount,
+  TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import projectService from '../../../lib/api/projectService';
@@ -812,10 +814,7 @@ export default function ClientsProjectsPage() {
         />
       </div>
 
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredProjects.length}</span> result
-        {filteredProjects.length !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={filteredProjects.length} />
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         {loading ? (
@@ -832,26 +831,28 @@ export default function ClientsProjectsPage() {
               {...tableResizeProps}
             />
             {paginatedProjects.length === 0 && (
-              <div className="border-t border-gray-200 p-12 text-center">
-                <FolderKanban className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-                <h3 className="mb-2 text-lg font-semibold text-gray-700">No projects found</h3>
-                <p className="mb-4 text-sm text-gray-500">
-                  {searchQuery || activeTab !== 'all' || hasActiveFilters
+              <TableEmptyBelow
+                icon={FolderKanban}
+                title="No projects found"
+                description={
+                  searchQuery || activeTab !== 'all' || hasActiveFilters
                     ? 'Try adjusting search or filters'
-                    : 'Create a project or add one from a won deal'}
-                </p>
-                {!searchQuery && activeTab === 'all' && !hasActiveFilters && (
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    <Button variant="primary" onClick={openCreate}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add project
-                    </Button>
-                    <Button variant="outline" onClick={() => router.push('/clients/projects/board')}>
-                      Open board
-                    </Button>
-                  </div>
-                )}
-              </div>
+                    : 'Create a project or add one from a won deal'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' && !hasActiveFilters ? (
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <Button variant="primary" onClick={openCreate}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add project
+                      </Button>
+                      <Button variant="outline" onClick={() => router.push('/clients/projects/board')}>
+                        Open board
+                      </Button>
+                    </div>
+                  ) : null
+                }
+              />
             )}
             {totalPages > 1 && (
               <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">

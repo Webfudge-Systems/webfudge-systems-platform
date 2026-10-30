@@ -1,39 +1,22 @@
 'use client'
 
-import Link from 'next/link'
-import { Container, Card, PageHeader, Button, Table, EmptyState } from '@webfudge/ui'
-import { Plus, Target } from 'lucide-react'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { LoadingSpinner } from '@webfudge/ui'
 
-const columns = [{ key: 'name', title: 'Name' }, { key: 'company', title: 'Company' }, { key: 'stage', title: 'Stage' }]
-const data = []
-
+/**
+ * Legacy /sales/leads route — leads live under Lead Companies.
+ */
 export default function LeadsPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    router.replace('/sales/lead-companies')
+  }, [router])
+
   return (
-    <div className="p-4 md:p-6 space-y-6 min-h-full">
-      <PageHeader
-        title="Leads"
-        subtitle="Manage and qualify leads"
-        breadcrumb={[{ label: 'Sales', href: '/sales' }, { label: 'Leads', href: '/sales/leads' }]}
-      />
-      <Container>
-        <Card variant="default" padding={false}>
-          {data.length === 0 ? (
-            <EmptyState
-              icon={Target}
-              title="No leads yet"
-              description="Add your first lead to get started."
-              action={
-                <Button as={Link} href="/sales/lead-companies/new" variant="primary">
-                  <Plus className="w-4 h-4 mr-2 inline" />
-                  Add Lead
-                </Button>
-              }
-            />
-          ) : (
-            <Table columns={columns} data={data} />
-          )}
-        </Card>
-      </Container>
+    <div className="flex min-h-[40vh] items-center justify-center p-6">
+      <LoadingSpinner size="lg" message="Redirecting to Lead Companies…" />
     </div>
   )
 }

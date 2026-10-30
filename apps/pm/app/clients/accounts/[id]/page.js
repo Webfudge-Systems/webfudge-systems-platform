@@ -54,6 +54,7 @@ import {
   EntityActivityPanel,
   TableCellOrangePill,
   TableCellDealStageSelect,
+  TableEmptyBelow,
   useIndustrySelectOptions,
 } from '@webfudge/ui';
 import PMPageHeader from '../../../../components/PMPageHeader';
@@ -2088,27 +2089,28 @@ export default function ClientAccountDetailPage() {
                   <div className="flex flex-col items-center justify-center p-12">
                     <LoadingSpinner size="lg" message="Loading contacts..." />
                   </div>
-                ) : linkedContacts.length === 0 ? (
-                  <div className="border-t border-gray-200 p-12 text-center">
-                    <div className="mb-2 text-gray-400">
-                      <Users className="mx-auto mb-3 h-12 w-12 opacity-50" />
-                    </div>
-                    <h3 className="mb-2 text-lg font-semibold text-gray-700">No contacts found</h3>
-                    <p className="mb-4 text-sm text-gray-500">Add your first contact to get started</p>
-                    <Link href={crmNewContactUrl(id)}>
-                      <Button variant="primary">
-                        Add Contact
-                      </Button>
-                    </Link>
-                  </div>
                 ) : (
-                  <Table
-                    columns={sortableLeadContactsColumns}
-                    data={contactsTableSort.sortedData}
-                    keyField="id"
-                    variant="modern"
-                    onRowClick={(row) => router.push(crmContactUrl(row.id))}
-                  />
+                  <>
+                    <Table
+                      columns={sortableLeadContactsColumns}
+                      data={contactsTableSort.sortedData}
+                      keyField="id"
+                      variant="modern"
+                      onRowClick={(row) => router.push(crmContactUrl(row.id))}
+                    />
+                    {linkedContacts.length === 0 ? (
+                      <TableEmptyBelow
+                        icon={Users}
+                        title="No contacts found"
+                        description="Add your first contact to get started"
+                        action={
+                          <Link href={crmNewContactUrl(id)}>
+                            <Button variant="primary">Add Contact</Button>
+                          </Link>
+                        }
+                      />
+                    ) : null}
+                  </>
                 )}
               </div>
             </div>

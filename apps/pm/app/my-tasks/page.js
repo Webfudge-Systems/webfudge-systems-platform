@@ -27,6 +27,7 @@ import {
   PM_TASK_STATUS_OPTIONS,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableEmptyBelow,
 } from '@webfudge/ui';
 import {
   CheckSquare,
@@ -1274,23 +1275,23 @@ export default function MyTasksPage() {
               )}
             />
             {tableRootTasks.length === 0 && (
-              <div className="border-t border-gray-200 p-12 text-center">
-                <div className="mb-2 text-gray-400">
-                  <CheckSquare className="mx-auto mb-3 h-12 w-12 opacity-50" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-gray-700">No tasks found</h3>
-                <p className="mb-4 text-sm text-gray-500">
-                  {searchQuery || activeTab !== 'all'
+              <TableEmptyBelow
+                icon={CheckSquare}
+                title="No tasks found"
+                description={
+                  searchQuery || activeTab !== 'all'
                     ? 'Try adjusting your filters'
-                    : 'Create your first task to get started'}
-                </p>
-                {!searchQuery && activeTab === 'all' && (
-                  <Button variant="primary" onClick={() => setTaskModal({ open: true, task: null, parentContext: null })} className="gap-2">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Task
-                  </Button>
-                )}
-              </div>
+                    : 'Create your first task to get started'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' ? (
+                    <Button variant="primary" onClick={() => setTaskModal({ open: true, task: null, parentContext: null })} className="gap-2">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Task
+                    </Button>
+                  ) : undefined
+                }
+              />
             )}
             {totalTablePages > 1 ? (
               <Pagination
@@ -1312,13 +1313,14 @@ export default function MyTasksPage() {
           />
         ) : taskViewMode === 'kanban' ? (
           tableRootTasks.length === 0 ? (
-            <div className="p-12 text-center">
-              <CheckSquare className="mx-auto mb-3 h-12 w-12 text-gray-300" />
-              <h3 className="text-lg font-semibold text-gray-700">No tasks found</h3>
-              <p className="mt-2 text-sm text-gray-500">
-                {searchQuery || activeTab !== 'all' ? 'Try adjusting your filters' : 'Create your first task to get started'}
-              </p>
-            </div>
+            <TableEmptyBelow
+              icon={CheckSquare}
+              title="No tasks found"
+              description={
+                searchQuery || activeTab !== 'all' ? 'Try adjusting your filters' : 'Create your first task to get started'
+              }
+              bordered={false}
+            />
           ) : (
             <MyTasksKanbanBoard
               tasks={tableRootTasks}

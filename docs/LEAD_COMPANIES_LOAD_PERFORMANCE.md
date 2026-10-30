@@ -58,7 +58,8 @@ Lead Companies and Contacts list pages were slow because they downloaded **all**
 
 - Restart the Strapi backend after deploy so `/contacts/stats` and `/lead-companies/stats` are registered.
 - Hard refresh CRM (or clear Redis API cache if enabled).
-- Dashboard widgets that need full datasets still use `fetchAll()`; list UI does not.
+- Dashboard widgets that need full datasets use `fetchAll()`.
+- Lead Companies list also uses `fetchAll()` for **kanban**, **members**, and **status / primaryContact** client-side sorts (backend `maxPageSize` is 500 — a single oversized page silently truncates).
 
 ## Scope
 

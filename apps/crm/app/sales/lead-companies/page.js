@@ -53,6 +53,8 @@ import {
   ViewToggleButton,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableResultsCount,
+  TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import { LeadsKanbanBoard, LEAD_PIPELINE_STAGES } from '../../../components/LeadsKanbanBoard';
@@ -421,25 +423,31 @@ export default function LeadCompaniesPage() {
       setLoading(true);
       const isBulkView = leadViewMode === 'kanban' || leadViewMode === 'members';
       const fetchAllForClientSort = !isBulkView && usesClientSideSort;
+      // Status / primaryContact sort, kanban, and members need the full filtered set.
+      // Backend caps pageSize at 500 — page through with fetchAll instead of one oversized request.
+      const needAllRows = isBulkView || fetchAllForClientSort;
       const params = leadCompanyService.buildListParams({
-        page: isBulkView || fetchAllForClientSort ? 1 : currentPage,
-        pageSize: isBulkView || fetchAllForClientSort ? 5000 : itemsPerPage,
+        page: needAllRows ? 1 : currentPage,
+        pageSize: needAllRows ? 500 : itemsPerPage,
         activeTab,
         searchQuery: debouncedSearch,
         appliedFilters,
         sort: sortApiParam,
         assignedToUserId: activeTab === 'my' ? currentStrapiUserId() : null,
       });
-      const res = await leadCompanyService.getAll(params);
-      const rows = Array.isArray(res.data) ? res.data : [];
-      setLeadCompanies(rows);
-      const pag = res?.meta?.pagination;
-      if (isBulkView || fetchAllForClientSort) {
+
+      if (needAllRows) {
+        const rows = await leadCompanyService.fetchAll(params);
+        setLeadCompanies(rows);
         setTotalItems(rows.length);
         setTotalPages(
           isBulkView ? 1 : Math.max(1, Math.ceil(rows.length / itemsPerPage))
         );
       } else {
+        const res = await leadCompanyService.getAll(params);
+        const rows = Array.isArray(res.data) ? res.data : [];
+        setLeadCompanies(rows);
+        const pag = res?.meta?.pagination;
         setTotalItems(pag?.total ?? 0);
         setTotalPages(Math.max(pag?.pageCount ?? 1, 1));
       }
@@ -1484,10 +1492,7 @@ export default function LeadCompaniesPage() {
       </div>
 
       {/* Results Count */}
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{totalItems}</span> result
-        {totalItems !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={totalItems} />
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1506,30 +1511,30 @@ export default function LeadCompaniesPage() {
               {...tableResizeProps}
             />
             {paginatedCompanies.length === 0 && (
-              <div className="p-12 text-center border-t border-gray-200">
-                <div className="text-gray-400 mb-2">
-                  <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">No lead companies found</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  {activeTab === 'my' && !searchQuery && !hasActiveFilters
+              <TableEmptyBelow
+                icon={Building2}
+                title="No lead companies found"
+                description={
+                  activeTab === 'my' && !searchQuery && !hasActiveFilters
                     ? 'No leads are assigned to you yet'
                     : searchQuery || activeTab !== 'all' || hasActiveFilters
                       ? 'Try adjusting your filters'
-                      : 'Add your first lead company to get started'}
-                </p>
-                {!searchQuery && activeTab === 'all' && !hasActiveFilters && (
-                  <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="primary" onClick={() => router.push('/sales/lead-companies/new')}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Lead Company
-                    </Button>
-                    <Button variant="outline" onClick={() => handleLeadViewChange('kanban')}>
-                      Board view
-                    </Button>
-                  </div>
-                )}
-              </div>
+                      : 'Add your first lead company to get started'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' && !hasActiveFilters ? (
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <Button variant="primary" onClick={() => router.push('/sales/lead-companies/new')}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Lead Company
+                      </Button>
+                      <Button variant="outline" onClick={() => handleLeadViewChange('kanban')}>
+                        Board view
+                      </Button>
+                    </div>
+                  ) : null
+                }
+              />
             )}
             {totalPages > 1 && (
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
@@ -1553,22 +1558,25 @@ export default function LeadCompaniesPage() {
             tableResizeProps={tableResizeProps}
           />
         ) : leadViewMode === 'kanban' && paginatedCompanies.length === 0 ? (
-          <div className="p-12 text-center">
-            <Building2 className="mx-auto mb-3 h-12 w-12 text-gray-400 opacity-50" />
-            <h3 className="mb-2 text-lg font-semibold text-gray-700">No lead companies found</h3>
-            <p className="mb-4 text-sm text-gray-500">{membersEmptyMessage}</p>
-            {!searchQuery && activeTab === 'all' && !hasActiveFilters && (
-              <div className="flex flex-wrap justify-center gap-3">
-                <Button variant="primary" onClick={() => router.push('/sales/lead-companies/new')}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Lead Company
-                </Button>
-                <Button variant="outline" onClick={() => handleLeadViewChange('table')}>
-                  Table view
-                </Button>
-              </div>
-            )}
-          </div>
+          <TableEmptyBelow
+            bordered={false}
+            icon={Building2}
+            title="No lead companies found"
+            description={membersEmptyMessage}
+            action={
+              !searchQuery && activeTab === 'all' && !hasActiveFilters ? (
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Button variant="primary" onClick={() => router.push('/sales/lead-companies/new')}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Lead Company
+                  </Button>
+                  <Button variant="outline" onClick={() => handleLeadViewChange('table')}>
+                    Table view
+                  </Button>
+                </div>
+              ) : null
+            }
+          />
         ) : leadViewMode === 'kanban' ? (
           <LeadsKanbanBoard
             statusColumns={kanbanStatusColumns}

@@ -42,6 +42,8 @@ import {
   useTableColumnPreferences,
   TableColumnPicker,
   TableSortDropdown as CrmTableSortDropdown,
+  TableResultsCount,
+  TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import clientAccountService from '../../../lib/api/clientAccountService';
@@ -1016,10 +1018,7 @@ export default function ClientAccountsPage() {
       </div>
 
       {/* Results Count */}
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{sortedFilteredAccounts.length}</span> result
-        {sortedFilteredAccounts.length !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={sortedFilteredAccounts.length} />
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -1038,25 +1037,25 @@ export default function ClientAccountsPage() {
               {...tableResizeProps}
             />
             {paginatedAccounts.length === 0 && (
-              <div className="p-12 text-center border-t border-gray-200">
-                <div className="text-gray-400 mb-2">
-                  <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">No client accounts found</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  {searchQuery || activeTab !== 'all'
+              <TableEmptyBelow
+                icon={Building2}
+                title="No client accounts found"
+                description={
+                  searchQuery || activeTab !== 'all'
                     ? 'Try adjusting your filters'
                     : canCreateClientAccounts
                       ? 'Add your first client account to get started'
-                      : 'No client accounts are available yet.'}
-                </p>
-                {!searchQuery && activeTab === 'all' && canCreateClientAccounts && (
-                  <Button variant="primary" onClick={() => router.push('/clients/accounts/new')}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Client Account
-                  </Button>
-                )}
-              </div>
+                      : 'No client accounts are available yet.'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' && canCreateClientAccounts ? (
+                    <Button variant="primary" onClick={() => router.push('/clients/accounts/new')}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Client Account
+                    </Button>
+                  ) : null
+                }
+              />
             )}
             {totalPages > 1 && (
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">

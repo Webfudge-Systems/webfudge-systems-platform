@@ -18,6 +18,8 @@ import {
   TabsWithActions,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableResultsCount,
+  TableEmptyBelow,
 } from '@webfudge/ui'
 import AccountsPageHeader from '../../components/AccountsPageHeader'
 import DepartmentPillMultiSelect from '../../components/DepartmentPillMultiSelect'
@@ -805,10 +807,7 @@ export default function UsersPage() {
         />
       </div>
 
-      <div className="text-sm text-gray-600">
-        Showing <span className="font-semibold text-gray-900">{filteredUsers.length}</span> result
-        {filteredUsers.length !== 1 ? 's' : ''}
-      </div>
+      <TableResultsCount count={filteredUsers.length} />
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         {loading ? (
@@ -819,18 +818,20 @@ export default function UsersPage() {
           <>
             <Table columns={visibleColumns} data={paginatedUsers} keyField="id" variant="modern" {...tableResizeProps} />
             {paginatedUsers.length === 0 && (
-              <div className="p-12 text-center border-t border-gray-200">
-                <Users className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">No users found</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  {searchQuery || activeTab !== 'all'
+              <TableEmptyBelow
+                icon={Users}
+                title="No users found"
+                description={
+                  searchQuery || activeTab !== 'all'
                     ? 'Try adjusting your search or tab filter.'
-                    : 'No users are available for this organization yet.'}
-                </p>
-                <Button variant="primary" onClick={handleInviteUser}>
-                  Invite User
-                </Button>
-              </div>
+                    : 'No users are available for this organization yet.'
+                }
+                action={
+                  <Button variant="primary" onClick={handleInviteUser}>
+                    Invite User
+                  </Button>
+                }
+              />
             )}
             {totalPages > 1 && (
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">

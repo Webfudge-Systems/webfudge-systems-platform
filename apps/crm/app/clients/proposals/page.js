@@ -29,6 +29,7 @@ import {
   TableCellText,
   useTableColumnPreferences,
   TableColumnPicker,
+  TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import proposalService from '../../../lib/api/proposalService';
@@ -554,18 +555,20 @@ export default function ProposalsPage() {
               {...tableResizeProps}
             />
             {filtered.length === 0 && (
-              <div className="p-12 text-center border-t border-gray-200">
-                <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">No proposals found</h3>
-                <p className="text-sm text-gray-500 mb-4">
-                  {searchQuery || activeTab !== 'all' || hasActiveFilters ? 'Try adjusting your filters' : 'Create your first proposal to get started'}
-                </p>
-                {!searchQuery && activeTab === 'all' && (
-                  <Button variant="primary" onClick={() => router.push('/clients/proposals/new')}>
-                    <Plus className="w-4 h-4 mr-2" /> Create Proposal
-                  </Button>
-                )}
-              </div>
+              <TableEmptyBelow
+                icon={FileText}
+                title="No proposals found"
+                description={
+                  searchQuery || activeTab !== 'all' || hasActiveFilters ? 'Try adjusting your filters' : 'Create your first proposal to get started'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' ? (
+                    <Button variant="primary" onClick={() => router.push('/clients/proposals/new')}>
+                      <Plus className="w-4 h-4 mr-2" /> Create Proposal
+                    </Button>
+                  ) : null
+                }
+              />
             )}
             {totalPages > 1 && (
               <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">

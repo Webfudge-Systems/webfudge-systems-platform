@@ -279,25 +279,37 @@ export default {
     }
   },
 
-  /** Paginate through all lead companies (dashboard widgets, exports). Avoid mergeContacts on every page. */
+  /**
+   * Paginate through all lead companies (kanban, client-side sort, exports).
+   * Backend lead-company find clamps pageSize at 500 — never rely on a single oversized page.
+   */
   async fetchAll(params = {}) {
     const { mergeContactsFromContactsApi, ...rest } = params;
-    const pageSize = 100;
+    // Caller may pass buildListParams(); strip pagination so this loop owns paging.
+    const {
+      'pagination[page]': _page,
+      'pagination[pageSize]': _pageSize,
+      page: _pageAlt,
+      pageSize: _pageSizeAlt,
+      ...query
+    } = rest;
+    const pageSize = 500;
     let page = 1;
     const out = [];
     let pageCount = 1;
+    let batch = [];
     do {
       const res = await this.getAll({
+        ...query,
+        sort: query.sort || 'createdAt:desc',
         'pagination[page]': page,
         'pagination[pageSize]': pageSize,
-        sort: 'createdAt:desc',
-        ...rest,
       });
-      const batch = Array.isArray(res.data) ? res.data : [];
+      batch = Array.isArray(res.data) ? res.data : [];
       out.push(...batch);
-      pageCount = res?.meta?.pagination?.pageCount ?? 1;
+      pageCount = Math.max(1, res?.meta?.pagination?.pageCount ?? 1);
       page += 1;
-    } while (page <= pageCount);
+    } while (page <= pageCount && batch.length > 0);
 
     if (mergeContactsFromContactsApi && out.length) {
       return mergeContactsOntoLeadCompanies(out);

@@ -812,21 +812,21 @@ export default function ProjectTasksPanel({
               )}
             />
             {tableRootTasks.length === 0 && (
-              <div className="border-t border-gray-200 p-12 text-center">
-                <div className="mb-2 text-gray-400">
-                  <CheckSquare className="mx-auto mb-3 h-12 w-12 opacity-50" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-gray-700">No tasks found</h3>
-                <p className="mb-4 text-sm text-gray-500">
-                  {searchQuery || activeTab !== 'all' ? 'Try adjusting filters or search' : 'Create the first task for this project'}
-                </p>
-                {!searchQuery && activeTab === 'all' && canCreateProjectTasks && (
-                  <Button variant="primary" onClick={onAddTask} className="gap-2">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Task
-                  </Button>
-                )}
-              </div>
+              <TableEmptyBelow
+                icon={CheckSquare}
+                title="No tasks found"
+                description={
+                  searchQuery || activeTab !== 'all' ? 'Try adjusting filters or search' : 'Create the first task for this project'
+                }
+                action={
+                  !searchQuery && activeTab === 'all' && canCreateProjectTasks ? (
+                    <Button variant="primary" onClick={onAddTask} className="gap-2">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Task
+                    </Button>
+                  ) : undefined
+                }
+              />
             )}
             {totalTablePages > 1 ? (
               <Pagination
