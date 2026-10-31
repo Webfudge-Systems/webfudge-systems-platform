@@ -1,0 +1,38 @@
+# Builds every app before code can reach a deployment.
+#   master → Internal (Webfudge's own CRM/PM)
+#   saas   → SaaS (customers)
+# See docs/INTERNAL_AND_SAAS_DEPLOYMENTS.md
+name: CI
+
+on:
+  pull_request:
+    branches: [master, saas]
+  push:
+    branches: [master, saas]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      NEXT_TELEMETRY_DISABLED: '1'
+      # Placeholder secrets so the Strapi admin build can load its config. Never real values.
+      APP_KEYS: ci-key-1,ci-key-2
+      API_TOKEN_SALT: ci-only
+      ADMIN_JWT_SECRET: ci-only
+      TRANSFER_TOKEN_SALT: ci-only
+      JWT_SECRET: ci-only
+      ENCRYPTION_KEY: ci-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx turbo run build

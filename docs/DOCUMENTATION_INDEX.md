@@ -29,6 +29,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[ENVIRONMENT.md](./ENVIRONMENT.md)** | Environment variables guide | 15 min    | 🟡 Medium |
 | **[ACCOUNTS_PRODUCTION_DEPLOY.md](./ACCOUNTS_PRODUCTION_DEPLOY.md)** | Accounts app production deploy (env, build, run) | 5 min | 🟡 Medium |
 | **[RAILWAY_STRAPI_DEPLOY.md](./RAILWAY_STRAPI_DEPLOY.md)** | Strapi on Railway: Postgres variables, SSL, pool, crash-loop fixes | 5 min | 🔴 High |
+| **[INTERNAL_AND_SAAS_DEPLOYMENTS.md](./INTERNAL_AND_SAAS_DEPLOYMENTS.md)** | Two live systems from one codebase: Internal (`master`) and SaaS (`saas`), backups, step-by-step setup | 20 min | 🔴 High |
 
 ### 📋 Project Management
 

@@ -1,9 +1,20 @@
-const allowedOrigins = [
+const localOrigins = [
   'http://localhost:3000', // Landing
   'http://localhost:3003', // Accounts
   'http://localhost:3004', // Vendor
   'http://localhost:3006', // PM
   'http://localhost:3007', // CRM
+];
+
+// CORS_ORIGINS (comma-separated) pins this deployment to its own frontends, e.g. the SaaS API
+// only accepts the SaaS apps. Unset keeps the original allow-list below (internal deployment).
+const envOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, '').toLowerCase())
+  .filter(Boolean);
+
+const defaultAllowedOrigins = [
+  ...localOrigins,
   'https://webfudge.in',
   'https://www.webfudge.in',
   'https://crm.webfudge.in',
@@ -15,11 +26,14 @@ const allowedOrigins = [
   'https://www.webfudgesystems.in',
 ];
 
-const allowedOriginPatterns = [
+const defaultAllowedOriginPatterns = [
   /^https:\/\/[a-z0-9-]+\.vercel\.app$/,
   /^https:\/\/[a-z0-9-]+\.webfudge\.in$/,
   /^https:\/\/[a-z0-9-]+\.webfudgesystems\.in$/,
 ];
+
+const allowedOrigins = envOrigins.length ? [...localOrigins, ...envOrigins] : defaultAllowedOrigins;
+const allowedOriginPatterns = envOrigins.length ? [] : defaultAllowedOriginPatterns;
 
 module.exports = [
   'strapi::logger',

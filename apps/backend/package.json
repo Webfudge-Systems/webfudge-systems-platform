@@ -17,7 +17,8 @@
     "backfill:task-assigners": "node scripts/backfill-task-assigners.js",
     "backfill:task-assigners:dry-run": "node scripts/backfill-task-assigners.js --dry-run",
     "flush:api-cache": "node scripts/flush-api-cache.js",
-    "audit:prod-tasks": "node scripts/prod-task-audit.js"
+    "audit:prod-tasks": "node scripts/prod-task-audit.js",
+    "db:row-counts": "node scripts/db-row-counts.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",

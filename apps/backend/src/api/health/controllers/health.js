@@ -2,8 +2,14 @@
 
 const redis = require('../../../utils/redis');
 const cache = require('../../../utils/cache');
+const { platformMode } = require('../../../utils/platform');
 
 module.exports = {
+  // Which deployment answered: lets you confirm a frontend points at the right API.
+  async status(ctx) {
+    return ctx.send({ status: 'ok', platformMode: platformMode() });
+  },
+
   async redis(ctx) {
     const configured = redis.isRedisConfigured();
     if (!configured) {

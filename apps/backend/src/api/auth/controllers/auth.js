@@ -4,9 +4,9 @@ const jwt = require('jsonwebtoken');
 const { createOrganizationOwnerMembership } = require('../../../utils/organization-role');
 const { membershipSummary } = require('../../../utils/rbac');
 const { normalizeUserUsername, uniqueUsernameFromEmail } = require('../../../utils/user-username');
+const { jwtSecret } = require('../../../utils/platform');
 
-// JWT secret - use environment variable or fallback to default
-const JWT_SECRET = process.env.JWT_SECRET || 'myJwtSecret123456789012345678901234567890';
+const JWT_SECRET = jwtSecret();
 
 const ORG_MEMBERSHIP_UID = 'api::organization-user.organization-user';
 
