@@ -2,9 +2,9 @@
 
 const jwt = require('jsonwebtoken');
 const { membershipSummary } = require('../utils/rbac');
+const { jwtSecret } = require('../utils/platform');
 
-// JWT secret - use environment variable or fallback
-const JWT_SECRET = process.env.JWT_SECRET || 'myJwtSecret123456789012345678901234567890';
+const JWT_SECRET = jwtSecret();
 
 module.exports = (config, { strapi }) => {
   return async (ctx, next) => {

@@ -7,6 +7,7 @@ const {
   ORG_MEMBERSHIP_UID,
 } = require('./utils/organization-role');
 const redis = require('./utils/redis');
+const { platformMode } = require('./utils/platform');
 
 module.exports = {
   /**
@@ -25,7 +26,7 @@ module.exports = {
    * run jobs, or perform some special logic.
    */
   async bootstrap({ strapi }) {
-    console.log('🚀 Strapi is bootstrapping...');
+    console.log(`🚀 Strapi is bootstrapping (PLATFORM_MODE=${platformMode()})...`);
 
     if (redis.isRedisConfigured()) {
       const hostHint = (redis.resolveRedisUrl() || '').replace(/:[^:@]+@/, ':****@');
