@@ -73,7 +73,7 @@ Nothing in Option A deletes data. This phase exists so that you could recover fr
   DATABASE_URL='postgresql://…' npm run db:row-counts -- --out ../../backups/internal-before.json
   ```
 - [ ] **0.6 Copy both files off the laptop** (Google Drive, external disk). They hold real customer data, so keep them private.
-- [ ] **0.7 Protect uploaded files.** AWS → S3 → internal bucket → *Properties* → **Bucket Versioning → Enable**. Deleted or overwritten files can then be recovered. The files don't move in Option A.
+- [ ] **0.7 Protect uploaded files**, if you use S3: AWS → S3 → internal bucket → *Properties* → **Bucket Versioning → Enable**. Deleted or overwritten files can then be recovered. The files don't move in Option A. (As of Nov 2026 production has no uploaded files, so this step was skipped.)
 - [ ] **0.8 Prove the backup restores (recommended).** Create a throwaway Railway project with an empty Postgres, then:
   ```bash
   pg_restore --no-owner --no-privileges --dbname='postgresql://<scratch-url>' backups/internal-<time>.dump
@@ -114,8 +114,12 @@ If anything looks wrong: Railway → Deployments → previous deployment → **R
 ## Phase 3 · SaaS backend (new Railway project)
 
 - [ ] **3.1** Railway → **New Project** → name it `webfudge-saas`. Add a **new** Postgres and a **new** Redis. Never point the SaaS at the internal ones.
-- [ ] **3.2** Add a service from the GitHub repo. Settings: branch `saas`, root directory `apps/backend`, and the same build and start commands as the internal API service (see `RAILWAY_STRAPI_DEPLOY.md`).
-- [ ] **3.3** Create a new S3 bucket (for example `webfudge-saas-uploads`) and a new IAM user whose policy allows only that bucket. Copy the internal bucket's CORS and permission settings, with the new bucket name.
+- [ ] **3.2** Add a service from the GitHub repo. Settings, matching the internal API service:
+  - **Branch:** `saas`
+  - **Root Directory:** leave **empty** (the repo root). The only `package-lock.json` is at the root, and the build uses npm workspaces. Setting `apps/backend` fails with `npm error No workspaces found`.
+  - **Build:** `npm run build --workspace=backend` · **Start:** `npm run start --workspace=backend`
+  - **Wait for CI:** on, so a `saas` commit deploys only after the GitHub `build` check passes.
+- [ ] **3.3** File uploads: **off for now.** Production has no uploaded files and no storage is set up, so the SaaS starts without storage variables, and uploads return an error until a storage option (S3, Cloudflare R2, …) is added.
 - [ ] **3.4** Generate **new** secrets. Never copy internal values. Run once per secret:
   ```bash
   node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
@@ -132,8 +136,7 @@ If anything looks wrong: Railway → Deployments → previous deployment → **R
   | `DATABASE_URL` | the same reference the internal API uses (`${{Postgres.DATABASE_URL}}` or `${{Postgres.DATABASE_PRIVATE_URL}}`), but pointing at the SaaS project's Postgres |
   | `DATABASE_SSL`, `DATABASE_SSL_REJECT_UNAUTHORIZED`, `DATABASE_POOL_*` | same as internal |
   | `REDIS_URL` | `${{Redis.REDIS_URL}}` (the SaaS project's Redis) |
-  | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET` | the new bucket and IAM user |
-  | `CDN_URL` | the new bucket's URL (or CDN) |
+  | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET`, `CDN_URL` | leave unset until file storage is chosen (3.3) |
   | `CORS_ORIGINS` | `https://webfudgesystems.in,https://www.webfudgesystems.in,https://accounts.webfudgesystems.in,https://crm.webfudgesystems.in,https://pm.webfudgesystems.in` |
   | `APP_URL` | `https://webfudgesystems.in` (used in invitation links) |
   | `SEED_DATA` | leave unset. An empty database seeds apps, modules and roles automatically |
