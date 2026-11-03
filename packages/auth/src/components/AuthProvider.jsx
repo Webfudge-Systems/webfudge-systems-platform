@@ -35,6 +35,14 @@ export const AuthProvider = ({ children }) => {
             if (userData) {
               setUser(userData);
               setIsAuthenticated(true);
+              // Links from Webfudge Accounts carry ?org=<id> to open a specific organization.
+              const params = new URLSearchParams(window.location.search);
+              const requestedOrg = params.get('org');
+              if (requestedOrg && authService.setCurrentOrg(requestedOrg)) {
+                params.delete('org');
+                const query = params.toString();
+                window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+              }
               // Restore stored org data
               const storedOrgs = authService.getStoredOrganizations();
               const storedOrg  = authService.getCurrentOrg();
@@ -136,6 +144,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  /** Starts a session from an API response that already contains a JWT (code sign-in, invites, password reset). */
+  const establishSession = useCallback((data) => {
+    authService.setSession(data);
+    setUser(authService.getStoredUser());
+    setIsAuthenticated(true);
+    setOrganizations(authService.getStoredOrganizations());
+    setCurrentOrgState(authService.getCurrentOrg());
+  }, []);
+
+  /** Re-reads the user and organization list from /api/auth/me (e.g. after creating or joining an organization). */
+  const refreshSession = useCallback(async () => {
+    const fresh = await authService.getCurrentUser();
+    if (!fresh) return null;
+    setUser(fresh);
+    const orgs = authService.getStoredOrganizations();
+    setOrganizations(orgs);
+    setCurrentOrgState(authService.getCurrentOrg());
+    return { user: fresh, organizations: orgs };
+  }, []);
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -183,6 +211,8 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
+    establishSession,
+    refreshSession,
     hasPermission,
     canAccessAppModule,
     hasRole,

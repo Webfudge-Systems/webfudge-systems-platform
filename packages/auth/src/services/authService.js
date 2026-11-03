@@ -10,6 +10,35 @@ const API_BASE_URL =
 
 const ACCESS_RANK = { none: 0, read: 1, write: 2, manage: 3 };
 
+// Set NEXT_PUBLIC_AUTH_COOKIE_DOMAIN (e.g. .webfudgesystems.in) to share one sign-in across
+// accounts., crm. and pm. subdomains. Without it the cookie stays on the current host, as before.
+const COOKIE_DOMAIN = process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN || '';
+const TOKEN_COOKIE = 'auth-token';
+const TOKEN_MAX_AGE = 7 * 24 * 60 * 60;
+
+function cookieAttributes() {
+  const secure = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+  const domain = COOKIE_DOMAIN ? `; domain=${COOKIE_DOMAIN}` : '';
+  return `; path=/; SameSite=Lax${domain}${secure}`;
+}
+
+function writeTokenCookie(token) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${TOKEN_COOKIE}=${encodeURIComponent(token)}; max-age=${TOKEN_MAX_AGE}${cookieAttributes()}`;
+}
+
+function clearTokenCookie() {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${TOKEN_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 GMT${cookieAttributes()}`;
+  document.cookie = `${TOKEN_COOKIE}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+}
+
+function readTokenCookie() {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.split('; ').find((c) => c.startsWith(`${TOKEN_COOKIE}=`));
+  return match ? decodeURIComponent(match.slice(TOKEN_COOKIE.length + 1)) || null : null;
+}
+
 class AuthService {
   constructor() {
     this.baseURL = API_BASE_URL;
@@ -100,7 +129,7 @@ class AuthService {
         }
 
         // Also store in cookies for middleware access
-        document.cookie = `auth-token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+        writeTokenCookie(token);
       }
 
       // Return consistent format (with 'token' key for compatibility)
@@ -192,7 +221,7 @@ class AuthService {
         }
 
         // Also store in cookies for middleware access
-        document.cookie = `auth-token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+        writeTokenCookie(token);
       }
 
       // Return consistent format (with 'token' key for compatibility)
@@ -248,8 +277,11 @@ class AuthService {
           if (authUser) {
             const merged = mergeStored(authUser);
             localStorage.setItem('auth-user', JSON.stringify(merged));
-            if (organizations.length > 0) {
-              localStorage.setItem('auth-organizations', JSON.stringify(organizations));
+            localStorage.setItem('auth-organizations', JSON.stringify(organizations));
+            const currentId = this.getCurrentOrgId();
+            if (!organizations.some((o) => o.id === currentId)) {
+              if (organizations.length > 0) localStorage.setItem('current-org-id', String(organizations[0].id));
+              else localStorage.removeItem('current-org-id');
             }
             return merged;
           }
@@ -280,7 +312,7 @@ class AuthService {
     localStorage.removeItem('current-org-id');
 
     if (typeof document !== 'undefined') {
-      document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      clearTokenCookie();
     }
   }
 
@@ -290,7 +322,48 @@ class AuthService {
    */
   getToken() {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('auth-token');
+    const stored = localStorage.getItem('auth-token');
+    if (!COOKIE_DOMAIN) return stored;
+
+    // Shared sign-in: the cookie on the parent domain is the source of truth.
+    const shared = readTokenCookie();
+    if (!shared) {
+      if (stored) this.clearLocalSession();
+      return null;
+    }
+    if (shared !== stored) {
+      this.clearLocalSession();
+      localStorage.setItem('auth-token', shared);
+      localStorage.setItem('strapi_token', shared);
+    }
+    return shared;
+  }
+
+  /** Clears this app's copy of the session without touching the shared cookie. */
+  clearLocalSession() {
+    ['auth-token', 'strapi_token', 'auth-user', 'user-role', 'auth-organizations', 'current-org-id'].forEach((key) =>
+      localStorage.removeItem(key)
+    );
+  }
+
+  /**
+   * Stores a session returned by /api/auth/login, /verify-email, /password/reset or an invitation sign-up.
+   * Keeps the current organization when it is still in the list.
+   */
+  setSession(data) {
+    const token = data?.jwt || data?.token;
+    if (!token || typeof window === 'undefined') return;
+    localStorage.setItem('auth-token', token);
+    localStorage.setItem('strapi_token', token);
+    if (data.user) localStorage.setItem('auth-user', JSON.stringify(flattenUser(data.user) || data.user));
+    const orgs = data.organizations || [];
+    localStorage.setItem('auth-organizations', JSON.stringify(orgs));
+    const currentId = this.getCurrentOrgId();
+    if (!orgs.some((o) => o.id === currentId)) {
+      if (orgs.length > 0) localStorage.setItem('current-org-id', String(orgs[0].id));
+      else localStorage.removeItem('current-org-id');
+    }
+    writeTokenCookie(token);
   }
 
   /**

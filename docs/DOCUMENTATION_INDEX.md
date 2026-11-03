@@ -30,6 +30,7 @@ Your complete guide to the Webfudge Platform documentation.
 | **[ACCOUNTS_PRODUCTION_DEPLOY.md](./ACCOUNTS_PRODUCTION_DEPLOY.md)** | Accounts app production deploy (env, build, run) | 5 min | 🟡 Medium |
 | **[RAILWAY_STRAPI_DEPLOY.md](./RAILWAY_STRAPI_DEPLOY.md)** | Strapi on Railway: Postgres variables, SSL, pool, crash-loop fixes | 5 min | 🔴 High |
 | **[INTERNAL_AND_SAAS_DEPLOYMENTS.md](./INTERNAL_AND_SAAS_DEPLOYMENTS.md)** | Two live systems from one codebase: Internal (`master`) and SaaS (`saas`), backups, step-by-step setup | 20 min | 🔴 High |
+| **[SAAS_PLATFORM.md](./SAAS_PLATFORM.md)** | Self-serve sign-up, per-app trials, Razorpay billing, settings and go-live checklist for webfudgesystems.in | 15 min | 🔴 High |
 
 ### 📋 Project Management
 

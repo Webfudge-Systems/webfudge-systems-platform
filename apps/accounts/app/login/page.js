@@ -1,125 +1,95 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
-import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
-import {
-  Button,
-  Input,
-  LoginBrandCorner,
-  LoginProductCredit,
-  LoginMobileBrandHeader,
-} from '@webfudge/ui'
-import { ACCOUNTS_SITE } from '../../lib/site'
+import AuthLayout from '../../components/saas/AuthLayout'
+import { Alert, Button, FullPageSpinner, PasswordInput, TextInput } from '../../components/saas/ui'
+import { api, goTo, IS_SAAS, postSignInTarget } from '../../lib/saas'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [loginError, setLoginError] = useState('')
-  const { login, isAuthenticated, loading } = useAuth()
+function LoginForm() {
   const router = useRouter()
+  const params = useSearchParams()
+  const next = params.get('next') || ''
+  const { establishSession, isAuthenticated, loading, organizations } = useAuth()
+  const [email, setEmail] = useState(params.get('email') || '')
+  const [password, setPassword] = useState('')
+  const [errors, setErrors] = useState({})
+  const [formError, setFormError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!loading && isAuthenticated) router.push('/')
-  }, [isAuthenticated, loading, router])
+    if (!loading && isAuthenticated && !submitting) goTo(router, postSignInTarget(organizations, next))
+  }, [loading, isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const validate = () => {
-    const next = {}
-    if (!email) next.email = 'Email is required'
-    if (!password) next.password = 'Password is required'
-    setErrors(next)
-    return Object.keys(next).length === 0
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoginError('')
-    if (!validate()) return
-    setIsSubmitting(true)
+  const submit = async (event) => {
+    event.preventDefault()
+    setFormError('')
+    const e = {}
+    if (!email.trim()) e.email = 'Enter your email.'
+    if (!password) e.password = 'Enter your password.'
+    setErrors(e)
+    if (Object.keys(e).length) return
+    setSubmitting(true)
     try {
-      const result = await login(email, password)
-      if (result?.success) router.replace('/')
-      else setLoginError(result?.error || 'Login failed')
-    } finally {
-      setIsSubmitting(false)
+      const session = await api('/api/auth/login', { method: 'POST', auth: false, body: { identifier: email.trim(), password } })
+      establishSession(session)
+      goTo(router, postSignInTarget(session.organizations, next))
+    } catch (err) {
+      if (err.code === 'EMAIL_NOT_VERIFIED') {
+        const query = new URLSearchParams({ email: err.details.email || email.trim() })
+        if (next) query.set('next', next)
+        router.push(`/verify?${query}`)
+        return
+      }
+      setFormError(err.message === 'Invalid credentials' ? 'That email and password don’t match. Try again or reset your password.' : err.message)
+      setSubmitting(false)
     }
   }
 
-  if (loading && !isSubmitting) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-      </div>
-    )
-  }
+  if (loading) return <FullPageSpinner />
 
   return (
-    <div className="min-h-screen flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-primary to-orange-600 relative flex-col justify-center px-16 py-20">
-        <LoginBrandCorner
-          brandIconPath={ACCOUNTS_SITE.brandIconPath}
-          brandName={ACCOUNTS_SITE.brandName}
-        />
-        <div className="max-w-lg">
-          <LoginProductCredit productName={ACCOUNTS_SITE.name} creatorLine={ACCOUNTS_SITE.brandName} />
-          <h1 className="text-5xl font-bold text-white mb-6">Welcome back</h1>
-          <p className="text-xl text-white/90 mb-4">{ACCOUNTS_SITE.loginTagline}</p>
-          <p className="text-white/80 leading-relaxed">{ACCOUNTS_SITE.loginDetail}</p>
-          <div className="mt-12 grid grid-cols-3 gap-6">
-            {ACCOUNTS_SITE.loginFeatures.map((item) => (
-              <div key={item.label} className="bg-white/10 rounded-xl p-4 text-center">
-                <p className="text-white font-semibold text-sm">{item.value}</p>
-                <p className="text-white/70 text-xs mt-1">{item.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+    <AuthLayout
+      topRight={
+        IS_SAAS ? (
+          <p className="text-sm text-[#5C5C5C]">
+            New to Webfudge?{' '}
+            <Link href={`/signup${next ? `?next=${encodeURIComponent(next)}` : ''}`} className="font-semibold text-[#B84A0B] hover:underline">
+              Create an account
+            </Link>
+          </p>
+        ) : null
+      }
+    >
+      <h1 className="text-[34px] font-medium leading-tight tracking-[-0.03em]">Welcome back</h1>
+      <p className="mb-7 mt-2 text-[17px] text-[#5C5C5C]">Sign in to Webfudge to open your apps.</p>
 
-      <div className="w-full lg:w-1/2 flex flex-col justify-center p-8 lg:p-16">
-        <div className="w-full max-w-md mx-auto">
-          <LoginMobileBrandHeader
-            logoPath={ACCOUNTS_SITE.logoPath}
-            productName={ACCOUNTS_SITE.name}
-            creatorLine={ACCOUNTS_SITE.brandName}
-          />
-          <h2 className="text-3xl font-semibold text-brand-dark mb-2">Sign in</h2>
-          <p className="text-gray-600 mb-8">Enter your credentials to access Accounts.</p>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {loginError && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                {loginError}
-              </div>
-            )}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-brand-dark mb-1.5">Email</label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" error={errors.email} className="w-full" />
-              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-brand-dark mb-1.5">Password</label>
-              <div className="relative">
-                <Input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" error={errors.password} className="w-full pr-10" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
-            </div>
-            <Button type="submit" disabled={isSubmitting} className="w-full" variant="primary">
-              {isSubmitting ? <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" />Signing in...</span> : 'Sign in'}
-            </Button>
-          </form>
-          <p className="mt-6 text-center text-sm text-gray-500">
-            Don&apos;t have an account? Contact your administrator.
+      {formError && <Alert className="mb-5">{formError}</Alert>}
+
+      <form onSubmit={submit} noValidate className="space-y-4">
+        <TextInput label="Email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} placeholder="you@company.com" autoFocus />
+        <div>
+          <PasswordInput autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password} placeholder="Your password" />
+          <p className="mt-2 text-right text-sm">
+            <Link href={`/forgot-password${email ? `?email=${encodeURIComponent(email.trim())}` : ''}`} className="font-semibold text-[#B84A0B] hover:underline">
+              Forgot password?
+            </Link>
           </p>
         </div>
-      </div>
-    </div>
+        <Button type="submit" variant="primary" size="lg" loading={submitting} className="w-full !rounded-xl">
+          Sign in
+        </Button>
+      </form>
+    </AuthLayout>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<FullPageSpinner />}>
+      <LoginForm />
+    </Suspense>
   )
 }

@@ -7,13 +7,15 @@ const { jwtSecret } = require('../utils/platform');
 const JWT_SECRET = jwtSecret();
 
 module.exports = (config, { strapi }) => {
-  return async (ctx, next) => {
+  // Resolves ctx.state.user / org first, then calls next() exactly once. Errors thrown further down
+  // the chain must propagate (calling next() again from a catch would run the route twice).
+  async function resolveAuth(ctx) {
     try {
       // Get token from Authorization header
       const authHeader = ctx.request.headers.authorization;
 
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return await next();
+        return;
       }
 
       const token = authHeader.replace('Bearer ', '');
@@ -22,11 +24,11 @@ module.exports = (config, { strapi }) => {
       try {
         decoded = jwt.verify(token, JWT_SECRET);
       } catch (err) {
-        return await next();
+        return;
       }
 
       if (typeof decoded === 'string' || !decoded || !('id' in decoded)) {
-        return await next();
+        return;
       }
 
       // Get user from database
@@ -88,10 +90,14 @@ module.exports = (config, { strapi }) => {
         }
       }
 
-      return await next();
+      return;
     } catch (error) {
       console.error('JWT Auth Middleware Error:', error);
-      return await next();
     }
+  }
+
+  return async (ctx, next) => {
+    await resolveAuth(ctx);
+    return next();
   };
 };

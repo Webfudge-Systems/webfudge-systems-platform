@@ -55,6 +55,17 @@
     "order": {
       "type": "integer",
       "default": 0
+    },
+    "availability": {
+      "type": "enumeration",
+      "enum": [
+        "available",
+        "coming_soon"
+      ],
+      "default": "available"
+    },
+    "tagline": {
+      "type": "string"
     }
   }
 }

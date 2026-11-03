@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import { Loader2 } from 'lucide-react'
 import { WorkspaceTopBar } from './WorkspaceTopBar'
+import { getAppUrl } from '@webfudge/utils'
+import { IS_SAAS_PLATFORM } from '../../components/SaasAccessGate'
 
 export function AppShell({
   children,
@@ -28,13 +30,25 @@ export function AppShell({
   const isLoginPage = pathname === loginPath
   const isUnauthorizedPage = pathname === unauthorizedPath
 
+  // SaaS: one sign-in for every app lives in Webfudge Accounts; come back here afterwards.
+  const redirectToAccounts = IS_SAAS_PLATFORM && !loading && !isAuthenticated && !isUnauthorizedPage
+
   useEffect(() => {
+    if (redirectToAccounts) {
+      const back = isLoginPage ? window.location.origin : window.location.href
+      window.location.replace(`${getAppUrl('accounts')}/login?next=${encodeURIComponent(back)}`)
+      return
+    }
+    if (IS_SAAS_PLATFORM && isLoginPage && !loading && isAuthenticated) {
+      router.replace('/')
+      return
+    }
     if (!loading && !isAuthenticated && !isLoginPage && !isUnauthorizedPage) {
       router.push(loginPath)
     }
-  }, [isAuthenticated, loading, isLoginPage, isUnauthorizedPage, router, loginPath])
+  }, [redirectToAccounts, isAuthenticated, loading, isLoginPage, isUnauthorizedPage, router, loginPath])
 
-  if (loading) {
+  if (loading || redirectToAccounts || (IS_SAAS_PLATFORM && isLoginPage)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">

@@ -24,6 +24,11 @@ const {
 } = require('../../../utils/organization-role');
 const { logAccountsActivity, actorDisplayName } = require('../../../utils/crm-activity-log');
 const { usernameExists } = require('../../../utils/user-username');
+const { isSaas } = require('../../../utils/platform');
+const { seatLimitProblem } = require('../../../utils/saas-org');
+
+// On the SaaS platform, organizations and app trials are created through /api/saas/* and paid through /api/billing/*.
+const SAAS_ONLY_MESSAGE = 'Use the Webfudge Accounts sign-up flow to create organizations and add apps.';
 const {
   applyMembershipDepartments,
   departmentsPayload,
@@ -112,6 +117,7 @@ async function resolveCanEditOrganizationSettings(strapi, ctx, orgId) {
 module.exports = createCoreController('api::organization.organization', ({ strapi }) => ({
   // Custom create with onboarding
   async create(ctx) {
+    if (isSaas()) return ctx.forbidden(SAAS_ONLY_MESSAGE);
     const user = ctx.state.user;
     if (!user) {
       return ctx.unauthorized('You must be logged in');
@@ -443,6 +449,12 @@ module.exports = createCoreController('api::organization.organization', ({ strap
       const hasAccess = await strapi.service('api::organization.organization').checkUserAccess(id, user.id);
       if (!hasAccess) {
         return ctx.forbidden('You do not have access to this organization');
+      }
+
+      if (isSaas()) {
+        const adding = directAdd ? 1 : Array.isArray(emails) ? emails.length : 0;
+        const overLimit = await seatLimitProblem(strapi, id, adding);
+        if (overLimit) return ctx.badRequest(overLimit, { code: 'PLAN_USER_LIMIT' });
       }
 
       if (directAdd) {
@@ -837,6 +849,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
 
   // Add app to existing organization
   async addApp(ctx) {
+    if (isSaas()) return ctx.forbidden(SAAS_ONLY_MESSAGE);
     const { id } = ctx.params;
     const user = ctx.state.user;
 
