@@ -111,6 +111,9 @@
         "allowPasswordLogin": true,
         "allowedEmailDomains": []
       }
+    },
+    "billingDetails": {
+      "type": "json"
     }
   }
 }

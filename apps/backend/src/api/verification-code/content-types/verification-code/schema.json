@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "verification_codes",
+  "info": {
+    "singularName": "verification-code",
+    "pluralName": "verification-codes",
+    "displayName": "Verification Code"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "purpose": {
+      "type": "enumeration",
+      "enum": [
+        "verify_email",
+        "reset_password"
+      ],
+      "required": true
+    },
+    "codeHash": {
+      "type": "string",
+      "private": true,
+      "required": true
+    },
+    "expiresAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "attempts": {
+      "type": "integer",
+      "default": 0
+    },
+    "consumedAt": {
+      "type": "datetime"
+    },
+    "lastSentAt": {
+      "type": "datetime"
+    }
+  }
+}

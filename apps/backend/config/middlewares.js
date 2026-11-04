@@ -96,10 +96,15 @@ module.exports = [
   },
   'strapi::poweredBy',
   'strapi::query',
-  'strapi::body',
+  {
+    name: 'strapi::body',
+    // Keeps the raw request body for verifying Razorpay webhook signatures.
+    config: { includeUnparsed: true },
+  },
   'strapi::session',
   'strapi::favicon',
   'strapi::public',
   'global::jwt-auth', // Custom JWT authentication middleware
+  'global::app-access', // SaaS: trial / plan / lock rules per app (no-op on Internal)
   'global::api-cache', // Redis cache for GET /api/* (leads, contacts, tasks, projects, …)
 ];

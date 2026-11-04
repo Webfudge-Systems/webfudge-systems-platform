@@ -14,11 +14,14 @@ import {
   Settings,
   Grid3X3,
   PanelLeftClose,
+  Home,
+  CreditCard,
 } from 'lucide-react'
 import { SidebarProductBranding } from '@webfudge/ui'
 import { ACCOUNTS_SITE } from '../lib/site'
+import { IS_SAAS } from '../lib/saas'
 
-const items = [
+const adminItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Users', href: '/users', icon: Users },
   { label: 'Roles & Permissions', href: '/roles', icon: Shield },
@@ -29,6 +32,15 @@ const items = [
   { label: 'Organization', href: '/settings', icon: Settings },
   { label: 'App Access', href: '/app-access', icon: Grid3X3 },
 ]
+
+// SaaS: the Home hub and billing sit above the admin tools.
+const items = IS_SAAS
+  ? [
+      { label: 'Home', href: '/home', icon: Home },
+      { label: 'Apps & billing', href: '/billing', icon: CreditCard },
+      ...adminItems,
+    ]
+  : adminItems
 
 export default function AccountsSidebar({ collapsed = false, onToggle }) {
   const pathname = usePathname()

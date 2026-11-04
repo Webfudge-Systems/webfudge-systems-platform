@@ -1,78 +1,36 @@
 import './globals.css'
-import { AuthProvider } from '@webfudge/auth'
+import { SITE_URL } from '../lib/links'
+import { siteContact } from '../data/site'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://webfudgesystems.in'
 const organizationName = 'Webfudge Systems'
 const defaultDescription =
-  'Webfudge Systems builds CRM, ERP, HRMS, finance, invoicing, inventory, and custom web applications — scalable SaaS and on-premise software that helps businesses automate operations and grow faster.'
+  'Webfudge CRM and Projects for growing businesses — try each app free for 14 days and pay per app, per user. We also build custom ERPs, client portals and browser extensions.'
 
 export const metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: organizationName,
+    default: `${organizationName} — CRM and project management for growing businesses`,
     template: `%s | ${organizationName}`,
   },
-  metadataBase: new URL(siteUrl),
   description: defaultDescription,
   applicationName: organizationName,
   creator: organizationName,
   publisher: organizationName,
   category: 'technology',
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  keywords: [
-    'CRM system',
-    'ERP system',
-    'HRMS system',
-    'finance software',
-    'invoice and billing software',
-    'inventory management software',
-    'custom web application development',
-    'lead generation extension',
-    'SaaS solutions',
-    'on-premise software',
-    'Webfudge Systems',
-    'business software solutions',
-    'scalable software solutions India',
-  ],
-  alternates: {
-    canonical: '/',
-  },
+  formatDetection: { email: false, address: false, telephone: false },
+  keywords: ['CRM software India', 'project management software', 'sales pipeline', 'task management', 'ERP development', 'client portal', 'Webfudge Systems'],
+  alternates: { canonical: '/' },
   openGraph: {
     title: organizationName,
     description: defaultDescription,
     url: '/',
     siteName: organizationName,
     type: 'website',
-    locale: 'en_US',
-    images: [
-      {
-        url: '/favicon/web-app-manifest-512x512.png',
-        width: 512,
-        height: 512,
-        alt: organizationName,
-      },
-    ],
+    locale: 'en_IN',
+    images: [{ url: '/favicon/web-app-manifest-512x512.png', width: 512, height: 512, alt: organizationName }],
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: organizationName,
-    description: defaultDescription,
-    images: ['/favicon/web-app-manifest-512x512.png'],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-      'max-video-preview': -1,
-    },
-  },
+  twitter: { card: 'summary_large_image', title: organizationName, description: defaultDescription, images: ['/favicon/web-app-manifest-512x512.png'] },
+  robots: { index: true, follow: true },
   icons: {
     icon: [
       { url: '/favicon/favicon.svg', type: 'image/svg+xml' },
@@ -84,6 +42,8 @@ export const metadata = {
   manifest: '/favicon/site.webmanifest',
 }
 
+export const viewport = { themeColor: '#F5630F' }
+
 export default function RootLayout({ children }) {
   const structuredData = {
     '@context': 'https://schema.org',
@@ -91,46 +51,42 @@ export default function RootLayout({ children }) {
       {
         '@type': 'Organization',
         name: organizationName,
-        url: siteUrl,
-        logo: `${siteUrl}/favicon/web-app-manifest-512x512.png`,
+        url: SITE_URL,
+        logo: `${SITE_URL}/favicon/web-app-manifest-512x512.png`,
         description: defaultDescription,
-        address: {
-          '@type': 'PostalAddress',
-          addressLocality: 'Pune',
-          addressRegion: 'MH',
-          addressCountry: 'IN',
-        },
-        email: 'contact@webfudge.in',
-        telephone: '+917385302967',
-        sameAs: [],
+        address: { '@type': 'PostalAddress', addressLocality: 'Pune', addressRegion: 'MH', addressCountry: 'IN' },
+        email: siteContact.email,
+        telephone: siteContact.phoneHref.replace('tel:', ''),
       },
       {
-        '@type': 'WebSite',
-        name: organizationName,
-        url: siteUrl,
-        description: defaultDescription,
-        publisher: {
-          '@type': 'Organization',
-          name: organizationName,
-        },
+        '@type': 'SoftwareApplication',
+        name: 'Webfudge CRM',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        offers: { '@type': 'Offer', price: '499', priceCurrency: 'INR' },
+      },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'Webfudge Projects',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        offers: { '@type': 'Offer', price: '499', priceCurrency: 'INR' },
       },
     ],
   }
 
   return (
-    <html lang="en" className="scroll-smooth overflow-x-clip">
+    <html lang="en-IN">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className="bg-white text-[#111111] antialiased">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+      <body>
+        <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-full focus:bg-ink focus:px-4 focus:py-2 focus:text-white">
+          Skip to content
+        </a>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
+        {children}
       </body>
     </html>
   )

@@ -3,7 +3,7 @@ const siteUrl = (process.env.NEXT_PUBLIC_ACCOUNTS_APP_URL || 'http://localhost:3
 export const ACCOUNTS_SITE = {
   brandName: 'Webfudge Systems',
   brandIconPath: '/logo/ws_logo_white.png',
-  name: 'Fudge Base',
+  name: process.env.NEXT_PUBLIC_PLATFORM_MODE === 'saas' ? 'Webfudge Accounts' : 'Fudge Base',
   shortName: 'Base',
   description:
     'Fudge Base is the organization administration workspace for users, roles, departments, teams, security, and audit logs.',

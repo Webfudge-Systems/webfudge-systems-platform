@@ -65,7 +65,7 @@ import invoiceService from '../../../../lib/api/invoiceService';
 import projectService from '../../../../lib/api/projectService';
 import { fetchActivityTimeline, fetchClientAccountComments, addClientAccountComment } from '../../../../lib/api/crmActivityService';
 import strapiClient from '../../../../lib/strapiClient';
-import { MeetingsEmbedList } from '@webfudge/ui';
+import { MeetingsEmbedList, useSaasApps } from '@webfudge/ui';
 import meetingService from '../../../../lib/api/meetingService';
 import { canWriteCRM, canEditCRMRecord } from '../../../../lib/rbac';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
@@ -291,6 +291,7 @@ function contactInitials(contact) {
 }
 
 export default function ClientAccountDetailPage() {
+  const { hasApp } = useSaasApps();
   const params = useParams();
   const router = useRouter();
   const id = params?.id;
@@ -1437,7 +1438,8 @@ export default function ClientAccountDetailPage() {
     [linkedProjects]
   );
 
-  const detailTabs = [
+  // SaaS: tabs that live in the other app are hidden until the organization has it.
+  const allDetailTabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'contacts', label: 'Contacts', badge: contactsCount || undefined },
     { key: 'activities', label: 'Activities' },
@@ -1446,6 +1448,7 @@ export default function ClientAccountDetailPage() {
     { key: 'invoices', label: 'Invoices', badge: linkedInvoices.length || undefined },
     { key: 'meetings', label: 'Meetings', badge: meetingsCount || undefined },
   ];
+  const detailTabs = allDetailTabs.filter((t) => hasApp('pm') || !['projects'].includes(t.key));
 
   const convertedLead = account?.convertedFromLead;
   const convertedLeadId =

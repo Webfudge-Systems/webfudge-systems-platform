@@ -36,6 +36,7 @@ export default function LayoutContent({ children }) {
       }}
       appName={CRM_SITE.name}
       pwaStorageKey="crm"
+      saasApp="crm"
       canView={canView}
       deniedTitle={`${moduleLabel} is not available for your role.`}
       deniedDescription="Your current permissions do not include read access for this area. Contact an admin or manager if you need this module enabled."

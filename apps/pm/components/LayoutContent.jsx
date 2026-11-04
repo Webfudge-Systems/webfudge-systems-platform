@@ -27,6 +27,7 @@ export default function LayoutContent({ children }) {
       }}
       appName={PM_SITE.name}
       pwaStorageKey="pm"
+      saasApp="pm"
       canView={canView}
       deniedTitle="Access denied"
       deniedDescription="Your current role does not have access to this Project Management module."

@@ -46,12 +46,22 @@
     },
     "billingCycle": {
       "type": "enumeration",
-      "enum": ["monthly", "annual"],
+      "enum": [
+        "monthly",
+        "annual"
+      ],
       "default": "monthly"
     },
     "status": {
       "type": "enumeration",
-      "enum": ["trial", "active", "suspended", "cancelled"],
+      "enum": [
+        "trial",
+        "active",
+        "suspended",
+        "cancelled",
+        "past_due",
+        "expired"
+      ],
       "default": "trial"
     },
     "startDate": {
@@ -72,6 +82,30 @@
     },
     "lastPaymentDate": {
       "type": "datetime"
+    },
+    "plan": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::plan.plan"
+    },
+    "planCode": {
+      "type": "string"
+    },
+    "trialEndsAt": {
+      "type": "datetime"
+    },
+    "currentPeriodStart": {
+      "type": "datetime"
+    },
+    "currentPeriodEnd": {
+      "type": "datetime"
+    },
+    "cancelAtPeriodEnd": {
+      "type": "boolean",
+      "default": false
+    },
+    "remindersSent": {
+      "type": "json"
     }
   }
 }

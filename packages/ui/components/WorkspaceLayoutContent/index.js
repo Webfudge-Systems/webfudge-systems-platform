@@ -3,6 +3,7 @@
 import { AppShell } from '../../layouts'
 import { PwaInstallPrompt } from '../PwaInstallPrompt'
 import { AccessDeniedPanel } from '../AccessDeniedPanel'
+import { SaasAccessGate } from '../SaasAccessGate'
 
 /**
  * Shared layout shell used by PM, CRM, and Accounts `LayoutContent` files.
@@ -32,6 +33,7 @@ import { AccessDeniedPanel } from '../AccessDeniedPanel'
  *     brandName?: string,
  *     homeHref?: string,
  *   },
+ *   saasApp?: 'crm' | 'pm',
  *   children: React.ReactNode,
  * }} props
  */
@@ -48,6 +50,8 @@ export function WorkspaceLayoutContent({
   extras,
   sidebarBehavior = 'collapse',
   sidebarBranding,
+  /** SaaS only: app key whose trial / plan state is checked (banner or lock screen). */
+  saasApp,
   children,
 }) {
   return (
@@ -60,10 +64,10 @@ export function WorkspaceLayoutContent({
         <PwaInstallPrompt appName={appName} storageKey={pwaStorageKey} />
       )}
       {canView ? (
-        <>
+        <SaasAccessGate app={saasApp}>
           {children}
           {extras}
-        </>
+        </SaasAccessGate>
       ) : (
         deniedContent ?? (
           <AccessDeniedPanel

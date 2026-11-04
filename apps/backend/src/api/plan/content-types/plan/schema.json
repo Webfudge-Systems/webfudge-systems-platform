@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "plans",
+  "info": {
+    "singularName": "plan",
+    "pluralName": "plans",
+    "displayName": "Plan"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "string",
+      "required": true
+    },
+    "app": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::app.app"
+    },
+    "description": {
+      "type": "string"
+    },
+    "pricePerUserMonthly": {
+      "type": "decimal",
+      "default": 0
+    },
+    "yearlyDiscountPercent": {
+      "type": "integer",
+      "default": 15
+    },
+    "maxUsers": {
+      "type": "integer"
+    },
+    "features": {
+      "type": "json"
+    },
+    "isPopular": {
+      "type": "boolean",
+      "default": false
+    },
+    "isActive": {
+      "type": "boolean",
+      "default": true
+    },
+    "order": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

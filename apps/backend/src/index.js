@@ -7,7 +7,8 @@ const {
   ORG_MEMBERSHIP_UID,
 } = require('./utils/organization-role');
 const redis = require('./utils/redis');
-const { platformMode } = require('./utils/platform');
+const { platformMode, isSaas } = require('./utils/platform');
+const { ensureSaasCatalog } = require('./utils/saas-catalog');
 
 module.exports = {
   /**
@@ -57,6 +58,14 @@ module.exports = {
         await seed(strapi);
       } catch (error) {
         console.error('❌ Seeding failed:', error);
+      }
+    }
+
+    if (isSaas()) {
+      try {
+        await ensureSaasCatalog(strapi);
+      } catch (error) {
+        console.error('❌ Could not prepare the SaaS app catalogue:', error);
       }
     }
 

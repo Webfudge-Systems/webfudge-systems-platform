@@ -1,52 +1,17 @@
-import Link from 'next/link'
+import ProductPage from '../../components/product/ProductPage'
+import { PRODUCT_PAGES } from '../../data/apps'
+import { getPlans } from '../../lib/pricing'
+
+const page = PRODUCT_PAGES.crm
 
 export const metadata = {
-  title: 'CRM Software',
-  description: 'Explore Webfudge CRM for lead management, pipeline tracking, and customer operations.',
-  alternates: {
-    canonical: '/crm',
-  },
-  openGraph: {
-    title: 'Webfudge CRM Software',
-    description: 'Explore Webfudge CRM for lead management, pipeline tracking, and customer operations.',
-    url: '/crm',
-    type: 'website',
-    images: ['/favicon/web-app-manifest-512x512.png'],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Webfudge CRM Software',
-    description: 'Explore Webfudge CRM for lead management, pipeline tracking, and customer operations.',
-    images: ['/favicon/web-app-manifest-512x512.png'],
-  },
-};
-
-export default function CRMPage() {
-  return (
-    <main className="min-h-screen bg-brand-light px-6 pt-28 pb-16">
-      <div className="mx-auto w-full max-w-5xl">
-        <p className="text-sm font-semibold text-gray-600">Product</p>
-        <h1 className="mt-2 text-4xl md:text-5xl font-bold text-brand-dark">CRM</h1>
-        <p className="mt-4 max-w-2xl text-lg text-gray-700">
-          A focused CRM page so the Navbar dropdown link opens correctly.
-        </p>
-
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center rounded-full bg-orange-500 px-5 py-2 text-sm font-semibold text-white hover:bg-orange-600 transition-colors"
-          >
-            Start Your Trial
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
-          >
-            Back to Home
-          </Link>
-        </div>
-      </div>
-    </main>
-  )
+  title: page.title,
+  description: page.description,
+  alternates: { canonical: '/crm' },
+  openGraph: { title: page.title, description: page.description, url: '/crm' },
 }
 
+export default async function CrmPage() {
+  const plans = await getPlans()
+  return <ProductPage page={page} plans={plans.crm} />
+}

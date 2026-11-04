@@ -12,6 +12,7 @@ module.exports = (plugin) => {
   Object.assign(user.schema.attributes, {
     firstName: { type: 'string', maxLength: 80 },
     lastName: { type: 'string', maxLength: 80 },
+    phone: { type: 'string', maxLength: 20 },
   });
 
   return plugin;

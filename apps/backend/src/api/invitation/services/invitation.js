@@ -8,12 +8,18 @@ const { uniqueUsernameFromEmail } = require('../../../utils/user-username');
 
 const { createCoreService } = require('@strapi/strapi').factories;
 const crypto = require('crypto');
+const { sendMail } = require('../../../utils/mailer');
+const { isSaas } = require('../../../utils/platform');
 const { ORG_ROLE_UID, resolveOrganizationRoleIdForOrg } = require('../../../utils/organization-role');
 const { logAccountsActivity, actorDisplayName } = require('../../../utils/crm-activity-log');
 const { applyMembershipDepartments } = require('../../../utils/department-membership');
 
 module.exports = createCoreService('api::invitation.invitation', ({ strapi }) => ({
   async sendEmailSafe({ to, subject, text, html }) {
+    if (process.env.RESEND_API_KEY || isSaas()) {
+      await sendMail({ to, subject, text, html });
+      return;
+    }
     try {
       const emailService = strapi.plugin('email')?.service('email');
       if (!emailService || typeof emailService.send !== 'function') {
@@ -32,8 +38,9 @@ module.exports = createCoreService('api::invitation.invitation', ({ strapi }) =>
   },
 
   async sendInvitationEmail({ email, token, organizationName, roleLabel }) {
-    const appUrl = process.env.APP_URL || process.env.LANDING_APP_URL || 'http://localhost:3000';
-    const inviteLink = `${appUrl}/invite/${token}`;
+    // SaaS invitations are accepted in Webfudge Accounts.
+    const appUrl = process.env.ACCOUNTS_URL || process.env.APP_URL || process.env.LANDING_APP_URL || 'http://localhost:3000';
+    const inviteLink = `${appUrl.replace(/\/+$/, '')}/invite/${token}`;
     const subject = `You're invited to join ${organizationName}`;
     const text = [
       `You have been invited to join ${organizationName} as ${roleLabel}.`,
@@ -303,6 +310,14 @@ module.exports = createCoreService('api::invitation.invitation', ({ strapi }) =>
       });
     } else if (!user) {
       throw new Error('User not found and no password provided');
+    } else {
+      // An existing account must prove it is theirs; the invite link alone must not sign anyone in.
+      const validPassword = password
+        ? await strapi.plugins['users-permissions'].services.user.validatePassword(password, user.password)
+        : false;
+      if (!validPassword) {
+        throw new Error('This email already has an account. Enter its password to accept the invitation.');
+      }
     }
 
     // Add user to organization

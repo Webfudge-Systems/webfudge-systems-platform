@@ -1,0 +1,110 @@
+{
+  "kind": "collectionType",
+  "collectionName": "billing_payments",
+  "info": {
+    "singularName": "billing-payment",
+    "pluralName": "billing-payments",
+    "displayName": "Billing Payment"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "subscription": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::subscription.subscription"
+    },
+    "app": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::app.app"
+    },
+    "plan": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::plan.plan"
+    },
+    "planCode": {
+      "type": "string"
+    },
+    "billingCycle": {
+      "type": "enumeration",
+      "enum": [
+        "monthly",
+        "annual"
+      ]
+    },
+    "users": {
+      "type": "integer"
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": [
+        "new",
+        "renewal",
+        "seats"
+      ],
+      "default": "new"
+    },
+    "amountSubtotal": {
+      "type": "decimal"
+    },
+    "taxAmount": {
+      "type": "decimal"
+    },
+    "amountTotal": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "string",
+      "default": "INR"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "created",
+        "paid",
+        "failed"
+      ],
+      "default": "created"
+    },
+    "razorpayOrderId": {
+      "type": "string",
+      "unique": true
+    },
+    "razorpayPaymentId": {
+      "type": "string"
+    },
+    "invoiceNumber": {
+      "type": "string",
+      "unique": true
+    },
+    "periodStart": {
+      "type": "datetime"
+    },
+    "periodEnd": {
+      "type": "datetime"
+    },
+    "paidAt": {
+      "type": "datetime"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "billingDetails": {
+      "type": "json"
+    },
+    "meta": {
+      "type": "json"
+    }
+  }
+}

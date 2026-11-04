@@ -12,7 +12,7 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
-function buildEmailContent(name: string, company: string, email: string) {
+function buildEmailContent(name: string, company: string, email: string, message = '') {
   const submittedAt = new Date().toLocaleString('en-IN', {
     timeZone: 'Asia/Kolkata',
     dateStyle: 'medium',
@@ -25,6 +25,7 @@ function buildEmailContent(name: string, company: string, email: string) {
     `Name: ${name}`,
     `Company: ${company || '(not provided)'}`,
     `Work email: ${email}`,
+    `Message: ${message || '(none)'}`,
     `Submitted: ${submittedAt}`,
   ].join('\n')
 
@@ -34,6 +35,7 @@ function buildEmailContent(name: string, company: string, email: string) {
       <tr><td style="padding:6px 12px 6px 0;color:#666;">Name</td><td style="padding:6px 0;"><strong>${escapeHtml(name)}</strong></td></tr>
       <tr><td style="padding:6px 12px 6px 0;color:#666;">Company</td><td style="padding:6px 0;">${escapeHtml(company || '(not provided)')}</td></tr>
       <tr><td style="padding:6px 12px 6px 0;color:#666;">Work email</td><td style="padding:6px 0;"><a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></td></tr>
+      <tr><td style="padding:6px 12px 6px 0;color:#666;vertical-align:top;">Message</td><td style="padding:6px 0;white-space:pre-wrap;">${escapeHtml(message || '(none)')}</td></tr>
       <tr><td style="padding:6px 12px 6px 0;color:#666;">Submitted</td><td style="padding:6px 0;">${escapeHtml(submittedAt)}</td></tr>
     </table>
   `
@@ -49,13 +51,14 @@ async function sendViaResend(
   name: string,
   company: string,
   email: string,
+  message = '',
 ) {
   const apiKey = process.env.RESEND_API_KEY?.trim()
   if (!apiKey) return false
 
   const from =
     process.env.RESEND_FROM_EMAIL?.trim() ?? 'Webfudge Contact <onboarding@resend.dev>'
-  const { subject, html, text } = buildEmailContent(name, company, email)
+  const { subject, html, text } = buildEmailContent(name, company, email, message)
 
   const resend = new Resend(apiKey)
   const { error } = await resend.emails.send({
@@ -74,7 +77,7 @@ async function sendViaResend(
   return true
 }
 
-async function sendViaGmail(name: string, company: string, email: string) {
+async function sendViaGmail(name: string, company: string, email: string, message = '') {
   const gmailUser = process.env.GMAIL_USER?.trim()
   const gmailAppPassword = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '')
 
@@ -90,7 +93,7 @@ async function sendViaGmail(name: string, company: string, email: string) {
     },
   })
 
-  const { subject, html, text } = buildEmailContent(name, company, email)
+  const { subject, html, text } = buildEmailContent(name, company, email, message)
 
   await transporter.sendMail({
     from: `"Webfudge Contact" <${gmailUser}>`,
@@ -111,6 +114,7 @@ export async function POST(request: Request) {
     const company = typeof body.company === 'string' ? body.company.trim() : ''
     const email = typeof body.email === 'string' ? body.email.trim() : ''
     const website = typeof body.website === 'string' ? body.website.trim() : ''
+    const message = typeof body.message === 'string' ? body.message.trim().slice(0, 4000) : ''
 
     if (website) {
       return NextResponse.json({ ok: true })
@@ -143,9 +147,9 @@ export async function POST(request: Request) {
     }
 
     if (hasResend) {
-      await sendViaResend(name, company, email)
+      await sendViaResend(name, company, email, message)
     } else {
-      await sendViaGmail(name, company, email)
+      await sendViaGmail(name, company, email, message)
     }
 
     return NextResponse.json({ ok: true })
