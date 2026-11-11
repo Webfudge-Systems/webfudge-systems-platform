@@ -4,6 +4,7 @@ const localOrigins = [
   'http://localhost:3004', // Vendor
   'http://localhost:3006', // PM
   'http://localhost:3007', // CRM
+  'http://localhost:3008', // Invest (internal only)
 ];
 
 // CORS_ORIGINS (comma-separated) pins this deployment to its own frontends, e.g. the SaaS API
@@ -21,6 +22,7 @@ const defaultAllowedOrigins = [
   'https://pm.webfudge.in',
   'https://accounts.webfudge.in',
   'https://vendor.webfudge.in',
+  'https://invest.webfudge.in',
   'https://api.webfudge.in',
   'https://webfudgesystems.in',
   'https://www.webfudgesystems.in',
