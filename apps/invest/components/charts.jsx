@@ -28,7 +28,7 @@ export function AllocationDonut({ rows }) {
   const total = rows.reduce((s, r) => s + r.currentValue, 0)
   if (!total) return <p className="py-10 text-center text-sm text-gray-500">No open holdings yet.</p>
   return (
-    <div className="flex flex-col items-center gap-6 sm:flex-row">
+    <div className="flex flex-col items-center gap-5">
       <div className="h-48 w-48 shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

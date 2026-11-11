@@ -59,24 +59,25 @@ export default function LayoutContent({ children }) {
       />
     )
 
+  // The provider wraps the whole shell: the sidebar lists holdings too.
   return (
-    <WorkspaceLayoutContent
-      sidebar={InvestSidebar}
-      sidebarBehavior="hide"
-      sidebarBranding={{
-        logoPath: INVEST_SITE.logoPath,
-        productName: INVEST_SITE.name,
-        companyName: INVEST_SITE.brandName,
-        homeHref: '/',
-      }}
-      appName={INVEST_SITE.name}
-      showPwa={false}
-      canView={canView}
-      deniedContent={deniedContent}
-    >
-      <InvestDataProvider enabled={isAuthenticated && allowed} providers={access?.providers}>
+    <InvestDataProvider enabled={isAuthenticated && allowed} providers={access?.providers}>
+      <WorkspaceLayoutContent
+        sidebar={InvestSidebar}
+        sidebarBehavior="hide"
+        sidebarBranding={{
+          logoPath: INVEST_SITE.logoPath,
+          productName: INVEST_SITE.name,
+          companyName: INVEST_SITE.brandName,
+          homeHref: '/',
+        }}
+        appName={INVEST_SITE.name}
+        showPwa={false}
+        canView={canView}
+        deniedContent={deniedContent}
+      >
         {children}
-      </InvestDataProvider>
-    </WorkspaceLayoutContent>
+      </WorkspaceLayoutContent>
+    </InvestDataProvider>
   )
 }

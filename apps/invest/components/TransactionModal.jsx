@@ -27,7 +27,7 @@ export default function TransactionModal({ isOpen, onClose, transaction, default
   const { ensureInstrument, reload, sips, portfolio } = useInvest()
   const editing = Boolean(transaction?.id)
   const [picked, setPicked] = useState(null)
-  const [form, setForm] = useState({})
+  const [form, setForm] = useState({ type: 'buy', date: '', units: '', price: '', amount: '', charges: '', account: '', folio: '', notes: '', sip: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -101,7 +101,7 @@ export default function TransactionModal({ isOpen, onClose, transaction, default
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={() => onClose(false)} title={editing ? 'Edit transaction' : 'Add transaction'} size="lg">
+    <Modal isOpen={isOpen} onClose={() => onClose(false)} title={editing ? 'Edit Transaction' : 'Add Transaction'} size="lg">
       <form onSubmit={submit} className="space-y-4">
         <ErrorBanner message={error} />
         <InstrumentPicker value={picked} onChange={setPicked} defaultKind={defaults.kind || 'stock'} lockedInstrumentId={editing ? relId(transaction.instrument) : null} />
@@ -133,11 +133,11 @@ export default function TransactionModal({ isOpen, onClose, transaction, default
           <Select label="Part of SIP" options={sipOptions} value={form.sip} onChange={set('sip')} placeholder="Not linked to a SIP" />
         ) : null}
         <Textarea label="Notes" rows={2} value={form.notes} onChange={set('notes')} />
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={() => onClose(false)}>
+        <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="button" variant="muted" onClick={() => onClose(false)} className="w-full rounded-xl border-[1.5px] border-gray-400 bg-gray-300 px-5 py-2.5 sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" disabled={saving || !picked}>
+          <Button type="submit" variant="primary" disabled={saving || !picked} className="w-full min-w-[9rem] rounded-xl py-2.5 sm:w-auto">
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Add transaction'}
           </Button>
         </div>

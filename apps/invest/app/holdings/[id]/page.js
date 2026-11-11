@@ -3,24 +3,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Plus, CalendarClock, Pencil, Trash2 } from 'lucide-react'
-import { Button, Input, Modal } from '@webfudge/ui'
+import { Plus, CalendarClock, Pencil, Trash2, Wallet, PiggyBank, TrendingUp, Percent, LineChart, ArrowLeftRight, Receipt, Coins } from 'lucide-react'
+import { Button, Input, Modal, KPICard, Table, TableEmptyBelow, TabsWithActions, Badge } from '@webfudge/ui'
 import { useInvest } from '../../../components/InvestDataProvider'
-import { PageHeader, PageBody, Panel, Gain, PctText, KindBadge, TypeBadge, Stat, LoadingBlock, ErrorBanner, DataTable, FilterTabs } from '../../../components/ui'
+import InvestPageHeader from '../../../components/InvestPageHeader'
+import { Page, Panel, PctText, KindBadge, TypeBadge, LoadingBlock, ErrorBanner, RowActions, ConfirmDeleteModal, num, changeLabel, KPI_GRID } from '../../../components/ui'
 import { PriceHistoryChart } from '../../../components/charts'
 import TransactionModal from '../../../components/TransactionModal'
 import SipModal from '../../../components/SipModal'
 import { computeHolding, toIsoDate } from '../../../lib/portfolio.mjs'
 import { investApi } from '../../../lib/api'
-import { formatINR, formatPrice, formatUnits, formatPct, formatDate, relativeAge, formatDateTime } from '../../../lib/format'
+import { formatINR, formatPrice, formatUnits, formatPct, formatDate, relativeAge, formatDateTime, TYPE_LABELS } from '../../../lib/format'
 
 const RANGES = [
-  { value: '1m', label: '1M', days: 31 },
-  { value: '6m', label: '6M', days: 183 },
-  { value: '1y', label: '1Y', days: 366 },
-  { value: '3y', label: '3Y', days: 1096 },
-  { value: '5y', label: '5Y', days: 1827 },
-  { value: 'held', label: 'Since first buy' },
+  { key: '1m', label: '1M', days: 31 },
+  { key: '6m', label: '6M', days: 183 },
+  { key: '1y', label: '1Y', days: 366 },
+  { key: '3y', label: '3Y', days: 1096 },
+  { key: '5y', label: '5Y', days: 1827 },
+  { key: 'held', label: 'Since first buy' },
 ]
 
 function relId(rel) {
@@ -39,7 +40,7 @@ export default function HoldingDetailPage() {
   const [txModal, setTxModal] = useState({ open: false, tx: null })
   const [sipOpen, setSipOpen] = useState(false)
   const [priceOpen, setPriceOpen] = useState(false)
-  const [error, setError] = useState(null)
+  const [toDelete, setToDelete] = useState(null) // transaction row or 'instrument'
 
   const instrument = instruments.find((i) => i.id === instrumentId)
   const txs = useMemo(() => transactions.filter((t) => relId(t.instrument) === instrumentId), [transactions, instrumentId])
@@ -48,7 +49,7 @@ export default function HoldingDetailPage() {
 
   const from = useMemo(() => {
     if (range === 'held') return holding?.firstDate || null
-    const r = RANGES.find((x) => x.value === range)
+    const r = RANGES.find((x) => x.key === range)
     return toIsoDate(Date.now() - r.days * 86400000)
   }, [range, holding?.firstDate])
 
@@ -73,160 +74,192 @@ export default function HoldingDetailPage() {
     }
   }, [instrumentId, from, canChart])
 
-  if (loading) return <LoadingBlock />
+  const breadcrumb = [
+    { label: 'Portfolio', href: '/' },
+    { label: 'Holdings', href: '/holdings' },
+    { label: instrument?.symbol || (instrument?.name || 'Holding').split(' - ')[0], href: `/holdings/${instrumentId}` },
+  ]
+
+  if (loading) {
+    return (
+      <Page>
+        <InvestPageHeader title="Holding" breadcrumb={breadcrumb} />
+        <LoadingBlock />
+      </Page>
+    )
+  }
   if (!instrument) {
     return (
-      <PageBody>
-        <p className="text-sm text-gray-600">This instrument was not found.</p>
-        <Link href="/holdings" className="text-sm font-medium text-orange-600">Back to holdings</Link>
-      </PageBody>
+      <Page>
+        <InvestPageHeader title="Holding not found" breadcrumb={breadcrumb} />
+        <p className="text-sm text-gray-600">
+          This instrument was not found. <Link href="/holdings" className="font-medium text-orange-600">Back to holdings</Link>
+        </p>
+      </Page>
     )
   }
 
   const purchases = txs.filter((t) => t.type === 'buy' || t.type === 'sip').map((t) => ({ date: t.date, price: t.price }))
   const h = holding
-
-  async function deleteTx(tx) {
-    if (!window.confirm(`Delete this ${tx.type} of ${formatINR(tx.amount)} on ${formatDate(tx.date)}? This cannot be undone.`)) return
-    try {
-      await investApi.deleteTransaction(tx.id)
-      await reload()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  async function deleteInstrument() {
-    if (!window.confirm(`Stop tracking ${instrument.name}? This cannot be undone.`)) return
-    try {
-      await investApi.deleteInstrument(instrument.id)
-      await reload()
-      router.push('/holdings')
-    } catch (err) {
-      setError(err.message)
-    }
-  }
+  const isFund = instrument.kind === 'mutual_fund'
+  const meta = [
+    instrument.symbol ? `${instrument.exchange} · ${instrument.symbol}` : null,
+    instrument.schemeCode ? `AMFI ${instrument.schemeCode}` : null,
+    instrument.isin ? `ISIN ${instrument.isin}` : null,
+    instrument.category || null,
+  ].filter(Boolean)
 
   return (
-    <>
-      <PageHeader
+    <Page>
+      <InvestPageHeader
         title={instrument.name}
-        subtitle={
-          <span className="inline-flex flex-wrap items-center gap-3">
-            <KindBadge kind={instrument.kind} />
-            {instrument.symbol ? <span>{instrument.exchange} · {instrument.symbol}</span> : null}
-            {instrument.schemeCode ? <span>AMFI {instrument.schemeCode}</span> : null}
-            {instrument.isin ? <span>ISIN {instrument.isin}</span> : null}
-            {instrument.category ? <span>{instrument.category}</span> : null}
-          </span>
-        }
-        actions={
-          <>
-            <Link href="/holdings" className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
-              <ArrowLeft className="h-4 w-4" /> Holdings
-            </Link>
-            {instrument.kind === 'other' ? (
-              <Button variant="outline" onClick={() => setPriceOpen(true)}>
-                <span className="inline-flex items-center gap-1.5"><Pencil className="h-4 w-4" /> Update price</span>
-              </Button>
-            ) : null}
-            {instrument.kind === 'mutual_fund' ? (
-              <Button variant="outline" onClick={() => setSipOpen(true)}>
-                <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-4 w-4" /> Start SIP</span>
-              </Button>
-            ) : null}
-            <Button onClick={() => setTxModal({ open: true, tx: null })}>
-              <span className="inline-flex items-center gap-1.5"><Plus className="h-4 w-4" /> Add transaction</span>
-            </Button>
-          </>
-        }
-      >
-        <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <span className="text-3xl font-semibold tabular-nums text-brand-dark">{h.hasPrice ? formatPrice(h.price) : '—'}</span>
+        // Long scheme names: one step smaller than the shared default so they stay on one or two lines.
+        titleClassName={instrument.name.length > 32 ? 'text-xl sm:text-3xl font-normal text-brand-foreground mb-0.5 tracking-tight leading-snug' : undefined}
+        subtitle={meta.join(' · ')}
+        breadcrumb={breadcrumb}
+      />
+
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <KindBadge kind={instrument.kind} />
+          <span className="text-3xl font-bold tabular-nums text-gray-900">{h.hasPrice ? formatPrice(h.price) : '—'}</span>
           {h.dayChangePct != null ? (
             <span className="text-sm">
-              <PctText value={h.dayChangePct} /> <span className="text-gray-500">vs previous {instrument.kind === 'mutual_fund' ? 'NAV' : 'close'}</span>
+              <PctText value={h.dayChangePct} /> <span className="text-gray-500">vs previous {isFund ? 'NAV' : 'close'}</span>
             </span>
           ) : null}
-          <span className="text-xs text-gray-500" title={formatDateTime(instrument.lastPriceAt)}>
-            {instrument.kind === 'mutual_fund' ? 'NAV' : 'Price'} from {instrument.priceSource || '—'}, {relativeAge(instrument.lastPriceAt)}
+          <span className="text-sm text-gray-500" title={formatDateTime(instrument.lastPriceAt)}>
+            {isFund ? 'NAV' : 'Price'} from {instrument.priceSource || '—'}, {relativeAge(instrument.lastPriceAt)}
           </span>
-          {instrument.priceError ? <span className="text-xs text-amber-700">Last refresh failed: {instrument.priceError}</span> : null}
+          {instrument.priceError ? <span className="text-sm text-amber-700">Last refresh failed: {instrument.priceError}</span> : null}
         </div>
-      </PageHeader>
+          <div className="flex items-center gap-2">
+            {instrument.kind === 'other' ? (
+              <Button variant="outline" onClick={() => setPriceOpen(true)}>
+                <Pencil className="w-4 h-4 mr-2 inline" />
+                Update price
+              </Button>
+            ) : null}
+            {isFund ? (
+              <Button variant="outline" onClick={() => setSipOpen(true)}>
+                <CalendarClock className="w-4 h-4 mr-2 inline" />
+                Start SIP
+              </Button>
+            ) : null}
+            <Button variant="primary" onClick={() => setTxModal({ open: true, tx: null })}>
+              <Plus className="w-4 h-4 mr-2 inline" />
+              Add transaction
+            </Button>
+          </div>
+      </div>
 
-      <PageBody>
-        <ErrorBanner message={error} />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Stat label="Invested" value={formatINR(h.invested)} sub={<span className="text-gray-500">{formatUnits(h.units)} units · avg {formatPrice(h.avgCost)}</span>} />
-          <Stat label="Current value" value={formatINR(h.currentValue)} sub={!h.hasPrice && h.isOpen ? <span className="text-amber-700">valued at cost (no price)</span> : null} />
-          <Stat label="Unrealised P&L" value={<Gain value={h.hasPrice ? h.unrealised : null} className="text-2xl" />} sub={<PctText value={h.unrealisedPct} />} />
-          <Stat label="XIRR" value={h.xirr == null ? '—' : formatPct(h.xirr)} sub={<span className="text-gray-500">Realised {formatINR(h.realised, { signed: true })} · Dividends {formatINR(h.dividends)}</span>} />
-        </div>
+      <div className={KPI_GRID}>
+        <KPICard title="Invested" value={formatINR(h.invested)} subtitle={`${formatUnits(h.units)} units · avg ${formatPrice(h.avgCost)}`} icon={PiggyBank} colorScheme="orange" />
+        <KPICard title="Current Value" value={formatINR(h.currentValue)} subtitle={!h.hasPrice && h.isOpen ? 'Valued at cost (no price)' : `${h.txCount} transactions`} icon={Wallet} colorScheme="orange" />
+        <KPICard title="Unrealised P&L" value={h.hasPrice ? formatINR(h.unrealised, { signed: true }) : '—'} subtitle={changeLabel(h.unrealisedPct, 'on cost')} icon={TrendingUp} colorScheme="orange" />
+        <KPICard title="XIRR" value={h.xirr == null ? '—' : formatPct(h.xirr)} subtitle="Annualised, all cash flows" icon={Percent} colorScheme="orange" />
+        <KPICard title="Realised P&L" value={formatINR(h.realised, { signed: true })} subtitle={`From ${formatINR(h.totalSoldProceeds)} of sales`} icon={Receipt} colorScheme="orange" />
+        <KPICard title="Dividends" value={formatINR(h.dividends)} subtitle={h.dividends ? 'Received' : 'None recorded'} icon={Coins} colorScheme="orange" />
+      </div>
 
-        {canChart ? (
-          <Panel
-            title={`${instrument.kind === 'mutual_fund' ? 'NAV' : 'Price'} history vs our average cost`}
-            action={<FilterTabs value={range} onChange={setRange} options={RANGES.filter((r) => r.value !== 'held' || h.firstDate)} />}
-          >
-            {historyLoading ? <LoadingBlock label="Loading price history…" /> : <PriceHistoryChart history={history} avgCost={h.isOpen ? h.avgCost : null} purchases={purchases} />}
-            {historyError ? <p className="mt-2 text-xs text-amber-700">{historyError}</p> : null}
-            <p className="mt-2 text-xs text-gray-500">Dashed line: our average cost. Dots: our purchases.</p>
-          </Panel>
-        ) : null}
-
-        {instSips.length ? (
-          <Panel title="SIPs" action={<Link href="/sips" className="text-sm font-medium text-orange-600">Manage SIPs</Link>}>
-            <ul className="divide-y divide-gray-50 text-sm">
-              {instSips.map((s) => (
-                <li key={s.id} className="flex items-center justify-between py-2">
-                  <span>{formatINR(s.amount)} {s.frequency}{s.frequency !== 'weekly' ? ` on day ${s.dayOfMonth}` : ''} · since {formatDate(s.startDate)}</span>
-                  <span className="capitalize text-gray-500">{s.status}</span>
-                </li>
-              ))}
-            </ul>
-          </Panel>
-        ) : null}
-
-        <Panel title={`Transactions (${txs.length})`} bodyClassName="p-0">
-          <DataTable
-            rows={[...txs].sort((a, b) => String(b.date).localeCompare(String(a.date)))}
-            empty={
-              <div className="flex items-center justify-between gap-3 p-5 text-sm text-gray-500">
-                No transactions yet.
-                <Button variant="ghost" size="sm" onClick={deleteInstrument}>
-                  <span className="inline-flex items-center gap-1 text-red-600"><Trash2 className="h-4 w-4" /> Stop tracking</span>
-                </Button>
-              </div>
-            }
-            columns={[
-              { key: 'date', label: 'Date', render: (t) => formatDate(t.date) },
-              { key: 'type', label: 'Type', render: (t) => <TypeBadge type={t.type} /> },
-              { key: 'units', label: 'Units', numeric: true, render: (t) => (t.units ? formatUnits(t.units) : '—') },
-              { key: 'price', label: 'Price', numeric: true, render: (t) => (t.price ? formatPrice(t.price) : '—') },
-              { key: 'amount', label: 'Amount', numeric: true, render: (t) => formatINR(t.amount, { decimals: 2 }) },
-              { key: 'charges', label: 'Charges', numeric: true, render: (t) => (t.charges ? formatINR(t.charges, { decimals: 2 }) : '—') },
-              { key: 'vs', label: 'Now vs then', numeric: true, render: (t) => (h.hasPrice && t.price && t.type !== 'dividend' ? <PctText value={h.price / t.price - 1} /> : '—') },
-              {
-                key: 'actions',
-                label: '',
-                numeric: true,
-                render: (t) => (
-                  <span className="inline-flex gap-1">
-                    <button type="button" className="rounded p-1.5 text-gray-500 hover:bg-gray-100" onClick={() => setTxModal({ open: true, tx: t })} aria-label="Edit transaction"><Pencil className="h-4 w-4" /></button>
-                    <button type="button" className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600" onClick={() => deleteTx(t)} aria-label="Delete transaction"><Trash2 className="h-4 w-4" /></button>
-                  </span>
-                ),
-              },
-            ]}
-          />
+      {canChart ? (
+        <Panel title={`${isFund ? 'NAV' : 'Price'} history vs our average cost`} subtitle="Dashed line: our average cost. Dots: our purchases." icon={LineChart}>
+          <div className="mb-3 max-w-xl">
+            <TabsWithActions
+              tabs={RANGES.filter((r) => r.key !== 'held' || h.firstDate).map((r) => ({ key: r.key, label: r.label }))}
+              activeTab={range}
+              onTabChange={setRange}
+              pillTrack="hug"
+            />
+          </div>
+          {historyLoading ? <LoadingBlock message="Loading price history..." /> : <PriceHistoryChart history={history} avgCost={h.isOpen ? h.avgCost : null} purchases={purchases} />}
+          {historyError ? <p className="mt-2 text-xs text-amber-700">{historyError}</p> : null}
         </Panel>
-      </PageBody>
+      ) : null}
+
+      {instSips.length ? (
+        <Panel title="SIPs" icon={CalendarClock} action={<Link href="/sips" className="text-sm font-medium text-orange-600 hover:text-orange-700">Manage SIPs</Link>}>
+          <ul className="divide-y divide-gray-100 text-sm">
+            {instSips.map((s) => (
+              <li key={s.id} className="flex items-center justify-between px-2 py-2.5">
+                <span>
+                  {formatINR(s.amount)} {s.frequency}
+                  {s.frequency !== 'weekly' ? ` on day ${s.dayOfMonth}` : ''} · since {formatDate(s.startDate)}
+                </span>
+                <Badge variant={s.status === 'active' ? 'success' : s.status === 'paused' ? 'warning' : 'default'} size="sm">
+                  <span className="capitalize">{s.status}</span>
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      ) : null}
+
+      <Panel title={`Transactions (${txs.length})`} icon={ArrowLeftRight} bodyClassName="p-0 overflow-hidden">
+        <Table
+          variant="modernEmbedded"
+          keyField="id"
+          data={[...txs].sort((a, b) => String(b.date).localeCompare(String(a.date)))}
+          onRowClick={(t) => setTxModal({ open: true, tx: t })}
+          columns={[
+            { key: 'date', label: 'Date', className: 'whitespace-nowrap', render: (v) => formatDate(v) },
+            { key: 'type', label: 'Type', render: (v) => <TypeBadge type={v} /> },
+            num({ key: 'units', label: 'Units', render: (v) => (v ? formatUnits(v) : '—') }),
+            num({ key: 'price', label: 'Price', render: (v) => (v ? formatPrice(v) : '—') }),
+            num({ key: 'amount', label: 'Amount', render: (v) => formatINR(v, { decimals: 2 }) }),
+            num({ key: 'charges', label: 'Charges', render: (v) => (v ? formatINR(v, { decimals: 2 }) : '—') }),
+            num({ key: 'vs', label: 'Now vs then', render: (_, t) => (h.hasPrice && t.price && t.type !== 'dividend' ? <PctText value={h.price / t.price - 1} /> : '—') }),
+            {
+              key: 'actions',
+              label: 'Actions',
+              headerClassName: 'text-right',
+              className: 'text-right',
+              render: (_, t) => <RowActions onEdit={() => setTxModal({ open: true, tx: t })} onDelete={() => setToDelete(t)} />,
+            },
+          ]}
+        />
+        {txs.length === 0 ? (
+          <TableEmptyBelow
+            icon={ArrowLeftRight}
+            title="No transactions yet"
+            description="Add a buy or start a SIP, or stop tracking this instrument."
+            action={
+              <Button variant="danger" onClick={() => setToDelete('instrument')}>
+                <Trash2 className="w-4 h-4 mr-2 inline" />
+                Stop tracking
+              </Button>
+            }
+          />
+        ) : null}
+      </Panel>
 
       <TransactionModal isOpen={txModal.open} transaction={txModal.tx} defaults={{ instrumentId }} onClose={() => setTxModal({ open: false, tx: null })} />
       <SipModal isOpen={sipOpen} defaults={{ instrumentId }} onClose={() => setSipOpen(false)} />
       <ManualPriceModal isOpen={priceOpen} instrument={instrument} onClose={() => setPriceOpen(false)} onSaved={reload} />
-    </>
+      <ConfirmDeleteModal
+        isOpen={Boolean(toDelete)}
+        title={toDelete === 'instrument' ? 'Stop Tracking' : 'Delete Transaction'}
+        confirmLabel={toDelete === 'instrument' ? 'Stop Tracking' : 'Delete Transaction'}
+        message={
+          toDelete === 'instrument'
+            ? `Stop tracking ${instrument.name}?`
+            : toDelete
+              ? `Delete this ${TYPE_LABELS[toDelete.type].toLowerCase()} of ${formatINR(toDelete.amount)} on ${formatDate(toDelete.date)}?`
+              : ''
+        }
+        onConfirm={async () => {
+          if (toDelete === 'instrument') {
+            await investApi.deleteInstrument(instrument.id)
+            await reload()
+            router.push('/holdings')
+          } else {
+            await investApi.deleteTransaction(toDelete.id)
+            await reload()
+          }
+        }}
+        onClose={() => setToDelete(null)}
+      />
+    </Page>
   )
 }
 
@@ -252,13 +285,17 @@ function ManualPriceModal({ isOpen, instrument, onClose, onSaved }) {
     }
   }
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Update current price" size="sm">
-      <form onSubmit={save} className="space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} title="Update Current Price" size="sm">
+      <form onSubmit={save} className="space-y-5">
         <ErrorBanner message={error} />
         <Input label="Price per unit (₹)" type="number" step="any" min="0" required value={price} onChange={(e) => setPrice(e.target.value)} />
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+        <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="button" variant="muted" onClick={onClose} className="w-full rounded-xl border-[1.5px] border-gray-400 bg-gray-300 px-5 py-2.5 sm:w-auto">
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" disabled={saving} className="w-full min-w-[9rem] rounded-xl py-2.5 sm:w-auto">
+            {saving ? 'Saving…' : 'Save price'}
+          </Button>
         </div>
       </form>
     </Modal>

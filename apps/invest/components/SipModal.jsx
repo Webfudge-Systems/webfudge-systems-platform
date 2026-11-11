@@ -16,7 +16,7 @@ export default function SipModal({ isOpen, onClose, sip, defaults = {} }) {
   const { ensureInstrument, reload } = useInvest()
   const editing = Boolean(sip?.id)
   const [picked, setPicked] = useState(null)
-  const [form, setForm] = useState({})
+  const [form, setForm] = useState({ amount: '', frequency: 'monthly', dayOfMonth: 5, startDate: '', endDate: '', status: 'active', folio: '', account: '', notes: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -117,11 +117,11 @@ export default function SipModal({ isOpen, onClose, sip, defaults = {} }) {
         <p className="text-xs text-gray-500">
           After saving, use <strong>Record due instalments</strong> on the SIP to fill in past instalments at each date&apos;s published NAV.
         </p>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={() => onClose(false)}>
+        <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="button" variant="muted" onClick={() => onClose(false)} className="w-full rounded-xl border-[1.5px] border-gray-400 bg-gray-300 px-5 py-2.5 sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" disabled={saving || !picked}>
+          <Button type="submit" variant="primary" disabled={saving || !picked} className="w-full min-w-[9rem] rounded-xl py-2.5 sm:w-auto">
             {saving ? 'Saving…' : editing ? 'Save changes' : 'Create SIP'}
           </Button>
         </div>

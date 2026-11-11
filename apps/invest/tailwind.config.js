@@ -5,7 +5,7 @@ module.exports = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/src/**/*.{js,ts,jsx,tsx,mdx}',
-    '../../packages/u./components/**/*.{js,ts,jsx,tsx,mdx}',
+    '../../packages/ui/components/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/layouts/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/utils/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui/feedback/**/*.{js,ts,jsx,tsx,mdx}',
