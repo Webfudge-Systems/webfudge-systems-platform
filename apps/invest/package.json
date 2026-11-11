@@ -1,0 +1,31 @@
+{
+  "name": "@webfudge/invest",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Internal-only investment manager for Webfudge's own portfolio (stocks, mutual funds, SIPs). Not part of the SaaS.",
+  "scripts": {
+    "dev": "next dev -p 3008",
+    "build": "next build",
+    "start": "next start -p 3008",
+    "lint": "next lint",
+    "test": "node --test \"lib/*.test.mjs\"",
+    "clean": "rm -rf .next node_modules"
+  },
+  "dependencies": {
+    "@webfudge/auth": "*",
+    "@webfudge/ui": "*",
+    "clsx": "^2.0.0",
+    "lucide-react": "^0.300.0",
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^3.2.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.56.0",
+    "eslint-config-next": "^14.0.4",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0"
+  }
+}

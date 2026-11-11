@@ -12,6 +12,7 @@ const SKIP_PREFIXES = [
   '/api/connect',
   '/api/upload',
   '/api/entity-attachments',
+  '/api/invest', // internal investment manager: live prices + financial data stay out of Redis
   '/api/re-webhooks', // server-to-server lead ingestion — must never serve stale reads
   '/admin',
   '/_health',

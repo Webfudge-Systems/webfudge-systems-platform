@@ -1,0 +1,74 @@
+{
+  "kind": "collectionType",
+  "collectionName": "invest_instruments",
+  "info": {
+    "singularName": "invest-instrument",
+    "pluralName": "invest-instruments",
+    "displayName": "Invest Instrument",
+    "description": "Internal investment manager: a stock, ETF or mutual fund that Webfudge holds or tracks, with its last fetched price."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": ["stock", "etf", "mutual_fund", "other"],
+      "default": "stock",
+      "required": true
+    },
+    "symbol": {
+      "type": "string"
+    },
+    "exchange": {
+      "type": "enumeration",
+      "enum": ["NSE", "BSE", "AMFI", "OTHER"],
+      "default": "NSE"
+    },
+    "isin": {
+      "type": "string"
+    },
+    "schemeCode": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "fundHouse": {
+      "type": "string"
+    },
+    "lastPrice": {
+      "type": "float"
+    },
+    "previousClose": {
+      "type": "float"
+    },
+    "lastPriceAt": {
+      "type": "datetime"
+    },
+    "priceSource": {
+      "type": "string"
+    },
+    "priceError": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

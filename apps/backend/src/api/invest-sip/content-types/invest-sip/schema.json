@@ -1,0 +1,67 @@
+{
+  "kind": "collectionType",
+  "collectionName": "invest_sips",
+  "info": {
+    "singularName": "invest-sip",
+    "pluralName": "invest-sips",
+    "displayName": "Invest SIP",
+    "description": "Internal investment manager: a systematic investment plan; each instalment is an invest-transaction of type sip."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "amount": {
+      "type": "float",
+      "required": true
+    },
+    "frequency": {
+      "type": "enumeration",
+      "enum": ["monthly", "quarterly", "weekly"],
+      "default": "monthly"
+    },
+    "dayOfMonth": {
+      "type": "integer",
+      "min": 1,
+      "max": 28,
+      "default": 5
+    },
+    "startDate": {
+      "type": "date",
+      "required": true
+    },
+    "endDate": {
+      "type": "date"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["active", "paused", "stopped"],
+      "default": "active"
+    },
+    "folio": {
+      "type": "string"
+    },
+    "account": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "instrument": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invest-instrument.invest-instrument"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
