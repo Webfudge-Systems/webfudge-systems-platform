@@ -14,7 +14,6 @@ import {
   Image,
   LogOut,
   Search,
-  Settings,
   Upload,
   User,
 } from 'lucide-react'
@@ -56,7 +55,6 @@ export function WorkspaceHeader({
   backLabel = 'Back',
   titleClassName,
   onProfileClick,
-  onSettingsClick,
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -530,21 +528,12 @@ export function WorkspaceHeader({
                           className={profileMenuItemClass}
                           onClick={() => {
                             setShowProfileDropdown(false)
-                            onProfileClick?.()
+                            if (onProfileClick) onProfileClick()
+                            else router.push('/profile')
                           }}
                         >
                           <User className={profileMenuIconClass} />
                           <span>View Profile</span>
-                        </button>
-                        <button
-                          className={profileMenuItemClass}
-                          onClick={() => {
-                            setShowProfileDropdown(false)
-                            onSettingsClick?.()
-                          }}
-                        >
-                          <Settings className={profileMenuIconClass} />
-                          <span>Settings</span>
                         </button>
                       </div>
                       <div className="mx-4 border-t border-neutral-200/60" />
