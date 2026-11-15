@@ -48,6 +48,8 @@ export function pmModuleForPath(pathname = '/') {
 }
 
 export function canReadCurrentPMPath(pathname = '/') {
+  // Own profile is available to any authenticated workspace user.
+  if (pathname === '/profile' || pathname.startsWith('/profile/')) return true
   if (pathname.startsWith('/clients')) {
     return canReadClientAccounts()
   }

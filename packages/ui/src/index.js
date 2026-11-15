@@ -110,6 +110,7 @@ export {
   TableSortDropdown,
   AccessDeniedPanel,
   WorkspaceLayoutContent,
+  WorkspaceProfileView,
   entityInfoLabelClass,
   InfoSection,
   DetailColumnHeading,

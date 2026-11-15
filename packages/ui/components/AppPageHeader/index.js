@@ -63,7 +63,6 @@ export function AppPageHeader({
   searchInputClassName = DEFAULT_SEARCH_INPUT_CLASS,
   titleClassName,
   onProfileClick,
-  onSettingsClick,
 }) {
   return (
     <WorkspaceHeader
@@ -90,7 +89,6 @@ export function AppPageHeader({
       renderGlobalSearchModal={renderGlobalSearchModal}
       searchInputClassName={searchInputClassName}
       onProfileClick={onProfileClick}
-      onSettingsClick={onSettingsClick}
     >
       {children}
     </WorkspaceHeader>
