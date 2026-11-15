@@ -11,6 +11,7 @@ const {
   canManageAppSettings,
   canManageOrganizationProfile,
   canManageOrganizationSecurity,
+  isAdminRole,
   relationId,
 } = require('../../../utils/rbac');
 const {
@@ -112,6 +113,41 @@ async function resolveCanEditOrganizationSettings(strapi, ctx, orgId) {
   });
   const ownerId = relationId(org?.owner);
   return ownerId != null && String(ownerId) === String(userId);
+}
+
+/**
+ * Owner or Admin of the organization in the URL. The caller must have that
+ * organization selected (X-Organization-Id), so ctx.state.orgRole is for it.
+ * Returns true when allowed; otherwise sets the 401/403/404 response and returns false.
+ * (ctx.unauthorized() etc. return undefined, so callers must check the boolean.)
+ */
+async function requireOrgOwnerOrAdmin(strapi, ctx, orgId) {
+  const user = ctx.state.user;
+  if (!user) {
+    ctx.unauthorized('Missing or invalid credentials');
+    return false;
+  }
+  const hasAccess = await strapi.service('api::organization.organization').checkUserAccess(orgId, user.id);
+  if (!hasAccess) {
+    ctx.forbidden('You do not have access to this organization');
+    return false;
+  }
+
+  const org = await strapi.entityService.findOne('api::organization.organization', orgId, {
+    fields: ['id'],
+    populate: { owner: { fields: ['id'] } },
+  });
+  if (!org) {
+    ctx.notFound('Organization not found');
+    return false;
+  }
+  const ownerId = relationId(org.owner);
+  if (ownerId != null && String(ownerId) === String(user.id)) return true;
+
+  const isSelectedOrg = String(ctx.state.orgId || '') === String(orgId);
+  if (isSelectedOrg && isAdminRole({ name: ctx.state.orgRole, code: ctx.state.orgRoleCode })) return true;
+  ctx.forbidden('Only the organization owner or an Admin can do this');
+  return false;
 }
 
 module.exports = createCoreController('api::organization.organization', ({ strapi }) => ({
@@ -324,10 +360,62 @@ module.exports = createCoreController('api::organization.organization', ({ strap
     }
   },
 
+  // List only the organizations the caller is an active member of
+  async find(ctx) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized('Missing or invalid credentials');
+
+    try {
+      const memberships = await strapi.entityService.findMany('api::organization-user.organization-user', {
+        filters: { user: user.id, isActive: true },
+        populate: { organization: true },
+      });
+      const organizations = memberships.map((m) => m.organization).filter(Boolean);
+      return ctx.send({ success: true, data: organizations });
+    } catch (error) {
+      console.error('Error listing organizations:', error);
+      return ctx.badRequest(error.message || 'Failed to list organizations');
+    }
+  },
+
+  // Generic update — Owner/Admin only, limited to the organization settings fields
+  async update(ctx) {
+    const { id } = ctx.params;
+    try {
+      if (!(await requireOrgOwnerOrAdmin(strapi, ctx, id))) return;
+
+      const body = ctx.request.body?.data || ctx.request.body || {};
+      const data = pickOrganizationSettings(body);
+      if (Object.keys(data).length === 0) {
+        return ctx.badRequest('No supported settings were provided');
+      }
+      const updated = await strapi.entityService.update('api::organization.organization', id, { data });
+      return ctx.send({ success: true, data: updated });
+    } catch (error) {
+      console.error('Error updating organization:', error);
+      return ctx.badRequest(error.message || 'Failed to update organization');
+    }
+  },
+
+  // Delete — Owner/Admin only
+  async delete(ctx) {
+    const { id } = ctx.params;
+    try {
+      if (!(await requireOrgOwnerOrAdmin(strapi, ctx, id))) return;
+
+      const deleted = await strapi.entityService.delete('api::organization.organization', id);
+      return ctx.send({ success: true, data: deleted });
+    } catch (error) {
+      console.error('Error deleting organization:', error);
+      return ctx.badRequest(error.message || 'Failed to delete organization');
+    }
+  },
+
   // Get organization with related data
   async findOne(ctx) {
     const { id } = ctx.params;
     const user = ctx.state.user;
+    if (!user) return ctx.unauthorized('Missing or invalid credentials');
 
     try {
       // Check user access

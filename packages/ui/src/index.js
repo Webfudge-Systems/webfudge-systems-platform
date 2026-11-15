@@ -113,6 +113,7 @@ export {
   SaasAccessGate,
   IS_SAAS_PLATFORM,
   useSaasApps,
+  WorkspaceProfileView,
   entityInfoLabelClass,
   InfoSection,
   DetailColumnHeading,

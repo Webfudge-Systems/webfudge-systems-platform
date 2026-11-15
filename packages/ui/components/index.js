@@ -107,6 +107,7 @@ export { TableSortDropdown } from './TableSortDropdown';
 export { AccessDeniedPanel } from './AccessDeniedPanel';
 export { WorkspaceLayoutContent } from './WorkspaceLayoutContent';
 export { SaasAccessGate, IS_SAAS_PLATFORM, useSaasApps } from './SaasAccessGate';
+export { WorkspaceProfileView } from './WorkspaceProfileView';
 export {
   entityInfoLabelClass,
   InfoSection,
