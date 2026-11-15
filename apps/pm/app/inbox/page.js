@@ -2,7 +2,6 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import Link from 'next/link'
 import {
@@ -108,7 +107,6 @@ function notificationIsUrgent(attrs) {
 
 export default function InboxPage() {
   const { user } = useAuth()
-  const router = useRouter()
 
   const [mainTab, setMainTab] = useState('activity')
   const [notifySub, setNotifySub] = useState('all')
@@ -438,8 +436,12 @@ export default function InboxPage() {
                         onClick={() => {
                           setSelectedId(notification.id)
                           if (!isRead && notifySub !== 'archived') handleMarkRead(notification.id)
-                          const href = attrs.data?.href
-                          if (href) router.push(href)
+                          // On small screens the detail pane sits below the list; bring it into view.
+                          if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                            requestAnimationFrame(() =>
+                              document.getElementById('inbox-notification-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                            )
+                          }
                         }}
                         className={`w-full p-4 text-left transition-colors ${
                           isSelected
@@ -487,7 +489,7 @@ export default function InboxPage() {
             </Card>
           </div>
 
-          <div className="lg:col-span-3">
+          <div id="inbox-notification-detail" className="lg:col-span-3 scroll-mt-4">
             {selectedNotification ? (
               <Card variant="elevated" className="rounded-xl border border-gray-100 shadow-md">
                 {(() => {
