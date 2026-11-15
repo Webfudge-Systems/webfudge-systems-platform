@@ -75,6 +75,18 @@ const COLUMN_ORDER_STORAGE_KEY = 'crm.leadCompanies.tableColumnOrder';
 const COLUMN_WIDTHS_STORAGE_KEY = 'crm.leadCompanies.tableColumnWidths';
 const TABLE_SORT_STORAGE_KEY = 'crm.leadCompanies.tableSort';
 const LEAD_VIEW_STORAGE_KEY = 'crm.leadCompanies.viewMode';
+/** Filters, tab and search for this browser tab, so they survive opening a lead and pressing Back. */
+const LIST_STATE_STORAGE_KEY = 'crm.leadCompanies.listState';
+
+function readStoredListState() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(LIST_STATE_STORAGE_KEY) || 'null');
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 function readStoredLeadView() {
   if (typeof window === 'undefined') return 'table';
@@ -241,9 +253,17 @@ export default function LeadCompaniesPage() {
   const [orgUsers, setOrgUsers] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
+  const [storedListState] = useState(readStoredListState);
+  const storedSearch = typeof storedListState?.searchQuery === 'string' ? storedListState.searchQuery : '';
+  const storedFilters =
+    storedListState?.appliedFilters && typeof storedListState.appliedFilters === 'object'
+      ? { ...initialFilters, ...storedListState.appliedFilters }
+      : initialFilters;
+  const [debouncedSearch, setDebouncedSearch] = useState(storedSearch);
+  const [searchQuery, setSearchQuery] = useState(storedSearch);
+  const [activeTab, setActiveTab] = useState(
+    typeof storedListState?.activeTab === 'string' ? storedListState.activeTab : 'all'
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState(null);
@@ -255,8 +275,8 @@ export default function LeadCompaniesPage() {
   const [sortOpen, setSortOpen] = useState(false);
   const [moreActionMenu, setMoreActionMenu] = useState(null);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
-  const [draftFilters, setDraftFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(storedFilters);
+  const [draftFilters, setDraftFilters] = useState(storedFilters);
   const [commentComposerMenu, setCommentComposerMenu] = useState(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [commentsByCompany, setCommentsByCompany] = useState({});
@@ -303,6 +323,17 @@ export default function LeadCompaniesPage() {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        LIST_STATE_STORAGE_KEY,
+        JSON.stringify({ activeTab, appliedFilters, searchQuery: debouncedSearch })
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [activeTab, appliedFilters, debouncedSearch]);
 
   useEffect(() => {
     let cancelled = false;
