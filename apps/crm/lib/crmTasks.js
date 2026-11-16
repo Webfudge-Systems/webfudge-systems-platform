@@ -3,7 +3,7 @@
  * A task is CRM-scoped when linked to lead, client, contact, or deal (not PM project-only work).
  */
 
-export const CRM_TASK_RELATION_FIELDS = ['leadCompany', 'clientAccount', 'contact', 'deal'];
+export const CRM_TASK_RELATION_FIELDS = ['leadCompany', 'clientAccount', 'contact', 'deal', 'meeting'];
 
 function relationIsSet(rel) {
   if (rel == null || rel === '') return false;

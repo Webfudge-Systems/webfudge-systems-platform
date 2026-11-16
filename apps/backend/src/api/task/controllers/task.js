@@ -501,6 +501,7 @@ const ALLOWED_POPULATE = new Set([
   'leadCompany',
   'clientAccount',
   'deal',
+  'meeting',
   'organization',
 ]);
 
@@ -648,6 +649,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (extra.clientAccount) extraFilters.clientAccount = extra.clientAccount;
       if (extra.leadCompany) extraFilters.leadCompany = extra.leadCompany;
       if (extra.projects) extraFilters.projects = extra.projects;
+      if (extra.meeting) extraFilters.meeting = extra.meeting;
     }
 
     if (crmScope) {
@@ -730,6 +732,16 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
 
     data.organization = ctx.state.orgId;
+    if (data.meeting != null && data.meeting !== '') {
+      const meetingId = typeof data.meeting === 'object' ? data.meeting.id : data.meeting;
+      const meeting = meetingId
+        ? await strapi.entityService.findOne('api::meeting.meeting', meetingId, { populate: ['organization'] })
+        : null;
+      if (!meeting || String(meeting.organization?.id) !== String(ctx.state.orgId)) {
+        return ctx.badRequest('Meeting not found in this organization');
+      }
+      data.meeting = meeting.id;
+    }
     if ((data.assigner == null || data.assigner === '') && ctx.state.user?.id) {
       data.assigner = ctx.state.user.id;
     }

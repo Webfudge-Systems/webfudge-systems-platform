@@ -1,7 +1,7 @@
 'use strict';
 
 /** Relations that scope a task to CRM (see apps/pm/lib/api/taskService.js CRM_RELATION_FIELDS). */
-const CRM_TASK_RELATION_FIELDS = ['leadCompany', 'clientAccount', 'contact', 'deal'];
+const CRM_TASK_RELATION_FIELDS = ['leadCompany', 'clientAccount', 'contact', 'deal', 'meeting'];
 
 function relationIsSet(rel) {
   if (rel == null || rel === '') return false;
@@ -19,10 +19,16 @@ function isCrmTaskEntity(entity) {
   return CRM_TASK_RELATION_FIELDS.some((field) => relationIsSet(entity[field]));
 }
 
-/** Strapi filters: task has at least one CRM relation. */
+/**
+ * Strapi filters: task has at least one CRM relation.
+ * Only fields that exist on the task schema are used — filtering on a missing key (e.g. `contact`)
+ * makes Strapi throw "Invalid key" and the whole CRM task list fails.
+ */
 function crmTaskScopeFilter() {
+  const attrs = global.strapi?.contentTypes?.['api::task.task']?.attributes;
+  const fields = attrs ? CRM_TASK_RELATION_FIELDS.filter((field) => attrs[field]) : CRM_TASK_RELATION_FIELDS;
   return {
-    $or: CRM_TASK_RELATION_FIELDS.map((field) => ({
+    $or: fields.map((field) => ({
       [field]: { id: { $notNull: true } },
     })),
   };
