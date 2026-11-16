@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { WorkspaceLayoutContent } from '@webfudge/ui'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { saasRedirectFor } from '../lib/saasHiddenRoutes'
 import PMSidebar from './PMSidebar'
 import PMQuickActionsFab from './PMQuickActionsFab'
 import { canReadCurrentPMPath } from '../lib/rbac'
@@ -11,9 +13,15 @@ const PUBLIC_PATHS = ['/login', '/unauthorized', '/coming-soon']
 
 export default function LayoutContent({ children }) {
   const pathname = usePathname()
+  const router = useRouter()
+  // SaaS build: placeholder screens are not reachable; send the user somewhere real.
+  const saasRedirect = saasRedirectFor(pathname)
+  useEffect(() => {
+    if (saasRedirect) router.replace(saasRedirect)
+  }, [saasRedirect, router])
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   const hasToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('auth-token'))
-  const canView = isPublic || !hasToken || canReadCurrentPMPath(pathname)
+  const canView = !saasRedirect && (isPublic || !hasToken || canReadCurrentPMPath(pathname))
 
   return (
     <WorkspaceLayoutContent

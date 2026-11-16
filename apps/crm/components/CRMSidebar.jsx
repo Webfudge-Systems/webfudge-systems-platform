@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { LoadingSpinner, SidebarProductBranding } from '@webfudge/ui'
+import { isHiddenInSaas } from '../lib/saasHiddenRoutes'
 import {
   LayoutDashboard,
   FolderKanban,
@@ -319,7 +320,9 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
   const visibleNavigationData = navigationData
     .map((section) => ({
       ...section,
-      children: (section.children || []).filter((item) => !item.module || canReadCRM(item.module)),
+      children: (section.children || []).filter(
+        (item) => (!item.module || canReadCRM(item.module)) && !isHiddenInSaas(item.href)
+      ),
     }))
     .filter((section) => section.children.length > 0)
   const visibleMainNavigationItems = mainNavigationItems.filter((item) => {
@@ -327,7 +330,8 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
     if (!item.hasSubNav) return true
     return visibleNavigationData.some((section) => section.id === item.id)
   })
-  const canReadAnalytics = canReadCRM('analytics')
+  const canReadAnalytics = canReadCRM('analytics') && !isHiddenInSaas('/analytics')
+  const showAutomations = !isHiddenInSaas('/automations')
 
   return (
     <>
@@ -452,7 +456,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
             </div>
           </div>
 
-          {!collapsed && (
+          {!collapsed && showAutomations && (
             <div className="px-3 pt-2 pb-2">
               <Link
                 href="/automations"

@@ -48,6 +48,7 @@ import {
   EmptyState,
   LoadingSpinner,
   EntityActivityPanel,
+  IS_SAAS_PLATFORM,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import meetingService from '../../../lib/api/meetingService';
@@ -1281,9 +1282,11 @@ export default function MeetingDetailPage() {
                     <p className="mt-1 text-xs text-gray-400">
                       Connect Fireflies.ai to automatically get meeting transcripts, summaries, and action items.
                     </p>
-                    <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-600">
-                      <Bot className="h-3 w-3" /> Firefly.ai integration — coming soon
-                    </div>
+                    {!IS_SAAS_PLATFORM && (
+                      <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-600">
+                        <Bot className="h-3 w-3" /> Firefly.ai integration — coming soon
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>
