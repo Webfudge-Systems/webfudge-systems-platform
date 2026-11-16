@@ -1,0 +1,35 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "accounts-saas",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--workspace=@webfudge/accounts"
+      ],
+      "port": 3003
+    },
+    {
+      "name": "landing",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "--workspace=@webfudge/landing"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "vendor",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--workspace=@webfudge/vendor"
+      ],
+      "port": 3004
+    }
+  ]
+}

@@ -66,3 +66,7 @@ Thumbs.db
 
 # Database backups and row-count snapshots (contain real customer data)
 backups/
+
+# Claude Code local state (worktrees and personal settings)
+.claude/worktrees/
+.claude/settings.local.json
