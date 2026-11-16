@@ -15,10 +15,10 @@ import {
   ListTree,
   Paperclip,
   Repeat,
-  Timer,
   User,
 } from 'lucide-react'
 import TaskAssigneesPicker from './TaskAssigneesPicker'
+import TaskTimeTracking from './TaskTimeTracking'
 import TaskRecurrenceFormFields from './TaskRecurrenceFormFields'
 import TaskCategorySwitch from './TaskCategorySwitch'
 import TaskDevFormFields from './TaskDevFormFields'
@@ -189,6 +189,7 @@ export default function TaskDetailsCard({
   onViewFiles,
   onViewSubtasks,
   attachmentCount = 0,
+  onTimeChanged,
   formatDate,
 }) {
   const showEdit = canEdit && onOpenSectionEdit
@@ -623,13 +624,7 @@ export default function TaskDetailsCard({
       {/* Metrics row */}
       <GridRow cols={4}>
         <DetailCell label="Time tracking" icon={Clock}>
-          <div className="flex items-center gap-2.5">
-            <Timer className="h-5 w-5 shrink-0 text-gray-400" aria-hidden />
-            <div>
-              <p className="text-base font-semibold leading-snug text-gray-900">—</p>
-              <p className="text-sm text-gray-500">Not logged yet</p>
-            </div>
-          </div>
+          <TaskTimeTracking task={task} canEdit={canEdit} onChanged={onTimeChanged} />
         </DetailCell>
 
         <DetailCell label="Progress" className="md:border-x md:border-gray-100">

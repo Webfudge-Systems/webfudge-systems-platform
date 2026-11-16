@@ -171,6 +171,11 @@
       "type": "boolean",
       "default": false
     },
+    "timerStartedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
     "timerStartedAt": {
       "type": "datetime"
     },

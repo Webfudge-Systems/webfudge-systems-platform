@@ -49,6 +49,32 @@ const UID = 'api::task.task';
 
 const PROJECT_UID = 'api::project.project';
 
+/**
+ * Time is rolled up per project via task.timeProject. PM tasks usually only have projects,
+ * so default timeProject to the task's first project when logging time.
+ */
+async function ensureTimeProject(task) {
+  const existing = relId(task.timeProject);
+  if (existing) return existing;
+  const first = Array.isArray(task.projects) && task.projects.length ? relId(task.projects[0]) : null;
+  if (!first) return null;
+  await strapi.entityService.update(UID, task.id, { data: { timeProject: first } });
+  return first;
+}
+
+/** Stop a running timer: add elapsed hours and clear the timer. Returns the updated task. */
+async function stopRunningTimer(task) {
+  const started = task.timerStartedAt ? new Date(task.timerStartedAt) : null;
+  const hoursElapsed = started ? Math.max(0, (Date.now() - started.getTime()) / 3600000) : 0;
+  const newHours = Math.round(((parseFloat(task.hoursLogged) || 0) + hoursElapsed) * 100) / 100;
+  const entry = await strapi.entityService.update(UID, task.id, {
+    data: { hoursLogged: newHours, timerRunning: false, timerStartedAt: null, timerStartedBy: null },
+  });
+  const projId = await ensureTimeProject(task);
+  if (projId) await recomputeProjectFinancials(projId);
+  return entry;
+}
+
 async function recomputeProjectFinancials(projectId) {
   if (!projectId) return;
   try {
@@ -1161,9 +1187,73 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
     if (task.timerRunning) return ctx.badRequest('Timer is already running');
 
-    const entry = await strapi.entityService.update(UID, pk, {
-      data: { timerRunning: true, timerStartedAt: new Date().toISOString() },
+    // One running timer per user: stop any other timer this user has going first.
+    const others = await strapi.entityService.findMany(UID, {
+      filters: { organization: ctx.state.orgId, timerRunning: true, timerStartedBy: { id: ctx.state.user.id } },
+      populate: ['timeProject', 'projects'],
+      limit: 20,
     });
+    const stopped = [];
+    for (const other of others) {
+      if (other.id === pk) continue;
+      await stopRunningTimer(other);
+      stopped.push({ id: other.id, name: other.name });
+    }
+
+    const entry = await strapi.entityService.update(UID, pk, {
+      data: { timerRunning: true, timerStartedAt: new Date().toISOString(), timerStartedBy: ctx.state.user.id },
+    });
+    return { data: entry, meta: { stoppedTimers: stopped } };
+  },
+
+  /** GET /tasks/timer/active — the caller's running timer in the active org, or null. */
+  async timerActive(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const rows = await strapi.entityService.findMany(UID, {
+      filters: { organization: ctx.state.orgId, timerRunning: true, timerStartedBy: { id: ctx.state.user.id } },
+      fields: ['id', 'documentId', 'name', 'timerStartedAt', 'hoursLogged'],
+      sort: 'timerStartedAt:desc',
+      limit: 1,
+    });
+    ctx.set('Cache-Control', 'no-store');
+    return { data: rows[0] || null };
+  },
+
+  /**
+   * POST /tasks/:id/time — manual time entry and/or billable toggle.
+   * Body: { hours?: number (0 < h <= 24, added to hoursLogged), billable?: boolean }
+   */
+  async logTime(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'write');
+    if (denied) return denied;
+
+    const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
+    if (pk == null) return ctx.notFound();
+    const task = await strapi.entityService.findOne(UID, pk, {
+      populate: ['organization', 'timeProject', 'projects'],
+    });
+    if (!task) return ctx.notFound();
+    if (orgIdFromRelation(task.organization) !== ctx.state.orgId) return ctx.forbidden('Access denied');
+
+    const body = ctx.request?.body?.data || ctx.request?.body || {};
+    const data = {};
+    if (body.hours != null && body.hours !== '') {
+      const hours = Number(body.hours);
+      if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+        return ctx.badRequest('Hours must be a number greater than 0 and at most 24');
+      }
+      data.hoursLogged = Math.round(((parseFloat(task.hoursLogged) || 0) + hours) * 100) / 100;
+      data.logDate = new Date().toISOString().slice(0, 10);
+    }
+    if (typeof body.billable === 'boolean') data.billable = body.billable;
+    if (!Object.keys(data).length) return ctx.badRequest('Provide hours and/or billable');
+
+    const entry = await strapi.entityService.update(UID, pk, { data });
+    const projId = await ensureTimeProject(task);
+    if (projId) await recomputeProjectFinancials(projId);
     return { data: entry };
   },
 
@@ -1175,7 +1265,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (pk == null) return ctx.notFound();
 
     const task = await strapi.entityService.findOne(UID, pk, {
-      populate: ['organization', 'timeProject'],
+      populate: ['organization', 'timeProject', 'projects'],
     });
     if (!task) return ctx.notFound();
     if (orgIdFromRelation(task.organization) !== ctx.state.orgId) {
@@ -1183,18 +1273,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
     if (!task.timerRunning) return ctx.badRequest('Timer is not running');
 
-    const now = new Date();
-    const started = new Date(task.timerStartedAt);
-    const hoursElapsed = (now - started) / 3600000;
-    const newHours = Math.round(((parseFloat(task.hoursLogged) || 0) + hoursElapsed) * 100) / 100;
-
-    const entry = await strapi.entityService.update(UID, pk, {
-      data: { hoursLogged: newHours, timerRunning: false, timerStartedAt: null },
-    });
-
-    const projId = relId(entry.timeProject) || relId(task.timeProject);
-    if (projId) await recomputeProjectFinancials(projId);
-
+    const entry = await stopRunningTimer(task);
     return { data: entry };
   },
 

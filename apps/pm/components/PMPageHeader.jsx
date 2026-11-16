@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { AppPageHeader } from '@webfudge/ui';
 import GlobalSearchModal from './GlobalSearchModal';
 import notificationService from '../lib/api/notificationService';
+import RunningTimerPill from './RunningTimerPill';
 
 export default function PMPageHeader({ showBack, ...props }) {
   const pathname = usePathname();
@@ -14,6 +15,7 @@ export default function PMPageHeader({ showBack, ...props }) {
       {...props}
       showBack={showBack ?? defaultShowBack}
       notificationService={notificationService}
+      headerExtras={<RunningTimerPill />}
       renderGlobalSearchModal={({ isOpen, onClose, initialQuery }) => (
         <GlobalSearchModal isOpen={isOpen} onClose={onClose} initialQuery={initialQuery} />
       )}
