@@ -62,6 +62,22 @@ module.exports = (config, { strapi }) => {
               ctx.state.effectivePermissions = summary.permissions;
             }
           }
+
+          // A wrong or foreign org id must never resolve to a different org: reject instead of
+          // falling back to the user's first org. Frontends clear the stored org on this code.
+          if (!ctx.state.orgId) {
+            ctx.status = 403;
+            ctx.body = {
+              data: null,
+              error: {
+                status: 403,
+                name: 'ForbiddenError',
+                message: 'You are not an active member of the selected organization',
+                details: { code: 'ORG_ACCESS_DENIED' },
+              },
+            };
+            return;
+          }
         }
 
         // Fallback: if no org header, auto-pick the first active org for this user
