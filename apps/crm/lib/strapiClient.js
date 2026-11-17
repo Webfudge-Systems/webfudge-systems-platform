@@ -97,6 +97,11 @@ class StrapiClient {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error(`API Error ${response.status} for ${url}:`, errorData);
+        if (errorData.error?.details?.code === 'ORG_ACCESS_DENIED' && typeof window !== 'undefined') {
+          // The stored organization is no longer valid for this user: drop it and start over.
+          localStorage.removeItem('current-org-id');
+          window.location.reload();
+        }
         throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 

@@ -37,7 +37,12 @@ export const AuthProvider = ({ children }) => {
               setIsAuthenticated(true);
               // Restore stored org data
               const storedOrgs = authService.getStoredOrganizations();
-              const storedOrg  = authService.getCurrentOrg();
+              let storedOrg    = authService.getCurrentOrg();
+              // Stored org missing or no longer one of the user's orgs (e.g. cleared after the API
+              // rejected it): select the first org, as login does, so the UI shows the org in use.
+              if (!storedOrg && storedOrgs.length > 0 && authService.setCurrentOrg(storedOrgs[0].id)) {
+                storedOrg = authService.getCurrentOrg();
+              }
               setOrganizations(storedOrgs);
               setCurrentOrgState(storedOrg);
             } else {
