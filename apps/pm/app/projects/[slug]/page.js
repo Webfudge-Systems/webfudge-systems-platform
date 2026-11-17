@@ -47,6 +47,7 @@ import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
+import ProjectGantt from '../../../components/ProjectGantt';
 import { formatHours } from '../../../lib/api/timeTrackingService';
 import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
 import { InfoRow, InfoSection, SidebarCardTitle } from '@webfudge/ui';
@@ -74,12 +75,14 @@ import {
   canCreateSubtaskOnTask,
   canCreateTaskInProject,
   canEditProjectInPm,
+  canEditTaskInPm,
   getPmOrgRoleKind,
 } from '../../../lib/pmOrgRoles';
 
 const DETAIL_TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'tasks', label: 'Tasks' },
+  { key: 'timeline', label: 'Timeline' },
   { key: 'activity', label: 'Activity' },
   { key: 'files', label: 'Files' },
 ];
@@ -1053,6 +1056,24 @@ export default function ProjectDetailPage() {
             </Card>
           </div>
         </div>
+      ) : null}
+
+      {activeTab === 'timeline' ? (
+        <ProjectGantt
+          tasks={displayTasks}
+          canEditTask={(t) => canEditTaskInPm(t, currentUserId)}
+          onReschedule={async (t, startDate, scheduledDate) => {
+            const res = await taskService.reschedule(t.id, { startDate, scheduledDate });
+            const changed = Array.isArray(res?.data) ? res.data : [];
+            const byId = new Map(changed.map((c) => [String(c.id), c]));
+            setTasks((prev) =>
+              prev.map((x) => {
+                const c = byId.get(String(x.id));
+                return c ? { ...x, startDate: c.startDate, dueDate: c.scheduledDate } : x;
+              })
+            );
+          }}
+        />
       ) : null}
 
       {activeTab === 'tasks' ? (

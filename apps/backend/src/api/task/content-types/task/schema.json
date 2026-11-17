@@ -39,6 +39,9 @@
       "type": "json",
       "default": []
     },
+    "dependsOn": {
+      "type": "json"
+    },
     "taskCategory": {
       "type": "enumeration",
       "enum": ["general", "development"],

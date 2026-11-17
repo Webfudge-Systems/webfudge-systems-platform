@@ -38,6 +38,32 @@ const {
 } = require('../../../utils/task-recurrence');
 
 const { relId } = require('../../../utils/org-crud');
+const { setDependencies, rescheduleWithDependents } = require('../../../utils/task-dependencies');
+
+/**
+ * Load a task the caller may fully edit (same rules as PUT /tasks/:id without the member status-only path).
+ * Returns { task } or { error: response }.
+ */
+async function loadFullyEditableTask(strapi, ctx) {
+  const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
+  if (pk == null) return { error: ctx.notFound() };
+  const task = await strapi.entityService.findOne(UID, pk, {
+    populate: ['organization', 'assignee', 'assigner', 'collaborators', 'projects'],
+  });
+  if (!task) return { error: ctx.notFound() };
+  if (orgIdFromRelation(task.organization) !== ctx.state.orgId) return { error: ctx.forbidden('Access denied') };
+  if (!isPmOrgAdminRole(ctx) && ctx.state.user?.id) {
+    const ok = await userMayViewTask(strapi, ctx, ctx.state.orgId, ctx.state.user.id, task);
+    if (!ok) return { error: ctx.forbidden('Access denied') };
+  }
+  if (isPmOrgMemberRole(ctx) && ctx.state.user?.id) {
+    const uid = ctx.state.user.id;
+    if (!userIsTaskAssigneeOrCollaborator(task, uid) && !userIsTaskReporter(task, uid)) {
+      return { error: ctx.forbidden('Only the assignee or reporter can change this task’s schedule') };
+    }
+  }
+  return { task };
+}
 const {
   isCrmTaskEntity,
   crmTaskScopeFilter,
@@ -1183,6 +1209,48 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const entry = await strapi.entityService.delete(UID, pk);
     if (timeProjBeforeDelete) await recomputeProjectFinancials(timeProjBeforeDelete);
     return { data: entry };
+  },
+
+  /** PUT /tasks/:id/dependencies — { dependsOn: [{ taskId, type: 'FS'|'SS', lagDays }] } (W2). */
+  async setDependencies(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'write');
+    if (denied) return denied;
+    const { task, error: errRes } = await loadFullyEditableTask(strapi, ctx);
+    if (errRes !== undefined) return errRes;
+    const body = ctx.request?.body?.data || ctx.request?.body || {};
+    const result = await setDependencies(strapi, ctx.state.orgId, task, body.dependsOn ?? []);
+    if (result.error) return ctx.badRequest(result.error);
+    return { data: { id: task.id, dependsOn: result.dependsOn } };
+  },
+
+  /**
+   * POST /tasks/:id/reschedule — { startDate, scheduledDate } (W2). Moves the task and shifts any
+   * dependent tasks that would now start too early. Returns every task whose dates changed.
+   */
+  async reschedule(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'pm', 'tasks', 'write');
+    if (denied) return denied;
+    const { task, error: errRes } = await loadFullyEditableTask(strapi, ctx);
+    if (errRes !== undefined) return errRes;
+    const body = ctx.request?.body?.data || ctx.request?.body || {};
+    const start = body.startDate ? Date.parse(body.startDate) : null;
+    const end = body.scheduledDate ? Date.parse(body.scheduledDate) : null;
+    if ((body.startDate && Number.isNaN(start)) || (body.scheduledDate && Number.isNaN(end))) {
+      return ctx.badRequest('Dates are invalid');
+    }
+    if (start != null && end != null && end < start) return ctx.badRequest('Due date must be on or after the start date');
+    const changed = await rescheduleWithDependents(
+      strapi,
+      ctx.state.orgId,
+      task,
+      start != null ? new Date(start).toISOString() : task.startDate,
+      end != null ? new Date(end).toISOString() : task.scheduledDate
+    );
+    return { data: changed };
   },
 
   async timerStart(ctx) {
