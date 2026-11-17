@@ -1118,6 +1118,7 @@ export default function TaskDetailPage() {
               onViewFiles={() => setActiveTab('files')}
               onViewSubtasks={() => setActiveTab('subtasks')}
               attachmentCount={fileCount}
+              onTimeChanged={loadTask}
             />
           </div>
 

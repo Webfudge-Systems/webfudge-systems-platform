@@ -79,6 +79,7 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'deal', label: 'Deal' },
   { key: 'projects', label: 'Projects' },
   { key: 'leadCompany', label: 'Lead company' },
+  { key: 'meeting', label: 'Meeting' },
   { key: 'description', label: 'Description' },
   { key: 'createdAt', label: 'Created' },
   { key: 'updatedAt', label: 'Updated' },
@@ -103,6 +104,7 @@ const DEFAULT_COLUMN_WIDTHS = {
   deal: 200,
   projects: 180,
   leadCompany: 180,
+  meeting: 200,
   description: 240,
   createdAt: 140,
   updatedAt: 140,
@@ -270,7 +272,7 @@ export default function ClientsTasksPage() {
       const { data } = await taskService.fetchAll({
         sort: 'scheduledDate:desc',
         'pagination[pageSize]': 500,
-        populate: ['assignee', 'deal', 'clientAccount', 'projects', 'leadCompany'],
+        populate: ['assignee', 'deal', 'clientAccount', 'projects', 'leadCompany', 'meeting'],
       });
       setTasks(data || []);
     } catch (err) {
@@ -724,7 +726,7 @@ export default function ClientsTasksPage() {
       if (row?.id) {
         try {
           const { data: full } = await taskService.getOne(row.id, {
-            populate: ['assignee', 'deal', 'clientAccount', 'projects', 'leadCompany'],
+            populate: ['assignee', 'deal', 'clientAccount', 'projects', 'leadCompany', 'meeting'],
           });
           if (full) row = full;
         } catch (e) {
@@ -886,6 +888,28 @@ export default function ClientsTasksPage() {
             );
           }
           return <TableCellText value={label} />;
+        },
+      },
+      {
+        key: 'meeting',
+        visibilityKey: 'meeting',
+        label: 'MEETING',
+        render: (_, task) => {
+          const m = task.meeting;
+          const id = m && typeof m === 'object' ? m.id ?? m.documentId : null;
+          const label = m && typeof m === 'object' ? m.title || 'Meeting' : '';
+          if (id) {
+            return (
+              <Link
+                href={`/meetings/${id}`}
+                className="max-w-[180px] truncate text-sm font-medium text-orange-600 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {label}
+              </Link>
+            );
+          }
+          return <TableCellText value="" />;
         },
       },
       {

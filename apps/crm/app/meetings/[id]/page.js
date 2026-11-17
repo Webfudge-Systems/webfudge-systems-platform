@@ -279,6 +279,7 @@ export default function MeetingDetailPage() {
   const [newTaskForm, setNewTaskForm] = useState({ title: '', priority: 'medium', dueDate: '' });
   const [addingTask, setAddingTask] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [taskError, setTaskError] = useState('');
 
   // Inline edit
   const [editingNotes, setEditingNotes] = useState(false);
@@ -349,9 +350,14 @@ export default function MeetingDetailPage() {
     if (!id || !taskService) return;
     setTasksLoading(true);
     try {
-      const res = await taskService.getAll({ sort: 'createdAt:desc', 'pagination[pageSize]': 50 });
+      const res = await taskService.getAll({
+        sort: 'createdAt:desc',
+        'pagination[pageSize]': 50,
+        'filters[meeting][id][$eq]': id,
+        populate: ['meeting'],
+      });
       const all = Array.isArray(res?.data) ? res.data : [];
-      setTasks(all.filter((t) => String(t.meetingId) === String(id) || String(t.meeting?.id) === String(id)));
+      setTasks(all.filter((t) => String(t.meeting?.id ?? t.meeting) === String(id)));
     } catch {
       setTasks([]);
     } finally {
@@ -419,16 +425,18 @@ export default function MeetingDetailPage() {
     e.preventDefault();
     if (!newTaskForm.title.trim()) return;
     setAddingTask(true);
+    setTaskError('');
     try {
+      // Task schema: name / scheduledDate / SCHEDULED status; linked back to this meeting.
       const payload = {
-        title: newTaskForm.title.trim(),
+        name: newTaskForm.title.trim(),
         priority: newTaskForm.priority,
-        dueDate: newTaskForm.dueDate || null,
-        status: 'TODO',
+        scheduledDate: newTaskForm.dueDate ? new Date(`${newTaskForm.dueDate}T00:00:00`).toISOString() : null,
+        status: 'SCHEDULED',
+        meeting: Number(id) || id,
         deal: meeting?.deal?.id || null,
         clientAccount: meeting?.clientAccount?.id || null,
         leadCompany: meeting?.leadCompany?.id || null,
-        contact: meeting?.contact?.id || null,
       };
       const res = await taskService.create(payload);
       const newTask = res?.data;
@@ -437,6 +445,7 @@ export default function MeetingDetailPage() {
       setShowTaskForm(false);
     } catch (e) {
       console.error(e);
+      setTaskError(e?.message || 'Could not create the task. Please try again.');
     } finally {
       setAddingTask(false);
     }
@@ -1344,8 +1353,13 @@ export default function MeetingDetailPage() {
                         />
                       </div>
                     </div>
+                    {taskError && (
+                      <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+                        {taskError}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-500">
-                      This task will be automatically linked to the same deal, account, and contact as this meeting.
+                      This task will be automatically linked to this meeting and its deal, account, and lead.
                     </p>
                     <div className="flex gap-2 border-t border-gray-100 pt-3">
                       <button
@@ -1390,15 +1404,17 @@ export default function MeetingDetailPage() {
                   <div className="divide-y divide-gray-100">
                     {tasks.map((task) => (
                       <div key={task.id} className="flex items-start gap-3 px-6 py-4">
-                        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${task.status === 'DONE' ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}>
-                          {task.status === 'DONE' && <Check className="h-3 w-3 text-white" />}
+                        <div className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${task.status === 'COMPLETED' || task.status === 'DONE' ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}>
+                          {(task.status === 'COMPLETED' || task.status === 'DONE') && <Check className="h-3 w-3 text-white" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-medium ${task.status === 'DONE' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                            {task.title}
+                          <p className={`text-sm font-medium ${task.status === 'COMPLETED' || task.status === 'DONE' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                            {task.name || task.title}
                           </p>
-                          {task.dueDate && (
-                            <p className="text-xs text-gray-400 mt-0.5">Due: {task.dueDate}</p>
+                          {(task.scheduledDate || task.dueDate) && (
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              Due: {new Date(task.scheduledDate || task.dueDate).toLocaleDateString()}
+                            </p>
                           )}
                         </div>
                         <Badge

@@ -174,6 +174,8 @@ export function transformProject(strapiProject) {
     startDate: p.startDate || p.start_date || null,
     endDate: p.endDate || p.end_date || p.dueDate || null,
     budget: p.budget || null,
+    totalLoggedHours: Number(p.totalLoggedHours) || 0,
+    billableHours: Number(p.billableHours) || 0,
     progress,
     totalTasks,
     completedTasks,
@@ -343,6 +345,10 @@ export function transformTask(strapiTask) {
     formattedStartDate: formatDate(t.startDate, 'short'),
     dueDate: t.scheduledDate || t.dueDate || null,
     formattedDueDate: formatDate(t.scheduledDate || t.dueDate, 'short'),
+    hoursLogged: Number(t.hoursLogged) || 0,
+    billable: Boolean(t.billable),
+    timerRunning: Boolean(t.timerRunning),
+    timerStartedAt: t.timerStartedAt || null,
     assignee: primaryAssigneeUser,
     assigneeId:
       assigneeFlat?.id ??

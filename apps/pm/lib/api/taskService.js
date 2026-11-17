@@ -1,7 +1,7 @@
 import strapiClient from '../strapiClient';
 import { listCacheBust, paginateStrapiList } from '@webfudge/utils';
 
-const CRM_RELATION_FIELDS = ['leadCompany', 'clientAccount', 'contact', 'deal'];
+const CRM_RELATION_FIELDS = ['leadCompany', 'clientAccount', 'contact', 'deal', 'meeting'];
 
 /** Task list/detail: project fields + assigned project manager. */
 const TASK_PROJECTS_POPULATE = {

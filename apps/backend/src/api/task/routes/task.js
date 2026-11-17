@@ -12,6 +12,7 @@ module.exports = {
   type: 'content-api',
   routes: [
     { method: 'GET', path: '/tasks', handler: `${UID}.find`, config: authFalse },
+    { method: 'GET', path: '/tasks/timer/active', handler: `${UID}.timerActive`, config: authFalse },
     { method: 'GET', path: '/tasks/:id', handler: `${UID}.findOne`, config: authFalse },
     { method: 'POST', path: '/tasks', handler: `${UID}.create`, config: authFalse },
     { method: 'PUT', path: '/tasks/:id', handler: `${UID}.update`, config: authFalse },
@@ -19,6 +20,7 @@ module.exports = {
     { method: 'POST', path: '/tasks/:id/reject-assignment', handler: `${UID}.rejectAssignment`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/timer/start', handler: `${UID}.timerStart`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/timer/stop', handler: `${UID}.timerStop`, config: authFalse },
+    { method: 'POST', path: '/tasks/:id/time', handler: `${UID}.logTime`, config: authFalse },
     { method: 'DELETE', path: '/tasks/:id', handler: `${UID}.delete`, config: authFalse },
   ],
 };
