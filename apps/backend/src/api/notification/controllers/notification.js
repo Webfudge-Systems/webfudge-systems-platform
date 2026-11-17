@@ -46,6 +46,22 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     return { data: results, meta: { pagination: { page, pageSize, pageCount, total } } };
   },
 
+  // GET /notifications/:id - user can only read their own (the route is auth: false, so the
+  // default core findOne would return any notification to anyone by documentId)
+  async findOne(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    const { id } = ctx.params;
+
+    // Accept the numeric id (as update/delete do) or the documentId (core route default).
+    const where = /^\d+$/.test(String(id)) ? { id: Number(id) } : { documentId: String(id) };
+    const existing = await strapi.db.query(UID).findOne({ where, populate: ['user'] });
+    if (!existing) return ctx.notFound();
+    if (existing.user?.id !== ctx.state.user.id) return ctx.forbidden('Access denied');
+
+    const { user, ...entry } = existing;
+    return { data: entry };
+  },
+
   // PUT /notifications/:id - mark notification as read (user can only update their own)
   async update(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
