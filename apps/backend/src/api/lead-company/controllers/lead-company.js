@@ -8,6 +8,7 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { applyCustomFields, applyCustomFieldFilter } = require('../../../utils/crm-custom-fields');
 const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../../utils/crm-activity-log');
 const { emitUpdateNotifications, assignedStakeholderIds } = require('../../../utils/notification-emitter');
 const {
@@ -239,6 +240,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       extractQueryFilters(query)
     );
 
+    await applyCustomFieldFilter(strapi, ctx, 'lead', filters);
+
     const pop = sanitizePopulate(query.populate);
     let results = await strapi.entityService.findMany(UID, {
       filters,
@@ -304,6 +307,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     );
     if (statusErr) return statusErr;
 
+    const customFieldError = await applyCustomFields(strapi, ctx.state.orgId, 'lead', data, null);
+    if (customFieldError) return ctx.badRequest(customFieldError);
+
     const entry = await strapi.entityService.create(UID, { data });
     try {
       await logCrmActivity(strapi, {
@@ -356,6 +362,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       data.status != null ? await leadStatusKeys(strapi, ctx.state.orgId) : undefined
     );
     if (statusErr) return statusErr;
+
+    const customFieldError = await applyCustomFields(strapi, ctx.state.orgId, 'lead', data, existing);
+    if (customFieldError) return ctx.badRequest(customFieldError);
 
     const entry = await strapi.entityService.update(UID, id, { data });
     const changedKeys = collectChangedKeys(data);

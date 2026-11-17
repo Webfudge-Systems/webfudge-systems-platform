@@ -43,6 +43,7 @@ import { fetchActivityTimeline, fetchContactComments, addContactComment } from '
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
 import { entityChatMediaProps } from '../../../../lib/entityMedia';
+import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
 
 function formatDate(dateString) {
   if (!dateString) return '—';
@@ -842,6 +843,15 @@ export default function ContactDetailPage() {
                     </p>
                   ) : null}
                 </Card>
+                <CustomFieldsCard
+                  entity="contact"
+                  values={contact?.customFields}
+                  canEdit={canEditContact}
+                  onSave={async (customFields) => {
+                    const res = await contactService.update(id, { customFields });
+                    setContact((prev) => (prev ? { ...prev, customFields: res?.data?.customFields ?? customFields } : prev));
+                  }}
+                />
 
                 <Card
                   variant="outlined"

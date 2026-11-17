@@ -80,6 +80,7 @@ import {
 } from '@webfudge/utils';
 import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
 import { getIndustryVisual } from '@webfudge/ui/utils/industryVisuals';
+import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
 
 function formatCurrency(value) {
   if (value == null || value === '') return '₹0';
@@ -1767,6 +1768,15 @@ export default function ClientAccountDetailPage() {
                     </>
                   )}
                 </Card>
+                <CustomFieldsCard
+                  entity="account"
+                  values={account?.customFields}
+                  canEdit={canEditClientAccount}
+                  onSave={async (customFields) => {
+                    const res = await clientAccountService.update(id, { customFields });
+                    setAccount((prev) => (prev ? { ...prev, customFields: res?.data?.customFields ?? customFields } : prev));
+                  }}
+                />
 
                 <Card variant="elevated" className="rounded-xl">
                   <div className="mb-6">

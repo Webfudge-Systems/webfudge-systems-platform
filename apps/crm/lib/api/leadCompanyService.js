@@ -85,6 +85,10 @@ export function buildLeadCompanyListParams({
   if (f.status) params['filters[status][$eq]'] = String(f.status).toUpperCase();
   if (f.source) params['filters[source][$eq]'] = String(f.source).toUpperCase();
   if (f.type) params['filters[type][$eq]'] = f.type;
+  // Custom field filter (G1): backend matches ?cf[key]=value against the org's field definitions.
+  if (f.customFieldKey && f.customFieldValue != null && String(f.customFieldValue).trim() !== '') {
+    params[`cf[${f.customFieldKey}]`] = String(f.customFieldValue).trim();
+  }
   if (tab !== 'my' && f.assignedToId) params['filters[assignedTo][id][$eq]'] = f.assignedToId;
   if (f.companyQuery?.trim()) {
     params['filters[companyName][$containsi]'] = f.companyQuery.trim();
