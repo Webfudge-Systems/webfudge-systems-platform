@@ -1441,7 +1441,7 @@ export default function LeadCompaniesPage() {
         showActions={true}
         onAddClick={() => router.push('/sales/lead-companies/new')}
         onFilterClick={openFilterModal}
-        onImportClick={() => console.log('Import clicked')}
+        onImportClick={() => router.push('/sales/import?entity=lead')}
         onExportClick={() => console.log('Export clicked')}
       />
 

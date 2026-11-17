@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { companyTypes } from '@webfudge/utils';
 import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
+import DuplicateWarning from '../../../../components/DuplicateWarning';
 
 export default function AddLeadCompanyPage() {
   const router = useRouter();
@@ -477,6 +478,14 @@ export default function AddLeadCompanyPage() {
                   error={errors.companyName}
                   placeholder="Enter company name"
                 />
+                <div className="mt-2">
+                  <DuplicateWarning
+                    entity="lead"
+                    companyName={companyData.companyName}
+                    email={companyData.email}
+                    phone={companyData.phone}
+                  />
+                </div>
               </div>
               <div>
                 <Select

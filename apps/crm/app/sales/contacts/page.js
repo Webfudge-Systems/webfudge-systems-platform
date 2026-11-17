@@ -720,7 +720,7 @@ export default function ContactsPage() {
         showActions={true}
         onAddClick={() => router.push('/sales/contacts/new')}
         onFilterClick={openFilterModal}
-        onImportClick={() => console.log('Import clicked')}
+        onImportClick={() => router.push('/sales/import?entity=contact')}
         onExportClick={() => console.log('Export clicked')}
       />
 

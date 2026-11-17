@@ -98,7 +98,8 @@ module.exports = [
   },
   'strapi::poweredBy',
   'strapi::query',
-  'strapi::body',
+  // CRM imports (G4) post up to 20k mapped rows as JSON; Koa's default is 1mb.
+  { name: 'strapi::body', config: { jsonLimit: '15mb' } },
   'strapi::session',
   'strapi::favicon',
   'strapi::public',
