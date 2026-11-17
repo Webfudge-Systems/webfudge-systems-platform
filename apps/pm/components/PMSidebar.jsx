@@ -29,6 +29,7 @@ import { canReadPM, canWritePM, canReadClientAccounts } from '../lib/rbac'
 import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 import { usePmSidebarBadges } from '../lib/usePmSidebarBadges'
 import { PM_SITE } from '../lib/site'
+import { isHiddenInSaas } from '../lib/saasHiddenRoutes'
 
 export default function PMSidebar({ collapsed = false, onToggle }) {
   const pathname = usePathname()
@@ -123,10 +124,13 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
   ]
 
   const visibleNavigationItems = mainNavigationItems.filter((item) => {
+    if (isHiddenInSaas(item.href)) return false
     if (item.id === 'clients') return canReadClientAccounts()
     return canReadPM(item.module)
   })
-  const visiblePmTools = pmTools.filter((item) => !item.module || canReadPM(item.module))
+  const visiblePmTools = pmTools.filter(
+    (item) => (!item.module || canReadPM(item.module)) && !isHiddenInSaas(item.href)
+  )
   const canReadProjects = canReadPM('projects')
   const canCreateProjects = canWritePM('projects') && canCreateProjectsInPm()
 

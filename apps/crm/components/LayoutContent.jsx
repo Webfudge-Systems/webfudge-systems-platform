@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import { WorkspaceLayoutContent } from '@webfudge/ui'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { saasRedirectFor } from '../lib/saasHiddenRoutes'
 import CRMSidebar from './CRMSidebar'
 import CRMQuickActionsFab from './CRMQuickActionsFab'
 import { canReadCurrentCRMPath, crmModuleForPath } from '../lib/rbac'
@@ -18,9 +20,15 @@ const MODULE_LABELS = {
 
 export default function LayoutContent({ children }) {
   const pathname = usePathname()
+  const router = useRouter()
+  // SaaS build: placeholder screens are not reachable; send the user somewhere real.
+  const saasRedirect = saasRedirectFor(pathname)
+  useEffect(() => {
+    if (saasRedirect) router.replace(saasRedirect)
+  }, [saasRedirect, router])
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   const hasToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('auth-token'))
-  const canView = isPublic || !hasToken || canReadCurrentCRMPath(pathname)
+  const canView = !saasRedirect && (isPublic || !hasToken || canReadCurrentCRMPath(pathname))
   const moduleKey = crmModuleForPath(pathname)
   const moduleLabel = MODULE_LABELS[moduleKey] || 'This CRM module'
 
