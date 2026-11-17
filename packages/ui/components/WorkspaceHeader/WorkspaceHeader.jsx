@@ -55,6 +55,7 @@ export function WorkspaceHeader({
   backLabel = 'Back',
   titleClassName,
   onProfileClick,
+  headerExtras,
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -352,6 +353,7 @@ export function WorkspaceHeader({
 
         {showProfile && (
           <div className="flex items-center gap-3 ml-4">
+            {headerExtras}
             <div className="relative" ref={notificationDropdownRef}>
               <button
                 onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}

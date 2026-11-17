@@ -47,6 +47,7 @@ import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
+import { formatHours } from '../../../lib/api/timeTrackingService';
 import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
 import { InfoRow, InfoSection, SidebarCardTitle } from '@webfudge/ui';
 import { getProjectStatusMeta, PROJECT_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
@@ -689,11 +690,18 @@ export default function ProjectDetailPage() {
         <ProjectDetailMetaBar project={project} />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <KPICard compact title="Total tasks" value={taskStats.total} icon={CheckSquare} colorScheme="orange" />
         <KPICard compact title="Completed" value={taskStats.completed} icon={CheckCircle2} colorScheme="orange" />
         <KPICard compact title="Progress" value={`${taskStats.progress}%`} icon={TrendingUp} colorScheme="orange" />
         <KPICard compact title="Team" value={(project.team || []).length} icon={Users} colorScheme="orange" />
+        <KPICard
+          compact
+          title={project.billableHours ? `Hours logged · ${formatHours(project.billableHours)} billable` : "Hours logged"}
+          value={formatHours(project.totalLoggedHours)}
+          icon={Clock}
+          colorScheme="orange"
+        />
       </div>
 
       <TabsWithActions variant="pill" tabs={tabsWithBadges} activeTab={activeTab} onTabChange={setActiveTab} />
