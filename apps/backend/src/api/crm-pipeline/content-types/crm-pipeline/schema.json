@@ -1,0 +1,42 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_pipelines",
+  "info": {
+    "singularName": "crm-pipeline",
+    "pluralName": "crm-pipelines",
+    "displayName": "CRM Pipeline",
+    "description": "Per-organization deal pipelines (stages) and the lead status list (entity = lead)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "entity": {
+      "type": "enumeration",
+      "enum": ["deal", "lead"],
+      "default": "deal",
+      "required": true
+    },
+    "isDefault": {
+      "type": "boolean",
+      "default": false
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "stages": {
+      "type": "json"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

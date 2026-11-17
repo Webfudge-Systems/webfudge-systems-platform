@@ -40,6 +40,12 @@ function toStrapiData(payload) {
     }
   }
   if (payload.stage) set('stage', payload.stage);
+  // Configurable pipelines (G2): the backend maps these to the legacy `stage` too.
+  if (Object.prototype.hasOwnProperty.call(payload, 'pipeline')) {
+    const n = parseInt(payload.pipeline, 10);
+    data.pipeline = Number.isNaN(n) ? null : n;
+  }
+  if (payload.pipelineStageKey) set('pipelineStageKey', String(payload.pipelineStageKey));
   if (payload.priority) set('priority', payload.priority);
   if (payload.probability != null && payload.probability !== '') {
     const p = parseInt(payload.probability, 10);
@@ -98,6 +104,7 @@ export default {
         'clientAccount',
         'contact',
         'deliveryProject',
+        'pipeline',
       ];
     const response = await strapiClient.get(`${ENDPOINT}/${id}`, { populate });
     return normalizeOneResponse(response);
@@ -133,7 +140,7 @@ export default {
     return this.getAll({
       sort: 'updatedAt:desc',
       'pagination[pageSize]': 100,
-      populate: ['leadCompany', 'clientAccount', 'assignedTo', 'deliveryProject'],
+      populate: ['leadCompany', 'clientAccount', 'assignedTo', 'deliveryProject', 'pipeline'],
     });
   },
 

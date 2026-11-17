@@ -54,6 +54,7 @@ import {
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import dealService from '../../../../lib/api/dealService';
+import pipelineService, { dealPipelineId, dealStageKey } from '../../../../lib/api/pipelineService';
 import contactService from '../../../../lib/api/contactService';
 import taskService from '../../../../lib/api/taskService';
 import { fetchActivityTimeline, fetchDealComments, addDealComment } from '../../../../lib/api/crmActivityService';
@@ -249,7 +250,7 @@ function dealStageKpiIcon(stage) {
   return Target;
 }
 
-function DealStageHeaderPill({ stage }) {
+function DealStageHeaderPill({ stage, label }) {
   const s = (stage || '').toLowerCase();
   let StageIcon = Target;
   let iconClass = 'text-orange-600';
@@ -273,7 +274,7 @@ function DealStageHeaderPill({ stage }) {
       title="Pipeline stage"
     >
       <StageIcon className={`h-5 w-5 shrink-0 ${iconClass}`} strokeWidth={2.25} aria-hidden />
-      {stageLabel(stage).toUpperCase()}
+      {(label || stageLabel(stage)).toUpperCase()}
     </span>
   );
 }
@@ -435,6 +436,20 @@ export default function DealDetailPage() {
   const [crmTimelineLoading, setCrmTimelineLoading] = useState(false);
   const [crmTimelineError, setCrmTimelineError] = useState(null);
   const [editingDealInfo, setEditingDealInfo] = useState(false);
+  const [pipelines, setPipelines] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    pipelineService
+      .list('deal')
+      .then((res) => {
+        if (!cancelled) setPipelines(res.data || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [dealInfoDraft, setDealInfoDraft] = useState(null);
   const [savingDealInfo, setSavingDealInfo] = useState(false);
   const [dealInfoSaveError, setDealInfoSaveError] = useState('');
@@ -722,12 +737,28 @@ export default function DealDetailPage() {
     return 'No recent activity';
   }, [deal, crmTimeline]);
 
+  /** Stage label from the deal's configurable pipeline (G2), falling back to the legacy label. */
+  const dealPipelineStageLabel = useMemo(() => {
+    if (!deal || !pipelines.length) return '';
+    const p = pipelines.find((x) => x.id === dealPipelineId(deal, pipelines));
+    return p?.stages?.find((s) => s.key === dealStageKey(deal))?.label || '';
+  }, [deal, pipelines]);
+
+  const pipelineSelectOptions = useMemo(
+    () => pipelines.map((p) => ({ value: String(p.id), label: p.name })),
+    [pipelines]
+  );
+
   const stageSelectOptions = useMemo(() => {
+    if (pipelines.length && dealInfoDraft?.pipelineId) {
+      const p = pipelines.find((x) => String(x.id) === String(dealInfoDraft.pipelineId));
+      if (p?.stages?.length) return p.stages.map((s) => ({ value: s.key, label: s.label }));
+    }
     const raw = dealInfoDraft?.stage?.trim().toLowerCase();
     if (!raw) return DEAL_STAGE_OPTIONS;
     if (DEAL_STAGE_OPTIONS.some((o) => o.value === raw)) return DEAL_STAGE_OPTIONS;
     return [{ value: raw, label: stageLabel(raw) }, ...DEAL_STAGE_OPTIONS];
-  }, [dealInfoDraft?.stage]);
+  }, [dealInfoDraft?.stage, dealInfoDraft?.pipelineId, pipelines]);
 
   const prioritySelectOptions = useMemo(() => {
     const raw = dealInfoDraft?.priority?.trim().toLowerCase();
@@ -741,7 +772,8 @@ export default function DealDetailPage() {
     if (!deal) return;
     setDealInfoDraft({
       name: deal.name ?? '',
-      stage: String(deal.stage ?? 'discovery').toLowerCase(),
+      stage: pipelines.length ? dealStageKey(deal) : String(deal.stage ?? 'discovery').toLowerCase(),
+      pipelineId: pipelines.length ? String(dealPipelineId(deal, pipelines) ?? '') : '',
       priority: String(deal.priority ?? 'medium').toLowerCase(),
       expectedCloseDate: deal.expectedCloseDate ? String(deal.expectedCloseDate).slice(0, 10) : '',
       description: deal.description ?? '',
@@ -757,7 +789,16 @@ export default function DealDetailPage() {
   };
 
   const setDealInfoField = (field, value) => {
-    setDealInfoDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
+    setDealInfoDraft((prev) => {
+      if (!prev) return prev;
+      if (field === 'pipelineId') {
+        // Switching pipeline: start at its first open stage.
+        const p = pipelines.find((x) => String(x.id) === String(value));
+        const first = p?.stages?.find((s) => s.kind === 'open') || p?.stages?.[0];
+        return { ...prev, pipelineId: value, stage: first?.key || prev.stage };
+      }
+      return { ...prev, [field]: value };
+    });
   };
 
   const saveDealInfo = async () => {
@@ -773,7 +814,9 @@ export default function DealDetailPage() {
     try {
       const payload = {
         name,
-        stage: dealInfoDraft.stage,
+        ...(pipelines.length && dealInfoDraft.pipelineId
+          ? { pipeline: Number(dealInfoDraft.pipelineId), pipelineStageKey: dealInfoDraft.stage }
+          : { stage: dealInfoDraft.stage }),
         priority: dealInfoDraft.priority,
         expectedCloseDate: dealInfoDraft.expectedCloseDate?.trim() || null,
         description: dealInfoDraft.description?.trim() ?? '',
@@ -1218,7 +1261,7 @@ export default function DealDetailPage() {
             <KPICard
               compact
               title="Stage"
-              value={stageLabel(deal.stage)}
+              value={dealPipelineStageLabel || stageLabel(deal.stage)}
               icon={dealStageKpiIcon(deal.stage)}
               colorScheme={dealStageKpiColorScheme(deal.stage)}
               className={dealStageKpiCardClass(deal.stage)}
@@ -1261,7 +1304,7 @@ export default function DealDetailPage() {
                         role="group"
                         aria-label="Pipeline stage"
                       >
-                        <DealStageHeaderPill stage={deal.stage} />
+                        <DealStageHeaderPill stage={deal.stage} label={dealPipelineStageLabel} />
                       </div>
                     ) : null}
                   </header>
@@ -1283,6 +1326,15 @@ export default function DealDetailPage() {
                         required
                         autoComplete="off"
                       />
+                      {pipelines.length > 1 ? (
+                        <Select
+                          label="Pipeline"
+                          value={dealInfoDraft.pipelineId}
+                          onChange={(v) => setDealInfoField('pipelineId', v)}
+                          options={pipelineSelectOptions}
+                          placeholder="Select pipeline"
+                        />
+                      ) : null}
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <Select
                           label="Stage"

@@ -1,21 +1,43 @@
 'use client';
 
+import Link from 'next/link';
+import { ChevronRight, GitBranch } from 'lucide-react';
 import { Card } from '@webfudge/ui';
 import CRMPageHeader from '../../components/CRMPageHeader';
+
+const SECTIONS = [
+  {
+    href: '/settings/pipelines',
+    icon: GitBranch,
+    title: 'Pipelines & lead statuses',
+    description: 'Deal pipelines and their stages (order, win probability, colour, required fields) and your lead status list.',
+  },
+];
 
 export default function SettingsPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <CRMPageHeader
         title="Settings"
-        subtitle="CRM and account settings"
+        subtitle="Configure Grow for your organization"
         breadcrumb={[{ label: 'Settings', href: '/settings' }]}
       />
-      <Card className="p-6 border border-gray-200">
-        <p className="text-gray-600">
-          Settings (users, roles, integrations, branding) will appear here when connected to your backend.
-        </p>
-      </Card>
+      <div className="grid gap-4 md:grid-cols-2">
+        {SECTIONS.map(({ href, icon: Icon, title, description }) => (
+          <Link key={href} href={href} className="group block">
+            <Card className="flex h-full items-start gap-4 border border-gray-200 p-5 transition-shadow group-hover:shadow-md">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-orange-200 bg-orange-50">
+                <Icon className="h-5 w-5 text-orange-600" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+                <p className="mt-1 text-sm text-gray-600">{description}</p>
+              </div>
+              <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-gray-400 group-hover:text-orange-600" aria-hidden />
+            </Card>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
