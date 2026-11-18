@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "timesheets",
+  "info": {
+    "singularName": "timesheet",
+    "pluralName": "timesheets",
+    "displayName": "Timesheet",
+    "description": "One user's week of time (Monday start): draft, submitted, approved (locked) or rejected"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "weekStart": { "type": "date", "required": true },
+    "status": { "type": "enumeration", "enum": ["draft", "submitted", "approved", "rejected"], "default": "draft" },
+    "submittedAt": { "type": "datetime" },
+    "decidedAt": { "type": "datetime" },
+    "decisionNote": { "type": "text" },
+    "totalHours": { "type": "decimal", "default": 0 },
+    "billableHours": { "type": "decimal", "default": 0 },
+    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "decidedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}
