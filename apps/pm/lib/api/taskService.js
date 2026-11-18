@@ -408,6 +408,16 @@ class TaskService {
     return this.updateTask(id, { parentId: null });
   }
 
+  /** Set "blocked by" links (W2): [{ taskId, type: 'FS'|'SS', lagDays }]. */
+  async setDependencies(id, dependsOn) {
+    return strapiClient.put(`/tasks/${id}/dependencies`, { data: { dependsOn } });
+  }
+
+  /** Move a task; dependents that would start too early shift forward (W2). Returns changed tasks. */
+  async reschedule(id, { startDate, scheduledDate }) {
+    return strapiClient.post(`/tasks/${id}/reschedule`, { data: { startDate, scheduledDate } });
+  }
+
   async approveTaskAssignment(id) {
     try {
       return await strapiClient.post(`/tasks/${id}/approve-assignment`, {});

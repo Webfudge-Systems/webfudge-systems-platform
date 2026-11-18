@@ -50,6 +50,7 @@ import {
 import PMPageHeader from '../../../components/PMPageHeader';
 import TaskDetailMetaBar from '../../../components/TaskDetailMetaBar';
 import TaskDetailsCard from '../../../components/TaskDetailsCard';
+import TaskDependenciesCard from '../../../components/TaskDependenciesCard';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import TaskDevDetailsPanel from '../../../components/TaskDevDetailsPanel';
@@ -1125,6 +1126,7 @@ export default function TaskDetailPage() {
           </div>
 
           <div className="space-y-4">
+            <TaskDependenciesCard task={task} canEdit={canEditCurrentTask} onChanged={loadTask} />
             <Card variant="elevated" className="rounded-xl">
               <SidebarCardTitle
                 title={`Subtasks (${task.subtasks?.length || 0})`}
