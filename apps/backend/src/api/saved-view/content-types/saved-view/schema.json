@@ -5,16 +5,41 @@
     "singularName": "saved-view",
     "pluralName": "saved-views",
     "displayName": "Saved View",
-    "description": "A user's saved task view (layout, grouping, filters) for a scope such as one project or My Tasks"
+    "description": "A user's saved view (layout, grouping, columns, sort, filters) for a page such as a project, My Tasks or a Grow list; optionally shared with the org"
   },
-  "options": { "draftAndPublish": false },
+  "options": {
+    "draftAndPublish": false
+  },
   "pluginOptions": {},
   "attributes": {
-    "name": { "type": "string", "required": true },
-    "scope": { "type": "string", "required": true },
-    "config": { "type": "json" },
-    "isDefault": { "type": "boolean", "default": false },
-    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
-    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "scope": {
+      "type": "string",
+      "required": true
+    },
+    "config": {
+      "type": "json"
+    },
+    "isDefault": {
+      "type": "boolean",
+      "default": false
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "shared": {
+      "type": "boolean",
+      "default": false
+    }
   }
 }

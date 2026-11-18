@@ -167,6 +167,12 @@ export function TaskViewToolbar({
                           {VIEW_OPTIONS.find((o) => o.key === v.config?.view)?.label || ''}
                         </span>
                       </button>
+                      {v.mine === false ? (
+                        <span className="px-1 text-xs text-gray-400" title={`Shared by ${v.owner?.name || 'a teammate'}`}>
+                          shared
+                        </span>
+                      ) : (
+                        <>
                       <button
                         type="button"
                         title={v.isDefault ? 'Opens by default' : 'Open this view by default'}
@@ -179,6 +185,8 @@ export function TaskViewToolbar({
                       <button type="button" aria-label={`Delete ${v.name}`} className="rounded p-1 text-gray-400 hover:text-red-600" onClick={() => saved.remove(v.id)}>
                         <Trash2 className="h-4 w-4" />
                       </button>
+                        </>
+                      )}
                     </li>
                   ))}
                 </ul>

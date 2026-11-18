@@ -52,6 +52,7 @@ import {
   TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
+import SavedViewsMenu, { useSavedViews, useApplyDefaultView } from '../../../components/SavedViewsMenu';
 import { DealsKanbanBoard, DEAL_PIPELINE_STAGES } from '../../../components/DealsKanbanBoard';
 import WonDealProjectModal from '../../../components/WonDealProjectModal';
 import dealService from '../../../lib/api/dealService';
@@ -256,6 +257,8 @@ export default function DealsPage() {
     handleColumnListDragLeave,
     handleColumnDrop,
     resetColumnTablePreferences,
+    applyColumnPreferences,
+    columnWidths,
     tableResizeProps,
   } = useTableColumnPreferences({
     visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
@@ -443,6 +446,7 @@ export default function DealsPage() {
     moveSortRule,
     clearSort,
     bindSortableColumns,
+    setSortRules,
   } = useCrmTableSort({ entity: 'deal', storageKey: TABLE_SORT_STORAGE_KEY, data: filteredDeals });
 
   const totalPages = Math.ceil(sortedDeals.length / itemsPerPage);
@@ -527,6 +531,37 @@ export default function DealsPage() {
     }
     router.push('/sales/deals/pipeline');
   }, [router]);
+
+  // G3: saved views (server-side, per user, optionally shared with the team)
+  const savedViews = useSavedViews('crm:deals');
+  const getViewConfig = useCallback(
+    () => ({
+      view: dealViewMode, statusTab: activeTab,
+      search: searchQuery,
+      filters: appliedFilters,
+      sort: sortRules,
+      columns: { visibility: columnVisibility, order: columnOrder, widths: columnWidths },
+    }),
+    [activeTab, searchQuery, appliedFilters, sortRules, columnVisibility, columnOrder, columnWidths, dealViewMode]
+  );
+  const applySavedView = useCallback(
+    (c = {}) => {
+      if (c.view) handleDealViewChange(c.view);
+      if (c.statusTab) setActiveTab(c.statusTab);
+      setSearchQuery(typeof c.search === 'string' ? c.search : '');
+      if (c.filters && typeof c.filters === 'object') {
+        const next = { ...DEAL_FILTER_INITIAL, ...c.filters };
+        setAppliedFilters(next);
+        setDraftFilters(next);
+      }
+      if (Array.isArray(c.sort)) setSortRules(c.sort);
+      if (c.columns) applyColumnPreferences(c.columns);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [handleDealViewChange, DEAL_FILTER_INITIAL, setSortRules, applyColumnPreferences]
+  );
+  useApplyDefaultView(savedViews, applySavedView);
+  const savedViewsMenu = <SavedViewsMenu saved={savedViews} getConfig={getViewConfig} onApply={applySavedView} />;
 
   const dealsViewSwitcher = (
     <ViewToggleGroup aria-label="Deals layout">
@@ -994,7 +1029,7 @@ export default function DealsPage() {
           }))}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          afterTabs={dealsViewSwitcher}
+          afterTabs={<div className="flex items-center gap-2">{dealsViewSwitcher}{savedViewsMenu}</div>}
           showSearch
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
