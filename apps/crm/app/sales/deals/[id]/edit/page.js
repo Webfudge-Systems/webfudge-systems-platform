@@ -414,7 +414,7 @@ export default function EditDealPage() {
     ...(canManageDeals ? { assignedTo: form.assignedTo ? form.assignedTo : null } : {}),
   });
 
-  const commitDealUpdate = async (withProject) => {
+  const commitDealUpdate = async (withProject, projectOptions = {}) => {
     if (!id) return;
     if (!canEditDeal) {
       setSubmitError('You can only edit deals assigned to you.');
@@ -426,7 +426,7 @@ export default function EditDealPage() {
       await dealService.update(id, buildPayload());
       if (withProject) {
         try {
-          await dealService.createDeliveryProject(id);
+          await dealService.createDeliveryProject(id, projectOptions);
         } catch (pe) {
           if (typeof window !== 'undefined') {
             window.alert(pe?.message || 'Deal saved as won, but the project could not be created.');
@@ -751,7 +751,7 @@ export default function EditDealPage() {
           if (!saving) setWonProjectModalOpen(false);
         }}
         onSkipProject={() => void commitDealUpdate(false)}
-        onCreateProject={() => void commitDealUpdate(true)}
+        onCreateProject={(options) => void commitDealUpdate(true, options)}
       />
     </div>
   );

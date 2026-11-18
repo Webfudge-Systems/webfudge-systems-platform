@@ -9,8 +9,10 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const { applyCustomFields, applyCustomFieldFilter } = require('../../../utils/crm-custom-fields');
+const { applyAssignmentOnCreate, applyFirstContactOnUpdate } = require('../../../utils/lead-assignment');
+const { getSetting } = require('../../../utils/crm-org-settings');
 const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../../utils/crm-activity-log');
-const { emitUpdateNotifications, assignedStakeholderIds } = require('../../../utils/notification-emitter');
+const { emitUpdateNotifications, assignedStakeholderIds, notifyUsers } = require('../../../utils/notification-emitter');
 const {
   orgIdFromRelation,
   extractQueryFilters,
@@ -292,13 +294,23 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
 
-    // Force org and creator
+    // Force org; owner = explicit choice (managers), else assignment rules (G5), else the creator
     data.organization = ctx.state.orgId;
-    if (!canManageLeadCompanies(ctx) && ctx.state.user?.id) {
+    const isManager = canManageLeadCompanies(ctx);
+    delete data.assignedByRule;
+    delete data.firstContactDueAt;
+    delete data.firstContactedAt;
+    delete data.slaBreachedAt;
+    let explicitOwner = isManager && data.assignedTo != null && data.assignedTo !== '';
+    if (!isManager) {
       data.assignedTo = ctx.state.user.id;
-    } else if (!data.assignedTo && ctx.state.user?.id) {
-      data.assignedTo = ctx.state.user.id;
+      const prefs = await getSetting(strapi, ctx.state.orgId, 'lead_assignment');
+      explicitOwner = !prefs?.applyToRepCreated;
     }
+    await applyAssignmentOnCreate(strapi, ctx.state.orgId, data, {
+      explicitOwner,
+      fallbackUserId: ctx.state.user?.id,
+    });
     const statusErr = validateAndApplyLeadStatus(
       ctx,
       data,
@@ -310,6 +322,16 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (customFieldError) return ctx.badRequest(customFieldError);
 
     const entry = await strapi.entityService.create(UID, { data });
+    if (data.assignedByRule && Number(data.assignedTo) !== Number(ctx.state.user?.id)) {
+      await notifyUsers(strapi, {
+        userIds: [Number(data.assignedTo)],
+        organizationId: ctx.state.orgId,
+        type: 'lead_assigned',
+        title: `New lead assigned to you: ${entry.companyName}`,
+        message: `Assigned by the "${data.assignedByRule}" rule`,
+        data: { subjectType: 'lead_company', subjectId: entry.id, href: `/sales/lead-companies/${entry.id}` },
+      });
+    }
     try {
       await logCrmActivity(strapi, {
         organizationId: ctx.state.orgId,
@@ -352,6 +374,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
+    delete data.firstContactDueAt;
+    delete data.firstContactedAt;
+    delete data.slaBreachedAt;
+    delete data.assignedByRule;
     if (!canManageLeadCompanies(ctx)) {
       delete data.assignedTo;
     }
@@ -364,6 +390,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const customFieldError = await applyCustomFields(strapi, ctx.state.orgId, 'lead', data, existing);
     if (customFieldError) return ctx.badRequest(customFieldError);
+    applyFirstContactOnUpdate(data, existing);
+    if (data.assignedTo != null && Number(data.assignedTo?.id ?? data.assignedTo) !== Number(existing.assignedTo?.id)) {
+      data.assignedByRule = null;
+    }
 
     const entry = await strapi.entityService.update(UID, id, { data });
     const changedKeys = collectChangedKeys(data);

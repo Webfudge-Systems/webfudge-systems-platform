@@ -30,6 +30,7 @@ import {
   TableEmptyBelow,
 } from '@webfudge/ui';
 import {
+  CalendarDays,
   CheckSquare,
   ChevronRight,
   ClipboardList,
@@ -51,6 +52,7 @@ import {
   Table2,
   Trash2,
   CheckCircle,
+  Users,
 } from 'lucide-react';
 import PMPageHeader from '../../components/PMPageHeader';
 import PMRowActions from '../../components/PMRowActions';
@@ -61,6 +63,8 @@ import {
   MyTasksListByStatus,
   MyTasksTimelineView,
 } from '../../components/MyTasksViews';
+import { TaskCalendarView, TaskViewToolbar, TaskWorkloadView } from '../../components/TaskViews';
+import useSavedViews from '../../lib/useSavedViews';
 import { TaskSubtasksAfterRow, TaskSubtasksToggleButton } from '../../components/TaskSubtasksTableExtras';
 import TaskAssigneesPicker from '../../components/TaskAssigneesPicker';
 import {
@@ -131,7 +135,7 @@ const MIN_COLUMN_WIDTHS = {
   actions: 220,
 };
 
-const TASK_VIEW_MODES = ['list', 'table', 'kanban', 'timeline'];
+const TASK_VIEW_MODES = ['list', 'table', 'kanban', 'timeline', 'calendar', 'workload'];
 
 const TASK_FILTER_INITIAL = {
   status: '',
@@ -570,6 +574,16 @@ export default function MyTasksPage() {
       /* ignore */
     }
   }, []);
+
+  // W3: saved views (server-side, per user); the default one opens first.
+  const savedViews = useSavedViews('my-tasks');
+  const appliedMyTasksDefault = useRef(false);
+  useEffect(() => {
+    if (!savedViews.loaded || appliedMyTasksDefault.current) return;
+    appliedMyTasksDefault.current = true;
+    const v = savedViews.defaultView?.config?.view;
+    if (v && TASK_VIEW_MODES.includes(v)) setTaskViewMode(v);
+  }, [savedViews.loaded, savedViews.defaultView]);
 
   const handleTaskViewChange = useCallback((mode) => {
     setTaskViewMode(mode);
@@ -1102,7 +1116,24 @@ export default function MyTasksPage() {
       <ViewToggleButton active={taskViewMode === 'timeline'} title="Timeline" onClick={() => handleTaskViewChange('timeline')}>
         <GanttChart className="h-[18px] w-[18px]" strokeWidth={2} />
       </ViewToggleButton>
+      <ViewToggleButton active={taskViewMode === 'calendar'} title="Calendar" onClick={() => handleTaskViewChange('calendar')}>
+        <CalendarDays className="h-[18px] w-[18px]" strokeWidth={2} />
+      </ViewToggleButton>
+      <ViewToggleButton active={taskViewMode === 'workload'} title="Workload" onClick={() => handleTaskViewChange('workload')}>
+        <Users className="h-[18px] w-[18px]" strokeWidth={2} />
+      </ViewToggleButton>
     </ViewToggleGroup>
+  );
+  const myTasksViewSwitcher = (
+    <div className="flex flex-wrap items-center gap-2">
+      {taskViewSwitcher}
+      <TaskViewToolbar
+        savedOnly
+        view={taskViewMode}
+        onViewChange={(mode) => TASK_VIEW_MODES.includes(mode) && handleTaskViewChange(mode)}
+        saved={savedViews}
+      />
+    </div>
   );
 
   return (
@@ -1164,7 +1195,7 @@ export default function MyTasksPage() {
           onTabChange={(id) => {
             setActiveTab(id);
           }}
-          afterTabs={taskViewSwitcher}
+          afterTabs={myTasksViewSwitcher}
           showSearch
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -1329,6 +1360,10 @@ export default function MyTasksPage() {
               activeTab={activeTab}
             />
           )
+        ) : taskViewMode === 'calendar' ? (
+          <TaskCalendarView tasks={tableRootTasks} />
+        ) : taskViewMode === 'workload' ? (
+          <TaskWorkloadView tasks={tableRootTasks} />
         ) : (
           <MyTasksTimelineView tasks={tableRootTasks} router={router} />
         )}

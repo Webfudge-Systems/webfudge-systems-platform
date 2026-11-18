@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_org_settings",
+  "info": {
+    "singularName": "crm-org-setting",
+    "pluralName": "crm-org-settings",
+    "displayName": "CRM Org Setting",
+    "description": "Per-organization CRM settings stored as key + JSON value (lead SLA, picklists, notification preferences)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "key": {
+      "type": "string",
+      "required": true
+    },
+    "value": {
+      "type": "json"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "kind": "collectionType",
+  "collectionName": "time_entries",
+  "info": {
+    "singularName": "time-entry",
+    "pluralName": "time-entries",
+    "displayName": "Time Entry",
+    "description": "Hours one user spent on one task (or project) on one day; rolled up into a weekly timesheet"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "date": { "type": "date", "required": true },
+    "hours": { "type": "decimal", "default": 0 },
+    "billable": { "type": "boolean", "default": true },
+    "note": { "type": "string" },
+    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "task": { "type": "relation", "relation": "manyToOne", "target": "api::task.task" },
+    "project": { "type": "relation", "relation": "manyToOne", "target": "api::project.project" },
+    "timesheet": { "type": "relation", "relation": "manyToOne", "target": "api::timesheet.timesheet" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

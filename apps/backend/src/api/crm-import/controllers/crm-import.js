@@ -23,6 +23,7 @@ const {
 } = require('../../../utils/crm-dedupe');
 const { listFields, applyCustomFields } = require('../../../utils/crm-custom-fields');
 const { leadStatusKeys } = require('../../../utils/crm-pipeline');
+const { applyAssignmentOnCreate } = require('../../../utils/lead-assignment');
 
 const UID = 'api::crm-import.crm-import';
 const MAX_ROWS = 20000;
@@ -130,9 +131,11 @@ async function runImport(strapi, jobId, { orgId, userId, entity, rows, duplicate
           }
           if (!match || duplicateMode === 'create') {
             try {
-              const entry = await strapi.entityService.create(uid, {
-                data: { ...data, organization: orgId, assignedTo: userId },
-              });
+              const record = { ...data, organization: orgId, assignedTo: userId };
+              if (entity === 'lead') {
+                await applyAssignmentOnCreate(strapi, orgId, record, { explicitOwner: false, fallbackUserId: userId });
+              }
+              const entry = await strapi.entityService.create(uid, { data: record });
               created += 1;
               addToIndex(index, entity, entry);
             } catch (e) {

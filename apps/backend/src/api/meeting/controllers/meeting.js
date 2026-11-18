@@ -15,6 +15,8 @@ const {
   safeCount,
 } = require('../../../utils/content-api-helpers');
 
+const { markFirstContact } = require('../../../utils/lead-assignment');
+
 const UID = 'api::meeting.meeting';
 const DEAL_UID = 'api::deal.deal';
 
@@ -147,6 +149,13 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
 
     const entry = await strapi.entityService.create(UID, { data });
+    if (lcId) {
+      try {
+        await markFirstContact(strapi, lcId, ctx.state.orgId);
+      } catch (_) {
+        /* best-effort (G5 SLA) */
+      }
+    }
     let forLog = entry;
     try {
       if (forLog?.id != null) {

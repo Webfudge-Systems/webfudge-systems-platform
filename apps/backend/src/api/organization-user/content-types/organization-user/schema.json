@@ -52,6 +52,13 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::department.department"
+    },
+    "weeklyCapacityHours": {
+      "type": "decimal",
+      "default": 40
+    },
+    "jobRole": {
+      "type": "string"
     }
   }
 }
