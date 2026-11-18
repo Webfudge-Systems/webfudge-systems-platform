@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Button, Card, LoadingSpinner, Modal } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
+import { gstBreakup } from '../../../../lib/gst';
 import { InfoRow, DetailColumnHeading, SidebarCardTitle } from '@webfudge/ui';
 import invoiceService from '../../../../lib/api/invoiceService';
 import {
@@ -61,7 +62,8 @@ function InvoicePreviewDocument({ inv }) {
   const currency = inv.currency || 'INR';
   const lineItems = Array.isArray(inv.lineItems) ? inv.lineItems : [];
   const subtotal = lineItems.reduce((s, i) => s + (parseFloat(i.qty) || 0) * (parseFloat(i.rate) || 0), 0);
-  const taxAmount = subtotal * ((parseFloat(inv.taxRate) || 0) / 100);
+  const gst = gstBreakup(inv, lineItems);
+  const taxAmount = gst ? gst.tax : subtotal * ((parseFloat(inv.taxRate) || 0) / 100);
   const total = subtotal + taxAmount - (parseFloat(inv.discount) || 0);
   const balanceDue = total - (parseFloat(inv.amountPaid) || 0);
 
@@ -117,6 +119,7 @@ function InvoicePreviewDocument({ inv }) {
                   <td style={{ padding: '10px 12px' }}>
                     <div style={{ fontWeight: '600' }}>{item.name}</div>
                     {item.description && <div style={{ color: '#6b7280', fontSize: '10px' }}>{item.description}</div>}
+                    {item.gstRate != null && <div style={{ color: '#6b7280', fontSize: '10px' }}>{item.hsnSac ? `HSN/SAC ${item.hsnSac} · ` : ''}GST {item.gstRate}%</div>}
                   </td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>{item.qty || '—'}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>{item.rate ? formatCurrency(item.rate, currency) : '—'}</td>
@@ -130,7 +133,9 @@ function InvoicePreviewDocument({ inv }) {
           <table style={{ fontSize: '11px', borderCollapse: 'collapse', minWidth: '280px' }}>
             <tbody>
               <TotalRow label="Sub Total" value={formatCurrency(subtotal, currency)} />
-              {inv.taxRate && parseFloat(inv.taxRate) > 0 && <TotalRow label={`${inv.taxLabel || 'Tax'} (${inv.taxRate}%)`} value={formatCurrency(taxAmount, currency)} />}
+              {gst
+                ? gst.rows.map((r) => <TotalRow key={r.label} label={r.label} value={formatCurrency(r.amount, currency)} />)
+                : inv.taxRate && parseFloat(inv.taxRate) > 0 && <TotalRow label={`${inv.taxLabel || 'Tax'} (${inv.taxRate}%)`} value={formatCurrency(taxAmount, currency)} />}
               {parseFloat(inv.discount) > 0 && <TotalRow label="Discount" value={`-${formatCurrency(inv.discount, currency)}`} />}
               <TotalRow label="Total" value={formatCurrency(total, currency)} bold />
               {parseFloat(inv.amountPaid) > 0 && <TotalRow label="Amount Paid" value={`-${formatCurrency(inv.amountPaid, currency)}`} />}
@@ -226,7 +231,8 @@ export default function InvoiceDetailPage() {
 
   const lineItems = Array.isArray(invoice.lineItems) ? invoice.lineItems : [];
   const subtotal = lineItems.reduce((s, i) => s + (parseFloat(i.qty) || 0) * (parseFloat(i.rate) || 0), 0);
-  const taxAmount = subtotal * ((parseFloat(invoice.taxRate) || 0) / 100);
+  const gst = gstBreakup(invoice, lineItems);
+  const taxAmount = gst ? gst.tax : subtotal * ((parseFloat(invoice.taxRate) || 0) / 100);
   const total = subtotal + taxAmount - (parseFloat(invoice.discount) || 0);
   const balanceDue = total - (parseFloat(invoice.amountPaid) || 0);
   const statusCfg = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.DRAFT;
@@ -380,7 +386,14 @@ export default function InvoiceDetailPage() {
                         <tr key={idx} className="hover:bg-gray-50">
                           <td className="px-4 py-3 font-medium text-gray-400">{idx + 1}</td>
                           <td className="px-4 py-3 font-semibold text-gray-900">{item.name}</td>
-                          <td className="px-4 py-3 text-gray-500">{item.description || '—'}</td>
+                          <td className="px-4 py-3 text-gray-500">
+                            {item.description || (item.gstRate == null ? '—' : '')}
+                            {item.gstRate != null ? (
+                              <span className="block text-xs text-gray-400">
+                                {item.hsnSac ? `HSN/SAC ${item.hsnSac} · ` : ''}GST {item.gstRate}%
+                              </span>
+                            ) : null}
+                          </td>
                           <td className="px-4 py-3 text-gray-700">{item.qty}</td>
                           <td className="px-4 py-3 text-gray-700">
                             {item.rate ? formatCurrency(item.rate, invoice.currency) : '—'}
@@ -403,7 +416,15 @@ export default function InvoiceDetailPage() {
                         {formatCurrency(subtotal, invoice.currency)}
                       </td>
                     </tr>
-                    {parseFloat(invoice.taxRate) > 0 && (
+                    {gst
+                      ? gst.rows.map((r) => (
+                          <tr key={r.label} className="border-b border-gray-100">
+                            <td className="px-6 py-2 text-gray-500">{r.label}</td>
+                            <td className="px-6 py-2 text-right font-medium tabular-nums">{formatCurrency(r.amount, invoice.currency)}</td>
+                          </tr>
+                        ))
+                      : null}
+                    {!gst && parseFloat(invoice.taxRate) > 0 && (
                       <tr className="border-b border-gray-100">
                         <td className="px-6 py-2 text-gray-500">
                           {invoice.taxLabel || 'Tax'} ({invoice.taxRate}%)

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, ChevronRight, ExternalLink, GitBranch, ListChecks, MessageSquare, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
+import { Bell, ChevronRight, ExternalLink, GitBranch, ListChecks, MessageSquare, Package, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
 import { Card } from '@webfudge/ui';
 import { getAppUrl } from '@webfudge/utils';
 import CRMPageHeader from '../../components/CRMPageHeader';
@@ -30,6 +30,12 @@ const SECTIONS = [
     icon: UserCheck,
     title: 'Lead assignment & SLA',
     description: 'Auto-assign new leads (round robin, fewest open leads, by city, state, pincode, source or industry) and set a first-contact time limit.',
+  },
+  {
+    href: '/settings/products',
+    icon: Package,
+    title: 'Products & price books',
+    description: 'Your catalogue with HSN/SAC and GST rates, plus price books, used to build quotes that convert to GST invoices.',
   },
   {
     href: '/settings/notifications',

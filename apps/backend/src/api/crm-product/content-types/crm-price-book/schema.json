@@ -1,0 +1,19 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_price_books",
+  "info": {
+    "singularName": "crm-price-book",
+    "pluralName": "crm-price-books",
+    "displayName": "CRM Price Book",
+    "description": "Named price list per organization: product id -> price override (G13)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "description": { "type": "string" },
+    "isDefault": { "type": "boolean", "default": false },
+    "prices": { "type": "json" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}
