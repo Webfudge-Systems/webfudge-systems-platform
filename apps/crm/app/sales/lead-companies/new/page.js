@@ -19,6 +19,7 @@ import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import contactService from '../../../../lib/api/contactService';
 import strapiClient from '../../../../lib/strapiClient';
 import assignmentService from '../../../../lib/api/assignmentService';
+import { useLeadSourceOptions } from '../../../../lib/leadSources';
 import { useAuth } from '@webfudge/auth';
 import {
   Building2,
@@ -98,16 +99,8 @@ export default function AddLeadCompanyPage() {
     },
   ]);
 
-  const leadSourceOptions = [
-    { value: 'WEBSITE', label: 'Website' },
-    { value: 'REFERRAL', label: 'Referral' },
-    { value: 'SOCIAL_MEDIA', label: 'Social Media' },
-    { value: 'EMAIL_CAMPAIGN', label: 'Email Campaign' },
-    { value: 'COLD_CALL', label: 'Cold Call' },
-    { value: 'TRADE_SHOW', label: 'Trade Show' },
-    { value: 'PARTNER', label: 'Partner' },
-    { value: 'OTHER', label: 'Other' },
-  ];
+  // GF4: org-configured lead sources (Settings → Industries & lead sources)
+  const leadSourceOptions = useLeadSourceOptions();
 
   const statusOptions = LEAD_STATUS_OPTIONS.filter(
     (opt) => opt.value !== 'CONVERTED'

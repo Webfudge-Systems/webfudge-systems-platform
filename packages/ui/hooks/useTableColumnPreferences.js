@@ -184,6 +184,31 @@ export function useTableColumnPreferences({
     persistJson(orderStorageKey, order);
   }, [defaultVisibility, orderStorageKey, reorderableKeys, visibilityStorageKey]);
 
+  /** Apply saved column settings (G3 saved views): visibility, order and widths, merged over defaults. */
+  const applyColumnPreferences = useCallback(
+    (prefs = {}) => {
+      if (prefs.visibility && typeof prefs.visibility === 'object') {
+        const vis = { ...defaultVisibility, ...prefs.visibility };
+        setColumnVisibility(vis);
+        persistJson(visibilityStorageKey, vis);
+      }
+      if (Array.isArray(prefs.order)) {
+        const known = prefs.order.filter((k) => reorderableKeys.includes(k));
+        const order = [...known, ...reorderableKeys.filter((k) => !known.includes(k))];
+        setColumnOrder(order);
+        persistJson(orderStorageKey, order);
+      }
+      if (prefs.widths && typeof prefs.widths === 'object') {
+        setColumnWidths((prev) => {
+          const next = { ...prev, ...prefs.widths };
+          if (widthsStorageKey) persistJson(widthsStorageKey, next);
+          return next;
+        });
+      }
+    },
+    [defaultVisibility, orderStorageKey, reorderableKeys, visibilityStorageKey, widthsStorageKey]
+  );
+
   const toggleColumnPicker = useCallback(() => {
     setColumnPickerOpen((open) => !open);
   }, []);
@@ -220,6 +245,7 @@ export function useTableColumnPreferences({
     handleColumnListDragLeave,
     handleColumnDrop,
     resetColumnTablePreferences,
+    applyColumnPreferences,
     tableResizeProps,
     handleColumnResizeEnd,
   };

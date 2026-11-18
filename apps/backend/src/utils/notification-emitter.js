@@ -209,7 +209,10 @@ async function emitUpdateNotifications(strapi, opts) {
 
   const stakeholders = uniquePositiveIds(stakeholderIds || []);
   const recipients = excludeActor(stakeholders, actorUserId);
-  if (!recipients.length) return;
+  // Don't bail out on an assignment change: the new assignee must hear about it even when the
+  // only previous stakeholder was the actor (e.g. handing your own lead to a teammate).
+  const assignmentChanged = keys.includes('assignee') || keys.includes('assignedTo');
+  if (!recipients.length && !assignmentChanged) return;
 
   const link = buildHref(subjectType, subjectId);
   const entityLabel = entityName || 'record';

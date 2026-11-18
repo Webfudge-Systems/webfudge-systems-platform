@@ -45,6 +45,7 @@ import {
 import PMPageHeader from '../../../components/PMPageHeader';
 import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
+import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
 import ProjectGantt from '../../../components/ProjectGantt';
@@ -86,6 +87,7 @@ const DETAIL_TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'timeline', label: 'Timeline' },
+  { key: 'sprints', label: 'Sprints' },
   { key: 'activity', label: 'Activity' },
   { key: 'files', label: 'Files' },
 ];
@@ -1161,6 +1163,8 @@ export default function ProjectDetailPage() {
           canApproveAssignments={canApproveAssignments}
         />
       ) : null}
+
+      {activeTab === 'sprints' && project?.id ? <ProjectSprintsPanel projectId={project.id} /> : null}
 
       {activeTab === 'activity' ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start">
