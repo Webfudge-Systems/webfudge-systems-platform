@@ -17,23 +17,38 @@
     },
     "creationMode": {
       "type": "enumeration",
-      "enum": ["BUILDER", "UPLOAD"],
+      "enum": [
+        "BUILDER",
+        "UPLOAD"
+      ],
       "default": "BUILDER"
     },
     "documentType": {
       "type": "enumeration",
-      "enum": ["SOW", "PROPOSAL", "QUOTE"],
+      "enum": [
+        "SOW",
+        "PROPOSAL",
+        "QUOTE"
+      ],
       "default": "PROPOSAL"
     },
     "proposalFile": {
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": ["files"]
+      "allowedTypes": [
+        "files"
+      ]
     },
     "status": {
       "type": "enumeration",
-      "enum": ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"],
+      "enum": [
+        "DRAFT",
+        "SENT",
+        "ACCEPTED",
+        "REJECTED",
+        "EXPIRED"
+      ],
       "default": "DRAFT"
     },
     "proposalNumber": {
@@ -152,6 +167,23 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::deal.deal"
+    },
+    "lineItems": {
+      "type": "json"
+    },
+    "quoteTotals": {
+      "type": "json"
+    },
+    "sellerGstin": {
+      "type": "string"
+    },
+    "buyerGstin": {
+      "type": "string"
+    },
+    "convertedInvoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invoice.invoice"
     }
   }
 }
