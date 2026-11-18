@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, GitBranch, SlidersHorizontal } from 'lucide-react';
+import { ChevronRight, GitBranch, SlidersHorizontal, UserCheck } from 'lucide-react';
 import { Card } from '@webfudge/ui';
 import CRMPageHeader from '../../components/CRMPageHeader';
 
@@ -17,6 +17,12 @@ const SECTIONS = [
     icon: SlidersHorizontal,
     title: 'Custom fields',
     description: 'Extra fields on lead companies, contacts, client accounts and deals: text, numbers, ₹, dates, dropdowns, team members and more.',
+  },
+  {
+    href: '/settings/assignment',
+    icon: UserCheck,
+    title: 'Lead assignment & SLA',
+    description: 'Auto-assign new leads (round robin, fewest open leads, by city, state, pincode, source or industry) and set a first-contact time limit.',
   },
 ];
 

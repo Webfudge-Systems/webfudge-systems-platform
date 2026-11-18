@@ -18,6 +18,7 @@ import CRMPageHeader from '../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import contactService from '../../../../lib/api/contactService';
 import strapiClient from '../../../../lib/strapiClient';
+import assignmentService from '../../../../lib/api/assignmentService';
 import { useAuth } from '@webfudge/auth';
 import {
   Building2,
@@ -49,6 +50,7 @@ export default function AddLeadCompanyPage() {
     fetchStoredIndustries: fetchStoredIndustriesForCrm,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [autoAssign, setAutoAssign] = useState(false);
   const [errors, setErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -169,7 +171,10 @@ export default function AddLeadCompanyPage() {
 
       setUsers(allUsers);
 
-      if (user?.email && allUsers.length > 0) {
+      // G5: with active assignment rules, leave the owner empty so the rules pick one.
+      const autoAssign = await assignmentService.hasActiveRules();
+      if (autoAssign) setAutoAssign(true);
+      if (!autoAssign && user?.email && allUsers.length > 0) {
         const currentUser = allUsers.find((u) => u.email === user.email);
         if (currentUser) {
           setCompanyData((prev) => ({
@@ -651,7 +656,7 @@ export default function AddLeadCompanyPage() {
                   onChange={(value) => handleCompanyChange('assignedTo', value)}
                   options={userSelectOptions}
                   disabled={loadingUsers}
-                  placeholder="Unassigned"
+                  placeholder={autoAssign ? 'Auto-assign (rules)' : 'Unassigned'}
                 />
               </div>
 
