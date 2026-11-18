@@ -14,6 +14,7 @@ import {
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../../../components/CRMPageHeader';
 import WonDealProjectModal from '../../../../../components/WonDealProjectModal';
+import { useCrmSettings } from '../../../../../lib/api/crmSettingsService';
 import dealService from '../../../../../lib/api/dealService';
 import { shouldPromptDeliveryProjectOnWon } from '../../../../../lib/wonDealProjectPrompt';
 import leadCompanyService from '../../../../../lib/api/leadCompanyService';
@@ -49,6 +50,8 @@ function relId(rel) {
 }
 
 export default function EditDealPage() {
+  const crmSettings = useCrmSettings(); // G15: lost reasons from Grow settings
+  const lostReasonOptions = (crmSettings?.lost_reasons?.items || []).map((r) => ({ value: r, label: r }));
   const params = useParams();
   const router = useRouter();
   const id = params?.id;
@@ -196,6 +199,7 @@ export default function EditDealPage() {
         setForm({
           name: d.name ?? '',
           stage: d.stage ?? 'discovery',
+          lostReason: d.lostReason ?? '',
           value: d.value != null ? String(d.value) : '',
           expectedCloseDate: close,
           priority: d.priority ?? 'medium',
@@ -399,6 +403,7 @@ export default function EditDealPage() {
   const buildPayload = () => ({
     name: form.name.trim(),
     stage: form.stage,
+    ...(form.stage === 'lost' ? { lostReason: form.lostReason || null } : {}),
     value: form.value,
     expectedCloseDate: form.expectedCloseDate || null,
     priority: form.priority,
@@ -604,6 +609,15 @@ export default function EditDealPage() {
                   options={DEAL_STAGE_OPTIONS}
                   placeholder="Stage"
                 />
+                {form.stage === 'lost' ? (
+                  <Select
+                    label="Lost reason"
+                    value={form.lostReason || ''}
+                    onChange={(v) => setField('lostReason', v)}
+                    options={lostReasonOptions}
+                    placeholder="Why was it lost?"
+                  />
+                ) : null}
                 <Select
                   label="Priority"
                   value={form.priority}

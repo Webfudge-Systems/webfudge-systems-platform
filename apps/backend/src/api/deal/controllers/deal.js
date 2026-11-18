@@ -18,6 +18,7 @@ const {
 } = require('../../../utils/content-api-helpers');
 const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
 const { applyDealPipeline } = require('../../../utils/crm-pipeline');
+const { applyDealClosure } = require('../../../utils/crm-analytics');
 const { getTemplate, createProjectFromTemplate } = require('../../../utils/project-templates');
 const { createWonDealInvoices } = require('../../../utils/deal-invoices');
 
@@ -116,6 +117,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     delete data.documentId;
 
     const pipelineError = await applyDealPipeline(strapi, ctx.state.orgId, data, null);
+    applyDealClosure(data, null); // G15
     if (pipelineError) return ctx.badRequest(pipelineError);
     const customFieldError = await applyCustomFields(strapi, ctx.state.orgId, 'deal', data, null);
     if (customFieldError) return ctx.badRequest(customFieldError);
@@ -181,6 +183,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     const pipelineError = await applyDealPipeline(strapi, ctx.state.orgId, data, existing);
     if (pipelineError) return ctx.badRequest(pipelineError);
+    applyDealClosure(data, existing); // G15: closedAt + lostReason
     const customFieldError = await applyCustomFields(strapi, ctx.state.orgId, 'deal', data, existing);
     if (customFieldError) return ctx.badRequest(customFieldError);
 

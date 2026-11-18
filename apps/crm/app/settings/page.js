@@ -16,8 +16,8 @@ const SECTIONS = [
   {
     href: '/settings/picklists',
     icon: ListChecks,
-    title: 'Industries & lead sources',
-    description: 'Add your own industries and set the lead sources your team picks from.',
+    title: 'Industries, lead sources & lost reasons',
+    description: 'Add your own industries and set the lead sources and deal lost reasons your team picks from.',
   },
   {
     href: '/settings/custom-fields',

@@ -85,12 +85,14 @@ export default function PicklistsSettingsPage() {
   const [sources, setSources] = useState([]); // labels, in order
   const [sourceValues, setSourceValues] = useState({}); // label → stored value (keeps existing keys stable)
   const [customSources, setCustomSources] = useState(false);
+  const [lostReasons, setLostReasons] = useState([]);
 
   useEffect(() => {
     crmSettingsService
       .getAll({ force: true })
       .then((s) => {
         setIndustries(s?.industries?.items || []);
+        setLostReasons(s?.lost_reasons?.items || []);
         const items = Array.isArray(s?.lead_sources?.items) ? s.lead_sources.items : null;
         const list = items || DEFAULT_LEAD_SOURCES;
         setCustomSources(Boolean(items));
@@ -142,7 +144,7 @@ export default function PicklistsSettingsPage() {
     <div className="p-4 md:p-6 space-y-6">
       <CRMPageHeader
         title="Industries & lead sources"
-        subtitle="The choices your team picks from on leads and client accounts"
+        subtitle="The choices your team picks from on leads, client accounts and deals"
         breadcrumb={[
           { label: 'Settings', href: '/settings' },
           { label: 'Industries & lead sources', href: '/settings/picklists' },
@@ -193,6 +195,23 @@ export default function PicklistsSettingsPage() {
                 ) : null}
                 <Button onClick={saveSources} disabled={busy || !sources.length}>
                   Save lead sources
+                </Button>
+              </div>
+            ) : null}
+          </Card>
+
+          <Card className="space-y-4 border border-gray-200 p-5">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Deal lost reasons</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Offered when a deal is marked lost. Analytics groups lost deals by these reasons.
+              </p>
+            </div>
+            <ListEditor items={lostReasons} onChange={setLostReasons} disabled={!canEdit} placeholder="e.g. Went with in-house team" addLabel="New lost reason" />
+            {canEdit ? (
+              <div className="flex justify-end">
+                <Button onClick={() => save('lost_reasons', { items: lostReasons }, 'Lost reasons saved.')} disabled={busy || !lostReasons.length}>
+                  Save lost reasons
                 </Button>
               </div>
             ) : null}

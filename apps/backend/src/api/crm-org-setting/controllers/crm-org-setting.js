@@ -9,7 +9,7 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const { requireAppSettingsManage } = require('../../../utils/rbac');
 const { SETTING_UID, NOTIFICATION_CATEGORIES, getSetting, setSetting } = require('../../../utils/crm-org-settings');
 
-const PUBLIC_KEYS = ['industries', 'lead_sources', 'notification_prefs'];
+const PUBLIC_KEYS = ['industries', 'lead_sources', 'notification_prefs', 'lost_reasons'];
 const MAX_ITEMS = 100;
 
 function sourceValue(label) {
@@ -51,6 +51,12 @@ const VALIDATORS = {
     if (!items.length) return { error: 'Keep at least one lead source' };
     if (items.length > MAX_ITEMS) return { error: `At most ${MAX_ITEMS} lead sources` };
     return { value: { items } };
+  },
+  lost_reasons(body) {
+    const r = VALIDATORS.industries(body); // same shape: unique trimmed labels
+    if (r.error) return { error: r.error.replace('industries', 'lost reasons') };
+    if (!r.value.items.length) return { error: 'Keep at least one lost reason' };
+    return { value: { items: r.value.items.map((s) => s.slice(0, 120)) } };
   },
   notification_prefs(body) {
     const value = {};

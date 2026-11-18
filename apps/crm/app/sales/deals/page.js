@@ -55,6 +55,7 @@ import CRMPageHeader from '../../../components/CRMPageHeader';
 import SavedViewsMenu, { useSavedViews, useApplyDefaultView } from '../../../components/SavedViewsMenu';
 import { DealsKanbanBoard, DEAL_PIPELINE_STAGES } from '../../../components/DealsKanbanBoard';
 import WonDealProjectModal from '../../../components/WonDealProjectModal';
+import LostReasonModal from '../../../components/LostReasonModal';
 import dealService from '../../../lib/api/dealService';
 import { shouldPromptDeliveryProjectOnWon } from '../../../lib/wonDealProjectPrompt';
 import crmActivityService from '../../../lib/api/crmActivityService';
@@ -276,6 +277,7 @@ export default function DealsPage() {
   const [stageSavingId, setStageSavingId] = useState(null);
   const [wonDealPrompt, setWonDealPrompt] = useState(null);
   const [wonDealBusy, setWonDealBusy] = useState(false);
+  const [lostPrompt, setLostPrompt] = useState(null); // G15: { dealId, dealName }
 
   const [moreActionMenu, setMoreActionMenu] = useState(null);
   const [commentComposerMenu, setCommentComposerMenu] = useState(null);
@@ -476,7 +478,7 @@ export default function DealsPage() {
   }, [paginatedDeals]);
 
   const handleStageChange = useCallback(
-    async (dealId, newStage) => {
+    async (dealId, newStage, lostReason = null) => {
       const row = deals.find((d) => d.id === dealId);
       if (!canEditCRMRecord('deals', row)) {
         alert('You can only update deals assigned to you.');
@@ -486,9 +488,13 @@ export default function DealsPage() {
         setWonDealPrompt({ dealId, dealName: row.name });
         return;
       }
+      if (newStage === 'lost' && String(row?.stage || '').toLowerCase() !== 'lost' && lostReason === null) {
+        setLostPrompt({ dealId, dealName: row?.name || '' });
+        return;
+      }
       setStageSavingId(dealId);
       try {
-        await dealService.update(dealId, { stage: newStage });
+        await dealService.update(dealId, newStage === 'lost' && lostReason ? { stage: newStage, lostReason } : { stage: newStage });
         setDeals((prev) => prev.map((d) => (d.id === dealId ? { ...d, stage: newStage } : d)));
       } catch (e) {
         alert(e?.message || 'Failed to update stage');
@@ -1540,6 +1546,21 @@ export default function DealsPage() {
             </TableRowActionMenuPortal>
           );
         })()}
+
+      <LostReasonModal
+        isOpen={!!lostPrompt}
+        dealName={lostPrompt?.dealName}
+        onSkip={() => {
+          const p = lostPrompt;
+          setLostPrompt(null);
+          if (p) void handleStageChange(p.dealId, 'lost', '');
+        }}
+        onSave={(reason) => {
+          const p = lostPrompt;
+          setLostPrompt(null);
+          if (p) void handleStageChange(p.dealId, 'lost', reason);
+        }}
+      />
 
       <WonDealProjectModal
         open={!!wonDealPrompt}
