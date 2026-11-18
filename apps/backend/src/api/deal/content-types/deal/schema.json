@@ -30,6 +30,14 @@
       "enum": ["low", "medium", "high"],
       "default": "medium"
     },
+    "pipeline": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::crm-pipeline.crm-pipeline"
+    },
+    "pipelineStageKey": {
+      "type": "string"
+    },
     "probability": {
       "type": "integer",
       "default": 0,

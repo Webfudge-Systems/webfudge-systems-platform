@@ -27,6 +27,9 @@ const {
 const UID = 'api::lead-company.lead-company';
 const CONTACT_UID = 'api::contact.contact';
 const CLIENT_ACCOUNT_UID = 'api::client-account.client-account';
+const { leadStatusKeys, ensurePipelines, defaultPipeline } = require('../../../utils/crm-pipeline');
+
+/** Fallback list; the real list is per org (crm-pipeline entity=lead, ticket G2). */
 const LEAD_STATUSES = ['NEW', 'CONTACTED', 'QUALIFIED', 'LOST', 'CONVERTED'];
 
 /** Allowed populate keys for lead-company — unknown keys cause 500s in Strapi 5 */
@@ -49,7 +52,7 @@ function remapLegacyClientStatus(status, hasConvertedAccount) {
   return hasConvertedAccount ? 'CONVERTED' : 'QUALIFIED';
 }
 
-function validateAndApplyLeadStatus(ctx, data) {
+function validateAndApplyLeadStatus(ctx, data, allowed = LEAD_STATUSES) {
   if (!Object.prototype.hasOwnProperty.call(data, 'status')) return;
   let normalized = normalizeLeadStatus(data.status);
   if (!normalized) {
@@ -60,9 +63,9 @@ function validateAndApplyLeadStatus(ctx, data) {
   if (normalized === 'CLIENT') {
     normalized = 'QUALIFIED';
   }
-  if (!LEAD_STATUSES.includes(normalized)) {
+  if (!allowed.includes(normalized)) {
     return ctx.badRequest(
-      `Invalid lead status "${data.status}". Allowed statuses: ${LEAD_STATUSES.join(', ')}`
+      `Invalid lead status "${data.status}". Allowed statuses: ${allowed.join(', ')}`
     );
   }
   data.status = normalized;
@@ -162,11 +165,15 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const denied = requireModuleAccess(ctx, 'crm', 'leads', 'read');
     if (denied) return denied;
+    let stages = [];
+    try {
+      stages = defaultPipeline(await ensurePipelines(strapi, ctx.state.orgId, 'lead'))?.stages || [];
+    } catch (_) {
+      stages = [];
+    }
+    if (!stages.length) stages = LEAD_STATUSES.map((key) => ({ key, label: key.replace(/_/g, ' ') }));
     return {
-      data: LEAD_STATUSES.map((value) => ({
-        value,
-        label: value.replace(/_/g, ' '),
-      })),
+      data: stages.map((s) => ({ value: s.key, label: s.label, color: s.color, kind: s.kind })),
     };
   },
 
@@ -180,8 +187,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const base = { organization: orgId };
     const byStatus = {};
 
+    const orgStatuses = await leadStatusKeys(strapi, orgId);
     await Promise.all(
-      LEAD_STATUSES.map(async (status) => {
+      orgStatuses.map(async (status) => {
         byStatus[status] = await safeCount(strapi, UID, { ...base, status }, 0);
       })
     );
@@ -289,7 +297,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     } else if (!data.assignedTo && ctx.state.user?.id) {
       data.assignedTo = ctx.state.user.id;
     }
-    const statusErr = validateAndApplyLeadStatus(ctx, data);
+    const statusErr = validateAndApplyLeadStatus(
+      ctx,
+      data,
+      data.status != null ? await leadStatusKeys(strapi, ctx.state.orgId) : undefined
+    );
     if (statusErr) return statusErr;
 
     const entry = await strapi.entityService.create(UID, { data });
@@ -338,7 +350,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!canManageLeadCompanies(ctx)) {
       delete data.assignedTo;
     }
-    const statusErr = validateAndApplyLeadStatus(ctx, data);
+    const statusErr = validateAndApplyLeadStatus(
+      ctx,
+      data,
+      data.status != null ? await leadStatusKeys(strapi, ctx.state.orgId) : undefined
+    );
     if (statusErr) return statusErr;
 
     const entry = await strapi.entityService.update(UID, id, { data });

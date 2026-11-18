@@ -7,6 +7,7 @@ import { LoadingSpinner, TabsWithActions, ViewToggleGroup, ViewToggleButton } fr
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import { DealsKanbanBoard, DEAL_PIPELINE_STAGES } from '../../../../components/DealsKanbanBoard';
 import dealService from '../../../../lib/api/dealService';
+import pipelineService, { dealPipelineId, dealStageKey, defaultPipelineOf } from '../../../../lib/api/pipelineService';
 import WonDealProjectModal from '../../../../components/WonDealProjectModal';
 import { canEditCRMRecord, canWriteCRM } from '../../../../lib/rbac';
 
@@ -31,6 +32,9 @@ export default function PipelinePage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [pipelines, setPipelines] = useState([]);
+  const [pipelineId, setPipelineId] = useState(null);
+  const [moveError, setMoveError] = useState('');
 
   const [wonModal, setWonModal] = useState({ open: false, dealId: null, dealName: '' });
   const [wonBusy, setWonBusy] = useState(false);
@@ -41,9 +45,24 @@ export default function PipelinePage() {
     (async () => {
       setLoading(true);
       try {
-        const res = await dealService.getPipeline();
+        const [res, pipeRes] = await Promise.all([
+          dealService.getPipeline(),
+          pipelineService.list('deal').catch(() => ({ data: [] })),
+        ]);
         const data = Array.isArray(res?.data) ? res.data : [];
-        if (!cancelled) setAllDeals(data);
+        if (!cancelled) {
+          setAllDeals(data);
+          const list = pipeRes.data || [];
+          setPipelines(list);
+          let stored = null;
+          try {
+            stored = Number(window.localStorage.getItem('crm.deals.pipelineId')) || null;
+          } catch {
+            /* ignore */
+          }
+          const pick = list.find((p) => p.id === stored) || defaultPipelineOf(list);
+          setPipelineId(pick?.id ?? null);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -53,20 +72,41 @@ export default function PipelinePage() {
     };
   }, []);
 
+  /** Stages of the selected pipeline (falls back to the built-in stages if pipelines can't load). */
+  const activePipeline = useMemo(
+    () => pipelines.find((p) => p.id === pipelineId) || null,
+    [pipelines, pipelineId]
+  );
+  const pipelineStages = useMemo(
+    () =>
+      activePipeline?.stages?.length
+        ? activePipeline.stages
+        : DEAL_PIPELINE_STAGES.map((s) => ({ ...s, kind: s.key === 'won' ? 'won' : s.key === 'lost' ? 'lost' : 'open' })),
+    [activePipeline]
+  );
+
+  /** Deals in the selected pipeline, each tagged with its stage key for the board. */
+  const pipelineDeals = useMemo(() => {
+    if (!pipelines.length) return allDeals.map((d) => ({ ...d, stageKey: dealStageKey(d) }));
+    return allDeals
+      .filter((d) => dealPipelineId(d, pipelines) === pipelineId)
+      .map((d) => ({ ...d, stageKey: dealStageKey(d) }));
+  }, [allDeals, pipelines, pipelineId]);
+
   const stagesData = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const byStage = {};
-    DEAL_PIPELINE_STAGES.forEach(({ key }) => {
+    pipelineStages.forEach(({ key }) => {
       byStage[key] = [];
     });
 
-    allDeals.forEach((d) => {
-      const stage = (d.stage || 'discovery').toLowerCase();
+    pipelineDeals.forEach((d) => {
+      const stage = d.stageKey;
       if (!byStage[stage]) byStage[stage] = [];
       byStage[stage].push(d);
     });
 
-    return DEAL_PIPELINE_STAGES.map(({ key, label }) => {
+    return pipelineStages.map(({ key, label, color }) => {
       let colDeals = byStage[key] || [];
       if (q) {
         colDeals = colDeals.filter((d) => {
@@ -75,9 +115,9 @@ export default function PipelinePage() {
           return name.includes(q) || co.includes(q);
         });
       }
-      return { key, label, deals: colDeals };
+      return { key, label, color, deals: colDeals };
     });
-  }, [allDeals, searchQuery]);
+  }, [pipelineDeals, pipelineStages, searchQuery]);
 
   const filteredStages = useMemo(() => {
     if (activeTab === 'all') return stagesData;
@@ -91,35 +131,64 @@ export default function PipelinePage() {
         label: 'All stages',
         count: stagesData.reduce((sum, s) => sum + s.deals.length, 0),
       },
-      ...DEAL_PIPELINE_STAGES.map(({ key, label }) => ({
+      ...pipelineStages.map(({ key, label }) => ({
         key,
         label,
         count: stagesData.find((s) => s.key === key)?.deals.length ?? 0,
       })),
     ],
-    [stagesData]
+    [stagesData, pipelineStages]
   );
+
+  const selectPipeline = useCallback((id) => {
+    setPipelineId(id);
+    setActiveTab('all');
+    try {
+      window.localStorage.setItem('crm.deals.pipelineId', String(id));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const handlePipelineDealMove = useCallback(async (dealId, newStage) => {
     const deal = allDeals.find((d) => String(d.id) === dealId);
     if (!deal) return;
     if (!canEditCRMRecord('deals', deal)) return;
-    const oldStage = (deal.stage || 'discovery').toLowerCase();
-    if (oldStage === newStage) return;
+    const oldKey = dealStageKey(deal);
+    if (oldKey === newStage) return;
+    const target = pipelineStages.find((s) => s.key === newStage);
+    setMoveError('');
 
-    setAllDeals((prev) => prev.map((d) => (String(d.id) === dealId ? { ...d, stage: newStage } : d)));
+    const previous = { pipelineStageKey: deal.pipelineStageKey, stage: deal.stage, pipeline: deal.pipeline };
+    setAllDeals((prev) =>
+      prev.map((d) => (String(d.id) === dealId ? { ...d, pipelineStageKey: newStage, pipeline: d.pipeline || pipelineId } : d))
+    );
 
     try {
-      await dealService.update(dealId, { stage: newStage });
-    } catch {
-      setAllDeals((prev) => prev.map((d) => (String(d.id) === dealId ? { ...d, stage: oldStage } : d)));
+      const res = await dealService.update(
+        dealId,
+        pipelineId ? { pipeline: pipelineId, pipelineStageKey: newStage } : { stage: newStage }
+      );
+      const saved = res?.data;
+      if (saved) {
+        setAllDeals((prev) =>
+          prev.map((d) =>
+            String(d.id) === dealId
+              ? { ...d, stage: saved.stage ?? d.stage, pipelineStageKey: saved.pipelineStageKey ?? newStage, probability: saved.probability ?? d.probability }
+              : d
+          )
+        );
+      }
+    } catch (err) {
+      setAllDeals((prev) => prev.map((d) => (String(d.id) === dealId ? { ...d, ...previous } : d)));
+      setMoveError(err?.message || 'Could not move the deal');
       return;
     }
 
-    if (newStage === 'won') {
+    if ((target?.kind || (newStage === 'won' ? 'won' : 'open')) === 'won') {
       setWonModal({ open: true, dealId: Number(dealId), dealName: deal.name || '' });
     }
-  }, [allDeals]);
+  }, [allDeals, pipelineId, pipelineStages]);
 
   const goToDealsTable = useCallback(() => {
     try {
@@ -150,8 +219,8 @@ export default function PipelinePage() {
   }, [wonModal, router]);
 
   const hasDeals = stagesData.some((s) => s.deals.length > 0);
-  const totalValue = allDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
-  const totalDeals = allDeals.length;
+  const totalValue = pipelineDeals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
+  const totalDeals = pipelineDeals.length;
 
   const pipelineViewSwitcher = (
     <ViewToggleGroup aria-label="Deals layout">
@@ -185,6 +254,33 @@ export default function PipelinePage() {
         onExportClick={() => {}}
       />
 
+      {pipelines.length > 1 ? (
+        <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Pipelines">
+          {pipelines.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              role="tab"
+              aria-selected={p.id === pipelineId}
+              onClick={() => selectPipeline(p.id)}
+              className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors ${
+                p.id === pipelineId
+                  ? 'border-orange-500 bg-orange-500 text-white shadow-sm'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:text-orange-700'
+              }`}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {moveError ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700" role="alert">
+          {moveError}
+        </p>
+      ) : null}
+
       <TabsWithActions
         tabs={tabItems.map((item) => ({
           key: item.key,
@@ -210,7 +306,7 @@ export default function PipelinePage() {
           <div className="flex min-h-[420px] flex-col items-center justify-center p-12">
             <LoadingSpinner size="lg" message="Loading pipeline…" />
           </div>
-        ) : !hasDeals && !searchQuery ? (
+        ) : allDeals.length === 0 && !searchQuery ? (
           <div className="flex min-h-[360px] flex-col items-center justify-center p-10 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
               <Briefcase className="h-7 w-7 text-gray-400" />
@@ -233,7 +329,7 @@ export default function PipelinePage() {
         ) : (
           <DealsKanbanBoard
             stageColumns={filteredStages}
-            dealsLookup={allDeals}
+            dealsLookup={pipelineDeals}
             onMoveDeal={handlePipelineDealMove}
             getDealHref={(id) => `/sales/deals/${id}`}
             canMoveDeal={(deal) => canEditCRMRecord('deals', deal)}

@@ -16,6 +16,7 @@ const {
   safeCount,
 } = require('../../../utils/content-api-helpers');
 const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
+const { applyDealPipeline } = require('../../../utils/crm-pipeline');
 
 const UID = 'api::deal.deal';
 const PROJECT_UID = 'api::project.project';
@@ -36,6 +37,7 @@ const sanitizePopulate = createPopulateSanitizer(
     'clientAccount',
     'contact',
     'deliveryProject',
+    'pipeline',
   ]),
   DEAL_POPULATE_FALLBACK
 );
@@ -55,6 +57,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (extra.leadCompany) filters.leadCompany = extra.leadCompany;
       if (extra.clientAccount) filters.clientAccount = extra.clientAccount;
       if (extra.stage) filters.stage = extra.stage;
+      if (extra.pipeline) filters.pipeline = extra.pipeline;
     }
 
     const results = await strapi.entityService.findMany(UID, {
@@ -107,6 +110,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     delete data.id;
     delete data.documentId;
 
+    const pipelineError = await applyDealPipeline(strapi, ctx.state.orgId, data, null);
+    if (pipelineError) return ctx.badRequest(pipelineError);
+
     const entry = await strapi.entityService.create(UID, { data });
     let forLog = entry;
     try {
@@ -143,7 +149,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
-      populate: ['organization', 'leadCompany', 'contact', 'assignedTo'],
+      populate: ['organization', 'leadCompany', 'contact', 'assignedTo', 'clientAccount', 'pipeline'],
     });
     if (!existing) return ctx.notFound();
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
@@ -165,6 +171,9 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!canAccess(ctx, 'crm', 'deals', 'manage')) {
       delete data.assignedTo;
     }
+
+    const pipelineError = await applyDealPipeline(strapi, ctx.state.orgId, data, existing);
+    if (pipelineError) return ctx.badRequest(pipelineError);
 
     let entry = await strapi.entityService.update(UID, id, { data });
     const changedKeys = collectChangedKeys(data);
