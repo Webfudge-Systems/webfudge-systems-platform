@@ -114,9 +114,9 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
     {
       id: 'reports',
       module: 'analytics',
-      label: 'Reports',
+      label: 'Portfolio',
       icon: PieChart,
-      href: '/coming-soon?feature=reports',
+      href: '/analytics',
     },
   ]
 
