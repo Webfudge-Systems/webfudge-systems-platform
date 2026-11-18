@@ -133,9 +133,10 @@ export default {
   },
 
   /** Create org project linked to a won deal (`POST /deals/:id/delivery-project`). */
-  async createDeliveryProject(dealId) {
-    const response = await strapiClient.post(`${ENDPOINT}/${dealId}/delivery-project`, {});
-    return normalizeOneResponse(response);
+  /** Won deal → delivery project (G23). options: { templateKey, startDate, invoicePlan: 'none'|'full'|'split50' } */
+  async createDeliveryProject(dealId, options = {}) {
+    const response = await strapiClient.post(`${ENDPOINT}/${dealId}/delivery-project`, { data: options });
+    return { ...normalizeOneResponse(response), meta: response?.meta || {} };
   },
 
   /** All deals for pipeline board (client-side grouping). */

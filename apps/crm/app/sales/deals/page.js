@@ -560,7 +560,7 @@ export default function DealsPage() {
     }
   }, [wonDealPrompt]);
 
-  const confirmWonWithProject = useCallback(async () => {
+  const confirmWonWithProject = useCallback(async (options = {}) => {
     if (!wonDealPrompt) return;
     const { dealId } = wonDealPrompt;
     setWonDealBusy(true);
@@ -569,7 +569,7 @@ export default function DealsPage() {
       await dealService.update(dealId, { stage: 'won' });
       let project = null;
       try {
-        const pr = await dealService.createDeliveryProject(dealId);
+        const pr = await dealService.createDeliveryProject(dealId, options);
         project = pr?.data ?? null;
       } catch (pe) {
         if (typeof window !== 'undefined') {
@@ -1512,7 +1512,7 @@ export default function DealsPage() {
         busy={wonDealBusy}
         onClose={closeWonDealPrompt}
         onSkipProject={() => void confirmWonSkipProject()}
-        onCreateProject={() => void confirmWonWithProject()}
+        onCreateProject={(options) => void confirmWonWithProject(options)}
       />
     </div>
   );

@@ -18,6 +18,8 @@ const {
 } = require('../../../utils/content-api-helpers');
 const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
 const { applyDealPipeline } = require('../../../utils/crm-pipeline');
+const { getTemplate, createProjectFromTemplate } = require('../../../utils/project-templates');
+const { createWonDealInvoices } = require('../../../utils/deal-invoices');
 
 const UID = 'api::deal.deal';
 const PROJECT_UID = 'api::project.project';
@@ -280,6 +282,12 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
   /**
    * POST /deals/:id/delivery-project — create a project linked to a won deal (one-to-one via project.sourceDeal).
    */
+  /**
+   * POST /deals/:id/delivery-project — won deal → delivery project (G23).
+   * Body (all optional): { templateKey, startDate, roleAssignments, invoicePlan: 'none'|'full'|'split50' }
+   * Carries the client account, value and linked proposals (SOW) onto the project; with a template it
+   * generates all phases/tasks; raises draft invoice(s) for the deal value.
+   */
   async createDeliveryProject(ctx) {
     if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
@@ -289,7 +297,13 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (Number.isNaN(dealId)) return ctx.badRequest('Invalid deal id');
 
     const deal = await strapi.entityService.findOne(UID, dealId, {
-      populate: ['organization', 'deliveryProject', 'leadCompany', 'assignedTo'],
+      populate: {
+        organization: true,
+        deliveryProject: true,
+        assignedTo: true,
+        clientAccount: true,
+        leadCompany: { populate: ['convertedAccount'] },
+      },
     });
     if (!deal) return ctx.notFound();
     if (orgIdFromRelation(deal.organization) !== ctx.state.orgId) {
@@ -312,24 +326,87 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       const pid = typeof existing === 'object' ? existing.id ?? null : parseInt(String(existing), 10);
       if (pid != null && !Number.isNaN(pid)) {
         const project = await strapi.entityService.findOne(PROJECT_UID, pid);
-        if (project) return { data: project };
+        if (project) return { data: project, meta: { existing: true } };
       }
     }
+
+    const body = ctx.request?.body?.data || ctx.request?.body || {};
+    const template = body.templateKey ? getTemplate(body.templateKey) : null;
+    if (body.templateKey && !template) return ctx.badRequest('Unknown project template');
+    const invoicePlan = ['none', 'full', 'split50'].includes(body.invoicePlan) ? body.invoicePlan : 'full';
+
+    // Client account: the deal's own, else the account its lead was converted into.
+    // (Previously the lead company id was written into clientAccount by mistake.)
+    const lead = deal.leadCompany && typeof deal.leadCompany === 'object' ? deal.leadCompany : null;
+    const clientAccount =
+      (deal.clientAccount && typeof deal.clientAccount === 'object' ? deal.clientAccount : null) ||
+      (lead?.convertedAccount && typeof lead.convertedAccount === 'object' ? lead.convertedAccount : null);
+
+    // SOW: proposals linked to this deal.
+    const proposals = await strapi.entityService.findMany('api::proposal.proposal', {
+      filters: { organization: ctx.state.orgId, deal: dealId },
+      fields: ['id', 'title', 'proposalNumber', 'totalValue', 'status'],
+      limit: 20,
+    });
+    const sow = proposals.length
+      ? 'Scope / SOW: ' +
+        proposals
+          .map((p) => `${p.proposalNumber ? p.proposalNumber + ' ' : ''}${p.title || 'Proposal'} (/clients/proposals/${p.id})`)
+          .join('; ')
+      : '';
 
     const name = (deal.name && String(deal.name).trim()) || 'Delivery project';
     const data = {
       name,
-      description: deal.description || undefined,
+      description: [deal.description, sow].filter(Boolean).join('\n\n') || undefined,
       organization: ctx.state.orgId,
       sourceDeal: dealId,
       status: 'PLANNING',
     };
     const pmId = orgIdFromRelation(deal.assignedTo);
     if (pmId) data.projectManager = pmId;
-    const leadId = orgIdFromRelation(deal.leadCompany);
-    if (leadId) data.clientAccount = leadId;
+    if (clientAccount?.id) data.clientAccount = clientAccount.id;
+    if (Number(deal.value) > 0) data.budget = Number(deal.value);
 
-    const project = await strapi.entityService.create(PROJECT_UID, { data });
-    return { data: project };
+    let project;
+    let tasksCreated = 0;
+    if (template) {
+      const created = await createProjectFromTemplate(strapi, {
+        orgId: ctx.state.orgId,
+        actorId: ctx.state.user.id,
+        template,
+        project: data,
+        startDate: body.startDate,
+        roleAssignments: body.roleAssignments && typeof body.roleAssignments === 'object' ? body.roleAssignments : {},
+      });
+      project = created.entry;
+      tasksCreated = created.taskCount;
+    } else {
+      project = await strapi.entityService.create(PROJECT_UID, { data });
+    }
+
+    let invoices = [];
+    try {
+      invoices = await createWonDealInvoices(strapi, {
+        orgId: ctx.state.orgId,
+        actorId: ctx.state.user.id,
+        deal,
+        clientAccount,
+        lead,
+        plan: invoicePlan,
+      });
+    } catch (e) {
+      strapi.log.warn(`[deal.createDeliveryProject] invoice: ${e?.message || e}`);
+    }
+
+    return {
+      data: project,
+      meta: {
+        template: template?.key || null,
+        tasksCreated,
+        proposals: proposals.map((p) => p.id),
+        invoices: invoices.map((i) => ({ id: i.id, invoiceNumber: i.invoiceNumber, total: i.total })),
+      },
+    };
   },
 }));
