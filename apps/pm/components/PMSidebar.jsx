@@ -20,6 +20,7 @@ import {
   FileText,
   Calendar,
   Target,
+  Gauge,
   Building2,
   PieChart,
 } from 'lucide-react'
@@ -79,6 +80,13 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       label: 'My Tasks',
       icon: CheckSquare,
       href: '/my-tasks',
+    },
+    {
+      id: 'capacity',
+      module: 'tasks',
+      label: 'Capacity',
+      icon: Gauge,
+      href: '/capacity',
     },
     {
       id: 'inbox',
