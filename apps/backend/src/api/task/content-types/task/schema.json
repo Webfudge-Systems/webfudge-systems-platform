@@ -39,6 +39,11 @@
       "type": "json",
       "default": []
     },
+    "taskType": {
+      "type": "enumeration",
+      "enum": ["task", "bug", "deliverable", "milestone"],
+      "default": "task"
+    },
     "taskCategory": {
       "type": "enumeration",
       "enum": ["general", "development"],

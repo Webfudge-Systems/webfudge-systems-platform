@@ -397,6 +397,7 @@ export function transformTask(strapiTask) {
       recurrenceCustomUnit: t.recurrenceCustomUnit,
     }),
     taskCategory: t.taskCategory || 'general',
+    taskType: t.taskType || 'task',
     devMetadata: t.devMetadata && typeof t.devMetadata === 'object' ? t.devMetadata : null,
   };
 }
