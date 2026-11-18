@@ -1,0 +1,25 @@
+{
+  "kind": "collectionType",
+  "collectionName": "sprints",
+  "info": {
+    "singularName": "sprint",
+    "pluralName": "sprints",
+    "displayName": "Sprint",
+    "description": "Time-boxed iteration inside a project with committed vs completed story points (W7)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "goal": { "type": "text" },
+    "startDate": { "type": "date", "required": true },
+    "endDate": { "type": "date", "required": true },
+    "status": { "type": "enumeration", "enum": ["planned", "active", "completed"], "default": "planned" },
+    "startedAt": { "type": "datetime" },
+    "completedAt": { "type": "datetime" },
+    "committedPoints": { "type": "decimal" },
+    "completedPoints": { "type": "decimal" },
+    "project": { "type": "relation", "relation": "manyToOne", "target": "api::project.project" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}
