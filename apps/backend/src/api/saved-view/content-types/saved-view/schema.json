@@ -1,0 +1,20 @@
+{
+  "kind": "collectionType",
+  "collectionName": "saved_views",
+  "info": {
+    "singularName": "saved-view",
+    "pluralName": "saved-views",
+    "displayName": "Saved View",
+    "description": "A user's saved task view (layout, grouping, filters) for a scope such as one project or My Tasks"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "scope": { "type": "string", "required": true },
+    "config": { "type": "json" },
+    "isDefault": { "type": "boolean", "default": false },
+    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}
