@@ -81,6 +81,17 @@ class ProjectService {
     }
   }
 
+  /** Built-in project templates (W4). */
+  async getTemplates() {
+    const res = await strapiClient.get('/projects/templates');
+    return Array.isArray(res?.data) ? res.data : [];
+  }
+
+  /** Create a project plus all template phases/tasks (W4). */
+  async createFromTemplate({ templateKey, project, roleAssignments }) {
+    return strapiClient.post('/projects/from-template', { data: { templateKey, project, roleAssignments } });
+  }
+
   async createProject(projectData) {
     try {
       return await strapiClient.post('/projects', { data: projectData });

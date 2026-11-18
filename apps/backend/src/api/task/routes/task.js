@@ -18,6 +18,8 @@ module.exports = {
     { method: 'PUT', path: '/tasks/:id', handler: `${UID}.update`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/approve-assignment', handler: `${UID}.approveAssignment`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/reject-assignment', handler: `${UID}.rejectAssignment`, config: authFalse },
+    { method: 'PUT', path: '/tasks/:id/dependencies', handler: `${UID}.setDependencies`, config: authFalse },
+    { method: 'POST', path: '/tasks/:id/reschedule', handler: `${UID}.reschedule`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/timer/start', handler: `${UID}.timerStart`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/timer/stop', handler: `${UID}.timerStop`, config: authFalse },
     { method: 'POST', path: '/tasks/:id/time', handler: `${UID}.logTime`, config: authFalse },

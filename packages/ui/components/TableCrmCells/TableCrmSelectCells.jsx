@@ -365,6 +365,7 @@ export function TableCellLeadStatusSelect({
   saving = false,
   canEdit = true,
   containerClassName = 'min-w-[150px]',
+  options = LEAD_STATUS_OPTIONS,
 }) {
   if (!company || isLeadConverted(company) || !canEdit || !onStatusChange) {
     return <TableCellLeadStatus company={company} />;
@@ -377,7 +378,7 @@ export function TableCellLeadStatusSelect({
     <div onClick={(event) => event.stopPropagation()}>
       <Select
         value={status}
-        options={LEAD_STATUS_OPTIONS}
+        options={options}
         onChange={(next) => onStatusChange(companyId, next)}
         disabled={saving}
         allowEmpty={false}

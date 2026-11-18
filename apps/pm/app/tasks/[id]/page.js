@@ -50,6 +50,7 @@ import {
 import PMPageHeader from '../../../components/PMPageHeader';
 import TaskDetailMetaBar from '../../../components/TaskDetailMetaBar';
 import TaskDetailsCard from '../../../components/TaskDetailsCard';
+import TaskDependenciesCard from '../../../components/TaskDependenciesCard';
 import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import TaskDevDetailsPanel from '../../../components/TaskDevDetailsPanel';
@@ -201,6 +202,7 @@ function taskToInlineDraft(task) {
     recurrenceEndsAt: task.recurrenceEndsAt ? task.recurrenceEndsAt.slice(0, 10) : '',
     taskCategory: task.taskCategory || TASK_CATEGORIES.GENERAL,
     devMetadata: normalizeDevMetadata(task.devMetadata),
+    taskType: task.taskType || 'task',
   };
 }
 
@@ -670,6 +672,7 @@ export default function TaskDetailPage() {
         assigneeUserIds: [...(d.assigneeUserIds || [])],
         projectId: d.projectId || null,
         taskCategory: d.taskCategory || TASK_CATEGORIES.GENERAL,
+        taskType: d.taskType || 'task',
         devMetadata:
           d.taskCategory === TASK_CATEGORIES.DEVELOPMENT
             ? devMetadataToPayload(d.devMetadata)
@@ -1123,6 +1126,7 @@ export default function TaskDetailPage() {
           </div>
 
           <div className="space-y-4">
+            <TaskDependenciesCard task={task} canEdit={canEditCurrentTask} onChanged={loadTask} />
             <Card variant="elevated" className="rounded-xl">
               <SidebarCardTitle
                 title={`Subtasks (${task.subtasks?.length || 0})`}

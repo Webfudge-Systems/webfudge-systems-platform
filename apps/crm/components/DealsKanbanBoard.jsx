@@ -64,6 +64,38 @@ const STAGE_STYLES = {
   },
 };
 
+/** Configurable pipelines (G2) pick a colour per stage; legacy stage keys map to their old colour. */
+const COLOR_STYLES = {
+  blue: STAGE_STYLES.discovery,
+  violet: STAGE_STYLES.prospect,
+  amber: STAGE_STYLES.proposal,
+  orange: STAGE_STYLES.negotiation,
+  emerald: STAGE_STYLES.won,
+  red: STAGE_STYLES.lost,
+  teal: {
+    header: 'bg-teal-50 border-teal-200',
+    text: 'text-teal-700',
+    badge: 'bg-teal-100 text-teal-700',
+    dropActive: 'border-teal-400 bg-teal-50/80 shadow-lg shadow-teal-100',
+  },
+  pink: {
+    header: 'bg-pink-50 border-pink-200',
+    text: 'text-pink-700',
+    badge: 'bg-pink-100 text-pink-700',
+    dropActive: 'border-pink-400 bg-pink-50/80 shadow-lg shadow-pink-100',
+  },
+  gray: {
+    header: 'bg-gray-50 border-gray-200',
+    text: 'text-gray-700',
+    badge: 'bg-gray-100 text-gray-700',
+    dropActive: 'border-gray-400 bg-gray-50/80 shadow-lg shadow-gray-100',
+  },
+};
+
+export function stageStyleFor(stageKey, color) {
+  return COLOR_STYLES[color] || STAGE_STYLES[stageKey] || COLOR_STYLES.gray;
+}
+
 const PRIORITY_PILL = {
   high: 'bg-red-100 text-red-700',
   medium: 'bg-amber-100 text-amber-700',
@@ -179,9 +211,9 @@ function DealCard({ deal, overlay = false, getDealHref, canMoveDeal }) {
   );
 }
 
-function StageColumn({ stageKey, label, deals, isOver, getDealHref, canMoveDeal }) {
+function StageColumn({ stageKey, label, color, deals, isOver, getDealHref, canMoveDeal }) {
   const { setNodeRef } = useDroppable({ id: stageKey });
-  const style = STAGE_STYLES[stageKey] || STAGE_STYLES.discovery;
+  const style = stageStyleFor(stageKey, color);
   const totalValue = deals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
 
   return (
@@ -263,7 +295,7 @@ export function DealsKanbanBoard({ stageColumns, dealsLookup, onMoveDeal, getDea
       const deal = dealsLookup.find((d) => String(d.id) === dealId);
       if (!deal) return;
       if (canMoveDeal && !canMoveDeal(deal)) return;
-      const oldStage = (deal.stage || 'discovery').toLowerCase();
+      const oldStage = String(deal.stageKey ?? (deal.stage || 'discovery').toLowerCase());
       if (oldStage === newStage) return;
       await onMoveDeal(dealId, newStage, deal);
     },
@@ -279,11 +311,12 @@ export function DealsKanbanBoard({ stageColumns, dealsLookup, onMoveDeal, getDea
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-4 overflow-x-auto p-4 pb-5 md:p-5">
-        {stageColumns.map(({ key, label, deals }) => (
+        {stageColumns.map(({ key, label, color, deals }) => (
           <StageColumn
             key={key}
             stageKey={key}
             label={label}
+            color={color}
             deals={deals}
             isOver={overId === key}
             getDealHref={getDealHref}

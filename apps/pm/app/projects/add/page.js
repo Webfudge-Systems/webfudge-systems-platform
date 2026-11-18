@@ -21,6 +21,7 @@ import {
   DollarSign,
 } from 'lucide-react'
 import PMPageHeader from '../../../components/PMPageHeader'
+import ProjectTemplatePicker from '../../../components/ProjectTemplatePicker'
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker'
 import projectService from '../../../lib/api/projectService'
 import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions'
@@ -52,6 +53,22 @@ export default function AddProjectPage() {
   const [clientOptions, setClientOptions] = useState([])
   const [clientsLoading, setClientsLoading] = useState(true)
   const [errors, setErrors] = useState({})
+  const [templates, setTemplates] = useState([])
+  const [templateKey, setTemplateKey] = useState(searchParams.get('template') || '')
+  const [roleAssignments, setRoleAssignments] = useState({})
+
+  useEffect(() => {
+    projectService
+      .getTemplates()
+      .then((list) => {
+        setTemplates(list)
+        // Template preselected via ?template=: prefill the name like a click would.
+        const pre = list.find((t) => t.key === searchParams.get('template'))
+        if (pre) setForm((p) => (p.name ? p : { ...p, name: pre.name }))
+      })
+      .catch(() => setTemplates([]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [form, setForm] = useState({
     name: '',
@@ -161,7 +178,15 @@ export default function AddProjectPage() {
       payload.teamMembers = form.teamMemberIds.map(Number)
       if (canToggleProjectPrivacy()) payload.isPrivate = form.isPrivate
 
-      const result = await projectService.createProject(payload)
+      const result = templateKey
+        ? await projectService.createFromTemplate({
+            templateKey,
+            project: { ...payload, startDate: payload.startDate || new Date().toISOString().slice(0, 10) },
+            roleAssignments: Object.fromEntries(
+              Object.entries(roleAssignments).filter(([, v]) => v).map(([k, v]) => [k, Number(v)])
+            ),
+          })
+        : await projectService.createProject(payload)
       const newId = result?.data?.id || result?.id
       if (newId) {
         router.push(`/projects/${newId}`)
@@ -205,6 +230,22 @@ export default function AddProjectPage() {
             {errors.submit}
           </div>
         )}
+
+        {templates.length ? (
+          <ProjectTemplatePicker
+            templates={templates}
+            value={templateKey}
+            onChange={(key) => {
+              setTemplateKey(key)
+              const t = templates.find((x) => x.key === key)
+              if (t) setForm((p) => (p.name ? p : { ...p, name: t.name }))
+            }}
+            roleAssignments={roleAssignments}
+            onRoleChange={(role, v) => setRoleAssignments((prev) => ({ ...prev, [role]: v }))}
+            userOptions={userOptions}
+            disabled={loading}
+          />
+        ) : null}
 
         {/* Project Information */}
         <Card

@@ -22,6 +22,12 @@ const RESOURCE_APPS = {
   projects: ['crm', 'pm'],
   tasks: ['crm', 'pm'],
   documents: ['crm', 'pm'],
+  // Grow configuration + data tools (G2, G1, G4): same plan rules as the CRM data they change.
+  'crm-pipelines': ['crm'],
+  'crm-custom-fields': ['crm'],
+  'crm-imports': ['crm'],
+  'crm-duplicates': ['crm'],
+  'crm-merge': ['crm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

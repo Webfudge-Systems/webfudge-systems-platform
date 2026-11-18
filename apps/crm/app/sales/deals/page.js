@@ -60,6 +60,8 @@ import crmActivityService from '../../../lib/api/crmActivityService';
 import { contactDisplayName } from '../../../lib/dealFormOptions';
 import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../lib/rbac';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
+import useCustomFields from '../../../lib/useCustomFields';
+import { customFieldColumns } from '../../../components/customFields/customFieldColumns';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import strapiClient from '../../../lib/strapiClient';
 import { hasActiveListFilters, matchesDueDateRange, matchesNumericRange } from '@webfudge/utils';
@@ -915,6 +917,10 @@ export default function DealsPage() {
     ]
   );
 
+  /** Custom fields marked "Show in list" (G1). */
+  const { fields: dealCustomFields } = useCustomFields('deal');
+  const dealCustomColumns = useMemo(() => customFieldColumns(dealCustomFields), [dealCustomFields]);
+
   const visibleTableColumns = useMemo(() => {
     const byKey = Object.fromEntries(allTableColumns.map((c) => [c.key, c]));
     const out = [];
@@ -923,9 +929,10 @@ export default function DealsPage() {
     for (const key of columnOrder) {
       if (columnVisibility[key] && byKey[key]) out.push(byKey[key]);
     }
+    out.push(...dealCustomColumns);
     if (byKey.actions) out.push(byKey.actions);
     return bindSortableColumns(out);
-  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
+  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns, dealCustomColumns]);
 
   return (
     <div className="space-y-6 p-4 md:p-6">
