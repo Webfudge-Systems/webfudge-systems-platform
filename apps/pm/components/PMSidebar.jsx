@@ -23,6 +23,7 @@ import {
   Building2,
   PieChart,
   Clock,
+  Repeat,
 } from 'lucide-react'
 import projectService from '../lib/api/projectService'
 import { transformProject } from '../lib/api/dataTransformers'
@@ -103,6 +104,13 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       label: 'Timesheets',
       icon: Clock,
       href: '/timesheets',
+    },
+    {
+      id: 'retainers',
+      module: 'projects',
+      label: 'Retainers',
+      icon: Repeat,
+      href: '/retainers',
     },
     {
       id: 'clients',

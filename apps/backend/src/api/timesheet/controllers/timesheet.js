@@ -206,6 +206,8 @@ module.exports = createCoreController(T.SHEET_UID, ({ strapi }) => ({
     await T.bumpTaskHours(strapi, task.id, T.round2(hours - before));
     const entries = await T.weekEntries(strapi, orgId, userId, weekStart);
     const totals = await T.refreshTotals(strapi, sheet, entries);
+    // W14: alert account managers straight away if this pushes a retainer past 80% / 100%
+    require('../../../utils/retainers').checkRetainerAlerts(strapi, { orgId }).catch(() => {});
     if (sheet.status === 'rejected') await strapi.entityService.update(T.SHEET_UID, sheet.id, { data: { status: 'draft' } });
     return { data: { weekStart, entries: entries.map(serializeEntry), ...totals } };
   },

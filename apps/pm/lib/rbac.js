@@ -5,6 +5,7 @@ export const PM_ROUTE_MODULES = [
   { prefix: '/tasks', module: 'tasks' },
   { prefix: '/my-tasks', module: 'my_tasks' },
   { prefix: '/timesheets', module: 'tasks' },
+  { prefix: '/retainers', module: 'projects' },
   { prefix: '/inbox', module: 'inbox' },
   { prefix: '/message', module: 'inbox' },
   { prefix: '/clients', module: 'client_accounts' },
