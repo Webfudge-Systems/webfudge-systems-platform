@@ -70,6 +70,7 @@ import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoad
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
 import DuplicateWarning from '../../../../components/DuplicateWarning';
+import { useLeadSourceLabel } from '../../../../lib/leadSources';
 
 function formatCurrency(value) {
   if (value == null || value === '') return '₹0';
@@ -278,6 +279,7 @@ const initialAddContactForm = {
 };
 
 export default function LeadCompanyDetailPage() {
+  const sourceLabel = useLeadSourceLabel(); // GF4
   const params = useParams();
   const router = useRouter();
   const id = params?.id;
@@ -1537,7 +1539,7 @@ export default function LeadCompanyDetailPage() {
                         title="Lead source"
                       >
                         <Target className="h-5 w-5 shrink-0 text-orange-600" strokeWidth={2.25} aria-hidden />
-                        {humanizeSource(lead.source)}
+                        {sourceLabel(lead.source)}
                       </span>
                       <span
                         className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold uppercase tracking-widest shadow-md ring-2 ${

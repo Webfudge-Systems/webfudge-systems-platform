@@ -170,6 +170,7 @@ async function processSlaBreaches(strapi) {
     await strapi.entityService.update(LEAD_UID, lead.id, { data });
     flagged += 1;
     const link = { subjectType: 'lead_company', subjectId: lead.id, href: `/sales/lead-companies/${lead.id}` };
+    const slaLink = { ...link, category: 'sla' };
     if (ownerId) {
       await notifyUsers(strapi, {
         userIds: [ownerId],
@@ -177,7 +178,7 @@ async function processSlaBreaches(strapi) {
         type: 'warning',
         title: `First-contact SLA missed: ${lead.companyName}`,
         message: reassignedTo ? 'The lead was reassigned to a teammate.' : 'Contact this lead as soon as possible.',
-        data: link,
+        data: slaLink,
       });
     }
     if (reassignedTo) {

@@ -60,6 +60,7 @@ import CRMPageHeader from '../../../components/CRMPageHeader';
 import { LeadsKanbanBoard } from '../../../components/LeadsKanbanBoard';
 import useLeadStatuses from '../../../lib/useLeadStatuses';
 import useCustomFields from '../../../lib/useCustomFields';
+import { useLeadSourceLabel } from '../../../lib/leadSources';
 import { customFieldColumns, CustomFieldFilter } from '../../../components/customFields/customFieldColumns';
 import { LeadsByMembersView } from '../../../components/LeadsByMembersView';
 import { TableCellLeadStatusSelect } from '@webfudge/ui';
@@ -536,13 +537,14 @@ export default function LeadCompaniesPage() {
     [leadStatuses]
   );
 
+  const sourceLabel = useLeadSourceLabel();
   const sourceFilterOptions = useMemo(
     () =>
       (filterFacets.sources || []).map((value) => ({
         value,
-        label: value.replace(/_/g, ' '),
+        label: sourceLabel(value),
       })),
-    [filterFacets.sources]
+    [filterFacets.sources, sourceLabel]
   );
 
   const companyTypeFilterOptions = useMemo(
