@@ -17,38 +17,23 @@
     },
     "creationMode": {
       "type": "enumeration",
-      "enum": [
-        "BUILDER",
-        "UPLOAD"
-      ],
+      "enum": ["BUILDER", "UPLOAD"],
       "default": "BUILDER"
     },
     "documentType": {
       "type": "enumeration",
-      "enum": [
-        "SOW",
-        "PROPOSAL",
-        "QUOTE"
-      ],
+      "enum": ["SOW", "PROPOSAL", "QUOTE"],
       "default": "PROPOSAL"
     },
     "proposalFile": {
       "type": "media",
       "multiple": false,
       "required": false,
-      "allowedTypes": [
-        "files"
-      ]
+      "allowedTypes": ["files"]
     },
     "status": {
       "type": "enumeration",
-      "enum": [
-        "DRAFT",
-        "SENT",
-        "ACCEPTED",
-        "REJECTED",
-        "EXPIRED"
-      ],
+      "enum": ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"],
       "default": "DRAFT"
     },
     "proposalNumber": {
