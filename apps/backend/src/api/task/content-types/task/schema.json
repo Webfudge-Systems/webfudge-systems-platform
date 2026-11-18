@@ -21,25 +21,12 @@
     },
     "status": {
       "type": "enumeration",
-      "enum": [
-        "SCHEDULED",
-        "ACTIVE",
-        "IN_PROGRESS",
-        "INTERNAL_REVIEW",
-        "ON_HOLD",
-        "COMPLETED",
-        "CANCELLED",
-        "OVERDUE"
-      ],
+      "enum": ["SCHEDULED", "ACTIVE", "IN_PROGRESS", "INTERNAL_REVIEW", "ON_HOLD", "COMPLETED", "CANCELLED", "OVERDUE"],
       "default": "SCHEDULED"
     },
     "priority": {
       "type": "enumeration",
-      "enum": [
-        "low",
-        "medium",
-        "high"
-      ],
+      "enum": ["low", "medium", "high"],
       "default": "medium"
     },
     "scheduledDate": {
@@ -57,20 +44,12 @@
     },
     "taskType": {
       "type": "enumeration",
-      "enum": [
-        "task",
-        "bug",
-        "deliverable",
-        "milestone"
-      ],
+      "enum": ["task", "bug", "deliverable", "milestone"],
       "default": "task"
     },
     "taskCategory": {
       "type": "enumeration",
-      "enum": [
-        "general",
-        "development"
-      ],
+      "enum": ["general", "development"],
       "default": "general"
     },
     "devMetadata": {
@@ -99,12 +78,7 @@
     },
     "assignmentApprovalStatus": {
       "type": "enumeration",
-      "enum": [
-        "not_required",
-        "pending",
-        "approved",
-        "rejected"
-      ],
+      "enum": ["not_required", "pending", "approved", "rejected"],
       "default": "not_required"
     },
     "assignmentRequestedBy": {
@@ -157,13 +131,7 @@
     },
     "recurrenceFrequency": {
       "type": "enumeration",
-      "enum": [
-        "none",
-        "daily",
-        "weekly",
-        "monthly",
-        "custom"
-      ],
+      "enum": ["none", "daily", "weekly", "monthly", "custom"],
       "default": "none"
     },
     "recurrenceInterval": {
@@ -182,11 +150,7 @@
     },
     "recurrenceCustomUnit": {
       "type": "enumeration",
-      "enum": [
-        "day",
-        "week",
-        "month"
-      ],
+      "enum": ["day", "week", "month"],
       "default": "day"
     },
     "recurrenceEndsAt": {
