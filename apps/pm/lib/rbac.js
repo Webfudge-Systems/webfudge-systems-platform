@@ -3,6 +3,7 @@ import { authService } from '@webfudge/auth'
 export const PM_ROUTE_MODULES = [
   { prefix: '/projects', module: 'projects' },
   { prefix: '/tasks', module: 'tasks' },
+  { prefix: '/capacity', module: 'tasks' },
   { prefix: '/my-tasks', module: 'my_tasks' },
   { prefix: '/timesheets', module: 'tasks' },
   { prefix: '/retainers', module: 'projects' },
