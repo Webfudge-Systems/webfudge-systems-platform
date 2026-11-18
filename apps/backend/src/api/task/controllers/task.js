@@ -860,6 +860,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     delete data.id;
     delete data.documentId;
+    data.completedAt = data.status === 'COMPLETED' ? new Date().toISOString() : null; // W7
 
     const entry = await strapi.entityService.create(UID, { data });
     try {
@@ -979,6 +980,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const prevStatus = existing.status;
     const mergedStatus = data.status !== undefined ? data.status : existing.status;
     const becameCompleted = prevStatus !== 'COMPLETED' && mergedStatus === 'COMPLETED';
+    // W7: completion time drives sprint burndown
+    delete data.completedAt;
+    if (becameCompleted) data.completedAt = new Date().toISOString();
+    else if (prevStatus === 'COMPLETED' && mergedStatus !== 'COMPLETED') data.completedAt = null;
     const recurrenceFreq =
       data.recurrenceFrequency !== undefined ? data.recurrenceFrequency : existing.recurrenceFrequency;
 
