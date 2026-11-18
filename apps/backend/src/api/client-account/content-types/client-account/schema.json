@@ -121,6 +121,9 @@
       "relation": "oneToMany",
       "target": "api::contact.contact",
       "mappedBy": "clientAccount"
+    },
+    "customFields": {
+      "type": "json"
     }
   }
 }

@@ -177,6 +177,9 @@ function toStrapiData(payload) {
     }
   }
 
+  // Custom fields (G1): validated by the backend against the org's field definitions.
+  if (payload.customFields && typeof payload.customFields === 'object') data.customFields = payload.customFields;
+
   return data;
 }
 

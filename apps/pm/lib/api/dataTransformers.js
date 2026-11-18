@@ -398,6 +398,7 @@ export function transformTask(strapiTask) {
     }),
     taskCategory: t.taskCategory || 'general',
     dependsOn: Array.isArray(t.dependsOn) ? t.dependsOn : [],
+    taskType: t.taskType || 'task',
     devMetadata: t.devMetadata && typeof t.devMetadata === 'object' ? t.devMetadata : null,
   };
 }

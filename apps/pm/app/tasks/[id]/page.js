@@ -202,6 +202,7 @@ function taskToInlineDraft(task) {
     recurrenceEndsAt: task.recurrenceEndsAt ? task.recurrenceEndsAt.slice(0, 10) : '',
     taskCategory: task.taskCategory || TASK_CATEGORIES.GENERAL,
     devMetadata: normalizeDevMetadata(task.devMetadata),
+    taskType: task.taskType || 'task',
   };
 }
 
@@ -671,6 +672,7 @@ export default function TaskDetailPage() {
         assigneeUserIds: [...(d.assigneeUserIds || [])],
         projectId: d.projectId || null,
         taskCategory: d.taskCategory || TASK_CATEGORIES.GENERAL,
+        taskType: d.taskType || 'task',
         devMetadata:
           d.taskCategory === TASK_CATEGORIES.DEVELOPMENT
             ? devMetadataToPayload(d.devMetadata)

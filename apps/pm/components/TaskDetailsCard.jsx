@@ -18,6 +18,7 @@ import {
   User,
 } from 'lucide-react'
 import TaskAssigneesPicker from './TaskAssigneesPicker'
+import { TASK_TYPE_OPTIONS, taskTypeMeta } from '../lib/taskTypes'
 import TaskTimeTracking from './TaskTimeTracking'
 import TaskRecurrenceFormFields from './TaskRecurrenceFormFields'
 import TaskCategorySwitch from './TaskCategorySwitch'
@@ -251,7 +252,16 @@ export default function TaskDetailsCard({
             disabled={saving}
           />
 
-          <GridRow cols={2}>
+          <GridRow cols={3}>
+            <DetailCell label="Type" className="md:border-r md:border-gray-100">
+              <Select
+                value={taskInfoDraft.taskType || 'task'}
+                options={TASK_TYPE_OPTIONS}
+                onChange={(v) => onTaskInfoFieldChange('taskType', v)}
+                disabled={saving}
+                allowEmpty={false}
+              />
+            </DetailCell>
             <DetailCell label="Status" className="md:border-r md:border-gray-100">
               <Select
                 value={taskInfoDraft.status}
@@ -436,6 +446,11 @@ export default function TaskDetailsCard({
         <div className="min-w-0 flex-1 pr-2">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold text-gray-900">Task details</h2>
+            {task.taskType && task.taskType !== 'task' ? (
+              <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${taskTypeMeta(task.taskType).badge}`}>
+                {taskTypeMeta(task.taskType).label}
+              </span>
+            ) : null}
             {isDevelopmentTask(task) ? (
               <span className="rounded-md bg-violet-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
                 Development

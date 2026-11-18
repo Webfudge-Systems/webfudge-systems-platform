@@ -16,6 +16,7 @@ import {
   Receipt,
   CheckSquare,
   BarChart3,
+  Settings as SettingsIcon,
   Calendar,
   GitBranch,
   MessageSquare,
@@ -31,7 +32,7 @@ import {
 } from 'lucide-react'
 import SubSidebar from './SubSidebar'
 import { fetchGlobalActivityFeed } from '../lib/api/crmActivityService'
-import { canReadCRM } from '../lib/rbac'
+import { canReadCRM, canManageCRM } from '../lib/rbac'
 import { CRM_SITE } from '../lib/site'
 
 function formatRelativeTime(dateString) {
@@ -328,6 +329,8 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
     return visibleNavigationData.some((section) => section.id === item.id)
   })
   const canReadAnalytics = canReadCRM('analytics')
+  const canOpenSettings = canReadCRM('settings') || canManageCRM('settings')
+  const isSettingsActive = () => pathname.startsWith('/settings')
 
   return (
     <>
@@ -540,7 +543,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
           )}
 
           {/* System + profile scroll with the rest (not pinned to viewport bottom) */}
-          {!collapsed && canReadAnalytics && (
+          {!collapsed && (canReadAnalytics || canOpenSettings) && (
             <div className="px-3 pt-2 pb-2 space-y-2">
               <div className="flex items-center gap-2 px-1">
                 <div className="flex-1 h-px bg-white/25" />
@@ -549,6 +552,7 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
                 </span>
                 <div className="flex-1 h-px bg-white/25" />
               </div>
+              {canReadAnalytics ? (
               <button
                 type="button"
                 onClick={() => handleTopLevelClick('analytics')}
@@ -561,6 +565,20 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
                 <BarChart3 className="w-5 h-5 shrink-0" strokeWidth={2} />
                 <span className="text-xs font-semibold text-center">Analytics</span>
               </button>
+              ) : null}
+              {canOpenSettings ? (
+                <Link
+                  href="/settings"
+                  className={`w-full rounded-xl px-3 py-3 flex flex-col items-center gap-1.5 shadow-md border transition-all ${
+                    isSettingsActive()
+                      ? 'bg-brand-primary text-white border-brand-primary/40 shadow-lg shadow-orange-500/25'
+                      : 'bg-white/20 backdrop-blur-md border-white/30 text-brand-foreground hover:bg-white/35 hover:shadow-lg'
+                  }`}
+                >
+                  <SettingsIcon className="w-5 h-5 shrink-0" strokeWidth={2} />
+                  <span className="text-xs font-semibold text-center">Settings</span>
+                </Link>
+              ) : null}
             </div>
           )}
 

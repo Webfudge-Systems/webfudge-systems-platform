@@ -15,6 +15,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { primaryContactForLeadCompany } from '../lib/leadCompanyContacts';
+import { stageStyleFor } from './DealsKanbanBoard';
 
 /** Strapi lead-company.status keys — use for tab filters and kanban columns. */
 export const LEAD_PIPELINE_STAGES = [
@@ -149,9 +150,9 @@ function LeadCard({ company, overlay = false, getLeadHref, canMoveLead }) {
   );
 }
 
-function StatusColumn({ stageKey, label, companies, isOver, getLeadHref, canMoveLead }) {
+function StatusColumn({ stageKey, label, color, companies, isOver, getLeadHref, canMoveLead }) {
   const { setNodeRef } = useDroppable({ id: stageKey });
-  const style = STAGE_STYLES[stageKey] || STAGE_STYLES.new;
+  const style = STAGE_STYLES[stageKey] && !color ? STAGE_STYLES[stageKey] : color ? stageStyleFor(stageKey, color) : STAGE_STYLES.new;
   const totalValue = companies.reduce((sum, c) => sum + (Number(c.dealValue) || 0), 0);
 
   return (
@@ -246,11 +247,12 @@ export function LeadsKanbanBoard({ statusColumns, leadsLookup, onMoveLead, getLe
       onDragEnd={handleDragEnd}
     >
       <div className="flex gap-4 overflow-x-auto p-4 pb-5 md:p-5">
-        {statusColumns.map(({ key, label, companies }) => (
+        {statusColumns.map(({ key, label, color, companies }) => (
           <StatusColumn
             key={key}
             stageKey={key}
             label={label}
+            color={color}
             companies={companies}
             isOver={overId === key}
             getLeadHref={getLeadHref}

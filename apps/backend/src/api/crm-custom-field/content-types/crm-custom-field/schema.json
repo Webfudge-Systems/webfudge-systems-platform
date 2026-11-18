@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_custom_fields",
+  "info": {
+    "singularName": "crm-custom-field",
+    "pluralName": "crm-custom-fields",
+    "displayName": "CRM Custom Field",
+    "description": "Per-organization custom field definitions for leads, contacts, client accounts and deals"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "key": {
+      "type": "string",
+      "required": true
+    },
+    "entity": {
+      "type": "enumeration",
+      "enum": ["lead", "contact", "account", "deal"],
+      "required": true
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": ["text", "number", "currency", "date", "select", "multiselect", "user", "phone", "url", "checkbox"],
+      "required": true
+    },
+    "options": {
+      "type": "json"
+    },
+    "required": {
+      "type": "boolean",
+      "default": false
+    },
+    "showInTable": {
+      "type": "boolean",
+      "default": false
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}
