@@ -209,12 +209,12 @@ export default function PipelinePage() {
     setWonModal((s) => ({ ...s, open: false }));
   }, []);
 
-  const handleWonCreateProject = useCallback(async () => {
+  const handleWonCreateProject = useCallback(async (options = {}) => {
     const { dealId } = wonModal;
     if (!dealId) return;
     setWonBusy(true);
     try {
-      await dealService.createDeliveryProject(dealId);
+      await dealService.createDeliveryProject(dealId, options);
       setWonModal({ open: false, dealId: null, dealName: '' });
       router.push('/clients/projects');
     } catch {

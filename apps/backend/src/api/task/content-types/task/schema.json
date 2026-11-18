@@ -208,6 +208,17 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::invoice.invoice"
+    },
+    "estimatedHours": {
+      "type": "decimal"
+    },
+    "completedAt": {
+      "type": "datetime"
+    },
+    "sprint": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::sprint.sprint"
     }
   }
 }
