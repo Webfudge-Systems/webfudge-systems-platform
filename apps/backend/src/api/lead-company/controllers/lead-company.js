@@ -65,9 +65,8 @@ function validateAndApplyLeadStatus(ctx, data, allowed = LEAD_STATUSES) {
     normalized = 'QUALIFIED';
   }
   if (!allowed.includes(normalized)) {
-    return ctx.badRequest(
-      `Invalid lead status "${data.status}". Allowed statuses: ${allowed.join(', ')}`
-    );
+    ctx.badRequest(`Invalid lead status "${data.status}". Allowed statuses: ${allowed.join(', ')}`);
+    return ctx.body || true; // ctx.badRequest returns undefined; callers stop on a truthy value
   }
   data.status = normalized;
   return null;
