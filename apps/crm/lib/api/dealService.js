@@ -74,6 +74,9 @@ function toStrapiData(payload) {
     if (!Number.isNaN(n)) data[key] = n;
   }
 
+  // Lost reason (G15): kept by the backend only while the deal is lost.
+  if (Object.prototype.hasOwnProperty.call(payload, 'lostReason')) data.lostReason = payload.lostReason || null;
+
   // Custom fields (G1): validated by the backend against the org's field definitions.
   if (payload.customFields && typeof payload.customFields === 'object') data.customFields = payload.customFields;
 

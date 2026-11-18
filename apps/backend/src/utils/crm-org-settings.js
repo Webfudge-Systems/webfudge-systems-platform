@@ -16,6 +16,10 @@ const DEFAULTS = {
   /** null items = use the built-in lead source list. */
   lead_sources: { items: null },
   notification_prefs: Object.fromEntries(NOTIFICATION_CATEGORIES.map((c) => [c, true])),
+  /** Reasons offered when a deal is marked lost (G15 lost-reason analysis). */
+  lost_reasons: {
+    items: ['Price too high', 'Chose a competitor', 'No budget', 'No response / went cold', 'Timing — not now', 'Not a fit', 'Other'],
+  },
 };
 
 async function getSetting(strapi, orgId, key) {
