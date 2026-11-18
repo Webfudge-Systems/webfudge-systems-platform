@@ -184,10 +184,20 @@ function canAccess(ctx, appKey, moduleKey, minimumAccess = ACCESS.READ) {
   );
 }
 
+/**
+ * Send a 403 and return a truthy value. Strapi's ctx.forbidden() sets the response but returns
+ * undefined, so callers using `const denied = requireX(ctx); if (denied) return denied;` kept running
+ * (and wrote data) without this.
+ */
+function deny(ctx, message) {
+  ctx.forbidden(message);
+  return ctx.body ?? { data: null, error: { status: 403, name: 'ForbiddenError', message } };
+}
+
 function requireModuleAccess(ctx, appKey, moduleKey, minimumAccess = ACCESS.READ) {
   if (canAccess(ctx, appKey, moduleKey, minimumAccess)) return null;
   const label = `${String(appKey || '').toUpperCase()}.${moduleKey}`;
-  return ctx.forbidden(`You need ${minimumAccess} access to ${label}`);
+  return deny(ctx, `You need ${minimumAccess} access to ${label}`);
 }
 
 function relationId(value) {
@@ -206,7 +216,7 @@ function isAssignedToCurrentUser(entry, user) {
 function requireOwnerOrModuleManage(ctx, appKey, moduleKey, entry, message = null) {
   if (canAccess(ctx, appKey, moduleKey, ACCESS.MANAGE)) return null;
   if (isAssignedToCurrentUser(entry, ctx?.state?.user)) return null;
-  return ctx.forbidden(message || `You can only edit ${moduleKey} assigned to you`);
+  return deny(ctx, message || `You can only edit ${moduleKey} assigned to you`);
 }
 
 function canManageAppSettings(ctx) {
@@ -229,7 +239,7 @@ function canManageOrganizationSecurity(ctx) {
 
 function requireAppSettingsManage(ctx) {
   if (canManageAppSettings(ctx)) return null;
-  return ctx.forbidden('You need manage access to CRM or PM settings');
+  return deny(ctx, 'You need manage access to CRM or PM settings');
 }
 
 function membershipSummary(membership) {
