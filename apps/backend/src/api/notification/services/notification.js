@@ -16,6 +16,9 @@ module.exports = createCoreService('api::notification.notification', ({ strapi }
   async notify({ userIds, organizationId, type, title, message = '', data = {} }) {
     const ids = Array.isArray(userIds) ? userIds : [userIds];
     const created = [];
+    // GF4: org admins can switch notification categories off in Grow settings.
+    const { notificationAllowed } = require('../../../utils/crm-org-settings');
+    if (!(await notificationAllowed(strapi, organizationId, type, data))) return created;
     for (const userId of ids) {
       try {
         const entry = await strapi.entityService.create('api::notification.notification', {
