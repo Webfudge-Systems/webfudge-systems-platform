@@ -22,6 +22,7 @@ const {
   taskStakeholderIds,
 } = require('../../../utils/notification-emitter');
 const {
+  canAccess,
   requireModuleAccess,
   isPmOrgMemberRole,
   isPmOrgAdminRole,
@@ -662,8 +663,8 @@ function requireTasksRead(ctx, { crmOnly = false } = {}) {
   if (crmOnly) {
     return requireModuleAccess(ctx, 'crm', 'tasks', 'read');
   }
-  const pmDenied = requireModuleAccess(ctx, 'pm', 'tasks', 'read');
-  if (!pmDenied) return null;
+  // Check without sending a 403 first, so a CRM-only reader isn't left with a stale 403 status.
+  if (canAccess(ctx, 'pm', 'tasks', 'read')) return null;
   return requireModuleAccess(ctx, 'crm', 'tasks', 'read');
 }
 
@@ -671,8 +672,7 @@ function requireMyWorkRead(ctx, { crmOnly = false } = {}) {
   if (crmOnly) {
     return requireModuleAccess(ctx, 'crm', 'tasks', 'read');
   }
-  const pmDenied = requireModuleAccess(ctx, 'pm', 'my_tasks', 'read');
-  if (!pmDenied) return null;
+  if (canAccess(ctx, 'pm', 'my_tasks', 'read')) return null;
   return requireModuleAccess(ctx, 'crm', 'tasks', 'read');
 }
 
