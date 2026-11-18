@@ -22,6 +22,7 @@ import {
   Target,
   Building2,
   PieChart,
+  Clock,
 } from 'lucide-react'
 import projectService from '../lib/api/projectService'
 import { transformProject } from '../lib/api/dataTransformers'
@@ -95,6 +96,13 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       icon: MessageCircle,
       href: '/message',
       badge: messageCount,
+    },
+    {
+      id: 'timesheets',
+      module: 'tasks',
+      label: 'Timesheets',
+      icon: Clock,
+      href: '/timesheets',
     },
     {
       id: 'clients',
