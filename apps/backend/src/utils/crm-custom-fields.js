@@ -133,13 +133,14 @@ function coerce(def, raw) {
  * Mutates `data`. Returns null on success or an error message.
  * @param {'lead'|'contact'|'account'|'deal'} entity
  * @param {object|null} existing current record (null on create)
+ * @param {object[]|null} [defsPreloaded] field definitions already loaded (bulk imports)
  */
-async function applyCustomFields(strapi, orgId, entity, data, existing = null) {
+async function applyCustomFields(strapi, orgId, entity, data, existing = null, defsPreloaded = null) {
   const touched = data && Object.prototype.hasOwnProperty.call(data, 'customFields');
   // Writers that don't send custom values (older forms, conversions, imports) are never blocked;
   // "required" is enforced whenever custom values are sent.
   if (!touched) return null;
-  const defs = await listFields(strapi, orgId, entity);
+  const defs = defsPreloaded || (await listFields(strapi, orgId, entity));
   const input = data.customFields && typeof data.customFields === 'object' && !Array.isArray(data.customFields) ? data.customFields : {};
   const current = existing?.customFields && typeof existing.customFields === 'object' ? existing.customFields : {};
   const next = {};

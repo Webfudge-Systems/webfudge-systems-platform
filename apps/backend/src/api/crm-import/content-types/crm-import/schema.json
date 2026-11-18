@@ -1,0 +1,76 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_imports",
+  "info": {
+    "singularName": "crm-import",
+    "pluralName": "crm-imports",
+    "displayName": "CRM Import",
+    "description": "Background CSV/Excel import jobs for leads and contacts (progress, counts, errors, duplicates)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "entity": {
+      "type": "enumeration",
+      "enum": ["lead", "contact"],
+      "required": true
+    },
+    "fileName": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["queued", "running", "done", "failed"],
+      "default": "queued"
+    },
+    "duplicateMode": {
+      "type": "enumeration",
+      "enum": ["skip", "create"],
+      "default": "skip"
+    },
+    "total": {
+      "type": "integer",
+      "default": 0
+    },
+    "processed": {
+      "type": "integer",
+      "default": 0
+    },
+    "created": {
+      "type": "integer",
+      "default": 0
+    },
+    "duplicates": {
+      "type": "integer",
+      "default": 0
+    },
+    "failed": {
+      "type": "integer",
+      "default": 0
+    },
+    "errorRows": {
+      "type": "json"
+    },
+    "duplicateRows": {
+      "type": "json"
+    },
+    "message": {
+      "type": "text"
+    },
+    "finishedAt": {
+      "type": "datetime"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}
