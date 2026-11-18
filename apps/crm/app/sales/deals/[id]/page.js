@@ -69,6 +69,7 @@ import {
 import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../../lib/rbac';
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
 import { entityChatMediaProps, entityFilesPanelProps } from '../../../../lib/entityMedia';
+import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
 
 const headerIconBtnClass =
   'rounded-xl border border-white/20 bg-white/10 p-2.5 text-brand-text-light shadow-lg backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/20';
@@ -1451,6 +1452,15 @@ export default function DealDetailPage() {
                     </>
                   )}
                 </Card>
+                <CustomFieldsCard
+                  entity="deal"
+                  values={deal?.customFields}
+                  canEdit={canEditDeal}
+                  onSave={async (customFields) => {
+                    const res = await dealService.update(id, { customFields });
+                    setDeal((prev) => (prev ? { ...prev, customFields: res?.data?.customFields ?? customFields } : prev));
+                  }}
+                />
 
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   <Card variant="elevated" className="flex h-full min-h-0 flex-col rounded-xl p-6">

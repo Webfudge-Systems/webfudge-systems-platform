@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, GitBranch } from 'lucide-react';
+import { ChevronRight, GitBranch, SlidersHorizontal } from 'lucide-react';
 import { Card } from '@webfudge/ui';
 import CRMPageHeader from '../../components/CRMPageHeader';
 
@@ -11,6 +11,12 @@ const SECTIONS = [
     icon: GitBranch,
     title: 'Pipelines & lead statuses',
     description: 'Deal pipelines and their stages (order, win probability, colour, required fields) and your lead status list.',
+  },
+  {
+    href: '/settings/custom-fields',
+    icon: SlidersHorizontal,
+    title: 'Custom fields',
+    description: 'Extra fields on lead companies, contacts, client accounts and deals: text, numbers, ₹, dates, dropdowns, team members and more.',
   },
 ];
 

@@ -59,6 +59,8 @@ import {
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import { LeadsKanbanBoard } from '../../../components/LeadsKanbanBoard';
 import useLeadStatuses from '../../../lib/useLeadStatuses';
+import useCustomFields from '../../../lib/useCustomFields';
+import { customFieldColumns, CustomFieldFilter } from '../../../components/customFields/customFieldColumns';
 import { LeadsByMembersView } from '../../../components/LeadsByMembersView';
 import { TableCellLeadStatusSelect } from '@webfudge/ui';
 import { LeadNextConnectCell } from '../../../components/LeadNextConnectCell';
@@ -239,6 +241,8 @@ export default function LeadCompaniesPage() {
       source: '',
       type: '',
       assignedToId: '',
+      customFieldKey: '',
+      customFieldValue: '',
       companyQuery: '',
       dateRange: '',
       valueRange: '',
@@ -506,6 +510,10 @@ export default function LeadCompaniesPage() {
   useEffect(() => {
     fetchLeadCompanies();
   }, [fetchLeadCompanies]);
+
+  /** Custom fields (G1): list columns + filter. */
+  const { fields: leadCustomFields } = useCustomFields('lead');
+  const leadCustomColumns = useMemo(() => customFieldColumns(leadCustomFields, orgUsers), [leadCustomFields, orgUsers]);
 
   /** Org lead statuses (G2): drive tabs, kanban columns, status menus and filters. */
   const leadStatuses = useLeadStatuses();
@@ -1398,9 +1406,11 @@ export default function LeadCompaniesPage() {
     for (const key of columnOrder) {
       if (columnVisibility[key] && byKey[key]) out.push(byKey[key]);
     }
+    // Custom fields marked "Show in list" (G1) go before the actions column.
+    out.push(...leadCustomColumns);
     if (byKey.actions) out.push(byKey.actions);
     return bindSortableColumns(out);
-  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
+  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns, leadCustomColumns]);
 
   const membersViewColumns = useMemo(
     () => visibleTableColumns.filter((c) => c.key !== 'assignedTo'),
@@ -1842,6 +1852,14 @@ export default function LeadCompaniesPage() {
                 ))}
               </select>
             </label>
+            <CustomFieldFilter
+              fields={leadCustomFields}
+              fieldKey={draftFilters.customFieldKey}
+              value={draftFilters.customFieldValue}
+              onChange={({ key, value }) =>
+                setDraftFilters((prev) => ({ ...prev, customFieldKey: key, customFieldValue: value }))
+              }
+            />
             <label className="space-y-1.5">
               <span className="text-sm font-medium text-gray-700">Company</span>
               <input

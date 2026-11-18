@@ -22,12 +22,23 @@
     },
     "stage": {
       "type": "enumeration",
-      "enum": ["discovery", "prospect", "proposal", "negotiation", "won", "lost"],
+      "enum": [
+        "discovery",
+        "prospect",
+        "proposal",
+        "negotiation",
+        "won",
+        "lost"
+      ],
       "default": "discovery"
     },
     "priority": {
       "type": "enumeration",
-      "enum": ["low", "medium", "high"],
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
       "default": "medium"
     },
     "pipeline": {
@@ -46,7 +57,11 @@
     },
     "visibility": {
       "type": "enumeration",
-      "enum": ["public", "private", "team"],
+      "enum": [
+        "public",
+        "private",
+        "team"
+      ],
       "default": "public"
     },
     "dealGroup": {
@@ -95,6 +110,9 @@
       "relation": "oneToOne",
       "target": "api::project.project",
       "mappedBy": "sourceDeal"
+    },
+    "customFields": {
+      "type": "json"
     }
   }
 }

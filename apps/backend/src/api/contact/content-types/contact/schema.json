@@ -116,7 +116,12 @@
     },
     "clientType": {
       "type": "enumeration",
-      "enum": ["agency_client", "direct_client", "partner", "individual"],
+      "enum": [
+        "agency_client",
+        "direct_client",
+        "partner",
+        "individual"
+      ],
       "default": "agency_client"
     },
     "currency": {
@@ -131,7 +136,13 @@
     },
     "paymentTerms": {
       "type": "enumeration",
-      "enum": ["net_15", "net_30", "net_45", "net_60", "due_on_receipt"],
+      "enum": [
+        "net_15",
+        "net_30",
+        "net_45",
+        "net_60",
+        "due_on_receipt"
+      ],
       "default": "net_30"
     },
     "creditLimit": {
@@ -148,6 +159,9 @@
     "unusedCredits": {
       "type": "integer",
       "default": 0
+    },
+    "customFields": {
+      "type": "json"
     }
   }
 }

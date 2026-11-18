@@ -115,6 +115,9 @@
       "relation": "oneToOne",
       "target": "api::client-account.client-account",
       "mappedBy": "convertedFromLead"
+    },
+    "customFields": {
+      "type": "json"
     }
   }
 }
