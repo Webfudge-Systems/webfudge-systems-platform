@@ -57,6 +57,7 @@ import {
   TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
+import SavedViewsMenu, { useSavedViews, useApplyDefaultView } from '../../../components/SavedViewsMenu';
 import { LeadsKanbanBoard } from '../../../components/LeadsKanbanBoard';
 import useLeadStatuses from '../../../lib/useLeadStatuses';
 import useCustomFields from '../../../lib/useCustomFields';
@@ -314,6 +315,8 @@ export default function LeadCompaniesPage() {
     handleColumnListDragLeave,
     handleColumnDrop,
     resetColumnTablePreferences,
+    applyColumnPreferences,
+    columnWidths,
     tableResizeProps,
   } = useTableColumnPreferences({
     visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
@@ -403,6 +406,7 @@ export default function LeadCompaniesPage() {
     moveSortRule,
     clearSort,
     bindSortableColumns,
+    setSortRules,
   } = useCrmTableSort({ entity: 'leadCompany', storageKey: TABLE_SORT_STORAGE_KEY, data: leadCompanies });
 
   /** Status / primary contact need full-list client sort (custom order or nested fields). */
@@ -775,6 +779,37 @@ export default function LeadCompaniesPage() {
       setConverting(false);
     }
   }, [companyToConvert, converting, router]);
+
+  // G3: saved views (server-side, per user, optionally shared with the team)
+  const savedViews = useSavedViews('crm:leads');
+  const getViewConfig = useCallback(
+    () => ({
+      view: leadViewMode, statusTab: activeTab,
+      search: searchQuery,
+      filters: appliedFilters,
+      sort: sortRules,
+      columns: { visibility: columnVisibility, order: columnOrder, widths: columnWidths },
+    }),
+    [activeTab, searchQuery, appliedFilters, sortRules, columnVisibility, columnOrder, columnWidths, leadViewMode]
+  );
+  const applySavedView = useCallback(
+    (c = {}) => {
+      if (c.view) handleLeadViewChange(c.view);
+      if (c.statusTab) setActiveTab(c.statusTab);
+      setSearchQuery(typeof c.search === 'string' ? c.search : '');
+      if (c.filters && typeof c.filters === 'object') {
+        const next = { ...initialFilters, ...c.filters };
+        setAppliedFilters(next);
+        setDraftFilters(next);
+      }
+      if (Array.isArray(c.sort)) setSortRules(c.sort);
+      if (c.columns) applyColumnPreferences(c.columns);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [handleLeadViewChange, initialFilters, setSortRules, applyColumnPreferences]
+  );
+  useApplyDefaultView(savedViews, applySavedView);
+  const savedViewsMenu = <SavedViewsMenu saved={savedViews} getConfig={getViewConfig} onApply={applySavedView} />;
 
   const leadsViewSwitcher = (
     <ViewToggleGroup aria-label="Lead companies layout">
@@ -1493,7 +1528,7 @@ export default function LeadCompaniesPage() {
           }))}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          afterTabs={leadsViewSwitcher}
+          afterTabs={<div className="flex items-center gap-2">{leadsViewSwitcher}{savedViewsMenu}</div>}
           showSearch={true}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
