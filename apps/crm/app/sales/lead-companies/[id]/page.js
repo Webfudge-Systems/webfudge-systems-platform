@@ -68,6 +68,8 @@ import {
 } from '@webfudge/utils';
 import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
+import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
+import DuplicateWarning from '../../../../components/DuplicateWarning';
 
 function formatCurrency(value) {
   if (value == null || value === '') return '₹0';
@@ -1790,6 +1792,23 @@ export default function LeadCompanyDetailPage() {
                     </>
                   )}
                 </Card>
+                <DuplicateWarning
+                  entity="lead"
+                  companyName={lead?.companyName}
+                  email={lead?.email}
+                  phone={lead?.phone}
+                  excludeId={lead?.id}
+                  allowMerge={canManageCRM('leads')}
+                />
+                <CustomFieldsCard
+                  entity="lead"
+                  values={lead?.customFields}
+                  canEdit={canEditLeadCompany}
+                  onSave={async (customFields) => {
+                    const res = await leadCompanyService.update(id, { customFields });
+                    setLead((prev) => (prev ? { ...prev, customFields: res?.data?.customFields ?? customFields } : prev));
+                  }}
+                />
 
                 <Card variant="elevated" className="rounded-xl">
                   <div className="mb-6">

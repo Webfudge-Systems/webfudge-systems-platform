@@ -57,9 +57,12 @@ import {
   TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
-import { LeadsKanbanBoard, LEAD_PIPELINE_STAGES } from '../../../components/LeadsKanbanBoard';
+import { LeadsKanbanBoard } from '../../../components/LeadsKanbanBoard';
+import useLeadStatuses from '../../../lib/useLeadStatuses';
+import useCustomFields from '../../../lib/useCustomFields';
+import { customFieldColumns, CustomFieldFilter } from '../../../components/customFields/customFieldColumns';
 import { LeadsByMembersView } from '../../../components/LeadsByMembersView';
-import { TableCellLeadStatusSelect, LEAD_STATUS_OPTIONS } from '@webfudge/ui';
+import { TableCellLeadStatusSelect } from '@webfudge/ui';
 import { LeadNextConnectCell } from '../../../components/LeadNextConnectCell';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
@@ -238,6 +241,8 @@ export default function LeadCompaniesPage() {
       source: '',
       type: '',
       assignedToId: '',
+      customFieldKey: '',
+      customFieldValue: '',
       companyQuery: '',
       dateRange: '',
       valueRange: '',
@@ -506,6 +511,14 @@ export default function LeadCompaniesPage() {
     fetchLeadCompanies();
   }, [fetchLeadCompanies]);
 
+  /** Custom fields (G1): list columns + filter. */
+  const { fields: leadCustomFields } = useCustomFields('lead');
+  const leadCustomColumns = useMemo(() => customFieldColumns(leadCustomFields, orgUsers), [leadCustomFields, orgUsers]);
+
+  /** Org lead statuses (G2): drive tabs, kanban columns, status menus and filters. */
+  const leadStatuses = useLeadStatuses();
+  const statusKeys = useMemo(() => leadStatuses.map((s) => s.value.toLowerCase()), [leadStatuses]);
+
   const leadStats = useMemo(
     () => ({
       total: statsByStatus.total ?? 0,
@@ -518,7 +531,10 @@ export default function LeadCompaniesPage() {
     [statsByStatus]
   );
 
-  const statusFilterOptions = LEAD_STATUS_OPTIONS;
+  const statusFilterOptions = useMemo(
+    () => leadStatuses.map((s) => ({ value: s.value, label: s.label })),
+    [leadStatuses]
+  );
 
   const sourceFilterOptions = useMemo(
     () =>
@@ -633,10 +649,10 @@ export default function LeadCompaniesPage() {
   const tabItems = [
     { key: 'all', label: 'All Companies', count: statsByStatus.total ?? totalItems },
     { key: 'my', label: 'My Leads', count: myLeadsCount },
-    { key: 'new', label: 'New', count: leadStats.new },
-    { key: 'contacted', label: 'Contacted', count: leadStats.contacted },
-    { key: 'qualified', label: 'Qualified', count: leadStats.qualified },
-    { key: 'lost', label: 'Lost', count: leadStats.lost },
+    // Converted leads live under Clients, so they get no tab here.
+    ...leadStatuses
+      .filter((s) => s.value !== 'CONVERTED')
+      .map((s) => ({ key: s.value.toLowerCase(), label: s.label, count: statsByStatus[s.value] ?? 0 })),
   ];
 
   const handleStatusUpdate = useCallback(
@@ -667,7 +683,7 @@ export default function LeadCompaniesPage() {
 
         // Status tabs / status filter are server-filtered. If the new status no longer
         // matches the current view, remove the row so it transfers out immediately.
-        const statusTabs = ['new', 'contacted', 'qualified', 'lost', 'converted'];
+        const statusTabs = statusKeys;
         const viewStatusFilter = appliedFilters?.status
           ? String(appliedFilters.status).toLowerCase()
           : statusTabs.includes(activeTab)
@@ -696,12 +712,12 @@ export default function LeadCompaniesPage() {
         setLoadingActions((prev) => ({ ...prev, [loadingKey]: false }));
       }
     },
-    [fetchStats, leadCompanies, activeTab, appliedFilters]
+    [fetchStats, leadCompanies, activeTab, appliedFilters, statusKeys]
   );
 
   const kanbanStatusColumns = useMemo(() => {
     const by = {};
-    LEAD_PIPELINE_STAGES.forEach(({ key }) => {
+    statusKeys.forEach((key) => {
       by[key] = [];
     });
     leadCompanies.forEach((c) => {
@@ -710,17 +726,18 @@ export default function LeadCompaniesPage() {
       if (!by[k]) by[k] = [];
       by[k].push(c);
     });
-    const cols = LEAD_PIPELINE_STAGES.map(({ key, label }) => ({
-      key,
-      label,
-      companies: by[key] || [],
+    const cols = leadStatuses.map((s) => ({
+      key: s.value.toLowerCase(),
+      label: s.label,
+      color: s.color,
+      companies: by[s.value.toLowerCase()] || [],
     }));
     if (activeTab === 'all' || activeTab === 'my') return cols;
-    if (['new', 'contacted', 'qualified', 'lost', 'converted'].includes(activeTab)) {
+    if (statusKeys.includes(activeTab)) {
       return cols.filter((c) => c.key === activeTab);
     }
     return cols;
-  }, [leadCompanies, activeTab]);
+  }, [leadCompanies, activeTab, leadStatuses, statusKeys]);
 
   const handleKanbanLeadMove = useCallback(
     async (leadIdStr, newStatus) => {
@@ -1049,6 +1066,7 @@ export default function LeadCompaniesPage() {
             <TableCellLeadStatusSelect
               company={company}
               onStatusChange={handleStatusUpdate}
+              options={statusFilterOptions}
               saving={saving}
               canEdit={canEditCRMRecord('leads', company)}
             />
@@ -1374,7 +1392,7 @@ export default function LeadCompaniesPage() {
         },
       },
     ],
-    [router, commentComposerMenu, commentCountsByCompanyId, nextConnectReasonCountsByCompanyId, openCommentComposer, handleStatusUpdate, loadingActions]
+    [router, commentComposerMenu, commentCountsByCompanyId, nextConnectReasonCountsByCompanyId, openCommentComposer, handleStatusUpdate, loadingActions, statusFilterOptions]
   );
 
   const visibleTableColumns = useMemo(() => {
@@ -1388,9 +1406,11 @@ export default function LeadCompaniesPage() {
     for (const key of columnOrder) {
       if (columnVisibility[key] && byKey[key]) out.push(byKey[key]);
     }
+    // Custom fields marked "Show in list" (G1) go before the actions column.
+    out.push(...leadCustomColumns);
     if (byKey.actions) out.push(byKey.actions);
     return bindSortableColumns(out);
-  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns]);
+  }, [allTableColumns, columnVisibility, columnOrder, bindSortableColumns, leadCustomColumns]);
 
   const membersViewColumns = useMemo(
     () => visibleTableColumns.filter((c) => c.key !== 'assignedTo'),
@@ -1421,7 +1441,7 @@ export default function LeadCompaniesPage() {
         showActions={true}
         onAddClick={() => router.push('/sales/lead-companies/new')}
         onFilterClick={openFilterModal}
-        onImportClick={() => console.log('Import clicked')}
+        onImportClick={() => router.push('/sales/import?entity=lead')}
         onExportClick={() => console.log('Export clicked')}
       />
 
@@ -1832,6 +1852,14 @@ export default function LeadCompaniesPage() {
                 ))}
               </select>
             </label>
+            <CustomFieldFilter
+              fields={leadCustomFields}
+              fieldKey={draftFilters.customFieldKey}
+              value={draftFilters.customFieldValue}
+              onChange={({ key, value }) =>
+                setDraftFilters((prev) => ({ ...prev, customFieldKey: key, customFieldValue: value }))
+              }
+            />
             <label className="space-y-1.5">
               <span className="text-sm font-medium text-gray-700">Company</span>
               <input

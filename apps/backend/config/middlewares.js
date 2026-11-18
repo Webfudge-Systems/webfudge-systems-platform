@@ -100,8 +100,9 @@ module.exports = [
   'strapi::query',
   {
     name: 'strapi::body',
-    // Keeps the raw request body for verifying Razorpay webhook signatures.
-    config: { includeUnparsed: true },
+    // includeUnparsed: raw body for verifying Razorpay webhook signatures (SaaS).
+    // jsonLimit: CRM imports (G4) post up to 20k mapped rows as JSON; Koa's default is 1mb.
+    config: { includeUnparsed: true, jsonLimit: '15mb' },
   },
   'strapi::session',
   'strapi::favicon',

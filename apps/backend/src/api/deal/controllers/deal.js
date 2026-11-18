@@ -7,6 +7,7 @@
  */
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { applyCustomFields, applyCustomFieldFilter } = require('../../../utils/crm-custom-fields');
 const { logCrmActivity, collectChangedKeys, actorDisplayName } = require('../../../utils/crm-activity-log');
 const { emitUpdateNotifications, assignedStakeholderIds } = require('../../../utils/notification-emitter');
 const {
@@ -16,6 +17,7 @@ const {
   safeCount,
 } = require('../../../utils/content-api-helpers');
 const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
+const { applyDealPipeline } = require('../../../utils/crm-pipeline');
 
 const UID = 'api::deal.deal';
 const PROJECT_UID = 'api::project.project';
@@ -36,6 +38,7 @@ const sanitizePopulate = createPopulateSanitizer(
     'clientAccount',
     'contact',
     'deliveryProject',
+    'pipeline',
   ]),
   DEAL_POPULATE_FALLBACK
 );
@@ -50,11 +53,14 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const { query, page, pageSize, sort } = readListQuery(ctx);
 
     const filters = { organization: ctx.state.orgId };
+
+    await applyCustomFieldFilter(strapi, ctx, 'deal', filters);
     const extra = query.filters;
     if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
       if (extra.leadCompany) filters.leadCompany = extra.leadCompany;
       if (extra.clientAccount) filters.clientAccount = extra.clientAccount;
       if (extra.stage) filters.stage = extra.stage;
+      if (extra.pipeline) filters.pipeline = extra.pipeline;
     }
 
     const results = await strapi.entityService.findMany(UID, {
@@ -107,6 +113,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     delete data.id;
     delete data.documentId;
 
+    const pipelineError = await applyDealPipeline(strapi, ctx.state.orgId, data, null);
+    if (pipelineError) return ctx.badRequest(pipelineError);
+    const customFieldError = await applyCustomFields(strapi, ctx.state.orgId, 'deal', data, null);
+    if (customFieldError) return ctx.badRequest(customFieldError);
+
     const entry = await strapi.entityService.create(UID, { data });
     let forLog = entry;
     try {
@@ -143,7 +154,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const { id } = ctx.params;
 
     const existing = await strapi.entityService.findOne(UID, id, {
-      populate: ['organization', 'leadCompany', 'contact', 'assignedTo'],
+      populate: ['organization', 'leadCompany', 'contact', 'assignedTo', 'clientAccount', 'pipeline'],
     });
     if (!existing) return ctx.notFound();
     if (orgIdFromRelation(existing.organization) !== ctx.state.orgId) {
@@ -165,6 +176,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!canAccess(ctx, 'crm', 'deals', 'manage')) {
       delete data.assignedTo;
     }
+
+    const pipelineError = await applyDealPipeline(strapi, ctx.state.orgId, data, existing);
+    if (pipelineError) return ctx.badRequest(pipelineError);
+    const customFieldError = await applyCustomFields(strapi, ctx.state.orgId, 'deal', data, existing);
+    if (customFieldError) return ctx.badRequest(customFieldError);
 
     let entry = await strapi.entityService.update(UID, id, { data });
     const changedKeys = collectChangedKeys(data);
