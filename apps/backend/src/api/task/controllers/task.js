@@ -39,6 +39,7 @@ const {
 } = require('../../../utils/task-recurrence');
 
 const { relId } = require('../../../utils/org-crud');
+const { recordTaskTime } = require('../../../utils/timesheets');
 const { setDependencies, rescheduleWithDependents } = require('../../../utils/task-dependencies');
 
 /**
@@ -90,7 +91,7 @@ async function ensureTimeProject(task) {
 }
 
 /** Stop a running timer: add elapsed hours and clear the timer. Returns the updated task. */
-async function stopRunningTimer(task) {
+async function stopRunningTimer(task, { orgId, userId } = {}) {
   const started = task.timerStartedAt ? new Date(task.timerStartedAt) : null;
   const hoursElapsed = started ? Math.max(0, (Date.now() - started.getTime()) / 3600000) : 0;
   const newHours = Math.round(((parseFloat(task.hoursLogged) || 0) + hoursElapsed) * 100) / 100;
@@ -99,6 +100,12 @@ async function stopRunningTimer(task) {
   });
   const projId = await ensureTimeProject(task);
   if (projId) await recomputeProjectFinancials(projId);
+  // W5: the tracked time also lands on the user's weekly timesheet (skipped if that week is locked).
+  try {
+    await recordTaskTime(strapi, { orgId, userId, task, hours: hoursElapsed, billable: task.billable });
+  } catch (err) {
+    strapi.log.warn(`[task] timesheet entry failed: ${err.message}`);
+  }
   return entry;
 }
 
@@ -1281,7 +1288,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const stopped = [];
     for (const other of others) {
       if (other.id === pk) continue;
-      await stopRunningTimer(other);
+      await stopRunningTimer(other, { orgId: ctx.state.orgId, userId: ctx.state.user.id });
       stopped.push({ id: other.id, name: other.name });
     }
 
@@ -1339,6 +1346,19 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const entry = await strapi.entityService.update(UID, pk, { data });
     const projId = await ensureTimeProject(task);
     if (projId) await recomputeProjectFinancials(projId);
+    if (data.hoursLogged != null) {
+      try {
+        await recordTaskTime(strapi, {
+          orgId: ctx.state.orgId,
+          userId: ctx.state.user.id,
+          task,
+          hours: Number(body.hours),
+          billable: typeof body.billable === 'boolean' ? body.billable : task.billable,
+        });
+      } catch (err) {
+        strapi.log.warn(`[task] timesheet entry failed: ${err.message}`);
+      }
+    }
     return { data: entry };
   },
 
@@ -1358,7 +1378,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
     if (!task.timerRunning) return ctx.badRequest('Timer is not running');
 
-    const entry = await stopRunningTimer(task);
+    const entry = await stopRunningTimer(task, { orgId: ctx.state.orgId, userId: ctx.state.user.id });
     return { data: entry };
   },
 

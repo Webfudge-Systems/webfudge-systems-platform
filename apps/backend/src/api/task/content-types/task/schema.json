@@ -209,6 +209,9 @@
       "relation": "manyToOne",
       "target": "api::invoice.invoice"
     },
+    "estimatedHours": {
+      "type": "decimal"
+    },
     "completedAt": {
       "type": "datetime"
     },
