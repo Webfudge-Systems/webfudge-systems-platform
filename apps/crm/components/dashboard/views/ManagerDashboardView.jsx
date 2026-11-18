@@ -10,6 +10,7 @@ import LeadAssignmentDonutWidget from '../manager/LeadAssignmentDonutWidget'
 import TeamActivityFeedWidget from '../manager/TeamActivityFeedWidget'
 import UpcomingMeetingsWidget from '../UpcomingMeetingsWidget'
 import LeadsAssignedWidget from '../manager/LeadsAssignedWidget'
+import LeadSlaWidget from '../LeadSlaWidget'
 
 export default function ManagerDashboardView({ canViewLeads, canViewMeetings }) {
   const [loading, setLoading] = useState(true)
@@ -73,6 +74,7 @@ export default function ManagerDashboardView({ canViewLeads, canViewMeetings }) 
 
         {/* Right: latest leads, assignment chart, meetings */}
         <div className="space-y-6 xl:col-span-4">
+          {canViewLeads ? <LeadSlaWidget /> : null}
           {canViewLeads ? <LeadsAssignedWidget /> : null}
           {canViewLeads ? <LeadAssignmentDonutWidget /> : null}
           {canViewMeetings ? <UpcomingMeetingsWidget /> : null}
