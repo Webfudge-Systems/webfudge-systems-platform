@@ -130,6 +130,12 @@
     },
     "slaBreachedAt": {
       "type": "datetime"
+    },
+    "metaLeadId": {
+      "type": "string"
+    },
+    "metaAttribution": {
+      "type": "json"
     }
   }
 }

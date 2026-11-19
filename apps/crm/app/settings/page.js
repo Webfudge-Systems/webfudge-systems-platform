@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, ChevronRight, ExternalLink, GitBranch, ListChecks, MessageSquare, Package, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
-import { Card } from '@webfudge/ui';
+import { Bell, ChevronRight, ExternalLink, GitBranch, ListChecks, Megaphone, MessageSquare, Package, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
+import { Card, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import { getAppUrl } from '@webfudge/utils';
 import CRMPageHeader from '../../components/CRMPageHeader';
 
@@ -31,6 +31,17 @@ const SECTIONS = [
     title: 'Lead assignment & SLA',
     description: 'Auto-assign new leads (round robin, fewest open leads, by city, state, pincode, source or industry) and set a first-contact time limit.',
   },
+  // Meta Lead Ads capture (G6) is SaaS-only.
+  ...(IS_SAAS_PLATFORM
+    ? [
+        {
+          href: '/settings/meta-lead-ads',
+          icon: Megaphone,
+          title: 'Meta Lead Ads',
+          description: 'Connect your Facebook Page and bring leads from Facebook and Instagram lead forms into Grow automatically.',
+        },
+      ]
+    : []),
   {
     href: '/settings/products',
     icon: Package,

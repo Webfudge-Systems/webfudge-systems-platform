@@ -1,0 +1,24 @@
+{
+  "name": "@webfudge/meta-ads",
+  "version": "0.2.0",
+  "description": "Server-side Meta (Facebook) Graph API helpers for Lead Ads: OAuth, Graph client, webhook verification, form field mapping",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "keywords": [
+    "meta",
+    "facebook",
+    "lead-ads",
+    "graph-api",
+    "webhooks"
+  ],
+  "author": "WebFudge Systems",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

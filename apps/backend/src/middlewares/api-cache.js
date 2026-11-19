@@ -14,6 +14,7 @@ const SKIP_PREFIXES = [
   '/api/entity-attachments',
   '/api/invest', // internal investment manager: live prices + financial data stay out of Redis
   '/api/re-webhooks', // server-to-server lead ingestion — must never serve stale reads
+  '/api/crm-meta', // Meta Lead Ads (G6): webhook + live connection status; ingestion invalidates the org itself
   '/api/vendor', // staff portal: has its own short cache and must reflect staff actions at once
   '/admin',
   '/_health',

@@ -93,10 +93,58 @@ netbanking. No card is stored by Webfudge.
 Until step 3, Apps & billing explains that online payments are being switched on and points people to
 `NEXT_PUBLIC_SUPPORT_EMAIL`. Trials and the Free plan work without Razorpay.
 
+## Meta Lead Ads capture (Grow, ticket G6)
+
+Customers connect a Facebook Page in **Grow → Settings → Meta Lead Ads**, tick the lead forms to capture
+and map each form question to a Grow field (or a custom field). Every new lead submitted on Facebook or
+Instagram then arrives in Lead companies within seconds:
+
+- Meta calls `POST /api/crm-meta/webhook`. The API checks `X-Hub-Signature-256` (HMAC-SHA256 of the raw
+  body with `META_APP_SECRET`) and rejects anything unsigned or wrongly signed with 401.
+- The Page id decides the organization (a Page can be active in only one organization). Leads from forms
+  that are not ticked, and from organizations whose Grow is read-only or locked, are not saved.
+- The lead is fetched from the Graph API with the Page token (with `appsecret_proof`), mapped with the
+  form's mapping, and saved as a lead company (source `META_ADS`, status NEW, owner from the G5
+  assignment rules, else the person who connected) plus its contact. `metaLeadId` and `metaAttribution`
+  (campaign, ad set, ad and form ids and names, Page, platform, UTM answers) are stored on the lead, and
+  an activity is logged.
+- Duplicates: the same Meta lead id is never saved twice (webhook retries, imports). A person who is
+  already in Grow (same email or phone on a lead company or contact, G4 rules) gets an activity on the
+  existing lead instead of a second lead.
+- "Import recent leads" (backfill, up to 90 days and 500 leads per run) recovers leads from before the
+  connection or from outages.
+- Facebook tokens are AES-256-GCM encrypted with `META_TOKEN_ENCRYPTION_KEY`, marked private in the
+  schema and never returned to the browser.
+
+Code: `packages/meta-ads` (Graph client, OAuth, webhook checks, field mapping; `npm test` there),
+`apps/backend/src/utils/meta-lead-ads.js` (ingestion), `apps/backend/src/api/crm-meta-connection`,
+`apps/crm/app/settings/meta-lead-ads`. End-to-end check without a Meta app:
+`node scripts/test-meta-lead-ads-e2e.js` (and `--internal`) from `apps/backend`.
+
+### Setting up the Meta app (once, by Webfudge)
+
+1. developers.facebook.com → Create app → type **Business**. Add the **Facebook Login for Business**
+   and **Webhooks** products.
+2. Facebook Login → Settings → Valid OAuth redirect URIs: `https://api.webfudgesystems.in/api/crm-meta/oauth/callback`.
+3. Webhooks → **Page** → Subscribe → callback `https://api.webfudgesystems.in/api/crm-meta/webhook`, verify
+   token = `META_WEBHOOK_VERIFY_TOKEN`; subscribe to the `leadgen` field.
+4. App settings → Advanced → turn on **Require App Secret**.
+5. App Review: request advanced access for `pages_show_list`, `pages_read_engagement`,
+   `pages_manage_metadata`, `pages_manage_ads`, `leads_retrieval`, `ads_read` and `business_management`,
+   and complete Business Verification. Until approved, only people with a role on the app can connect.
+6. Set the env vars below on the SaaS API and redeploy. Test with Meta's
+   [Lead Ads Testing Tool](https://developers.facebook.com/tools/lead-ads-testing).
+
+API env vars: `META_APP_ID`, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `META_TOKEN_ENCRYPTION_KEY`,
+`META_OAUTH_REDIRECT_URI` (or `PUBLIC_URL`), `CRM_APP_URL`; optional `META_GRAPH_VERSION`.
+`META_GRAPH_BASE_URL` exists only for the local mock test — never set it in a real deployment.
+Changing `META_TOKEN_ENCRYPTION_KEY` makes every organization reconnect.
+
 ## Settings
 
 API (`apps/backend`): `PLATFORM_MODE=saas`, `JWT_SECRET`, `ACCOUNTS_URL`, `RESEND_API_KEY`, `MAIL_FROM`,
-`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `BILLING_SELLER_*`, `BILLING_SAC_CODE`.
+`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `BILLING_SELLER_*`, `BILLING_SAC_CODE`,
+`META_*` and `CRM_APP_URL` (Meta Lead Ads, above).
 
 Accounts / CRM / PM: `NEXT_PUBLIC_PLATFORM_MODE=saas`, `NEXT_PUBLIC_AUTH_COOKIE_DOMAIN=.webfudgesystems.in`,
 `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ACCOUNTS_APP_URL`, `NEXT_PUBLIC_CRM_APP_URL`, `NEXT_PUBLIC_PM_APP_URL`,
@@ -114,6 +162,7 @@ All keys are listed with comments in each app's `.env.example`.
 - [ ] Customer quotes: get approval, then set `approved: true` with name and role in `apps/landing/data/customers.js`.
 - [ ] Legal pages (`apps/landing/data/legal.js`): lawyer review, including the refund terms.
 - [ ] Invoice settings: `BILLING_SELLER_GSTIN`, address, SAC code (ask your CA).
+- [ ] Meta Lead Ads: Meta app, webhook, App Review + Business Verification, `META_*` env vars (see above).
 - [ ] Real screenshots from a demo organization to replace the drawn mockups (`components/mocks`).
 - [ ] Transparent logo files for EVI, PositiEV and BikeWo.
 
@@ -140,3 +189,7 @@ All keys are listed with comments in each app's `.env.example`.
 | POST | `/api/billing/organizations/:id/free`, `/cancel` | admin |
 | PUT | `/api/billing/organizations/:id/details` | admin |
 | GET | `/api/billing/invoices/:paymentId` | admin |
+| GET / POST | `/api/crm-meta/webhook` | Meta (verify token / signed) |
+| GET | `/api/crm-meta/oauth/callback` | Meta redirect (signed state) |
+| GET | `/api/crm-meta/connection` | member |
+| POST / GET / PUT / DELETE | `/api/crm-meta/connect`, `/pages`, `/page`, `/forms`, `/backfill`, `/connection` | CRM settings manage |
