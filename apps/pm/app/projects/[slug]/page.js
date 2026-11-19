@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@webfudge/auth';
@@ -45,9 +45,13 @@ import {
 import PMPageHeader from '../../../components/PMPageHeader';
 import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
+import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
 import ProjectGantt from '../../../components/ProjectGantt';
+import { TaskViewToolbar, TaskGroupedList, TaskCalendarView, TaskWorkloadView } from '../../../components/TaskViews';
+import { MyTasksKanbanBoard } from '../../../components/MyTasksViews';
+import useSavedViews from '../../../lib/useSavedViews';
 import { formatHours } from '../../../lib/api/timeTrackingService';
 import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
 import { InfoRow, InfoSection, SidebarCardTitle } from '@webfudge/ui';
@@ -83,6 +87,7 @@ const DETAIL_TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'tasks', label: 'Tasks' },
   { key: 'timeline', label: 'Timeline' },
+  { key: 'sprints', label: 'Sprints' },
   { key: 'activity', label: 'Activity' },
   { key: 'files', label: 'Files' },
 ];
@@ -228,6 +233,18 @@ export default function ProjectDetailPage() {
   const [activeTab, setActiveTab] = useState('overview');
   const [fileCount, setFileCount] = useState(0);
   const [project, setProject] = useState(null);
+  // W3: project task views (list / board / table / calendar / Gantt / workload) + saved views per user
+  const [taskView, setTaskView] = useState('table');
+  const [taskGroupBy, setTaskGroupBy] = useState('status');
+  const savedViews = useSavedViews(project?.id ? `project:${project.id}` : null);
+  const appliedDefaultViewFor = useRef(null);
+  useEffect(() => {
+    const dv = savedViews.defaultView;
+    if (!savedViews.loaded || !project?.id || appliedDefaultViewFor.current === project.id) return;
+    appliedDefaultViewFor.current = project.id;
+    if (dv?.config?.view) setTaskView(dv.config.view);
+    if (dv?.config?.groupBy) setTaskGroupBy(dv.config.groupBy);
+  }, [savedViews.loaded, savedViews.defaultView, project?.id]);
   const canEditThisProject = useMemo(
     () => (project ? canEditProjectInPm(project, currentUserId) : false),
     [project, currentUserId],
@@ -297,6 +314,18 @@ export default function ProjectDetailPage() {
       if (!silent) setTasksLoading(false);
     }
   }, [project?.id]);
+
+  const handleGanttReschedule = useCallback(async (t, startDate, scheduledDate) => {
+    const res = await taskService.reschedule(t.id, { startDate, scheduledDate });
+    const changed = Array.isArray(res?.data) ? res.data : [];
+    const byId = new Map(changed.map((c) => [String(c.id), c]));
+    setTasks((prev) =>
+      prev.map((x) => {
+        const c = byId.get(String(x.id));
+        return c ? { ...x, startDate: c.startDate, dueDate: c.scheduledDate } : x;
+      })
+    );
+  }, []);
 
   const refreshTasksAndProject = useCallback(async () => {
     await loadTasks();
@@ -1062,21 +1091,52 @@ export default function ProjectDetailPage() {
         <ProjectGantt
           tasks={displayTasks}
           canEditTask={(t) => canEditTaskInPm(t, currentUserId)}
-          onReschedule={async (t, startDate, scheduledDate) => {
-            const res = await taskService.reschedule(t.id, { startDate, scheduledDate });
-            const changed = Array.isArray(res?.data) ? res.data : [];
-            const byId = new Map(changed.map((c) => [String(c.id), c]));
-            setTasks((prev) =>
-              prev.map((x) => {
-                const c = byId.get(String(x.id));
-                return c ? { ...x, startDate: c.startDate, dueDate: c.scheduledDate } : x;
-              })
-            );
-          }}
+          onReschedule={handleGanttReschedule}
         />
       ) : null}
 
       {activeTab === 'tasks' ? (
+        <div className="flex justify-end">
+          <TaskViewToolbar
+            view={taskView}
+            onViewChange={setTaskView}
+            groupBy={taskGroupBy}
+            onGroupByChange={setTaskGroupBy}
+            saved={project?.id ? savedViews : null}
+          />
+        </div>
+      ) : null}
+
+      {activeTab === 'tasks' && taskView !== 'table' ? (
+        taskView === 'gantt' ? (
+          <ProjectGantt tasks={displayTasks} canEditTask={(t) => canEditTaskInPm(t, currentUserId)} onReschedule={handleGanttReschedule} />
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            {tasksLoading ? (
+              <p className="p-8 text-center text-sm text-gray-500">Loading tasks…</p>
+            ) : taskView === 'list' ? (
+              <TaskGroupedList tasks={displayTasks} groupBy={taskGroupBy} />
+            ) : taskView === 'board' ? (
+              <MyTasksKanbanBoard
+                tasks={displayTasks}
+                router={router}
+                activeTab="all"
+                updateTask={async (task, patch) => {
+                  if (!canEditTaskInPm(task, currentUserId)) return;
+                  await taskService.updateTask(task.id, patch);
+                  await refreshTasksAndProject();
+                }}
+              />
+            ) : taskView === 'calendar' ? (
+              <TaskCalendarView tasks={displayTasks} />
+            ) : (
+              <TaskWorkloadView tasks={displayTasks} />
+            )}
+          </div>
+        )
+      ) : null}
+
+      {activeTab === 'tasks' && taskView === 'table' ? (
         <ProjectTasksPanel
           tasks={displayTasks}
           tasksLoading={tasksLoading}
@@ -1103,6 +1163,8 @@ export default function ProjectDetailPage() {
           canApproveAssignments={canApproveAssignments}
         />
       ) : null}
+
+      {activeTab === 'sprints' && project?.id ? <ProjectSprintsPanel projectId={project.id} /> : null}
 
       {activeTab === 'activity' ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start">

@@ -36,6 +36,7 @@ import {
   TableEmptyBelow,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
+import SavedViewsMenu, { useSavedViews, useApplyDefaultView } from '../../../components/SavedViewsMenu';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import contactService from '../../../lib/api/contactService';
@@ -226,6 +227,8 @@ export default function ContactsPage() {
     handleColumnListDragLeave,
     handleColumnDrop,
     resetColumnTablePreferences,
+    applyColumnPreferences,
+    columnWidths,
     tableResizeProps,
   } = useTableColumnPreferences({
     visibilityStorageKey: COLUMN_VISIBILITY_STORAGE_KEY,
@@ -294,6 +297,7 @@ export default function ContactsPage() {
     moveSortRule,
     clearSort,
     bindSortableColumns,
+    setSortRules,
   } = useCrmTableSort({ entity: 'contact', storageKey: TABLE_SORT_STORAGE_KEY, data: contacts });
 
   const sortApiParam = useMemo(() => {
@@ -399,6 +403,36 @@ export default function ContactsPage() {
   }, [initialFilters]);
 
   // Tab items
+  // G3: saved views (server-side, per user, optionally shared with the team)
+  const savedViews = useSavedViews('crm:contacts');
+  const getViewConfig = useCallback(
+    () => ({
+      statusTab: activeTab,
+      search: searchQuery,
+      filters: appliedFilters,
+      sort: sortRules,
+      columns: { visibility: columnVisibility, order: columnOrder, widths: columnWidths },
+    }),
+    [activeTab, searchQuery, appliedFilters, sortRules, columnVisibility, columnOrder, columnWidths]
+  );
+  const applySavedView = useCallback(
+    (c = {}) => {
+      if (c.statusTab) setActiveTab(c.statusTab);
+      setSearchQuery(typeof c.search === 'string' ? c.search : '');
+      if (c.filters && typeof c.filters === 'object') {
+        const next = { ...initialFilters, ...c.filters };
+        setAppliedFilters(next);
+        setDraftFilters(next);
+      }
+      if (Array.isArray(c.sort)) setSortRules(c.sort);
+      if (c.columns) applyColumnPreferences(c.columns);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [initialFilters, setSortRules, applyColumnPreferences]
+  );
+  useApplyDefaultView(savedViews, applySavedView);
+  const savedViewsMenu = <SavedViewsMenu saved={savedViews} getConfig={getViewConfig} onApply={applySavedView} />;
+
   const tabItems = [
     { key: 'all', label: 'All Contacts', count: contactStats.all },
     { key: 'withEmail', label: 'With Email', count: contactStats.withEmail },
@@ -766,6 +800,7 @@ export default function ContactsPage() {
           }))}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          afterTabs={savedViewsMenu}
           showSearch={true}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}

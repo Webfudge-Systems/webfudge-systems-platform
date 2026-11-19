@@ -118,6 +118,18 @@
     },
     "customFields": {
       "type": "json"
+    },
+    "assignedByRule": {
+      "type": "string"
+    },
+    "firstContactDueAt": {
+      "type": "datetime"
+    },
+    "firstContactedAt": {
+      "type": "datetime"
+    },
+    "slaBreachedAt": {
+      "type": "datetime"
     }
   }
 }

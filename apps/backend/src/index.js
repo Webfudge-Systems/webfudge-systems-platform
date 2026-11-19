@@ -29,6 +29,25 @@ module.exports = {
   async bootstrap({ strapi }) {
     console.log(`🚀 Strapi is bootstrapping (PLATFORM_MODE=${platformMode()})...`);
 
+    // W14: retainer usage alerts (80% / 100%) every 15 minutes.
+    try {
+      strapi.cron.add({
+        retainerAlerts: {
+          task: async ({ strapi: s }) => {
+            try {
+              const n = await require('./utils/retainers').checkRetainerAlerts(s);
+              if (n) s.log.info(`[cron] retainer alerts sent: ${n}`);
+            } catch (e) {
+              s.log.error(`[cron] retainer alerts failed: ${e?.message || e}`);
+            }
+          },
+          options: { rule: '*/15 * * * *' },
+        },
+      });
+    } catch (e) {
+      console.warn('retainer cron not registered:', e?.message || e);
+    }
+
     if (redis.isRedisConfigured()) {
       const hostHint = (redis.resolveRedisUrl() || '').replace(/:[^:@]+@/, ':****@');
       try {

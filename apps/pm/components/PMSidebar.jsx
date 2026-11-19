@@ -20,8 +20,11 @@ import {
   FileText,
   Calendar,
   Target,
+  Gauge,
   Building2,
   PieChart,
+  Clock,
+  Repeat,
 } from 'lucide-react'
 import projectService from '../lib/api/projectService'
 import { transformProject } from '../lib/api/dataTransformers'
@@ -82,6 +85,13 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       href: '/my-tasks',
     },
     {
+      id: 'capacity',
+      module: 'tasks',
+      label: 'Capacity',
+      icon: Gauge,
+      href: '/capacity',
+    },
+    {
       id: 'inbox',
       module: 'inbox',
       label: 'Inbox',
@@ -98,6 +108,20 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       badge: messageCount,
     },
     {
+      id: 'timesheets',
+      module: 'tasks',
+      label: 'Timesheets',
+      icon: Clock,
+      href: '/timesheets',
+    },
+    {
+      id: 'retainers',
+      module: 'projects',
+      label: 'Retainers',
+      icon: Repeat,
+      href: '/retainers',
+    },
+    {
       id: 'clients',
       module: 'client_accounts',
       label: 'Clients',
@@ -107,9 +131,9 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
     {
       id: 'reports',
       module: 'analytics',
-      label: 'Reports',
+      label: 'Portfolio',
       icon: PieChart,
-      href: '/coming-soon?feature=reports',
+      href: '/analytics',
     },
   ]
 

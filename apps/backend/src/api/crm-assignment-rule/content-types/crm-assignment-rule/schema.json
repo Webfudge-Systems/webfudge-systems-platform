@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_assignment_rules",
+  "info": {
+    "singularName": "crm-assignment-rule",
+    "pluralName": "crm-assignment-rules",
+    "displayName": "CRM Assignment Rule",
+    "description": "Per-organization lead assignment rules (round robin / load based) with match criteria"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "strategy": {
+      "type": "enumeration",
+      "enum": ["round_robin", "load_based"],
+      "default": "round_robin"
+    },
+    "match": {
+      "type": "json"
+    },
+    "assigneeIds": {
+      "type": "json"
+    },
+    "maxOpenLeads": {
+      "type": "integer"
+    },
+    "lastAssignedIndex": {
+      "type": "integer",
+      "default": -1
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

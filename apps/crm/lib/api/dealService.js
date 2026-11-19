@@ -74,6 +74,9 @@ function toStrapiData(payload) {
     if (!Number.isNaN(n)) data[key] = n;
   }
 
+  // Lost reason (G15): kept by the backend only while the deal is lost.
+  if (Object.prototype.hasOwnProperty.call(payload, 'lostReason')) data.lostReason = payload.lostReason || null;
+
   // Custom fields (G1): validated by the backend against the org's field definitions.
   if (payload.customFields && typeof payload.customFields === 'object') data.customFields = payload.customFields;
 
@@ -133,9 +136,10 @@ export default {
   },
 
   /** Create org project linked to a won deal (`POST /deals/:id/delivery-project`). */
-  async createDeliveryProject(dealId) {
-    const response = await strapiClient.post(`${ENDPOINT}/${dealId}/delivery-project`, {});
-    return normalizeOneResponse(response);
+  /** Won deal → delivery project (G23). options: { templateKey, startDate, invoicePlan: 'none'|'full'|'split50' } */
+  async createDeliveryProject(dealId, options = {}) {
+    const response = await strapiClient.post(`${ENDPOINT}/${dealId}/delivery-project`, { data: options });
+    return { ...normalizeOneResponse(response), meta: response?.meta || {} };
   },
 
   /** All deals for pipeline board (client-side grouping). */
