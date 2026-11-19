@@ -3,9 +3,10 @@ import { IS_SAAS_PLATFORM } from '@webfudge/ui'
 /**
  * Placeholder / fake screens hidden from paying SaaS customers until the real feature ships (ticket GF3).
  * Internal deployment is unchanged. Remove an entry when its feature ticket lands:
- * /analytics + Reports → G15, /automations → P6, /settings → GF4, Log Call → G17, Send WhatsApp → Connect.
+ * /automations → P6, Log Call → G17, Send WhatsApp → Connect.
+ * (Unhidden: /analytics — real analytics shipped in G15; /settings — real Grow settings shipped in GF4.)
  */
-const HIDDEN_PREFIXES = ['/coming-soon', '/analytics', '/automations', '/settings']
+const HIDDEN_PREFIXES = ['/coming-soon', '/automations']
 
 /** Exact paths that should send SaaS users somewhere useful instead. */
 const REDIRECTS = { '/clients': '/clients/accounts' }
