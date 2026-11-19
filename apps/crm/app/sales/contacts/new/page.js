@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, Input, Select, Textarea, Modal, FormSectionCard } from '@webfudge/ui';
+import { Button, Input, Select, Textarea, Modal, FormSectionCard, UpgradePrompt, planErrorDetails } from '@webfudge/ui';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import contactService from '../../../../lib/api/contactService';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
@@ -87,6 +87,7 @@ export default function NewContactPage() {
     leadCompany: prefilledLeadCompany,
   }));
   const [errors, setErrors] = useState({});
+  const [planPrompt, setPlanPrompt] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -365,7 +366,10 @@ export default function NewContactPage() {
       }, 1500);
     } catch (err) {
       const message = err?.message || 'Failed to create contact. Please try again.';
-      setErrors({ submit: message });
+      // SaaS: Grow Free plan contact limit (G16) → upgrade prompt instead of a plain error.
+      const prompt = planErrorDetails(err);
+      setPlanPrompt(prompt);
+      setErrors(prompt ? {} : { submit: message });
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSubmitting(false);
@@ -705,6 +709,8 @@ export default function NewContactPage() {
               </div>
             </div>
           </FormSectionCard>
+
+          {planPrompt && <UpgradePrompt compact {...planPrompt} />}
 
           {errors.submit && (
             <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4">

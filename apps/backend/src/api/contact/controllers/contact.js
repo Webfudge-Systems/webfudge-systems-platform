@@ -18,6 +18,7 @@ const {
 } = require('../../../utils/content-api-helpers');
 const { canAccess, requireModuleAccess, requireOwnerOrModuleManage } = require('../../../utils/rbac');
 const { attachRelationsToContacts } = require('../../../utils/crm-relation-attach');
+const { requireContactCapacity } = require('../../../utils/saas-plans');
 
 const UID = 'api::contact.contact';
 
@@ -158,6 +159,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!ctx.state.orgId) return ctx.forbidden('No active organization');
     const denied = requireModuleAccess(ctx, 'crm', 'contacts', 'write');
     if (denied) return denied;
+    // SaaS: Grow Free plan contact limit (G16). No-op on Internal.
+    if (!(await requireContactCapacity(ctx, strapi, 1))) return;
 
     const body = ctx.request?.body || {};
     const payload = body.data || body;

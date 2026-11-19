@@ -13,6 +13,7 @@ module.exports = {
     route('GET', '/saas/catalog', 'catalog'),
     route('GET', '/saas/home', 'home'),
     route('GET', '/saas/access', 'access'),
+    route('GET', '/saas/features/:key', 'feature'),
     route('POST', '/saas/organizations', 'createOrganization'),
     route('GET', '/saas/organizations/:id', 'organization'),
     route('POST', '/saas/organizations/:id/trials', 'startTrials'),

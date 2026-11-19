@@ -15,6 +15,8 @@ const SKIP_PREFIXES = [
   '/api/invest', // internal investment manager: live prices + financial data stay out of Redis
   '/api/re-webhooks', // server-to-server lead ingestion — must never serve stale reads
   '/api/vendor', // staff portal: has its own short cache and must reflect staff actions at once
+  '/api/saas/access', // SaaS plan, limits and usage: must change as soon as a plan is bought (G16 / W15)
+  '/api/saas/features',
   '/admin',
   '/_health',
 ];

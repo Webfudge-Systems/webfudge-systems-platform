@@ -24,6 +24,7 @@ const {
 const { listFields, applyCustomFields } = require('../../../utils/crm-custom-fields');
 const { leadStatusKeys } = require('../../../utils/crm-pipeline');
 const { applyAssignmentOnCreate } = require('../../../utils/lead-assignment');
+const { contactAllowance, contactLimitMessage, requireContactCapacity } = require('../../../utils/saas-plans');
 
 const UID = 'api::crm-import.crm-import';
 const MAX_ROWS = 20000;
@@ -108,6 +109,9 @@ async function runImport(strapi, jobId, { orgId, userId, entity, rows, duplicate
     ]);
     const errors = [];
     const dups = [];
+    // SaaS: stop creating contacts once the Grow Free plan limit is reached (G16).
+    const allowance = entity === 'contact' ? await contactAllowance(strapi, orgId) : { remaining: Infinity };
+    let overLimit = 0;
     let created = 0;
     let duplicates = 0;
     let failed = 0;
@@ -129,7 +133,11 @@ async function runImport(strapi, jobId, { orgId, userId, entity, rows, duplicate
             duplicates += 1;
             if (dups.length < MAX_LISTED) dups.push({ row: rowNo, matchId: match.id, matchLabel: match.label, matchedOn: match.matchedOn, values: row });
           }
-          if (!match || duplicateMode === 'create') {
+          if ((!match || duplicateMode === 'create') && created >= allowance.remaining) {
+            failed += 1;
+            overLimit += 1;
+            if (errors.length < MAX_LISTED) errors.push({ row: rowNo, reason: contactLimitMessage(allowance.limit), values: row });
+          } else if (!match || duplicateMode === 'create') {
             try {
               const record = { ...data, organization: orgId, assignedTo: userId };
               if (entity === 'lead') {
@@ -159,7 +167,7 @@ async function runImport(strapi, jobId, { orgId, userId, entity, rows, duplicate
       errorRows: errors,
       duplicateRows: dups,
       finishedAt: new Date().toISOString(),
-      message: `Imported ${created} of ${rows.length}. ${duplicates} possible duplicate(s)${duplicateMode === 'skip' ? ' skipped' : ' created anyway'}, ${failed} row(s) with errors.`,
+      message: `Imported ${created} of ${rows.length}. ${duplicates} possible duplicate(s)${duplicateMode === 'skip' ? ' skipped' : ' created anyway'}, ${failed} row(s) with errors.${overLimit ? ` ${overLimit} row(s) not imported: ${contactLimitMessage(allowance.limit)}` : ''}`,
     });
   } catch (e) {
     strapi.log.error(`[crm-import ${jobId}] ${e?.stack || e}`);
@@ -215,6 +223,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (!rows || !rows.length) return ctx.badRequest('No rows to import');
     if (rows.length > MAX_ROWS) return ctx.badRequest(`At most ${MAX_ROWS} rows per import`);
     const duplicateMode = body.duplicateMode === 'create' ? 'create' : 'skip';
+    if (entity === 'contact' && !(await requireContactCapacity(ctx, strapi, 1))) return;
     const job = await strapi.entityService.create(UID, {
       data: {
         entity,

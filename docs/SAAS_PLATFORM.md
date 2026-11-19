@@ -38,7 +38,7 @@ existing users sign in and accept.
 | Trial ended | Read-only | 7 days after the trial ends |
 | Active (paid) | Full | Until the end of the paid period |
 | Expired / cancelled | Read-only, then locked | 7 days read-only after the period ends, then locked |
-| Free plan | Full | No end date; up to 3 members |
+| Free plan | Full | No end date; Grow up to 2 members and 500 contacts, Work up to 5 members |
 | Locked | None | Data kept 90 days (not deleted automatically) |
 
 The API enforces this in `src/middlewares/app-access.js`: CRM data (`lead-companies`, `contacts`,
@@ -52,14 +52,41 @@ trial ends, when it ends, when an app locks, 7 days and 1 day before a paid peri
 ## Plans and prices
 
 Plans are the `Plan` collection in the Strapi admin (one set per app). The defaults are created
-once on a SaaS API's first start and are never overwritten, so edit prices there:
+once on a SaaS API's first start and are never overwritten, so edit prices and limits there.
+The plan codes are kept from the first catalogue so billing and existing subscriptions keep
+working (tickets G16 / W15):
 
-| Plan | Price per user / month | Notes |
-|---|---|---|
-| Free | ₹0 | up to 3 users |
-| Standard | ₹499 | |
-| Professional | ₹999 | marked Popular |
-| Enterprise | ₹1,499 | |
+| Code | Name | Fudge Grow (`crm`) | Fudge Work (`pm`) | Business-only features |
+|---|---|---|---|---|
+| `free` | Free | ₹0 · 2 users · 500 contacts | ₹0 · 5 users | |
+| `standard` | Pro (Popular) | ₹599 / user / month | ₹349 / user / month | |
+| `professional` | Business | ₹1,199 / user / month | ₹699 / user / month | Grow: AI SDR, call coach, forecast · Work: client portal, profitability, AI teammates |
+
+A 14-day trial counts as Business. Legacy `enterprise` rows also count as Business; an untouched,
+unused one is hidden. On an existing database, plan rows still holding the first catalogue's
+defaults (Standard ₹499, Professional ₹999, Enterprise ₹1,499, Free with 3 users) are moved to the
+names and prices above on start-up; edited rows are left alone. Plan rows also carry `tier`
+(free / pro / business), `maxContacts` and `aiCreditsMonthly` (stored for later; AI features are not
+metered yet).
+
+### Plan gating (`apps/backend/src/utils/saas-plans.js`)
+
+- **Users**: members plus pending invitations can't exceed the Free plan's `maxUsers` or the seats
+  paid for (400 `PLAN_USER_LIMIT`).
+- **Contacts**: `POST /api/contacts` and contact imports stop at the plan's `maxContacts`
+  (402 `PLAN_CONTACT_LIMIT`; an import creates rows up to the limit and reports the rest as errors).
+- **Features**: feature keys (`crm.forecast`, `pm.client_portal`, …) and the tier that unlocks each
+  are in `FEATURES`. Gate a route with
+  `{ name: 'global::plan-feature', config: { feature: 'pm.client_portal' } }` in its `middlewares`,
+  or call `requireFeature(ctx, strapi, key)` / `hasFeature(strapi, orgId, key)` in a controller
+  (402 `PLAN_FEATURE_REQUIRED`). `GET /api/saas/features/:key` checks one feature. Today only the
+  Grow analytics forecast exists; the other keys are reserved for the features still to be built.
+- `GET /api/saas/access` returns, per app, `tier`, `limits`, `usage`, `aiCreditsMonthly` and the
+  allowed `features`, plus the full feature list.
+- Frontends (`@webfudge/ui`): `usePlanFeature(key)`, `<PlanGate feature={key}>`,
+  `<PlanLimitNotice app="crm" limit="contacts" />`, and `planErrorDetails(error)` →
+  `<UpgradePrompt>`. Upgrade buttons open Accounts `/billing?app=crm|pm`.
+- All of this is a no-op on Internal.
 
 Yearly = 12 months less `yearlyDiscountPercent` (15%). Prices exclude GST (18%, `BILLING_GST_RATE`).
 The website reads plans from `/api/saas/catalog` every hour.

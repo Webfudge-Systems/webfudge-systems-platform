@@ -4,6 +4,7 @@
 
 const { resolveOrganizationRoleIdForOrg } = require('./organization-role');
 const { membershipSummary } = require('./rbac');
+const { planEntitlements, APP_LABEL } = require('./saas-plans');
 
 const MEMBERSHIP_UID = 'api::organization-user.organization-user';
 
@@ -68,8 +69,9 @@ async function addMember(strapi, { orgId, userId, role = 'Member' }) {
 }
 
 /**
- * Active plans cap members plus pending invitations: the Free plan by its user limit, paid plans by
- * the seats bought. Returns a message when adding `adding` more people would go over, otherwise null.
+ * Active plans cap members plus pending invitations: the Free plan by its user limit (Grow 2,
+ * Work 5 by default; see saas-plans.js), paid plans by the seats bought. Returns
+ * { message, apps } when adding `adding` more people would go over, otherwise null.
  */
 async function seatLimitProblem(strapi, orgId, adding) {
   const activeSubs = await strapi.entityService.findMany('api::subscription.subscription', {
@@ -77,7 +79,12 @@ async function seatLimitProblem(strapi, orgId, adding) {
     populate: { plan: true, app: true },
   });
   const limits = activeSubs
-    .map((s) => ({ app: s.app?.name, cap: s.planCode === 'free' ? s.plan?.maxUsers : s.totalUsers, free: s.planCode === 'free' }))
+    .map((s) => ({
+      app: APP_LABEL[s.app?.slug] || s.app?.name,
+      slug: s.app?.slug,
+      cap: s.planCode === 'free' ? planEntitlements(s).limits.users : s.totalUsers,
+      free: s.planCode === 'free',
+    }))
     .filter((l) => l.cap);
   if (!limits.length) return null;
   const pending = await strapi.entityService.count('api::invitation.invitation', {
@@ -88,9 +95,10 @@ async function seatLimitProblem(strapi, orgId, adding) {
   if (!tight.length) return null;
   const names = tight.map((l) => l.app).join(' and ');
   const cap = Math.min(...tight.map((l) => l.cap));
-  return tight.some((l) => l.free)
-    ? `The Free plan allows up to ${cap} people. Upgrade ${names} to invite more.`
+  const message = tight.some((l) => l.free)
+    ? `The ${names} Free plan allows up to ${cap} people. Upgrade to Pro to invite more.`
     : `Your ${names} plan covers ${cap} users. Add users in Apps & billing first.`;
+  return { message, apps: tight.map((l) => l.slug), limit: cap };
 }
 
 module.exports = { MEMBERSHIP_UID, relationId, getMembership, isAdminMembership, requireMember, memberCount, addMember, seatLimitProblem };

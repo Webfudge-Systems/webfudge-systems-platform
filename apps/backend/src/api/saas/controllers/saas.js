@@ -11,6 +11,7 @@ const { membershipSummary } = require('../../../utils/rbac');
 const { uniqueUsernameFromEmail } = require('../../../utils/user-username');
 const { TRIAL_DAYS, DAY, getOrgAccess, invalidateOrgAccess } = require('../../../utils/saas-access');
 const { requireMember, memberCount, addMember, relationId, seatLimitProblem, MEMBERSHIP_UID } = require('../../../utils/saas-org');
+const { accountsBillingUrl, FEATURES, CODE_TIER, requireFeature } = require('../../../utils/saas-plans');
 const { sessionPayload, userPayload, normalizeEmail, isEmail, passwordProblem } = require('../../../utils/auth-session');
 
 const ORG_UID = 'api::organization.organization';
@@ -57,6 +58,9 @@ function serializePlan(plan) {
     pricePerUserMonthly: Number(plan.pricePerUserMonthly) || 0,
     yearlyDiscountPercent: plan.yearlyDiscountPercent ?? 15,
     maxUsers: plan.maxUsers || null,
+    tier: plan.tier || CODE_TIER[plan.code] || null,
+    maxContacts: plan.maxContacts ?? null,
+    aiCreditsMonthly: plan.aiCreditsMonthly ?? null,
     features: Array.isArray(plan.features) ? plan.features : [],
     isPopular: Boolean(plan.isPopular),
   };
@@ -272,8 +276,22 @@ module.exports = {
       platform: 'saas',
       organization: { id: guard.organization.id, name: guard.organization.name },
       isAdmin: guard.isAdmin,
-      apps: await getOrgAccess(strapi, ctx.state.orgId),
+      apps: await getOrgAccess(strapi, ctx.state.orgId, { fresh: true }),
+      // Every plan-gated feature, so the apps can say which plan unlocks it (G16 / W15).
+      features: FEATURES,
     });
+  },
+
+  /** GET /saas/features/:key — 200 when the current organization's plan includes it, else 402 PLAN_FEATURE_REQUIRED. */
+  async feature(ctx) {
+    if (!isSaas()) return ctx.send({ feature: ctx.params.key, allowed: true });
+    if (!ctx.state.user) return ctx.unauthorized('Sign in to continue.');
+    if (!ctx.state.orgId) return ctx.forbidden('Create or join an organization first.');
+    const key = String(ctx.params.key || '');
+    if (!FEATURES[key]) return ctx.notFound('Unknown feature.');
+    if (!(await requireMember(ctx, strapi, ctx.state.orgId))) return;
+    if (!(await requireFeature(ctx, strapi, key))) return;
+    ctx.send({ feature: key, allowed: true });
   },
 
   async invite(ctx) {
@@ -292,7 +310,7 @@ module.exports = {
     if (cleaned.length > 50) return ctx.badRequest('Invite up to 50 people at a time.');
 
     const overLimit = await seatLimitProblem(strapi, orgId, cleaned.length);
-    if (overLimit) return ctx.badRequest(overLimit, { code: 'PLAN_USER_LIMIT' });
+    if (overLimit) return ctx.badRequest(overLimit.message, { code: 'PLAN_USER_LIMIT', apps: overLimit.apps, app: overLimit.apps[0], limit: overLimit.limit, upgradeUrl: accountsBillingUrl(overLimit.apps[0]) });
 
     const service = strapi.service('api::invitation.invitation');
     let sent = 0;

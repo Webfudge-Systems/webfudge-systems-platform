@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Upload } from 'lucide-react';
-import { Button, Card } from '@webfudge/ui';
+import { Button, Card, PlanLimitNotice, UpgradePrompt, planErrorDetails } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import importService, { IMPORT_FIELDS, guessField } from '../../../lib/api/importService';
 import useCustomFields from '../../../lib/useCustomFields';
@@ -51,6 +51,7 @@ export default function ImportPage() {
   const [mapping, setMapping] = useState([]); // field key per column
   const [duplicateMode, setDuplicateMode] = useState('skip');
   const [error, setError] = useState('');
+  const [planPrompt, setPlanPrompt] = useState(null);
   const [job, setJob] = useState(null);
   const pollRef = useRef(null);
 
@@ -105,6 +106,7 @@ export default function ImportPage() {
 
   const startImport = async () => {
     setError('');
+    setPlanPrompt(null);
     try {
       const created = await importService.start({ entity, fileName: file?.name, duplicateMode, rows: mappedRows });
       setJob(created);
@@ -120,7 +122,9 @@ export default function ImportPage() {
         }
       }, 1500);
     } catch (e) {
-      setError(e?.message || 'Could not start the import');
+      const prompt = planErrorDetails(e);
+      setPlanPrompt(prompt);
+      setError(prompt ? '' : e?.message || 'Could not start the import');
     }
   };
 
@@ -158,6 +162,10 @@ export default function ImportPage() {
       ) : null}
 
       <Steps current={step} />
+
+      {/* SaaS: Grow Free plan contact limit (G16). */}
+      {entity === 'contact' ? <PlanLimitNotice app="crm" limit="contacts" /> : null}
+      {planPrompt ? <UpgradePrompt compact {...planPrompt} /> : null}
 
       {error ? (
         <p className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700" role="alert">

@@ -102,7 +102,11 @@ class StrapiClient {
           localStorage.removeItem('current-org-id');
           window.location.reload();
         }
-        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+        const apiError = new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+        // Keep the API's status and details (e.g. SaaS plan-limit codes) for the caller.
+        apiError.status = response.status;
+        apiError.details = errorData.error?.details;
+        throw apiError;
       }
 
       const contentType = response.headers.get('content-type');
