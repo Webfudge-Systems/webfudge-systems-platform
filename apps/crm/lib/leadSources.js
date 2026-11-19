@@ -13,7 +13,18 @@ export const DEFAULT_LEAD_SOURCES = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+/** Labels for sources set by automatic lead capture (G7 / G6) when they are not in the org's list. */
+const CAPTURE_SOURCE_LABELS = {
+  GOOGLE_ADS: 'Google Ads',
+  INDIAMART: 'IndiaMART',
+  JUSTDIAL: 'JustDial',
+  '99ACRES': '99acres',
+  MAGICBRICKS: 'MagicBricks',
+  META_LEAD_ADS: 'Meta Lead Ads',
+};
+
 export const humanizeSourceValue = (value) =>
+  CAPTURE_SOURCE_LABELS[value] ||
   String(value || '')
     .replace(/_/g, ' ')
     .toLowerCase()
