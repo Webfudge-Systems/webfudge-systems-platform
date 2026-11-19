@@ -37,6 +37,8 @@ const RESOURCE_APPS = {
   'crm-products': ['crm'],
   'crm-price-books': ['crm'],
   'crm-quotes': ['crm'],
+  // Lead capture settings (G7); the public /lead-capture endpoints check access themselves.
+  'crm-lead-capture': ['crm'],
   // Saved views are used by both apps (W3 tasks, G3 Grow lists)
   'saved-views': ['crm', 'pm'],
   // Work: timesheets (W5), capacity (W6), portfolio (W11), retainers (W14), sprints (W7)
