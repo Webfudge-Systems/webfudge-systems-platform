@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "workspaces",
+  "info": {
+    "singularName": "workspace",
+    "pluralName": "workspaces",
+    "displayName": "Workspace",
+    "description": "Team / department / client space that groups projects inside an organization (W1)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "description": { "type": "text" },
+    "kind": {
+      "type": "enumeration",
+      "enum": ["general", "team", "department", "client", "internal", "other"],
+      "default": "team"
+    },
+    "color": { "type": "string" },
+    "isDefault": { "type": "boolean", "default": false },
+    "membersMode": {
+      "type": "enumeration",
+      "enum": ["all", "restricted"],
+      "default": "all"
+    },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "members": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "admins": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "plugin::users-permissions.user"
+    },
+    "createdByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "projects": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::project.project",
+      "mappedBy": "workspace"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

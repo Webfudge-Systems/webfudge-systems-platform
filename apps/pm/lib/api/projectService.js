@@ -14,8 +14,15 @@ class ProjectService {
         'populate[clientAccount][fields][0]': 'id',
         'populate[clientAccount][fields][1]': 'companyName',
         'populate[clientAccount][fields][2]': 'status',
+        'populate[workspace][fields][0]': 'id',
+        'populate[workspace][fields][1]': 'name',
+        'populate[workspace][fields][2]': 'membersMode',
       };
 
+      // W1: only projects of one workspace
+      if (options.workspaceId && options.workspaceId !== 'all') {
+        params['filters[workspace][id][$eq]'] = options.workspaceId;
+      }
       if (options.status) {
         params['filters[status][$eq]'] = options.status;
       }
@@ -48,6 +55,9 @@ class ProjectService {
         'populate[tasks][populate][collaborators]': '*',
         'populate[tasks][populate][subtasks]': '*',
         'populate[clientAccount]': '*',
+        'populate[workspace][fields][0]': 'id',
+        'populate[workspace][fields][1]': 'name',
+        'populate[workspace][fields][2]': 'membersMode',
       } : {};
       return await strapiClient.get(`/projects/${id}`, params);
     } catch (error) {
@@ -70,6 +80,9 @@ class ProjectService {
         params['populate[tasks][populate][collaborators]'] = '*';
         params['populate[tasks][populate][subtasks]'] = '*';
         params['populate[clientAccount]'] = '*';
+        params['populate[workspace][fields][0]'] = 'id';
+        params['populate[workspace][fields][1]'] = 'name';
+        params['populate[workspace][fields][2]'] = 'membersMode';
       }
       const response = await strapiClient.get('/projects', params);
       const items = response?.data || [];

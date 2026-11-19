@@ -226,6 +226,16 @@ module.exports = {
       console.warn('⚠️ Could not auto-grant org content permissions:', e?.message || e);
     }
 
+    // W1: Workspace → Project → Task list hierarchy. Idempotent; only fills empty relations.
+    try {
+      const stats = await require('./utils/workspaces').bootstrapWorkspaceHierarchy(strapi);
+      console.log(
+        `✅ Workspaces ready (orgs=${stats.orgs}, new workspaces=${stats.workspacesCreated}, projects attached=${stats.projectsAttached}, new lists=${stats.listsCreated}, tasks attached=${stats.tasksAttached})`
+      );
+    } catch (e) {
+      console.error('❌ Workspace bootstrap failed (existing data untouched):', e?.message || e);
+    }
+
     console.log('✅ Bootstrap complete!');
   },
 

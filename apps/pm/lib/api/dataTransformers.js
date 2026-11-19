@@ -186,6 +186,10 @@ export function transformProject(strapiProject) {
     clientName: clientAttrs.companyName || clientAttrs.name || clientAttrs.title || '',
     icon: p.icon || (p.name ? p.name.charAt(0).toUpperCase() : 'P'),
     isPrivate: p.isPrivate ?? false,
+    // W1: workspace the project lives in
+    workspaceId: (p.workspace?.data || p.workspace)?.id ?? null,
+    workspaceName: (p.workspace?.data || p.workspace)?.name || '',
+    workspaceRestricted: (p.workspace?.data || p.workspace)?.membersMode === 'restricted',
     createdAt: p.createdAt || null,
     updatedAt: p.updatedAt || null,
   };

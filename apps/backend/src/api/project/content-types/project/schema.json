@@ -134,6 +134,18 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::contact.contact"
+    },
+    "workspace": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::workspace.workspace",
+      "inversedBy": "projects"
+    },
+    "taskLists": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::task-list.task-list",
+      "mappedBy": "project"
     }
   }
 }

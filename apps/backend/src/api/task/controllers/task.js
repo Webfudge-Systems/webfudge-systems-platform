@@ -27,10 +27,8 @@ const {
   isPmOrgMemberRole,
   isPmOrgAdminRole,
   isPmOrgManagerRole,
-  buildProjectListFiltersForUser,
   relationId,
   userCanAccessProjectRow,
-  userCanViewProjectRow,
 } = require('../../../utils/rbac');
 const {
   computeNextOccurrence,
@@ -41,6 +39,12 @@ const {
 const { relId } = require('../../../utils/org-crud');
 const { recordTaskTime } = require('../../../utils/timesheets');
 const { setDependencies, rescheduleWithDependents } = require('../../../utils/task-dependencies');
+const {
+  buildProjectVisibilityFilters,
+  userCanViewProject,
+  PROJECT_ACCESS_POPULATE,
+  resolveTaskListInput,
+} = require('../../../utils/workspaces');
 
 /**
  * Load a task the caller may fully edit (same rules as PUT /tasks/:id without the member status-only path).
@@ -624,7 +628,8 @@ function addDays(d, n) {
 
 /** Project ids the current user may see tasks for (respects private flag + org role). */
 async function projectIdsVisibleToUser(strapi, ctx, orgId, userId) {
-  const filters = buildProjectListFiltersForUser(ctx, orgId, userId);
+  // W1: project rules + workspace membership
+  const filters = await buildProjectVisibilityFilters(strapi, ctx, orgId, userId);
   const rows = await strapi.entityService.findMany(PROJECT_UID, {
     filters,
     fields: ['id'],
@@ -642,7 +647,7 @@ async function userMayViewTask(strapi, ctx, orgId, userId, entry) {
       collaborators: true,
       pendingCollaborators: true,
       assignmentRequestedBy: true,
-      projects: { populate: ['teamMembers', 'projectManager'], fields: ['id', 'isPrivate'] },
+      projects: { populate: PROJECT_ACCESS_POPULATE, fields: ['id', 'isPrivate'] },
       organization: true,
     },
   });
@@ -659,7 +664,7 @@ async function userMayViewTask(strapi, ctx, orgId, userId, entry) {
   const raw = row.projects;
   const plist = Array.isArray(raw) ? raw : raw ? [raw] : [];
   for (const p of plist) {
-    if (userCanViewProjectRow(ctx, p, userId)) return true;
+    if (userCanViewProject(ctx, p, userId)) return true;
   }
   return false;
 }
@@ -709,6 +714,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (extra.leadCompany) extraFilters.leadCompany = extra.leadCompany;
       if (extra.projects) extraFilters.projects = extra.projects;
       if (extra.meeting) extraFilters.meeting = extra.meeting;
+      if (extra.taskList) extraFilters.taskList = extra.taskList;
     }
 
     if (crmScope) {
@@ -818,6 +824,16 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     if (data.projects) {
       data.projects = await normalizeProjectsInput(strapi, ctx.state.orgId, data.projects);
+    }
+
+    // W1: optional task list — must belong to this org (and to one of the task's projects)
+    if (data.taskList != null && data.taskList !== '') {
+      const tl = await resolveTaskListInput(strapi, ctx.state.orgId, data.taskList, data.projects);
+      if (!tl.ok) return ctx.badRequest(tl.message);
+      data.taskList = tl.id;
+      if (!data.projects) data.projects = { set: [tl.projectId] };
+    } else {
+      delete data.taskList;
     }
 
     if (Object.prototype.hasOwnProperty.call(data, 'parent')) {
@@ -978,6 +994,16 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
     if (data.projects) {
       data.projects = await normalizeProjectsInput(strapi, ctx.state.orgId, data.projects);
+    }
+    // W1: moving to another list — list must be in this org and in one of the task's projects
+    if (Object.prototype.hasOwnProperty.call(data, 'taskList')) {
+      if (data.taskList == null || data.taskList === '') data.taskList = null;
+      else {
+        const projectsForList = data.projects || { set: (existing.projects || []).map((p) => p.id) };
+        const tl = await resolveTaskListInput(strapi, ctx.state.orgId, data.taskList, projectsForList);
+        if (!tl.ok) return ctx.badRequest(tl.message);
+        data.taskList = tl.id;
+      }
     }
 
     const mergedRec = { ...existing, ...data };

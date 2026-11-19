@@ -51,6 +51,7 @@ import {
   Kanban,
 } from 'lucide-react';
 import PMPageHeader from '../../components/PMPageHeader';
+import useWorkspaces from '../../lib/useWorkspaces';
 import { ProgressBar as PMProgress } from '@webfudge/ui';
 import PMRowActions from '../../components/PMRowActions';
 import ProjectsKanbanBoard from '../../components/ProjectsKanbanBoard';
@@ -298,6 +299,8 @@ export default function ProjectsPage() {
   const [activeView, setActiveView] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedFilters, setAppliedFilters] = useState(PROJECT_FILTER_INITIAL);
+  // W1: the sidebar's active workspace filters this page
+  const { activeId: activeWorkspaceId, active: activeWorkspace } = useWorkspaces();
   const [draftFilters, setDraftFilters] = useState(PROJECT_FILTER_INITIAL);
   const [filterOpen, setFilterOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, project: null });
@@ -392,7 +395,12 @@ export default function ProjectsPage() {
 
   const loadKpiData = useCallback(async () => {
     try {
-      const res = await projectService.getAllProjects({ page: 1, pageSize: 500, sort: 'updatedAt:desc' });
+      const res = await projectService.getAllProjects({
+        page: 1,
+        pageSize: 500,
+        sort: 'updatedAt:desc',
+        workspaceId: activeWorkspaceId,
+      });
       const rows = (res?.data || []).map(transformProject).filter(Boolean);
       setKpiRows(rows);
       setKpiTotal(res?.meta?.pagination?.total ?? rows.length);
@@ -401,7 +409,7 @@ export default function ProjectsPage() {
       setKpiRows([]);
       setKpiTotal(0);
     }
-  }, []);
+  }, [activeWorkspaceId]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -411,6 +419,7 @@ export default function ProjectsPage() {
         pageSize: PROJECT_FETCH_PAGE_SIZE,
         sort: 'updatedAt:desc',
         search: searchQuery,
+        workspaceId: activeWorkspaceId,
       };
       const status = appliedFilters.status || (activeTab !== 'all' ? activeTab : '');
       if (status) params.status = status;
@@ -426,7 +435,7 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, appliedFilters.ownerId, appliedFilters.status, searchQuery]);
+  }, [activeTab, activeWorkspaceId, appliedFilters.ownerId, appliedFilters.status, searchQuery]);
 
   useEffect(() => {
     loadProjects();
@@ -1039,7 +1048,11 @@ export default function ProjectsPage() {
     <div className="space-y-6 p-4 md:p-6">
       <PMPageHeader
         title="Projects"
-        subtitle="Manage delivery work with CRM-style project records"
+        subtitle={
+          activeWorkspace
+            ? `Workspace: ${activeWorkspace.name}`
+            : 'Manage delivery work with CRM-style project records'
+        }
         breadcrumb={[{ label: 'PM', href: '/' }, { label: 'Projects', href: '/projects' }]}
         showProfile
         showActions

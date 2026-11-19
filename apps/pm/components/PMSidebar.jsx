@@ -33,6 +33,8 @@ import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 import { usePmSidebarBadges } from '../lib/usePmSidebarBadges'
 import { PM_SITE } from '../lib/site'
 import { isHiddenInSaas } from '../lib/saasHiddenRoutes'
+import useWorkspaces from '../lib/useWorkspaces'
+import WorkspaceSwitcher from './WorkspaceSwitcher'
 
 export default function PMSidebar({ collapsed = false, onToggle }) {
   const pathname = usePathname()
@@ -44,6 +46,8 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
   const [loadingProjects, setLoadingProjects] = useState(true)
   const [showAllProjects, setShowAllProjects] = useState(false)
   const [expandedProjectId, setExpandedProjectId] = useState(null)
+  const ws = useWorkspaces()
+  const activeWorkspaceId = ws.activeId
 
   const isActive = (href) => {
     if (!href || href === '/') return pathname === '/'
@@ -57,6 +61,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
         const response = await projectService.getAllProjects({
           pageSize: 20,
           sort: 'updatedAt:desc',
+          workspaceId: activeWorkspaceId,
         })
         const items = response?.data || response || []
         setProjects(items.map(transformProject))
@@ -67,7 +72,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       }
     }
     fetchProjects()
-  }, [])
+  }, [activeWorkspaceId])
 
   const mainNavigationItems = [
     {
@@ -347,6 +352,9 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
         {!collapsed && canReadProjects && (
           <div className="px-3 py-2 relative z-0">
             {sectionRule('Projects')}
+            <div className="mb-2.5">
+              <WorkspaceSwitcher ws={ws} />
+            </div>
             <div className="rounded-xl border border-orange-200/80 bg-gradient-to-b from-orange-50/50 via-white to-white shadow-md overflow-hidden ring-1 ring-orange-100/60">
               <div className="flex items-center justify-between border-b border-orange-200/50 bg-gradient-to-r from-orange-500/12 via-orange-50/90 to-transparent px-3 py-2.5">
                 <span className="flex min-w-0 items-center gap-2">

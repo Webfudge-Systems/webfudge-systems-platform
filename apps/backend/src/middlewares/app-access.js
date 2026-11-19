@@ -45,6 +45,9 @@ const RESOURCE_APPS = {
   portfolio: ['pm'],
   retainers: ['pm'],
   sprints: ['pm'],
+  // Work hierarchy (W1)
+  workspaces: ['pm'],
+  'task-lists': ['pm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

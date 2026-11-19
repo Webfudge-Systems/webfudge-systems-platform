@@ -16,6 +16,7 @@ import {
   GanttChart,
   Kanban,
   LayoutList,
+  ListTree,
   Star,
   Table2,
   Trash2,
@@ -41,6 +42,7 @@ const TYPE_LABEL = Object.fromEntries(Object.entries(TASK_TYPES).map(([k, v]) =>
 
 export const VIEW_OPTIONS = [
   { key: 'list', label: 'List', icon: LayoutList },
+  { key: 'sections', label: 'Sections', icon: ListTree },
   { key: 'board', label: 'Board', icon: Kanban },
   { key: 'table', label: 'Table', icon: Table2 },
   { key: 'calendar', label: 'Calendar', icon: CalendarDays },
