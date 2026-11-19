@@ -20,7 +20,7 @@ const CAPTURE_SOURCE_LABELS = {
   JUSTDIAL: 'JustDial',
   '99ACRES': '99acres',
   MAGICBRICKS: 'MagicBricks',
-  META_LEAD_ADS: 'Meta Lead Ads',
+  META_ADS: 'Meta Lead Ads',
 };
 
 export const humanizeSourceValue = (value) =>
