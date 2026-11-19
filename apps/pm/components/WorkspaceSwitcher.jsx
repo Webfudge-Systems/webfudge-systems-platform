@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Layers, Lock, Plus, Settings2 } from 'lucide-react'
 import WorkspaceSettingsModal from './WorkspaceSettingsModal'
 import { refreshWorkspaces, setActiveWorkspace } from '../lib/useWorkspaces'
@@ -120,16 +121,22 @@ export default function WorkspaceSwitcher({ ws }) {
         </div>
       ) : null}
 
-      <WorkspaceSettingsModal
-        isOpen={modal.open}
-        workspace={modal.workspace}
-        onClose={() => setModal({ open: false, workspace: null })}
-        onSaved={(saved) => {
-          refreshWorkspaces()
-          if (saved?.id && !modal.workspace) setActiveWorkspace(saved.id)
-          if (saved === null && String(activeId) === String(modal.workspace?.id)) setActiveWorkspace('all')
-        }}
-      />
+      {/* Portal: the sidebar's backdrop-blur would otherwise trap the fixed modal inside it */}
+      {modal.open && typeof document !== 'undefined'
+        ? createPortal(
+            <WorkspaceSettingsModal
+              isOpen={modal.open}
+              workspace={modal.workspace}
+              onClose={() => setModal({ open: false, workspace: null })}
+              onSaved={(saved) => {
+                refreshWorkspaces()
+                if (saved?.id && !modal.workspace) setActiveWorkspace(saved.id)
+                if (saved === null && String(activeId) === String(modal.workspace?.id)) setActiveWorkspace('all')
+              }}
+            />,
+            document.body
+          )
+        : null}
     </div>
   )
 }

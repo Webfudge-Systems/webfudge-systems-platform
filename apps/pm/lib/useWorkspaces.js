@@ -34,12 +34,16 @@ export function refreshWorkspaces() {
 /**
  * Workspaces the user can see + the active one (shared across sidebar and pages).
  * `activeId` is 'all' or a workspace id string; a stale id falls back to 'all'.
+ * Wait for `ready` before fetching with `activeId`.
  */
 export default function useWorkspaces() {
   const [workspaces, setWorkspaces] = useState([]);
   const [canCreate, setCanCreate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState('all');
+  // false until the saved choice is read from storage — pages wait for it so they don't
+  // fetch "all" first and race the filtered request
+  const [ready, setReady] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,6 +59,7 @@ export default function useWorkspaces() {
 
   useEffect(() => {
     setActiveId(readActive());
+    setReady(true);
     load();
     const onChange = (e) => setActiveId(e.detail || 'all');
     window.addEventListener(EVENT, onChange);
@@ -69,5 +74,5 @@ export default function useWorkspaces() {
   const effectiveId = loading || known ? activeId : 'all';
   const active = workspaces.find((w) => String(w.id) === String(effectiveId)) || null;
 
-  return { workspaces, canCreate, loading, activeId: effectiveId, active, reload: load };
+  return { workspaces, canCreate, loading, ready, activeId: effectiveId, active, reload: load };
 }

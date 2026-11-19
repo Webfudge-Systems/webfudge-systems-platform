@@ -300,7 +300,9 @@ export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [appliedFilters, setAppliedFilters] = useState(PROJECT_FILTER_INITIAL);
   // W1: the sidebar's active workspace filters this page
-  const { activeId: activeWorkspaceId, active: activeWorkspace } = useWorkspaces();
+  const { activeId: activeWorkspaceId, active: activeWorkspace, ready: workspaceReady } = useWorkspaces();
+  const projectsRequestRef = useRef(0);
+  const kpiRequestRef = useRef(0);
   const [draftFilters, setDraftFilters] = useState(PROJECT_FILTER_INITIAL);
   const [filterOpen, setFilterOpen] = useState(false);
   const [deleteModal, setDeleteModal] = useState({ open: false, project: null });
@@ -394,6 +396,8 @@ export default function ProjectsPage() {
   }, []);
 
   const loadKpiData = useCallback(async () => {
+    if (!workspaceReady) return;
+    const requestId = ++kpiRequestRef.current;
     try {
       const res = await projectService.getAllProjects({
         page: 1,
@@ -401,6 +405,7 @@ export default function ProjectsPage() {
         sort: 'updatedAt:desc',
         workspaceId: activeWorkspaceId,
       });
+      if (requestId !== kpiRequestRef.current) return; // a newer request (other workspace) won
       const rows = (res?.data || []).map(transformProject).filter(Boolean);
       setKpiRows(rows);
       setKpiTotal(res?.meta?.pagination?.total ?? rows.length);
@@ -409,9 +414,11 @@ export default function ProjectsPage() {
       setKpiRows([]);
       setKpiTotal(0);
     }
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, workspaceReady]);
 
   const loadProjects = useCallback(async () => {
+    if (!workspaceReady) return;
+    const requestId = ++projectsRequestRef.current;
     try {
       setLoading(true);
       const params = {
@@ -425,17 +432,19 @@ export default function ProjectsPage() {
       if (status) params.status = status;
       if (appliedFilters.ownerId) params.ownerId = appliedFilters.ownerId;
       const res = await projectService.getAllProjects(params);
+      if (requestId !== projectsRequestRef.current) return; // a newer request (other workspace) won
       const transformed = (res?.data || []).map(transformProject).filter(Boolean);
       setProjects(transformed);
       setTotalProjects(transformed.length);
     } catch (error) {
       console.error('Load projects error:', error);
+      if (requestId !== projectsRequestRef.current) return;
       setProjects([]);
       setTotalProjects(0);
     } finally {
-      setLoading(false);
+      if (requestId === projectsRequestRef.current) setLoading(false);
     }
-  }, [activeTab, activeWorkspaceId, appliedFilters.ownerId, appliedFilters.status, searchQuery]);
+  }, [activeTab, activeWorkspaceId, workspaceReady, appliedFilters.ownerId, appliedFilters.status, searchQuery]);
 
   useEffect(() => {
     loadProjects();

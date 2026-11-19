@@ -55,6 +55,8 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
   }
 
   useEffect(() => {
+    if (!ws.ready) return undefined
+    let cancelled = false
     const fetchProjects = async () => {
       try {
         setLoadingProjects(true)
@@ -63,16 +65,20 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
           sort: 'updatedAt:desc',
           workspaceId: activeWorkspaceId,
         })
+        if (cancelled) return
         const items = response?.data || response || []
         setProjects(items.map(transformProject))
       } catch {
-        setProjects([])
+        if (!cancelled) setProjects([])
       } finally {
-        setLoadingProjects(false)
+        if (!cancelled) setLoadingProjects(false)
       }
     }
     fetchProjects()
-  }, [activeWorkspaceId])
+    return () => {
+      cancelled = true
+    }
+  }, [activeWorkspaceId, ws.ready])
 
   const mainNavigationItems = [
     {
