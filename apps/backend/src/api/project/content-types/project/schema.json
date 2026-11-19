@@ -134,6 +134,10 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::contact.contact"
+    },
+    "clientPortalEnabled": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

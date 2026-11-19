@@ -46,6 +46,7 @@ import PMPageHeader from '../../../components/PMPageHeader';
 import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
+import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
 import ProjectGantt from '../../../components/ProjectGantt';
@@ -90,6 +91,7 @@ const DETAIL_TABS = [
   { key: 'sprints', label: 'Sprints' },
   { key: 'activity', label: 'Activity' },
   { key: 'files', label: 'Files' },
+  { key: 'client', label: 'Client portal' },
 ];
 
 const headerIconBtnClass =
@@ -1221,6 +1223,10 @@ export default function ProjectDetailPage() {
           onRowsChange={(rows) => setFileCount(rows?.length ?? 0)}
           {...entityFilesPanelProps}
         />
+      ) : null}
+
+      {activeTab === 'client' && project?.id ? (
+        <ProjectClientPortalPanel projectId={project.id} canEdit={canEditThisProject} />
       ) : null}
 
       <QuickCreateTaskModal

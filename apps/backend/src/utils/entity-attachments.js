@@ -147,6 +147,7 @@ function serializeAttachmentRow(row) {
     subjectType: row.subjectType,
     subjectId: row.subjectId,
     source: row.source,
+    clientShareable: row.clientShareable === true, // W10 client portal
     fileName: row.fileName || mediaFileName(fileObj),
     createdAt: row.createdAt,
     uploadedBy: row.uploadedBy ?? null,

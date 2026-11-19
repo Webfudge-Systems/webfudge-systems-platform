@@ -15,6 +15,8 @@ const SKIP_PREFIXES = [
   '/api/invest', // internal investment manager: live prices + financial data stay out of Redis
   '/api/re-webhooks', // server-to-server lead ingestion — must never serve stale reads
   '/api/vendor', // staff portal: has its own short cache and must reflect staff actions at once
+  '/api/portal', // client portal (W10): no user id, so the cache key would be shared across clients
+  '/api/client-portal', // team-side portal controls (W10): must reflect invites / revokes at once
   '/admin',
   '/_health',
 ];

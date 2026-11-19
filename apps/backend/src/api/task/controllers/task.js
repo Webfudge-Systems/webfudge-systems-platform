@@ -74,6 +74,7 @@ const {
 } = require('../../../utils/task-scope');
 
 const UID = 'api::task.task';
+const PORTAL_FIELDS = ['clientVisible', 'clientApprovalStatus', 'clientApprovalComment', 'clientApprovalAt', 'clientApprovalBy', 'clientRequestedBy'];
 
 const PROJECT_UID = 'api::project.project';
 
@@ -867,6 +868,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     delete data.id;
     delete data.documentId;
+    // W10: client portal fields change only through /client-portal/* (permission-checked there).
+    for (const k of PORTAL_FIELDS) delete data[k];
     data.completedAt = data.status === 'COMPLETED' ? new Date().toISOString() : null; // W7
 
     const entry = await strapi.entityService.create(UID, { data });
@@ -929,6 +932,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
+    for (const k of PORTAL_FIELDS) delete data[k]; // W10: see create()
 
     if (!isPmOrgAdminRole(ctx) && ctx.state.user?.id) {
       const ok = await userMayViewTask(strapi, ctx, ctx.state.orgId, ctx.state.user.id, existing);

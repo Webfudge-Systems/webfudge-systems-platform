@@ -19,6 +19,9 @@ export default function LayoutContent({ children }) {
   useEffect(() => {
     if (saasRedirect) router.replace(saasRedirect)
   }, [saasRedirect, router])
+  // Client portal (W10): client contacts, no team sidebar, no team auth. Has its own layout.
+  if (pathname === '/portal' || pathname.startsWith('/portal/')) return children
+
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   const hasToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('auth-token'))
   const canView = !saasRedirect && (isPublic || !hasToken || canReadCurrentPMPath(pathname))

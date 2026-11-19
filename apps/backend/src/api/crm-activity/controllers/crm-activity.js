@@ -328,7 +328,13 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
         ? filterActivitiesByCommentKind(results, commentKind)
         : results;
 
-    return { data: filtered, meta: { total: filtered.length } };
+    // W10: comments left from the client portal have no team actor; label them with the client's name.
+    const labelled = filtered.map((row) =>
+      !row.actor && row.meta?.source === 'client_portal' && row.meta?.clientName
+        ? { ...row, actor: { id: null, username: `${row.meta.clientName} (client)` } }
+        : row
+    );
+    return { data: labelled, meta: { total: labelled.length } };
   },
 
   /**

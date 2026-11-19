@@ -219,6 +219,31 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::sprint.sprint"
+    },
+    "clientVisible": {
+      "type": "boolean",
+      "default": false
+    },
+    "clientApprovalStatus": {
+      "type": "enumeration",
+      "enum": ["none", "pending", "approved", "changes_requested"],
+      "default": "none"
+    },
+    "clientApprovalComment": {
+      "type": "text"
+    },
+    "clientApprovalAt": {
+      "type": "datetime"
+    },
+    "clientApprovalBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::contact.contact"
+    },
+    "clientRequestedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::contact.contact"
     }
   }
 }
