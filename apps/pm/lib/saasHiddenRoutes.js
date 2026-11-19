@@ -3,9 +3,10 @@ import { IS_SAAS_PLATFORM } from '@webfudge/ui'
 /**
  * Placeholder screens hidden from paying SaaS customers until the real feature ships (ticket WF2).
  * Internal deployment is unchanged. Remove an entry when its feature ticket lands:
- * /analytics + Reports → W11 (dashboards), Documents → W8 (docs/wiki).
+ * Documents → W8 (docs/wiki).
+ * (Unhidden: /analytics — the Portfolio dashboard shipped in W11.)
  */
-const HIDDEN_PREFIXES = ['/coming-soon', '/analytics']
+const HIDDEN_PREFIXES = ['/coming-soon']
 
 function pathOf(href) {
   return String(href || '').split('?')[0].split('#')[0]
