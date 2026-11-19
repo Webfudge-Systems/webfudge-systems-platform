@@ -113,6 +113,12 @@
     },
     "customFields": {
       "type": "json"
+    },
+    "closedAt": {
+      "type": "datetime"
+    },
+    "lostReason": {
+      "type": "string"
     }
   }
 }

@@ -8,6 +8,7 @@ import UpcomingMeetingsWidget from '../UpcomingMeetingsWidget'
 import LatestAssignedLeadsWidget from '../LatestAssignedLeadsWidget'
 import MyWorkWidget from '../MyWorkWidget'
 import DashboardMyTasksWidget from '../DashboardMyTasksWidget'
+import LeadSlaWidget from '../LeadSlaWidget'
 
 /** Right column: My work panel — same height as PM Upcoming Deadlines */
 const DEADLINE_PANEL = 'h-[min(680px,72vh)] min-h-[600px]'
@@ -77,6 +78,7 @@ export default function PersonalDashboardView({ canViewLeads, canViewMeetings })
           <div className={DEADLINE_PANEL}>
             <MyWorkWidget className="h-full w-full" />
           </div>
+          {canViewLeads ? <LeadSlaWidget /> : null}
           {canViewMeetings ? <UpcomingMeetingsWidget /> : null}
         </div>
       </div>

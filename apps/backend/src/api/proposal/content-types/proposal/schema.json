@@ -152,6 +152,23 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::deal.deal"
+    },
+    "lineItems": {
+      "type": "json"
+    },
+    "quoteTotals": {
+      "type": "json"
+    },
+    "sellerGstin": {
+      "type": "string"
+    },
+    "buyerGstin": {
+      "type": "string"
+    },
+    "convertedInvoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invoice.invoice"
     }
   }
 }

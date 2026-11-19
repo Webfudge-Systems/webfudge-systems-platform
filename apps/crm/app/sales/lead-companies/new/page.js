@@ -18,6 +18,8 @@ import CRMPageHeader from '../../../../components/CRMPageHeader';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import contactService from '../../../../lib/api/contactService';
 import strapiClient from '../../../../lib/strapiClient';
+import assignmentService from '../../../../lib/api/assignmentService';
+import { useLeadSourceOptions } from '../../../../lib/leadSources';
 import { useAuth } from '@webfudge/auth';
 import {
   Building2,
@@ -49,6 +51,7 @@ export default function AddLeadCompanyPage() {
     fetchStoredIndustries: fetchStoredIndustriesForCrm,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [autoAssign, setAutoAssign] = useState(false);
   const [errors, setErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -96,16 +99,8 @@ export default function AddLeadCompanyPage() {
     },
   ]);
 
-  const leadSourceOptions = [
-    { value: 'WEBSITE', label: 'Website' },
-    { value: 'REFERRAL', label: 'Referral' },
-    { value: 'SOCIAL_MEDIA', label: 'Social Media' },
-    { value: 'EMAIL_CAMPAIGN', label: 'Email Campaign' },
-    { value: 'COLD_CALL', label: 'Cold Call' },
-    { value: 'TRADE_SHOW', label: 'Trade Show' },
-    { value: 'PARTNER', label: 'Partner' },
-    { value: 'OTHER', label: 'Other' },
-  ];
+  // GF4: org-configured lead sources (Settings → Industries & lead sources)
+  const leadSourceOptions = useLeadSourceOptions();
 
   const statusOptions = LEAD_STATUS_OPTIONS.filter(
     (opt) => opt.value !== 'CONVERTED'
@@ -169,7 +164,10 @@ export default function AddLeadCompanyPage() {
 
       setUsers(allUsers);
 
-      if (user?.email && allUsers.length > 0) {
+      // G5: with active assignment rules, leave the owner empty so the rules pick one.
+      const autoAssign = await assignmentService.hasActiveRules();
+      if (autoAssign) setAutoAssign(true);
+      if (!autoAssign && user?.email && allUsers.length > 0) {
         const currentUser = allUsers.find((u) => u.email === user.email);
         if (currentUser) {
           setCompanyData((prev) => ({
@@ -651,7 +649,7 @@ export default function AddLeadCompanyPage() {
                   onChange={(value) => handleCompanyChange('assignedTo', value)}
                   options={userSelectOptions}
                   disabled={loadingUsers}
-                  placeholder="Unassigned"
+                  placeholder={autoAssign ? 'Auto-assign (rules)' : 'Unassigned'}
                 />
               </div>
 

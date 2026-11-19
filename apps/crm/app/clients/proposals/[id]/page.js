@@ -15,6 +15,7 @@ import {
   SidebarCardTitle,
 } from '@webfudge/ui';
 import proposalService from '../../../../lib/api/proposalService';
+import QuoteItemsCard from '../../../../components/QuoteItemsCard';
 import {
   FileText, Eye, Pencil, Trash2, Download, ArrowLeft,
   Building2, User, Mail, Phone, MapPin, Calendar, Clock,
@@ -495,6 +496,8 @@ export default function ProposalDetailPage() {
                 </section>
               ) : null}
             </Card>
+
+            <QuoteItemsCard proposal={proposal} />
 
             {modules.length > 0 && modules.some((m) => m.name) && (
               <Card variant="elevated" className="rounded-xl">

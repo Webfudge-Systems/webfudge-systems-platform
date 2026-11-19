@@ -497,6 +497,15 @@ export default function ProposalsPage() {
           showAdd={true}
           onAddClick={() => router.push('/clients/proposals/new')}
           addTitle="Add Proposal"
+          afterTabs={
+            <button
+              type="button"
+              onClick={() => router.push('/clients/proposals/quote/new')}
+              className="inline-flex h-10 items-center rounded-xl border border-orange-200 bg-orange-50 px-3 text-sm font-medium text-orange-700 hover:bg-orange-100"
+            >
+              New quote from catalogue
+            </button>
+          }
           showFilter={true}
           onFilterClick={openFilterModal}
           filterTitle={hasActiveFilters ? 'Filters active' : 'Filter proposals'}

@@ -9,6 +9,7 @@ import { DealsKanbanBoard, DEAL_PIPELINE_STAGES } from '../../../../components/D
 import dealService from '../../../../lib/api/dealService';
 import pipelineService, { dealPipelineId, dealStageKey, defaultPipelineOf } from '../../../../lib/api/pipelineService';
 import WonDealProjectModal from '../../../../components/WonDealProjectModal';
+import LostReasonModal from '../../../../components/LostReasonModal';
 import { canEditCRMRecord, canWriteCRM } from '../../../../lib/rbac';
 
 function formatINR(v) {
@@ -38,6 +39,8 @@ export default function PipelinePage() {
 
   const [wonModal, setWonModal] = useState({ open: false, dealId: null, dealName: '' });
   const [wonBusy, setWonBusy] = useState(false);
+  const [lostModal, setLostModal] = useState(null); // G15: { dealId, dealName }
+  const [lostBusy, setLostBusy] = useState(false);
   const canCreateDeals = canWriteCRM('deals');
 
   useEffect(() => {
@@ -188,6 +191,9 @@ export default function PipelinePage() {
     if ((target?.kind || (newStage === 'won' ? 'won' : 'open')) === 'won') {
       setWonModal({ open: true, dealId: Number(dealId), dealName: deal.name || '' });
     }
+    if ((target?.kind || (newStage === 'lost' ? 'lost' : 'open')) === 'lost') {
+      setLostModal({ dealId: Number(dealId), dealName: deal.name || '' });
+    }
   }, [allDeals, pipelineId, pipelineStages]);
 
   const goToDealsTable = useCallback(() => {
@@ -203,12 +209,12 @@ export default function PipelinePage() {
     setWonModal((s) => ({ ...s, open: false }));
   }, []);
 
-  const handleWonCreateProject = useCallback(async () => {
+  const handleWonCreateProject = useCallback(async (options = {}) => {
     const { dealId } = wonModal;
     if (!dealId) return;
     setWonBusy(true);
     try {
-      await dealService.createDeliveryProject(dealId);
+      await dealService.createDeliveryProject(dealId, options);
       setWonModal({ open: false, dealId: null, dealName: '' });
       router.push('/clients/projects');
     } catch {
@@ -336,6 +342,24 @@ export default function PipelinePage() {
           />
         )}
       </div>
+
+      <LostReasonModal
+        isOpen={!!lostModal}
+        dealName={lostModal?.dealName}
+        busy={lostBusy}
+        onSkip={() => setLostModal(null)}
+        onSave={async (lostReason) => {
+          setLostBusy(true);
+          try {
+            await dealService.update(lostModal.dealId, { lostReason });
+          } catch (err) {
+            setMoveError(err?.message || 'Could not save the lost reason');
+          } finally {
+            setLostBusy(false);
+            setLostModal(null);
+          }
+        }}
+      />
 
       <WonDealProjectModal
         open={wonModal.open}

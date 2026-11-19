@@ -19,6 +19,7 @@ const POPULATE_DEFAULT = [
   'clientAccount',
   'deal',
   'proposalFile',
+  'convertedInvoice',
 ];
 
 const normalizeEntry = (e) => normalizeStrapiEntry(e);

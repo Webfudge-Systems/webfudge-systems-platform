@@ -1,0 +1,27 @@
+{
+  "kind": "collectionType",
+  "collectionName": "retainers",
+  "info": {
+    "singularName": "retainer",
+    "pluralName": "retainers",
+    "displayName": "Retainer",
+    "description": "Monthly client retainer (hours or deliverables) with usage alerts at 80% and 100% (W14)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "unit": { "type": "enumeration", "enum": ["hours", "deliverables"], "default": "hours" },
+    "monthlyAllowance": { "type": "decimal", "required": true },
+    "rollover": { "type": "enumeration", "enum": ["none", "carry_forward"], "default": "none" },
+    "rolloverCap": { "type": "decimal" },
+    "startMonth": { "type": "date", "required": true },
+    "endMonth": { "type": "date" },
+    "active": { "type": "boolean", "default": true },
+    "alertsSent": { "type": "json" },
+    "clientAccount": { "type": "relation", "relation": "manyToOne", "target": "api::client-account.client-account" },
+    "project": { "type": "relation", "relation": "manyToOne", "target": "api::project.project" },
+    "accountManager": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

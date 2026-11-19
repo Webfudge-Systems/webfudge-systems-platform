@@ -28,6 +28,23 @@ const RESOURCE_APPS = {
   'crm-imports': ['crm'],
   'crm-duplicates': ['crm'],
   'crm-merge': ['crm'],
+  // Grow: assignment / SLA (G5), settings (GF4, read by Work for industries), analytics (G15),
+  // catalogue + quotes (G13)
+  'crm-assignment-rules': ['crm'],
+  'crm-lead-sla': ['crm'],
+  'crm-settings': ['crm', 'pm'],
+  'crm-analytics': ['crm'],
+  'crm-products': ['crm'],
+  'crm-price-books': ['crm'],
+  'crm-quotes': ['crm'],
+  // Saved views are used by both apps (W3 tasks, G3 Grow lists)
+  'saved-views': ['crm', 'pm'],
+  // Work: timesheets (W5), capacity (W6), portfolio (W11), retainers (W14), sprints (W7)
+  timesheets: ['pm'],
+  capacity: ['pm'],
+  portfolio: ['pm'],
+  retainers: ['pm'],
+  sprints: ['pm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

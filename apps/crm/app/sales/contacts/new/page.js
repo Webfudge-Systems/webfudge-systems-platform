@@ -8,6 +8,7 @@ import contactService from '../../../../lib/api/contactService';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
 import clientAccountService from '../../../../lib/api/clientAccountService';
 import strapiClient from '../../../../lib/strapiClient';
+import { useLeadSourceOptions } from '../../../../lib/leadSources';
 import { isLeadCompanyConverted } from '../../../../lib/meetingCrmLink';
 import {
   contactFieldsFromClientAccount,
@@ -45,16 +46,6 @@ const preferredContactOptions = [
   { value: 'WHATSAPP', label: 'WhatsApp' },
 ];
 
-const sourceOptions = [
-  { value: 'WEBSITE', label: 'Website' },
-  { value: 'REFERRAL', label: 'Referral' },
-  { value: 'SOCIAL_MEDIA', label: 'Social Media' },
-  { value: 'EMAIL_CAMPAIGN', label: 'Email Campaign' },
-  { value: 'COLD_CALL', label: 'Cold Call' },
-  { value: 'TRADE_SHOW', label: 'Trade Show' },
-  { value: 'PARTNER', label: 'Partner' },
-  { value: 'OTHER', label: 'Manual entry' },
-];
 
 const initialForm = {
   firstName: '',
@@ -84,6 +75,7 @@ const initialForm = {
 };
 
 export default function NewContactPage() {
+  const sourceOptions = useLeadSourceOptions(); // GF4: org-configured sources
   const router = useRouter();
   const searchParams = useSearchParams();
   const prefilledClientAccount = searchParams?.get('clientAccount') || '';

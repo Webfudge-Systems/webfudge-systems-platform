@@ -1,0 +1,24 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_products",
+  "info": {
+    "singularName": "crm-product",
+    "pluralName": "crm-products",
+    "displayName": "CRM Product",
+    "description": "Per-organization product / service catalogue with HSN/SAC and GST rate (G13)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "sku": { "type": "string" },
+    "description": { "type": "text" },
+    "kind": { "type": "enumeration", "enum": ["product", "service"], "default": "service" },
+    "hsnSac": { "type": "string" },
+    "unit": { "type": "string", "default": "Nos" },
+    "unitPrice": { "type": "decimal", "default": 0 },
+    "gstRate": { "type": "decimal", "default": 18 },
+    "active": { "type": "boolean", "default": true },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

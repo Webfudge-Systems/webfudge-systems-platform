@@ -218,4 +218,82 @@ function planTemplate(template, startDateIso) {
   return { endDate: lastEnd.toISOString(), phases };
 }
 
-module.exports = { TASK_TYPES, ROLES, listTemplates, getTemplate, planTemplate };
+
+/**
+ * Create a project and all template phases/tasks in one transaction (W4; reused by G23 won deals).
+ * `project` is the project payload (organization, projectManager, clientAccount... already validated).
+ * Roles map to active org members only; assigned people join the project team.
+ * @returns {Promise<{ entry: object, taskCount: number }>}
+ */
+async function createProjectFromTemplate(strapi, { orgId, actorId, template, project, startDate, roleAssignments = {} }) {
+  const members = await strapi.entityService.findMany('api::organization-user.organization-user', {
+    filters: { organization: orgId, isActive: true },
+    populate: { user: { fields: ['id'] } },
+    limit: 1000,
+  });
+  const memberIds = new Set(members.map((m) => m.user?.id).filter(Boolean).map(String));
+  const pmId = typeof project.projectManager === 'object' ? project.projectManager?.id : project.projectManager;
+  const assigneeFor = (role) => {
+    const raw = role === 'projectManager' ? roleAssignments.projectManager ?? pmId : roleAssignments[role];
+    const id = raw == null || raw === '' ? null : parseInt(String(raw), 10);
+    return id != null && memberIds.has(String(id)) ? id : null;
+  };
+
+  const day = String(startDate || new Date().toISOString()).slice(0, 10);
+  const plan = planTemplate(template, day);
+  const data = { ...project };
+  data.startDate = new Date(`${day}T09:00:00.000Z`).toISOString();
+  if (!data.endDate) data.endDate = plan.endDate;
+  const assigned = new Set(template.roles.map(assigneeFor).filter(Boolean));
+  const team = new Set([
+    ...(Array.isArray(data.teamMembers) ? data.teamMembers : []).map((x) => (typeof x === 'object' ? x.id : x)),
+    ...assigned,
+  ]);
+  data.teamMembers = [...team].map(Number).filter((n) => memberIds.has(String(n)));
+
+  return strapi.db.transaction(async () => {
+    const entry = await strapi.entityService.create('api::project.project', { data });
+    let taskCount = 0;
+    for (const phase of plan.phases) {
+      const parent = await strapi.entityService.create('api::task.task', {
+        data: {
+          name: phase.name,
+          status: 'SCHEDULED',
+          priority: 'medium',
+          taskType: 'task',
+          startDate: phase.startDate,
+          scheduledDate: phase.scheduledDate,
+          projects: [entry.id],
+          organization: orgId,
+          assigner: actorId,
+          assignee: assigneeFor('projectManager'),
+          assignmentApprovalStatus: 'not_required',
+        },
+      });
+      taskCount += 1;
+      for (const t of phase.tasks) {
+        await strapi.entityService.create('api::task.task', {
+          data: {
+            name: t.name,
+            status: 'SCHEDULED',
+            priority: t.taskType === 'milestone' ? 'high' : 'medium',
+            taskType: t.taskType,
+            startDate: t.startDate,
+            scheduledDate: t.scheduledDate,
+            parent: parent.id,
+            projects: [entry.id],
+            organization: orgId,
+            assigner: actorId,
+            assignee: assigneeFor(t.role),
+            assignmentApprovalStatus: 'not_required',
+            description: `Role: ${t.roleLabel}`,
+          },
+        });
+        taskCount += 1;
+      }
+    }
+    return { entry, taskCount };
+  });
+}
+
+module.exports = { TASK_TYPES, ROLES, listTemplates, getTemplate, planTemplate, createProjectFromTemplate };
