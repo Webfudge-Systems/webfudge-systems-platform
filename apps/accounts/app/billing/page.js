@@ -3,11 +3,12 @@
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { FileText } from 'lucide-react'
+import { CalendarClock, CreditCard, FileText, Grid3X3, Receipt } from 'lucide-react'
+import { KPICard } from '@webfudge/ui'
 import { useHub } from '../../components/saas/HubShell'
 import PlanModal from '../../components/saas/PlanModal'
 import { appMeta, appStatus, PLAN_LABEL } from '../../components/saas/appStatus'
-import { Alert, AppIcon, Badge, Button, Card, Spinner, TextInput } from '../../components/saas/ui'
+import { Alert, AppIcon, Badge, Button, Card, LoadingBlock, PageFrame, TextInput } from '../../components/saas/console'
 import { api, APP_META, formatDate, formatINR, SUPPORT_EMAIL } from '../../lib/saas'
 
 const STATES = ['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal']
@@ -37,9 +38,7 @@ function BillingDetails({ orgId, initial, onSaved }) {
   }
 
   return (
-    <Card>
-      <h2 className="text-lg font-semibold">Billing details</h2>
-      <p className="mb-5 mt-1 text-sm text-[#5C5C5C]">Shown on your invoices. Add your GSTIN to claim input tax credit.</p>
+    <Card title="Billing details" subtitle="Shown on your invoices. Add your GSTIN to claim input tax credit.">
       <form onSubmit={save} noValidate className="grid gap-4 sm:grid-cols-2">
         <TextInput label="Legal business name" value={form.legalName} onChange={set('legalName')} />
         <TextInput label="GSTIN" optional value={form.gstin} onChange={set('gstin')} error={errors.gstin} placeholder="27ABCDE1234F1Z5" maxLength={15} />
@@ -49,7 +48,7 @@ function BillingDetails({ orgId, initial, onSaved }) {
         <TextInput label="City" value={form.city} onChange={set('city')} />
         <div>
           <label htmlFor="billing-state" className="mb-1.5 block text-sm font-semibold">State</label>
-          <select id="billing-state" value={form.state} onChange={set('state')} className="min-h-[48px] w-full rounded-xl border border-[#DCDCD8] bg-white px-3.5 text-[15px] outline-none focus:border-[#F5630F]">
+          <select id="billing-state" value={form.state} onChange={set('state')} className="min-h-[48px] w-full rounded-xl border border-gray-300 bg-white px-3.5 text-[15px] outline-none focus:border-orange-500">
             <option value="">Choose a state</option>
             {STATES.map((s) => (
               <option key={s}>{s}</option>
@@ -59,7 +58,7 @@ function BillingDetails({ orgId, initial, onSaved }) {
         <TextInput label="PIN code" inputMode="numeric" value={form.pincode} onChange={set('pincode')} maxLength={6} />
         <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
           <Button type="submit" loading={busy}>Save details</Button>
-          {status && <p className="text-sm text-[#3A3A3A]" role="status">{status}</p>}
+          {status && <p className="text-sm text-gray-700" role="status">{status}</p>}
         </div>
       </form>
     </Card>
@@ -69,7 +68,7 @@ function BillingDetails({ orgId, initial, onSaved }) {
 function BillingContent() {
   const router = useRouter()
   const params = useSearchParams()
-  const { currentOrg: org, reload: reloadHub } = useHub()
+  const { currentOrg: org, reload: reloadHub, error: hubError } = useHub()
   const [summary, setSummary] = useState(null)
   const [catalog, setCatalog] = useState(null)
   const [error, setError] = useState('')
@@ -120,18 +119,35 @@ function BillingContent() {
     }
   }
 
+  const header = {
+    title: 'Apps & billing',
+    subtitle: summary ? `Plans, payments and invoices for ${summary.organization.name}.` : 'Plans, payments and invoices for your organization.',
+    breadcrumb: [{ label: 'Apps & billing', href: '/billing' }],
+  }
+
   if (!summary || !catalog) {
-    return error ? <Alert>{error}</Alert> : <div className="flex justify-center py-20"><Spinner className="h-6 w-6 text-[#F5630F]" /></div>
+    return <PageFrame {...header}>{error || hubError ? <Alert>{error || hubError}</Alert> : <LoadingBlock />}</PageFrame>
   }
 
   const subsBySlug = Object.fromEntries(summary.subscriptions.map((s) => [s.app.slug, s]))
   const isAdmin = summary.isAdmin
+  const activeSubs = summary.subscriptions.filter((s) => s.access !== 'locked')
+  const paidSubs = summary.subscriptions.filter((s) => s.status === 'active' && !['free', 'trial'].includes(s.planCode) && s.endsAt)
+  const nextRenewal = [...paidSubs].sort((a, b) => new Date(a.endsAt) - new Date(b.endsAt))[0]
+  const lastPaid = summary.history.find((p) => p.status === 'paid')
+  const kpis = [
+    { title: 'Active apps', value: activeSubs.length, subtitle: `${catalog.apps.filter((a) => a.availability === 'available').length} available to add`, icon: Grid3X3 },
+    { title: 'Paid plans', value: paidSubs.length, subtitle: paidSubs.length ? 'Billed to this organization' : 'Trials and Free need no card', icon: CreditCard },
+    { title: 'Next renewal', value: nextRenewal ? formatDate(nextRenewal.endsAt) : '—', subtitle: nextRenewal ? APP_META[nextRenewal.app.slug]?.name || nextRenewal.app.name : 'Nothing to renew', icon: CalendarClock },
+    { title: 'Last payment', value: lastPaid ? formatINR(lastPaid.amountTotal) : '—', subtitle: lastPaid ? formatDate(lastPaid.paidAt || lastPaid.createdAt) : 'No payments yet', icon: Receipt },
+  ]
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-[15px] text-[#5C5C5C]">{summary.organization.name}</p>
-        <h1 className="mt-1 text-[32px] font-medium tracking-[-0.03em] sm:text-[38px]">Apps & billing</h1>
+    <PageFrame {...header}>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        {kpis.map((k) => (
+          <KPICard key={k.title} title={k.title} value={k.value} subtitle={k.subtitle} icon={k.icon} colorScheme="orange" />
+        ))}
       </div>
 
       {!isAdmin && <Alert tone="info">Only organization admins can change apps and plans. Ask an admin if you need something changed.</Alert>}
@@ -145,8 +161,8 @@ function BillingContent() {
       {notice && <Alert tone="success">{notice}</Alert>}
       {error && <Alert>{error}</Alert>}
 
-      <section aria-labelledby="apps-h" className="space-y-3">
-        <h2 id="apps-h" className="text-xl font-semibold">Apps</h2>
+      <Card title="Apps" subtitle="Start a trial, choose a plan or change users">
+        <div className="space-y-3">
         {catalog.apps.map((app) => {
           const meta = APP_META[app.slug] || {}
           const sub = subsBySlug[app.slug]
@@ -156,15 +172,15 @@ function BillingContent() {
           const isPaid = sub && sub.status === 'active' && !['free', 'trial'].includes(sub.planCode) && sub.access === 'full'
           const canChooseFree = sub && freePlan && sub.planCode !== 'free' && (!isPaid || sub.cancelAtPeriodEnd) && summary.memberCount <= (freePlan.maxUsers || Infinity)
           return (
-            <article key={app.slug} className={`flex flex-wrap items-center gap-4 rounded-3xl border border-[#EDEDEA] bg-white p-5 ${soon ? 'opacity-75' : ''}`}>
-              <AppIcon src={meta.icon} size={56} tint={meta.tint} />
+            <article key={app.slug} className={`flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm ${soon ? 'opacity-75' : ''}`}>
+              <AppIcon src={meta.icon} size={44} tint={meta.tint} />
               <div className="min-w-[200px] flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold">{meta.name || app.name}</h3>
+                  <h3 className="font-semibold text-gray-900">{meta.name || app.name}</h3>
                   {status && <Badge tone={status.tone}>{status.label}</Badge>}
                   {soon && <Badge>Coming soon</Badge>}
                 </div>
-                <p className="mt-0.5 text-sm text-[#5C5C5C]">
+                <p className="mt-0.5 text-sm text-gray-500">
                   {sub ? `${PLAN_LABEL[sub.planCode] || 'Plan'}${sub.planCode !== 'trial' && sub.planCode !== 'free' ? ` · ${sub.billingCycle === 'annual' ? 'yearly' : 'monthly'}` : ''} · ${appMeta({ ...sub, slug: app.slug })}` : app.tagline}
                 </p>
               </div>
@@ -209,21 +225,21 @@ function BillingContent() {
             </article>
           )
         })}
-      </section>
+        </div>
+      </Card>
 
       {isAdmin && (
         <>
           <BillingDetails orgId={org.id} initial={summary.organization.billingDetails} onSaved={load} />
 
-          <Card>
-            <h2 className="mb-4 text-lg font-semibold">Payment history</h2>
+          <Card title="Payment history" subtitle="Paid and failed payments with GST invoices">
             {summary.history.length === 0 ? (
-              <p className="text-sm text-[#5C5C5C]">No payments yet.</p>
+              <p className="text-sm text-gray-500">No payments yet.</p>
             ) : (
               <div className="-mx-2 overflow-x-auto">
                 <table className="w-full min-w-[640px] text-left text-sm">
                   <thead>
-                    <tr className="text-[13px] text-[#5C5C5C]">
+                    <tr className="text-[13px] text-gray-500">
                       <th className="px-2 pb-2 font-medium">Date</th>
                       <th className="px-2 pb-2 font-medium">App</th>
                       <th className="px-2 pb-2 font-medium">Plan</th>
@@ -234,7 +250,7 @@ function BillingContent() {
                   </thead>
                   <tbody>
                     {summary.history.map((p) => (
-                      <tr key={p.id} className="border-t border-[#F1F1EE]">
+                      <tr key={p.id} className="border-t border-gray-100">
                         <td className="px-2 py-3">{formatDate(p.paidAt || p.createdAt)}</td>
                         <td className="px-2 py-3">{APP_META[p.app]?.name || p.appName}</td>
                         <td className="px-2 py-3">
@@ -246,7 +262,7 @@ function BillingContent() {
                         </td>
                         <td className="px-2 py-3 text-right">
                           {p.status === 'paid' && (
-                            <Link href={`/billing/invoices/${p.id}`} className="inline-flex items-center gap-1.5 font-semibold text-[#B84A0B] hover:underline">
+                            <Link href={`/billing/invoices/${p.id}`} className="inline-flex items-center gap-1.5 font-semibold text-orange-600 hover:underline">
                               <FileText className="h-4 w-4" aria-hidden="true" /> {p.invoiceNumber}
                             </Link>
                           )}
@@ -275,7 +291,7 @@ function BillingContent() {
           onPaid={refresh}
         />
       )}
-    </div>
+    </PageFrame>
   )
 }
 

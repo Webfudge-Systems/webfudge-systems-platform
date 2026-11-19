@@ -5,15 +5,15 @@ import { usePathname, useRouter } from 'next/navigation'
 import { WorkspaceLayoutContent } from '@webfudge/ui'
 import { useAuth } from '@webfudge/auth'
 import AccountsSidebar from './AccountsSidebar'
-import HubShell from './saas/HubShell'
+import { HubProvider } from './saas/HubShell'
 import { FullPageSpinner } from './saas/ui'
 import { ACCOUNTS_SITE } from '../lib/site'
 import { IS_SAAS } from '../lib/saas'
 
 // Sign-in, sign-up and onboarding screens draw their own full-page layout.
 const BARE_PREFIXES = ['/login', '/signup', '/verify', '/forgot-password', '/reset-password', '/invite', '/setup']
-// SaaS: everyday account screens use the Home hub's top bar instead of the admin sidebar.
-const HUB_PREFIXES = ['/home', '/billing', '/profile', '/users', '/settings']
+// SaaS: screens a signed-in user may open before they belong to any organization.
+const NO_ORG_PREFIXES = ['/profile']
 
 const matches = (pathname, prefixes) => prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 
@@ -38,14 +38,6 @@ export default function LayoutContent({ children }) {
 
   if (matches(pathname, BARE_PREFIXES)) return children
 
-  if (IS_SAAS && matches(pathname, HUB_PREFIXES)) {
-    return (
-      <SaasGate needsOrganization={pathname !== '/profile'}>
-        <HubShell>{children}</HubShell>
-      </SaasGate>
-    )
-  }
-
   const shell = (
     <WorkspaceLayoutContent
       sidebar={AccountsSidebar}
@@ -54,7 +46,7 @@ export default function LayoutContent({ children }) {
         logoPath: ACCOUNTS_SITE.logoPath,
         productName: ACCOUNTS_SITE.name,
         companyName: ACCOUNTS_SITE.brandName,
-        homeHref: '/',
+        homeHref: IS_SAAS ? '/home' : '/',
       }}
       showPwa={false}
       canView={true}
@@ -62,5 +54,12 @@ export default function LayoutContent({ children }) {
       {children}
     </WorkspaceLayoutContent>
   )
-  return IS_SAAS ? <SaasGate>{shell}</SaasGate> : shell
+
+  // SaaS uses the same sidebar console as Internal; Home, billing and the org switcher live inside it.
+  if (!IS_SAAS) return shell
+  return (
+    <SaasGate needsOrganization={!matches(pathname, NO_ORG_PREFIXES)}>
+      <HubProvider>{shell}</HubProvider>
+    </SaasGate>
+  )
 }
