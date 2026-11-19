@@ -52,6 +52,21 @@ function idList(raw) {
   return list.map(relId).filter((id) => id != null);
 }
 
+/**
+ * Set a relation on one row without touching its `updatedAt` (Strapi's timestamps subscriber
+ * always bumps it). The raw column value is read and written back with knex, so this works the
+ * same on SQLite and Postgres. Used only by the background migration — user actions bump it normally.
+ */
+async function setRelationQuietly(strapi, uid, id, data) {
+  const meta = strapi.db.metadata.get(uid);
+  const col = meta.attributes.updatedAt?.columnName || 'updated_at';
+  const row = await strapi.db.connection(meta.tableName).where({ id }).first(col);
+  await strapi.db.query(uid).update({ where: { id }, data });
+  if (row && row[col] != null) {
+    await strapi.db.connection(meta.tableName).where({ id }).update({ [col]: row[col] });
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Defaults (created lazily, never duplicated)                         */
 /* ------------------------------------------------------------------ */
@@ -93,10 +108,10 @@ async function ensureDefaultWorkspace(strapi, organizationId) {
     // Move anything that landed on a duplicate, then drop the empty duplicate.
     const projects = await strapi.db.query(PROJECT_UID).findMany({
       where: { workspace: { id: extra.id } },
-      select: ['id', 'updatedAt'],
+      select: ['id'],
     });
     for (const p of projects) {
-      await strapi.db.query(PROJECT_UID).update({ where: { id: p.id }, data: { workspace: keep, updatedAt: p.updatedAt } });
+      await setRelationQuietly(strapi, PROJECT_UID, p.id, { workspace: keep });
     }
     await q.delete({ where: { id: extra.id } });
   }
@@ -131,9 +146,9 @@ async function ensureDefaultTaskList(strapi, projectId, organizationId = null) {
   }
   const keep = rows[0]?.id ?? null;
   for (const extra of rows.slice(1)) {
-    const tasks = await strapi.db.query(TASK_UID).findMany({ where: { taskList: { id: extra.id } }, select: ['id', 'updatedAt'] });
+    const tasks = await strapi.db.query(TASK_UID).findMany({ where: { taskList: { id: extra.id } }, select: ['id'] });
     for (const t of tasks) {
-      await strapi.db.query(TASK_UID).update({ where: { id: t.id }, data: { taskList: keep, updatedAt: t.updatedAt } });
+      await setRelationQuietly(strapi, TASK_UID, t.id, { taskList: keep });
     }
     await q.delete({ where: { id: extra.id } });
   }
@@ -148,11 +163,11 @@ async function ensureDefaultTaskList(strapi, projectId, organizationId = null) {
 async function attachUnlistedTasks(strapi, projectId, listId) {
   const rows = await strapi.db.query(TASK_UID).findMany({
     where: { projects: { id: projectId }, taskList: { id: { $null: true } } },
-    select: ['id', 'updatedAt'],
+    select: ['id'],
     limit: 5000,
   });
   for (const t of rows) {
-    await strapi.db.query(TASK_UID).update({ where: { id: t.id }, data: { taskList: listId, updatedAt: t.updatedAt } });
+    await setRelationQuietly(strapi, TASK_UID, t.id, { taskList: listId });
   }
   return rows.length;
 }
@@ -179,10 +194,10 @@ async function bootstrapWorkspaceHierarchy(strapi) {
 
     const orphanProjects = await strapi.db.query(PROJECT_UID).findMany({
       where: { organization: { id: org.id }, workspace: { id: { $null: true } } },
-      select: ['id', 'updatedAt'],
+      select: ['id'],
     });
     for (const p of orphanProjects) {
-      await strapi.db.query(PROJECT_UID).update({ where: { id: p.id }, data: { workspace: wsId, updatedAt: p.updatedAt } });
+      await setRelationQuietly(strapi, PROJECT_UID, p.id, { workspace: wsId });
       stats.projectsAttached += 1;
     }
   }
