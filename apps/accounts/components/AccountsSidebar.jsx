@@ -16,10 +16,12 @@ import {
   PanelLeftClose,
   Home,
   CreditCard,
+  UserCircle,
 } from 'lucide-react'
 import { SidebarProductBranding } from '@webfudge/ui'
 import { ACCOUNTS_SITE } from '../lib/site'
 import { IS_SAAS } from '../lib/saas'
+import { SidebarOrgSwitcher } from './saas/HubShell'
 
 const adminItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -33,12 +35,13 @@ const adminItems = [
   { label: 'App Access', href: '/app-access', icon: Grid3X3 },
 ]
 
-// SaaS: the Home hub and billing sit above the admin tools.
+// SaaS: Home and billing sit above the admin tools; Profile (edit details, password) at the end.
 const items = IS_SAAS
   ? [
       { label: 'Home', href: '/home', icon: Home },
       { label: 'Apps & billing', href: '/billing', icon: CreditCard },
       ...adminItems,
+      { label: 'Profile', href: '/profile', icon: UserCircle },
     ]
   : adminItems
 
@@ -57,7 +60,7 @@ export default function AccountsSidebar({ collapsed = false, onToggle }) {
           }`}
         >
           {collapsed ? (
-            <Link href="/" className="flex shrink-0" aria-label={`${ACCOUNTS_SITE.name} home`}>
+            <Link href={IS_SAAS ? '/home' : '/'} className="flex shrink-0" aria-label={`${ACCOUNTS_SITE.name} home`}>
               <Image
                 src={ACCOUNTS_SITE.logoPath}
                 alt={ACCOUNTS_SITE.brandName}
@@ -69,7 +72,7 @@ export default function AccountsSidebar({ collapsed = false, onToggle }) {
             </Link>
           ) : (
             <Link
-              href="/"
+              href={IS_SAAS ? '/home' : '/'}
               className="flex min-w-0 flex-1 items-center gap-2.5"
               aria-label={`${ACCOUNTS_SITE.name} home`}
             >
@@ -101,6 +104,11 @@ export default function AccountsSidebar({ collapsed = false, onToggle }) {
             className="mt-3 h-px w-full bg-gradient-to-r from-transparent via-orange-400/50 to-transparent"
             aria-hidden
           />
+        ) : null}
+        {IS_SAAS ? (
+          <div className="mt-3">
+            <SidebarOrgSwitcher collapsed={collapsed} />
+          </div>
         ) : null}
       </div>
 

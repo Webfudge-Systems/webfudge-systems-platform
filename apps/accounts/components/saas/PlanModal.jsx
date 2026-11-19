@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Check, Minus, Plus, ShieldCheck } from 'lucide-react'
-import { Alert, Button, Modal, Spinner } from './ui'
+import { Alert, Button, Modal, Spinner } from './console'
 import { api, APP_META, formatDate, formatINR, SUPPORT_EMAIL } from '../../lib/saas'
 import { payWithRazorpay } from './razorpay'
 
@@ -92,7 +92,7 @@ export default function PlanModal({ open, onClose, orgId, app, plans, subscripti
           Thank you! {name} is on the {selected?.name} plan. Invoice {done.invoiceNumber} is in your billing history.
         </Alert>
         <div className="mt-6 flex justify-end gap-2">
-          <a href={`/billing/invoices/${done.id}`} className="inline-flex min-h-[48px] items-center rounded-full border border-[#D9D9D5] px-5 font-semibold">View invoice</a>
+          <a href={`/billing/invoices/${done.id}`} className="inline-flex min-h-[48px] items-center rounded-full border border-gray-300 px-5 font-semibold">View invoice</a>
           <Button onClick={onClose}>Done</Button>
         </div>
       </Modal>
@@ -101,12 +101,12 @@ export default function PlanModal({ open, onClose, orgId, app, plans, subscripti
 
   return (
     <Modal open={open} onClose={onClose} title={`Choose a plan for ${name}`} wide>
-      <div role="group" aria-label="Billing period" className="mb-5 inline-flex rounded-full bg-[#F4F4F2] p-1">
+      <div role="group" aria-label="Billing period" className="mb-5 inline-flex rounded-full bg-gray-100 p-1">
         {[
           ['monthly', 'Monthly'],
           ['annual', 'Yearly · save 15%'],
         ].map(([value, label]) => (
-          <button key={value} type="button" aria-pressed={cycle === value} onClick={() => setCycle(value)} className={`min-h-[40px] rounded-full px-4 text-sm font-semibold ${cycle === value ? 'bg-[#0F0F0F] text-white' : 'text-[#0F0F0F]'}`}>
+          <button key={value} type="button" aria-pressed={cycle === value} onClick={() => setCycle(value)} className={`min-h-[40px] rounded-full px-4 text-sm font-semibold ${cycle === value ? 'bg-orange-500 text-white' : 'text-gray-900'}`}>
             {label}
           </button>
         ))}
@@ -123,18 +123,18 @@ export default function PlanModal({ open, onClose, orgId, app, plans, subscripti
               role="radio"
               aria-checked={on}
               onClick={() => setPlanCode(p.code)}
-              className={`flex flex-col rounded-2xl border p-4 text-left transition ${on ? 'border-2 border-[#F5630F] shadow-[0_0_0_4px_rgba(245,99,15,.12)]' : 'border-[#DCDCD8] hover:bg-[#FAFAF8]'}`}
+              className={`flex flex-col rounded-xl border p-4 text-left transition ${on ? 'border-2 border-orange-500 shadow-[0_0_0_4px_rgba(245,99,15,.12)]' : 'border-gray-300 hover:bg-gray-50'}`}
             >
               <span className="flex items-center justify-between">
                 <span className="font-semibold">{p.name}</span>
-                {p.isPopular && <span className="rounded-full bg-[#FFF1E8] px-2 py-0.5 text-[11px] font-semibold text-[#8F3907]">Popular</span>}
+                {p.isPopular && <span className="rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-[#8F3907]">Popular</span>}
               </span>
               <span className="mt-2 text-2xl font-semibold">{formatINR(monthly)}</span>
-              <span className="text-xs text-[#5C5C5C]">per user / month{cycle === 'annual' ? ', billed yearly' : ''}</span>
+              <span className="text-xs text-gray-500">per user / month{cycle === 'annual' ? ', billed yearly' : ''}</span>
               <ul className="mt-3 space-y-1.5">
                 {p.features.slice(0, 4).map((f) => (
-                  <li key={f} className="flex gap-1.5 text-[13px] text-[#3A3A3A]">
-                    <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[#F5630F]" aria-hidden="true" />
+                  <li key={f} className="flex gap-1.5 text-[13px] text-gray-700">
+                    <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-orange-500" aria-hidden="true" />
                     {f}
                   </li>
                 ))}
@@ -144,13 +144,13 @@ export default function PlanModal({ open, onClose, orgId, app, plans, subscripti
         })}
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-[#FAFAF8] p-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-gray-50 p-4">
         <div>
           <p id="users-label" className="font-semibold">Users</p>
-          <p className="text-[13px] text-[#5C5C5C]">Your organization has {memberCount} member{memberCount === 1 ? '' : 's'}. Pay for at least that many.</p>
+          <p className="text-[13px] text-gray-500">Your organization has {memberCount} member{memberCount === 1 ? '' : 's'}. Pay for at least that many.</p>
         </div>
         <div className="flex items-center gap-2" role="group" aria-labelledby="users-label">
-          <button type="button" aria-label="Fewer users" disabled={users <= minUsers} onClick={() => setUsers((u) => Math.max(minUsers, u - 1))} className="flex h-11 w-11 items-center justify-center rounded-full border border-[#DCDCD8] bg-white disabled:opacity-40">
+          <button type="button" aria-label="Fewer users" disabled={users <= minUsers} onClick={() => setUsers((u) => Math.max(minUsers, u - 1))} className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-300 bg-white disabled:opacity-40">
             <Minus className="h-4 w-4" />
           </button>
           <input
@@ -158,22 +158,22 @@ export default function PlanModal({ open, onClose, orgId, app, plans, subscripti
             inputMode="numeric"
             value={users}
             onChange={(e) => setUsers(Math.max(1, Math.min(10000, Number(e.target.value.replace(/\D/g, '')) || 1)))}
-            className="h-11 w-16 rounded-xl border border-[#DCDCD8] text-center text-lg font-semibold"
+            className="h-11 w-16 rounded-xl border border-gray-300 text-center text-lg font-semibold"
           />
-          <button type="button" aria-label="More users" onClick={() => setUsers((u) => u + 1)} className="flex h-11 w-11 items-center justify-center rounded-full border border-[#DCDCD8] bg-white">
+          <button type="button" aria-label="More users" onClick={() => setUsers((u) => u + 1)} className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-300 bg-white">
             <Plus className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-[#EDEDEA] p-5" aria-live="polite">
+      <div className="mt-5 rounded-xl border border-gray-200 p-5" aria-live="polite">
         {quoting && !quote ? (
           <div className="flex justify-center py-4"><Spinner /></div>
         ) : quoteError ? (
           <Alert>{quoteError}</Alert>
         ) : quote ? (
           <dl className="space-y-2 text-[15px]">
-            <div className="flex justify-between gap-4 text-[13px] text-[#5C5C5C]">
+            <div className="flex justify-between gap-4 text-[13px] text-gray-500">
               <dt>{KIND_LABEL[quote.kind]}</dt>
               <dd>
                 {formatDate(quote.periodStart)} – {formatDate(quote.periodEnd)}
@@ -189,11 +189,11 @@ export default function PlanModal({ open, onClose, orgId, app, plans, subscripti
                 <dd>−{formatINR(quote.credit, { decimals: 2 })}</dd>
               </div>
             )}
-            <div className="flex justify-between gap-4 text-[#5C5C5C]">
+            <div className="flex justify-between gap-4 text-gray-500">
               <dt>GST ({Math.round(quote.taxRate * 100)}%)</dt>
               <dd>{formatINR(quote.tax, { decimals: 2 })}</dd>
             </div>
-            <div className="flex justify-between gap-4 border-t border-[#EDEDEA] pt-3 text-lg font-semibold">
+            <div className="flex justify-between gap-4 border-t border-gray-200 pt-3 text-lg font-semibold">
               <dt>Total today</dt>
               <dd>{formatINR(quote.total, { decimals: 2 })}</dd>
             </div>
@@ -209,7 +209,7 @@ export default function PlanModal({ open, onClose, orgId, app, plans, subscripti
       )}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-1.5 text-[13px] text-[#5C5C5C]">
+        <p className="flex items-center gap-1.5 text-[13px] text-gray-500">
           <ShieldCheck className="h-4 w-4" aria-hidden="true" /> Secure payment by Razorpay · UPI, cards and netbanking
         </p>
         <div className="flex gap-2">

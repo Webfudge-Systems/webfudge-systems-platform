@@ -3,13 +3,15 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
-import { useHub } from '../../components/saas/HubShell'
-import { Alert, Button, Card, PasswordInput, TextInput } from '../../components/saas/ui'
+import { Avatar } from '@webfudge/ui'
+import { useHub, initials } from '../../components/saas/HubShell'
+import { Alert, Badge, Button, Card, PageFrame, PasswordInput, TextInput } from '../../components/saas/console'
 import { api } from '../../lib/saas'
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, reload } = useHub()
+  const { user, reload, currentOrg: org } = useHub()
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Your account'
   const { setUser, establishSession, logout, organizations } = useAuth()
   const [profile, setProfile] = useState({ firstName: user?.firstName || '', lastName: user?.lastName || '', phone: user?.phone || '' })
   const [profileMsg, setProfileMsg] = useState(null)
@@ -57,15 +59,29 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-[15px] text-[#5C5C5C]">{user?.email}</p>
-        <h1 className="mt-1 text-[32px] font-medium tracking-[-0.03em] sm:text-[38px]">Profile</h1>
+    <PageFrame title="View Profile" subtitle="Your account details, password and sign-in" breadcrumb={[{ label: 'Profile', href: '/profile' }]}>
+      <div className="flex flex-col gap-4 overflow-hidden rounded-xl border border-gray-200/80 bg-gradient-to-br from-orange-50 via-white to-orange-50/40 p-6 shadow-sm sm:flex-row sm:items-center sm:gap-5">
+        <Avatar
+          fallback={initials(displayName)}
+          alt={displayName}
+          size="xl"
+          className="border-2 border-white bg-gradient-to-br from-orange-500 to-orange-600 text-lg font-bold text-white shadow-lg"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-xl font-semibold text-gray-900">{displayName}</h2>
+          <p className="mt-0.5 truncate text-sm text-gray-500">{user?.email}</p>
+          {org && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Badge tone="green">{org.role}</Badge>
+              <span className="text-sm text-gray-400">•</span>
+              <span className="truncate text-sm font-medium text-gray-800">{org.name}</span>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <h2 className="mb-5 text-lg font-semibold">Your details</h2>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card title="Your details" subtitle="Name and mobile shown to your team">
           {profileMsg && <Alert tone={profileMsg.tone} className="mb-4">{profileMsg.text}</Alert>}
           <form onSubmit={saveProfile} noValidate className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -78,8 +94,7 @@ export default function ProfilePage() {
           </form>
         </Card>
 
-        <Card>
-          <h2 className="mb-5 text-lg font-semibold">Password</h2>
+        <Card title="Password" subtitle="Changing it signs out your other sessions">
           {pwMsg && <Alert tone={pwMsg.tone} className="mb-4">{pwMsg.text}</Alert>}
           <form onSubmit={changePassword} noValidate className="space-y-4">
             <PasswordInput label="Current password" autoComplete="current-password" value={pw.currentPassword} onChange={(e) => setPw((p) => ({ ...p, currentPassword: e.target.value }))} error={pwErrors.currentPassword} />
@@ -89,11 +104,9 @@ export default function ProfilePage() {
         </Card>
       </div>
 
-      <Card>
-        <h2 className="text-lg font-semibold">Sign out</h2>
-        <p className="mb-4 mt-1 text-sm text-[#5C5C5C]">Signs you out of Webfudge Accounts, CRM and Projects on this browser.</p>
+      <Card title="Sign out" subtitle="Signs you out of Webfudge Accounts, CRM and Projects on this browser.">
         <Button variant="outline" onClick={() => { logout(); router.replace('/login') }}>Sign out</Button>
       </Card>
-    </div>
+    </PageFrame>
   )
 }
