@@ -13,7 +13,6 @@ const SKIP_PREFIXES = [
   '/api/upload',
   '/api/entity-attachments',
   '/api/invest', // internal investment manager: live prices + financial data stay out of Redis
-  '/api/re-webhooks', // server-to-server lead ingestion — must never serve stale reads
   '/api/crm-meta', // Meta Lead Ads (G6): webhook + live connection status; ingestion invalidates the org itself
   '/api/lead-capture', // G7 public lead capture (webhooks / website forms)
   '/api/crm-lead-capture', // G7 settings: secrets + live event log

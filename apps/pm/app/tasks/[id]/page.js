@@ -261,7 +261,7 @@ export default function TaskDetailPage() {
     try {
       const [projectRes, userRes] = await Promise.all([
         projectService.getAllProjects({ pageSize: 200, sort: 'name:asc' }),
-        strapiClient.getXtrawrkxUsers({ pageSize: 200 }),
+        strapiClient.getOrganizationUsers({ pageSize: 200 }),
       ]);
       setProjects((projectRes?.data || []).map(transformProject).filter(Boolean));
       const rawUsers = Array.isArray(userRes) ? userRes : userRes?.data || [];

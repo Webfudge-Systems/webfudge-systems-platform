@@ -189,7 +189,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (!meta.teamView || users.length) return;
     strapiClient
-      .getXtrawrkxUsers({ pageSize: 200 })
+      .getOrganizationUsers({ pageSize: 200 })
       .then((r) => setUsers(Array.isArray(r?.data) ? r.data : []))
       .catch(() => {});
     strapiClient
