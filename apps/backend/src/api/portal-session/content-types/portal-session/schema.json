@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "portal_sessions",
+  "info": {
+    "singularName": "portal-session",
+    "pluralName": "portal-sessions",
+    "displayName": "Portal Session",
+    "description": "Client portal (W10) magic links and sessions for CRM contacts. Not user accounts and not seats."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "kind": {
+      "type": "enumeration",
+      "enum": ["magic_link", "session"],
+      "required": true
+    },
+    "tokenHash": {
+      "type": "string",
+      "private": true,
+      "required": true,
+      "unique": true
+    },
+    "contact": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::contact.contact"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "expiresAt": {
+      "type": "datetime",
+      "required": true
+    },
+    "consumedAt": {
+      "type": "datetime"
+    },
+    "revokedAt": {
+      "type": "datetime"
+    },
+    "lastUsedAt": {
+      "type": "datetime"
+    }
+  }
+}

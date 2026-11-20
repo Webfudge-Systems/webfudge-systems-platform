@@ -283,6 +283,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     delete data.id;
     delete data.documentId;
+    delete data.clientPortalEnabled; // W10: shared only via /client-portal/projects/:id/sharing
 
     if (data.clientAccount != null && data.clientAccount !== '') {
       const clientErr = await assertClientAccountInOrg(strapi, data.clientAccount, ctx.state.orgId);
@@ -354,6 +355,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
+    delete data.clientPortalEnabled; // W10: shared only via /client-portal/projects/:id/sharing
 
     if (Object.prototype.hasOwnProperty.call(data, 'clientAccount') && data.clientAccount !== '') {
       const clientErr = await assertClientAccountInOrg(strapi, data.clientAccount, ctx.state.orgId);

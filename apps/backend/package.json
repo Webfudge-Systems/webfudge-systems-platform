@@ -19,6 +19,7 @@
     "flush:api-cache": "node scripts/flush-api-cache.js",
     "audit:prod-tasks": "node scripts/prod-task-audit.js",
     "db:row-counts": "node scripts/db-row-counts.js",
+    "test:portal": "node --test --test-concurrency=1 tests/client-portal.test.js",
     "test:lead-capture": "node --test \"tests/lead-capture/*.test.js\"",
     "e2e:lead-capture": "node scripts/e2e-lead-capture.js"
   },

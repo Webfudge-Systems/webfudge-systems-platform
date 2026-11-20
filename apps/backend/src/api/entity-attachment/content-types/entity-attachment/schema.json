@@ -53,6 +53,10 @@
       "relation": "manyToOne",
       "target": "api::organization.organization"
     },
+    "clientShareable": {
+      "type": "boolean",
+      "default": false
+    },
     "crmActivity": {
       "type": "relation",
       "relation": "manyToOne",

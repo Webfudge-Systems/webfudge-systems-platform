@@ -49,6 +49,9 @@ const RESOURCE_APPS = {
   portfolio: ['pm'],
   retainers: ['pm'],
   sprints: ['pm'],
+  // Client portal controls (W10). The client-facing /api/portal/* has no team user and checks the
+  // portal session and plan feature itself.
+  'client-portal': ['pm'],
   // Work hierarchy (W1)
   workspaces: ['pm'],
   'task-lists': ['pm'],

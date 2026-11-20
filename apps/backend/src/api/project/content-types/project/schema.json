@@ -135,6 +135,10 @@
       "relation": "manyToOne",
       "target": "api::contact.contact"
     },
+    "clientPortalEnabled": {
+      "type": "boolean",
+      "default": false
+    },
     "workspace": {
       "type": "relation",
       "relation": "manyToOne",
