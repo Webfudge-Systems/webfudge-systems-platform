@@ -159,7 +159,7 @@ export default function AssignmentSettingsPage() {
       const [r, s, u] = await Promise.all([
         assignmentService.listRules(),
         assignmentService.getSla(),
-        strapiClient.getXtrawrkxUsers({ pageSize: 200 }).catch(() => ({ data: [] })),
+        strapiClient.getOrganizationUsers({ pageSize: 200 }).catch(() => ({ data: [] })),
       ]);
       setRules(r);
       if (s?.sla) setSla(s.sla);

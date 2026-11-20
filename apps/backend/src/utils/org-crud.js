@@ -62,7 +62,9 @@ function makeOrgCrudController(uid, { defaultPopulate = [], extraFilters = () =>
       if (!ctx.state.user) return ctx.unauthorized();
       if (!ctx.state.orgId) return ctx.forbidden('No active organization');
       const body = ctx.request?.body || {};
-      const data = { ...(body.data || body), organization: ctx.state.orgId, createdByUser: ctx.state.user.id };
+      const data = { ...(body.data || body), organization: ctx.state.orgId };
+      // Only stamp the creator on content types that actually define createdByUser (document does not).
+      if (strapi.getModel(uid)?.attributes?.createdByUser) data.createdByUser = ctx.state.user.id;
       delete data.id;
       const entry = await strapi.entityService.create(uid, { data, populate: defaultPopulate });
       return { data: entry };

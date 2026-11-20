@@ -157,7 +157,7 @@ export default function LeadsAssignedWidget({ className = '' }) {
       try {
         setLoading(true)
         const [usersRes, allLeads] = await Promise.all([
-          strapiClient.getXtrawrkxUsers({ pageSize: PAGE_SIZE }).catch(() => ({ data: [] })),
+          strapiClient.getOrganizationUsers({ pageSize: PAGE_SIZE }).catch(() => ({ data: [] })),
           fetchAllLeads(),
         ])
         if (cancelled) return

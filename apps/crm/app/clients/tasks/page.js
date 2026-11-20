@@ -295,7 +295,7 @@ export default function ClientsTasksPage() {
         let page = 1;
         let hasMore = true;
         while (hasMore && !cancelled) {
-          const response = await strapiClient.getXtrawrkxUsers({
+          const response = await strapiClient.getOrganizationUsers({
             'pagination[page]': page,
             'pagination[pageSize]': 100,
           });
