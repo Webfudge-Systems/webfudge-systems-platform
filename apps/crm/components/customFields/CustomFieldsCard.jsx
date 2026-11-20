@@ -14,7 +14,7 @@ let usersCache = null;
 async function loadUsers() {
   if (usersCache) return usersCache;
   try {
-    const res = await strapiClient.getXtrawrkxUsers({ pageSize: 200 });
+    const res = await strapiClient.getOrganizationUsers({ pageSize: 200 });
     usersCache = Array.isArray(res?.data) ? res.data : [];
   } catch {
     usersCache = [];

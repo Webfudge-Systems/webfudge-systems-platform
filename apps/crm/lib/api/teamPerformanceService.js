@@ -249,7 +249,7 @@ export async function fetchTeamPerformanceSummary() {
 
   try {
     const [usersRes, tasks, leads, deals] = await Promise.all([
-      strapiClient.getXtrawrkxUsers({ pageSize: LIST_PAGE_SIZE }),
+      strapiClient.getOrganizationUsers({ pageSize: LIST_PAGE_SIZE }),
       fetchAllPaged((page) =>
         taskService.getAll({
           'pagination[page]': page,

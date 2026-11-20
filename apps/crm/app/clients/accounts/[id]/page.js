@@ -845,7 +845,7 @@ export default function ClientAccountDetailPage() {
         setAssigneeUsers([]);
         return;
       }
-      const response = await strapiClient.getXtrawrkxUsers({
+      const response = await strapiClient.getOrganizationUsers({
         'pagination[page]': 1,
         'pagination[pageSize]': 200,
         populate: 'primaryRole,userRoles',

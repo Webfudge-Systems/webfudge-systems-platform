@@ -229,7 +229,7 @@ class StrapiClient {
    * Fetch users in the active organization (assignment dropdowns).
    * Prefers `GET /organizations/:orgId/users` (backend custom route). Falls back to `/users` if no org id.
    */
-  async getXtrawrkxUsers(params = {}) {
+  async getOrganizationUsers(params = {}) {
     const queryParams = {
       'pagination[page]': params['pagination[page]'] ?? params.page ?? 1,
       'pagination[pageSize]': params['pagination[pageSize]'] ?? params.pageSize ?? 25,
@@ -256,7 +256,7 @@ class StrapiClient {
         };
       } catch (e) {
         console.warn(
-          'strapiClient.getXtrawrkxUsers: organization users failed, trying /users',
+          'strapiClient.getOrganizationUsers: organization users failed, trying /users',
           e?.message || e
         );
       }

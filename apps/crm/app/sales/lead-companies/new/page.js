@@ -146,7 +146,7 @@ export default function AddLeadCompanyPage() {
           'pagination[pageSize]': pageSize,
           populate: 'primaryRole,userRoles',
         };
-        const response = await strapiClient.getXtrawrkxUsers(queryParams);
+        const response = await strapiClient.getOrganizationUsers(queryParams);
         const usersData = response?.data ?? response ?? [];
 
         const arr = Array.isArray(usersData) ? usersData : [];
