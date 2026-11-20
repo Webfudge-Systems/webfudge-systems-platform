@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, ChevronRight, ExternalLink, GitBranch, ListChecks, Megaphone, MessageSquare, Package, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
+import { Bell, ChevronRight, ExternalLink, GitBranch, Inbox, ListChecks, Megaphone, MessageSquare, Package, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
 import { Card, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import { getAppUrl } from '@webfudge/utils';
 import CRMPageHeader from '../../components/CRMPageHeader';
@@ -39,6 +39,17 @@ const SECTIONS = [
           icon: Megaphone,
           title: 'Meta Lead Ads',
           description: 'Connect your Facebook Page and bring leads from Facebook and Instagram lead forms into Grow automatically.',
+        },
+      ]
+    : []),
+  // G7: lead capture connectors (SaaS only).
+  ...(IS_SAAS_PLATFORM
+    ? [
+        {
+          href: '/settings/lead-sources',
+          icon: Inbox,
+          title: 'Lead sources',
+          description: 'Capture leads automatically from your website form, Google Ads, IndiaMART, JustDial, 99acres and MagicBricks, with a log of every lead received.',
         },
       ]
     : []),

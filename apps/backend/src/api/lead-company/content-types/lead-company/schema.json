@@ -136,6 +136,9 @@
     },
     "metaAttribution": {
       "type": "json"
+    },
+    "sourceDetails": {
+      "type": "json"
     }
   }
 }

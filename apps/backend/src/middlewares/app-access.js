@@ -39,6 +39,8 @@ const RESOURCE_APPS = {
   'crm-quotes': ['crm'],
   // Meta Lead Ads settings (G6). The webhook carries no user, so this middleware lets it through.
   'crm-meta': ['crm'],
+  // Lead capture settings (G7); the public /lead-capture endpoints check access themselves.
+  'crm-lead-capture': ['crm'],
   // Saved views are used by both apps (W3 tasks, G3 Grow lists)
   'saved-views': ['crm', 'pm'],
   // Work: timesheets (W5), capacity (W6), portfolio (W11), retainers (W14), sprints (W7)
