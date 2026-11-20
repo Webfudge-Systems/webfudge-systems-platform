@@ -11,7 +11,8 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const { orgIdFromRelation } = require('../../../utils/content-api-helpers');
-const { requireModuleAccess, canAccess, isPmOrgAdminRole, isPmOrgManagerRole, userCanViewProjectRow } = require('../../../utils/rbac');
+const { requireModuleAccess, canAccess, isPmOrgAdminRole, isPmOrgManagerRole } = require('../../../utils/rbac');
+const { loadProjectForAccess } = require('../../../utils/workspaces');
 
 const UID = 'api::sprint.sprint';
 const TASK_UID = 'api::task.task';
@@ -38,12 +39,8 @@ function guard(ctx) {
 async function loadProject(strapi, ctx, projectId) {
   const id = parseInt(String(projectId), 10);
   if (Number.isNaN(id)) return null;
-  const p = await strapi.entityService.findOne(PROJECT_UID, id, {
-    populate: { organization: { fields: ['id'] }, projectManager: { fields: ['id'] }, teamMembers: { fields: ['id'] } },
-  });
-  if (!p || orgIdFromRelation(p.organization) !== ctx.state.orgId) return null;
-  if (!userCanViewProjectRow(ctx, p, ctx.state.user.id)) return null;
-  return p;
+  // W1: shared project access check (project rules + workspace membership)
+  return loadProjectForAccess(strapi, ctx, id);
 }
 
 const canPlan = (ctx, project) =>

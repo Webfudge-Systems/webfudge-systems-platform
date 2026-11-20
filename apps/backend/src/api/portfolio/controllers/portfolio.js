@@ -10,7 +10,8 @@
  *   - upcoming milestones (task type "milestone", next 30 days)
  */
 
-const { requireModuleAccess, buildProjectListFiltersForUser } = require('../../../utils/rbac');
+const { requireModuleAccess } = require('../../../utils/rbac');
+const { buildProjectVisibilityFilters } = require('../../../utils/workspaces');
 
 const PROJECT_UID = 'api::project.project';
 const TASK_UID = 'api::task.task';
@@ -50,7 +51,8 @@ module.exports = {
     const denied = requireModuleAccess(ctx, 'pm', 'projects', 'read');
     if (denied) return denied;
     const q = ctx.query || {};
-    const filters = buildProjectListFiltersForUser(ctx, ctx.state.orgId, ctx.state.user.id);
+    // W1: project rules + workspace membership
+    const filters = await buildProjectVisibilityFilters(strapi, ctx, ctx.state.orgId, ctx.state.user.id);
     if (q.clientAccountId) filters.clientAccount = { id: parseInt(q.clientAccountId, 10) || -1 };
     if (q.managerId) filters.projectManager = { id: parseInt(q.managerId, 10) || -1 };
 

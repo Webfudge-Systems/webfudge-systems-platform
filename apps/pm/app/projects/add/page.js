@@ -24,6 +24,7 @@ import PMPageHeader from '../../../components/PMPageHeader'
 import ProjectTemplatePicker from '../../../components/ProjectTemplatePicker'
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker'
 import projectService from '../../../lib/api/projectService'
+import useWorkspaces from '../../../lib/useWorkspaces'
 import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions'
 import { fetchProjectDirectoryUsers } from '../../../lib/api/messageService'
 import { transformUser } from '../../../lib/api/dataTransformers'
@@ -81,7 +82,21 @@ export default function AddProjectPage() {
     projectManagerId: '',
     teamMemberIds: [],
     isPrivate: false,
+    workspaceId: '',
   })
+
+  // W1: new projects go to the active workspace unless another is picked
+  const { workspaces, activeId: activeWorkspaceId } = useWorkspaces()
+  const workspaceOptions = useMemo(
+    () => workspaces.map((w) => ({ value: String(w.id), label: w.membersMode === 'restricted' ? `${w.name} (restricted)` : w.name })),
+    [workspaces]
+  )
+  useEffect(() => {
+    if (form.workspaceId || !workspaces.length) return
+    const preferred =
+      workspaces.find((w) => String(w.id) === String(activeWorkspaceId)) || workspaces.find((w) => w.isDefault) || workspaces[0]
+    if (preferred) setForm((p) => ({ ...p, workspaceId: String(preferred.id) }))
+  }, [workspaces, activeWorkspaceId, form.workspaceId])
 
   /** Org directory + current user if missing from roster (edge cases). */
   const directoryUsers = useMemo(() => {
@@ -174,6 +189,7 @@ export default function AddProjectPage() {
       else payload.clientAccount = null
 
       if (form.projectManagerId) payload.projectManager = Number(form.projectManagerId)
+      if (form.workspaceId) payload.workspace = Number(form.workspaceId)
 
       payload.teamMembers = form.teamMemberIds.map(Number)
       if (canToggleProjectPrivacy()) payload.isPrivate = form.isPrivate
@@ -339,6 +355,15 @@ export default function AddProjectPage() {
               onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
               placeholder="Enter project budget (optional)"
             />
+            {workspaceOptions.length > 0 ? (
+              <Select
+                label="Workspace"
+                value={form.workspaceId}
+                options={workspaceOptions}
+                onChange={(val) => setForm((p) => ({ ...p, workspaceId: val ?? '' }))}
+                allowEmpty={false}
+              />
+            ) : null}
             <Select
               label="Client"
               required

@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "task_lists",
+  "info": {
+    "singularName": "task-list",
+    "pluralName": "task-lists",
+    "displayName": "Task list",
+    "description": "List / section inside a project that groups its tasks (W1)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "isDefault": { "type": "boolean", "default": false },
+    "color": { "type": "string" },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::project.project",
+      "inversedBy": "taskLists"
+    },
+    "tasks": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::task.task",
+      "mappedBy": "taskList"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

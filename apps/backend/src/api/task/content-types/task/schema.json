@@ -219,6 +219,12 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::sprint.sprint"
+    },
+    "taskList": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::task-list.task-list",
+      "inversedBy": "tasks"
     }
   }
 }
