@@ -195,7 +195,7 @@ export async function fetchSalesDashboardData() {
       fetchAllPaged((page) =>
         invoiceService.getAll({ 'pagination[page]': page, 'pagination[pageSize]': LIST_PAGE_SIZE })
       ),
-      strapiClient.getXtrawrkxUsers({ pageSize: LIST_PAGE_SIZE }).catch(() => ({ data: [] })),
+      strapiClient.getOrganizationUsers({ pageSize: LIST_PAGE_SIZE }).catch(() => ({ data: [] })),
     ]);
     return {
       deals: Array.isArray(deals) ? deals : [],
@@ -243,7 +243,7 @@ export async function fetchManagerDashboardData() {
       fetchAllPaged((page) =>
         meetingService.getAll({ 'pagination[page]': page, 'pagination[pageSize]': LIST_PAGE_SIZE })
       ),
-      strapiClient.getXtrawrkxUsers({ pageSize: LIST_PAGE_SIZE }).catch(() => ({ data: [] })),
+      strapiClient.getOrganizationUsers({ pageSize: LIST_PAGE_SIZE }).catch(() => ({ data: [] })),
     ]);
     const users = Array.isArray(usersRes?.data) ? usersRes.data : [];
     const nameById = new Map(users.map((u) => [String(u.id), displayName(u)]));

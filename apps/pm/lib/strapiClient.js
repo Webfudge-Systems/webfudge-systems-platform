@@ -18,10 +18,7 @@ class StrapiClient {
   getToken() {
     if (this.token) return this.token;
     if (typeof window !== 'undefined') {
-      this.token =
-        localStorage.getItem('strapi_token') ||
-        localStorage.getItem('auth-token') ||
-        localStorage.getItem('xtrawrkx-authToken');
+      this.token = localStorage.getItem('strapi_token') || localStorage.getItem('auth-token');
     }
     return this.token;
   }
@@ -158,7 +155,7 @@ class StrapiClient {
   /**
    * Users for assignee dropdowns: org roster when `current-org-id` is set, else GET /users.
    */
-  async getXtrawrkxUsers(params = {}) {
+  async getOrganizationUsers(params = {}) {
     const queryParams = {
       'pagination[page]': params['pagination[page]'] ?? params.page ?? 1,
       'pagination[pageSize]': params['pagination[pageSize]'] ?? params.pageSize ?? 25,
@@ -183,7 +180,7 @@ class StrapiClient {
         };
       } catch (e) {
         console.warn(
-          'strapiClient.getXtrawrkxUsers: organization users failed, trying /users',
+          'strapiClient.getOrganizationUsers: organization users failed, trying /users',
           e?.message || e
         );
       }

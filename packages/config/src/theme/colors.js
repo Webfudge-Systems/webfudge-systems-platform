@@ -1,6 +1,6 @@
 /**
  * Theme color configuration
- * Based on xtrawrkx CRM design system
+ * Shared Webfudge design system palette
  */
 
 export const colors = {

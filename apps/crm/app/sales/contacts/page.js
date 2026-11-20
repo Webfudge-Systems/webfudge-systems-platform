@@ -249,7 +249,7 @@ export default function ContactsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await strapiClient.getXtrawrkxUsers();
+        const res = await strapiClient.getOrganizationUsers();
         if (!cancelled) setOrgUsers(Array.isArray(res?.data) ? res.data : []);
       } catch {
         if (!cancelled) setOrgUsers([]);

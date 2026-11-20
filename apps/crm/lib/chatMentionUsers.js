@@ -2,7 +2,7 @@ import strapiClient from './strapiClient';
 
 /** Organization roster for @mentions in CRM chats. */
 export async function fetchChatMentionUsers() {
-  const res = await strapiClient.getXtrawrkxUsers({
+  const res = await strapiClient.getOrganizationUsers({
     pageSize: 200,
   });
   const raw = res?.data;

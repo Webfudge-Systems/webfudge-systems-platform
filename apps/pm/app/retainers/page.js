@@ -179,7 +179,7 @@ export default function RetainersPage() {
     Promise.all([
       strapiClient.get('/client-accounts', { 'pagination[pageSize]': 200 }).catch(() => ({ data: [] })),
       strapiClient.get('/projects', { 'pagination[pageSize]': 200, 'populate[clientAccount][fields][0]': 'id' }).catch(() => ({ data: [] })),
-      strapiClient.getXtrawrkxUsers({ pageSize: 200 }).catch(() => ({ data: [] })),
+      strapiClient.getOrganizationUsers({ pageSize: 200 }).catch(() => ({ data: [] })),
     ]).then(([c, p, u]) => {
       setClients(Array.isArray(c?.data) ? c.data : []);
       setProjects(Array.isArray(p?.data) ? p.data : []);
