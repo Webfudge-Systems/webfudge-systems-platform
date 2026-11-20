@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "lead_capture_events",
+  "info": {
+    "singularName": "lead-capture-event",
+    "pluralName": "lead-capture-events",
+    "displayName": "Lead Capture Event",
+    "description": "G7: log of leads received from website forms, Google Ads, IndiaMART, JustDial, 99acres, MagicBricks (and G6 Meta)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "source": {
+      "type": "string",
+      "required": true
+    },
+    "status": {
+      "type": "string",
+      "required": true
+    },
+    "message": {
+      "type": "string"
+    },
+    "externalId": {
+      "type": "string"
+    },
+    "leadCompanyId": {
+      "type": "integer"
+    },
+    "contactId": {
+      "type": "integer"
+    },
+    "matchedOn": {
+      "type": "string"
+    },
+    "ip": {
+      "type": "string"
+    },
+    "details": {
+      "type": "json"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

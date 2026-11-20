@@ -130,6 +130,9 @@
     },
     "slaBreachedAt": {
       "type": "datetime"
+    },
+    "sourceDetails": {
+      "type": "json"
     }
   }
 }

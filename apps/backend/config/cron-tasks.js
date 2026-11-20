@@ -78,4 +78,30 @@ module.exports = {
     },
     options: { rule: '*/5 * * * *' },
   },
+  /** G7: IndiaMART Pull API — only for orgs that turned pull on (SaaS only; no-op otherwise). */
+  indiamartPull: {
+    task: async ({ strapi }) => {
+      if (!isSaas()) return;
+      try {
+        const { pullAllConfigured } = require('../src/utils/lead-capture/indiamart-pull');
+        await pullAllConfigured(strapi);
+      } catch (e) {
+        strapi.log.error(`[cron] IndiaMART pull failed: ${e?.message || e}`);
+      }
+    },
+    options: { rule: '*/10 * * * *' },
+  },
+  /** G7: keep the lead-capture event log to 60 days. */
+  leadCaptureEventPrune: {
+    task: async ({ strapi }) => {
+      if (!isSaas()) return;
+      try {
+        const before = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
+        await strapi.db.query('api::lead-capture-event.lead-capture-event').deleteMany({ where: { createdAt: { $lt: before } } });
+      } catch (e) {
+        strapi.log.error(`[cron] lead capture event prune failed: ${e?.message || e}`);
+      }
+    },
+    options: { rule: '15 3 * * *', tz: 'Asia/Kolkata' },
+  },
 };

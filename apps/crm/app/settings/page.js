@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, ChevronRight, ExternalLink, GitBranch, ListChecks, MessageSquare, Package, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
-import { Card } from '@webfudge/ui';
+import { Bell, ChevronRight, ExternalLink, GitBranch, Inbox, ListChecks, MessageSquare, Package, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
+import { Card, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import { getAppUrl } from '@webfudge/utils';
 import CRMPageHeader from '../../components/CRMPageHeader';
 
@@ -31,6 +31,17 @@ const SECTIONS = [
     title: 'Lead assignment & SLA',
     description: 'Auto-assign new leads (round robin, fewest open leads, by city, state, pincode, source or industry) and set a first-contact time limit.',
   },
+  // G7: lead capture connectors (SaaS only).
+  ...(IS_SAAS_PLATFORM
+    ? [
+        {
+          href: '/settings/lead-sources',
+          icon: Inbox,
+          title: 'Lead sources',
+          description: 'Capture leads automatically from your website form, Google Ads, IndiaMART, JustDial, 99acres and MagicBricks, with a log of every lead received.',
+        },
+      ]
+    : []),
   {
     href: '/settings/products',
     icon: Package,
