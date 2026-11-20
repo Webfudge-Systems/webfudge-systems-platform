@@ -1,0 +1,1 @@
+export { DocsReadingProgress } from './DocsReadingProgress';
