@@ -8,6 +8,7 @@
 
 const { requireModuleAccess, canAccess } = require('../../../utils/rbac');
 const { buildAnalytics, departmentMemberIds } = require('../../../utils/crm-analytics');
+const { hasFeature } = require('../../../utils/saas-plans');
 
 const DAY = 86400000;
 const MAX_RANGE_DAYS = 731;
@@ -46,7 +47,14 @@ module.exports = {
     }
 
     const data = await buildAnalytics(strapi, { orgId: ctx.state.orgId, from, to, ownerIds });
+    // SaaS: the weighted forecast is a Grow Business feature (G16). Other plans get the rest of the report.
+    const lockedFeatures = [];
+    if (!(await hasFeature(strapi, ctx.state.orgId, 'crm.forecast'))) {
+      data.forecast = null;
+      data.summary.weightedValue = null;
+      lockedFeatures.push('crm.forecast');
+    }
     ctx.set('Cache-Control', 'no-store');
-    return { data, meta: { teamView, scope: ownerIds ? (teamView ? 'filtered' : 'own') : 'org' } };
+    return { data, meta: { teamView, scope: ownerIds ? (teamView ? 'filtered' : 'own') : 'org', lockedFeatures } };
   },
 };

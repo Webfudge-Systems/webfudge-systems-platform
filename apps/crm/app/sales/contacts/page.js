@@ -34,6 +34,7 @@ import {
   TableColumnPicker,
   TableResultsCount,
   TableEmptyBelow,
+  PlanLimitNotice,
 } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import SavedViewsMenu, { useSavedViews, useApplyDefaultView } from '../../../components/SavedViewsMenu';
@@ -757,6 +758,9 @@ export default function ContactsPage() {
         onImportClick={() => router.push('/sales/import?entity=contact')}
         onExportClick={() => console.log('Export clicked')}
       />
+
+      {/* SaaS: Grow Free plan contact limit (G16). Renders nothing on Internal or paid plans. */}
+      <PlanLimitNotice app="crm" limit="contacts" />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

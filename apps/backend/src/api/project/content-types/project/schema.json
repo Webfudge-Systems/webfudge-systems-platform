@@ -138,6 +138,18 @@
     "clientPortalEnabled": {
       "type": "boolean",
       "default": false
+    },
+    "workspace": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::workspace.workspace",
+      "inversedBy": "projects"
+    },
+    "taskLists": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::task-list.task-list",
+      "mappedBy": "project"
     }
   }
 }

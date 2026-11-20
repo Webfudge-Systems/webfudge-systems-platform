@@ -49,6 +49,7 @@ import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
+import ProjectTaskLists from '../../../components/ProjectTaskLists';
 import ProjectGantt from '../../../components/ProjectGantt';
 import { TaskViewToolbar, TaskGroupedList, TaskCalendarView, TaskWorkloadView } from '../../../components/TaskViews';
 import { MyTasksKanbanBoard } from '../../../components/MyTasksViews';
@@ -1110,7 +1111,16 @@ export default function ProjectDetailPage() {
       ) : null}
 
       {activeTab === 'tasks' && taskView !== 'table' ? (
-        taskView === 'gantt' ? (
+        taskView === 'sections' ? (
+          // W1: task lists / sections inside the project
+          <ProjectTaskLists
+            projectId={project?.id}
+            tasks={displayTasks}
+            tasksLoading={tasksLoading}
+            canEdit={canCreateProjectTasks}
+            onTasksChanged={() => loadTasks({ silent: true })}
+          />
+        ) : taskView === 'gantt' ? (
           <ProjectGantt tasks={displayTasks} canEditTask={(t) => canEditTaskInPm(t, currentUserId)} onReschedule={handleGanttReschedule} />
         ) : (
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

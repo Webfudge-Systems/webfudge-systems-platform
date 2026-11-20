@@ -17,11 +17,15 @@ const RETENTION_DAYS = 90;
 
 const SUB_UID = 'api::subscription.subscription';
 
+const { planEntitlements } = require('./saas-plans');
+
 const time = (value) => (value ? new Date(value).getTime() : null);
 const daysUntil = (ms, now) => Math.max(0, Math.ceil((ms - now) / DAY));
 
 function computeAccess(sub, now = Date.now()) {
   const base = {
+    // Plan tier, limits, AI credits and Business features (G16 / W15).
+    ...planEntitlements(sub),
     subscriptionId: sub.id,
     app: sub.app?.slug || null,
     status: sub.status,
@@ -64,14 +68,17 @@ const cache = new Map();
 const CACHE_MS = 20 * 1000;
 
 /** Map of app slug → access for one organization (cached briefly). */
-async function getOrgAccess(strapi, orgId) {
+async function getOrgAccess(strapi, orgId, { fresh = false } = {}) {
   const key = String(orgId);
   const hit = cache.get(key);
-  if (hit && hit.expires > Date.now()) return hit.value;
+  if (!fresh && hit && hit.expires > Date.now()) return hit.value;
 
   const subs = await strapi.entityService.findMany(SUB_UID, {
     filters: { organization: orgId },
-    populate: { app: { fields: ['slug', 'name'] } },
+    populate: {
+      app: { fields: ['slug', 'name'] },
+      plan: { fields: ['code', 'tier', 'maxUsers', 'maxContacts', 'aiCreditsMonthly'] },
+    },
     limit: 50,
   });
   const value = {};
@@ -83,12 +90,26 @@ async function getOrgAccess(strapi, orgId) {
     const rank = { full: 3, read_only: 2, locked: 1 };
     if (!current || rank[access.access] > rank[current.access]) value[sub.app.slug] = access;
   }
+  // Usage against the plan limits, for meters and upgrade prompts in the apps.
+  if (Object.keys(value).length) {
+    const users = await strapi.entityService.count('api::organization-user.organization-user', {
+      filters: { organization: orgId, isActive: true },
+    });
+    for (const access of Object.values(value)) access.usage = { users };
+    if (value.crm) {
+      value.crm.usage.contacts = await strapi.entityService.count('api::contact.contact', { filters: { organization: orgId } });
+    }
+  }
   cache.set(key, { value, expires: Date.now() + CACHE_MS });
   return value;
 }
 
 function invalidateOrgAccess(orgId) {
   cache.delete(String(orgId));
+  // Cached API reads (e.g. the forecast in Grow analytics) depend on the plan too.
+  require('./cache')
+    .invalidateOrg(orgId)
+    .catch(() => {});
 }
 
 module.exports = {

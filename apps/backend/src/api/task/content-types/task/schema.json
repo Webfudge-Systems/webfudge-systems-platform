@@ -244,6 +244,12 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::contact.contact"
+    },
+    "taskList": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::task-list.task-list",
+      "inversedBy": "tasks"
     }
   }
 }

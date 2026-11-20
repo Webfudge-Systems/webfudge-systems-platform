@@ -13,19 +13,22 @@ const API_BASE = (
   (process.env.NODE_ENV === 'production' ? 'https://api.webfudge.in' : 'http://localhost:1338')
 ).replace(/\/$/, '')
 
-const AppAccessContext = createContext(null)
+/** SaaS access state from /api/saas/access ({ apps, isAdmin, features }), or null while loading. */
+export const AppAccessContext = createContext(null)
 
 /**
  * Which Webfudge apps the current organization has. On Internal every app counts as present.
  * Use it to hide links into another app (e.g. CRM tabs inside Projects) when it isn't added.
  */
 export function useSaasApps() {
-  const apps = useContext(AppAccessContext)
+  const apps = useContext(AppAccessContext)?.apps ?? null
   return {
     ready: !IS_SAAS_PLATFORM || apps !== null,
     hasApp: (slug) => !IS_SAAS_PLATFORM || (apps !== null && Boolean(apps[slug]) && apps[slug].access !== 'locked'),
   }
 }
+
+export const REFRESH_EVENT = 'webfudge:saas-access-refresh'
 
 const APP_NAMES = { crm: 'CRM', pm: 'Projects' }
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -89,14 +92,18 @@ export function SaasAccessGate({ app, children }) {
     load()
     const onFocus = () => load()
     window.addEventListener('focus', onFocus)
+    // refreshSaasAccess() (PlanGate) asks for fresh plan usage, e.g. after a plan-limit error.
+    window.addEventListener(REFRESH_EVENT, onFocus)
     return () => {
       cancelled = true
       window.removeEventListener('focus', onFocus)
+      window.removeEventListener(REFRESH_EVENT, onFocus)
     }
   }, [app])
 
   if (!IS_SAAS_PLATFORM) return children
   if (!state) return <AppAccessContext.Provider value={null}>{children}</AppAccessContext.Provider>
+  const contextValue = { apps: state.apps || {}, isAdmin: Boolean(state.isAdmin), features: state.features || {} }
 
   const accounts = getAppUrl('accounts')
   const name = APP_NAMES[app] || app
@@ -168,7 +175,7 @@ export function SaasAccessGate({ app, children }) {
   }
 
   return (
-    <AppAccessContext.Provider value={state.apps || {}}>
+    <AppAccessContext.Provider value={contextValue}>
       {banner && (
         <div role="status" className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-2 text-sm ${banner.tone}`}>
           <banner.icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />

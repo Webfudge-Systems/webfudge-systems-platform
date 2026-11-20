@@ -38,7 +38,7 @@ existing users sign in and accept.
 | Trial ended | Read-only | 7 days after the trial ends |
 | Active (paid) | Full | Until the end of the paid period |
 | Expired / cancelled | Read-only, then locked | 7 days read-only after the period ends, then locked |
-| Free plan | Full | No end date; up to 3 members |
+| Free plan | Full | No end date; Grow up to 2 members and 500 contacts, Work up to 5 members |
 | Locked | None | Data kept 90 days (not deleted automatically) |
 
 The API enforces this in `src/middlewares/app-access.js`: CRM data (`lead-companies`, `contacts`,
@@ -52,14 +52,41 @@ trial ends, when it ends, when an app locks, 7 days and 1 day before a paid peri
 ## Plans and prices
 
 Plans are the `Plan` collection in the Strapi admin (one set per app). The defaults are created
-once on a SaaS API's first start and are never overwritten, so edit prices there:
+once on a SaaS API's first start and are never overwritten, so edit prices and limits there.
+The plan codes are kept from the first catalogue so billing and existing subscriptions keep
+working (tickets G16 / W15):
 
-| Plan | Price per user / month | Notes |
-|---|---|---|
-| Free | ₹0 | up to 3 users |
-| Standard | ₹499 | |
-| Professional | ₹999 | marked Popular |
-| Enterprise | ₹1,499 | |
+| Code | Name | Fudge Grow (`crm`) | Fudge Work (`pm`) | Business-only features |
+|---|---|---|---|---|
+| `free` | Free | ₹0 · 2 users · 500 contacts | ₹0 · 5 users | |
+| `standard` | Pro (Popular) | ₹599 / user / month | ₹349 / user / month | |
+| `professional` | Business | ₹1,199 / user / month | ₹699 / user / month | Grow: AI SDR, call coach, forecast · Work: client portal, profitability, AI teammates |
+
+A 14-day trial counts as Business. Legacy `enterprise` rows also count as Business; an untouched,
+unused one is hidden. On an existing database, plan rows still holding the first catalogue's
+defaults (Standard ₹499, Professional ₹999, Enterprise ₹1,499, Free with 3 users) are moved to the
+names and prices above on start-up; edited rows are left alone. Plan rows also carry `tier`
+(free / pro / business), `maxContacts` and `aiCreditsMonthly` (stored for later; AI features are not
+metered yet).
+
+### Plan gating (`apps/backend/src/utils/saas-plans.js`)
+
+- **Users**: members plus pending invitations can't exceed the Free plan's `maxUsers` or the seats
+  paid for (400 `PLAN_USER_LIMIT`).
+- **Contacts**: `POST /api/contacts` and contact imports stop at the plan's `maxContacts`
+  (402 `PLAN_CONTACT_LIMIT`; an import creates rows up to the limit and reports the rest as errors).
+- **Features**: feature keys (`crm.forecast`, `pm.client_portal`, …) and the tier that unlocks each
+  are in `FEATURES`. Gate a route with
+  `{ name: 'global::plan-feature', config: { feature: 'pm.client_portal' } }` in its `middlewares`,
+  or call `requireFeature(ctx, strapi, key)` / `hasFeature(strapi, orgId, key)` in a controller
+  (402 `PLAN_FEATURE_REQUIRED`). `GET /api/saas/features/:key` checks one feature. Today only the
+  Grow analytics forecast exists; the other keys are reserved for the features still to be built.
+- `GET /api/saas/access` returns, per app, `tier`, `limits`, `usage`, `aiCreditsMonthly` and the
+  allowed `features`, plus the full feature list.
+- Frontends (`@webfudge/ui`): `usePlanFeature(key)`, `<PlanGate feature={key}>`,
+  `<PlanLimitNotice app="crm" limit="contacts" />`, and `planErrorDetails(error)` →
+  `<UpgradePrompt>`. Upgrade buttons open Accounts `/billing?app=crm|pm`.
+- All of this is a no-op on Internal.
 
 Yearly = 12 months less `yearlyDiscountPercent` (15%). Prices exclude GST (18%, `BILLING_GST_RATE`).
 The website reads plans from `/api/saas/catalog` every hour.
@@ -93,10 +120,58 @@ netbanking. No card is stored by Webfudge.
 Until step 3, Apps & billing explains that online payments are being switched on and points people to
 `NEXT_PUBLIC_SUPPORT_EMAIL`. Trials and the Free plan work without Razorpay.
 
+## Meta Lead Ads capture (Grow, ticket G6)
+
+Customers connect a Facebook Page in **Grow → Settings → Meta Lead Ads**, tick the lead forms to capture
+and map each form question to a Grow field (or a custom field). Every new lead submitted on Facebook or
+Instagram then arrives in Lead companies within seconds:
+
+- Meta calls `POST /api/crm-meta/webhook`. The API checks `X-Hub-Signature-256` (HMAC-SHA256 of the raw
+  body with `META_APP_SECRET`) and rejects anything unsigned or wrongly signed with 401.
+- The Page id decides the organization (a Page can be active in only one organization). Leads from forms
+  that are not ticked, and from organizations whose Grow is read-only or locked, are not saved.
+- The lead is fetched from the Graph API with the Page token (with `appsecret_proof`), mapped with the
+  form's mapping, and saved as a lead company (source `META_ADS`, status NEW, owner from the G5
+  assignment rules, else the person who connected) plus its contact. `metaLeadId` and `metaAttribution`
+  (campaign, ad set, ad and form ids and names, Page, platform, UTM answers) are stored on the lead, and
+  an activity is logged.
+- Duplicates: the same Meta lead id is never saved twice (webhook retries, imports). A person who is
+  already in Grow (same email or phone on a lead company or contact, G4 rules) gets an activity on the
+  existing lead instead of a second lead.
+- "Import recent leads" (backfill, up to 90 days and 500 leads per run) recovers leads from before the
+  connection or from outages.
+- Facebook tokens are AES-256-GCM encrypted with `META_TOKEN_ENCRYPTION_KEY`, marked private in the
+  schema and never returned to the browser.
+
+Code: `packages/meta-ads` (Graph client, OAuth, webhook checks, field mapping; `npm test` there),
+`apps/backend/src/utils/meta-lead-ads.js` (ingestion), `apps/backend/src/api/crm-meta-connection`,
+`apps/crm/app/settings/meta-lead-ads`. End-to-end check without a Meta app:
+`node scripts/test-meta-lead-ads-e2e.js` (and `--internal`) from `apps/backend`.
+
+### Setting up the Meta app (once, by Webfudge)
+
+1. developers.facebook.com → Create app → type **Business**. Add the **Facebook Login for Business**
+   and **Webhooks** products.
+2. Facebook Login → Settings → Valid OAuth redirect URIs: `https://api.webfudgesystems.in/api/crm-meta/oauth/callback`.
+3. Webhooks → **Page** → Subscribe → callback `https://api.webfudgesystems.in/api/crm-meta/webhook`, verify
+   token = `META_WEBHOOK_VERIFY_TOKEN`; subscribe to the `leadgen` field.
+4. App settings → Advanced → turn on **Require App Secret**.
+5. App Review: request advanced access for `pages_show_list`, `pages_read_engagement`,
+   `pages_manage_metadata`, `pages_manage_ads`, `leads_retrieval`, `ads_read` and `business_management`,
+   and complete Business Verification. Until approved, only people with a role on the app can connect.
+6. Set the env vars below on the SaaS API and redeploy. Test with Meta's
+   [Lead Ads Testing Tool](https://developers.facebook.com/tools/lead-ads-testing).
+
+API env vars: `META_APP_ID`, `META_APP_SECRET`, `META_WEBHOOK_VERIFY_TOKEN`, `META_TOKEN_ENCRYPTION_KEY`,
+`META_OAUTH_REDIRECT_URI` (or `PUBLIC_URL`), `CRM_APP_URL`; optional `META_GRAPH_VERSION`.
+`META_GRAPH_BASE_URL` exists only for the local mock test — never set it in a real deployment.
+Changing `META_TOKEN_ENCRYPTION_KEY` makes every organization reconnect.
+
 ## Settings
 
 API (`apps/backend`): `PLATFORM_MODE=saas`, `JWT_SECRET`, `ACCOUNTS_URL`, `RESEND_API_KEY`, `MAIL_FROM`,
-`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `BILLING_SELLER_*`, `BILLING_SAC_CODE`.
+`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `BILLING_SELLER_*`, `BILLING_SAC_CODE`,
+`META_*` and `CRM_APP_URL` (Meta Lead Ads, above).
 
 Accounts / CRM / PM: `NEXT_PUBLIC_PLATFORM_MODE=saas`, `NEXT_PUBLIC_AUTH_COOKIE_DOMAIN=.webfudgesystems.in`,
 `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_ACCOUNTS_APP_URL`, `NEXT_PUBLIC_CRM_APP_URL`, `NEXT_PUBLIC_PM_APP_URL`,
@@ -114,6 +189,7 @@ All keys are listed with comments in each app's `.env.example`.
 - [ ] Customer quotes: get approval, then set `approved: true` with name and role in `apps/landing/data/customers.js`.
 - [ ] Legal pages (`apps/landing/data/legal.js`): lawyer review, including the refund terms.
 - [ ] Invoice settings: `BILLING_SELLER_GSTIN`, address, SAC code (ask your CA).
+- [ ] Meta Lead Ads: Meta app, webhook, App Review + Business Verification, `META_*` env vars (see above).
 - [ ] Real screenshots from a demo organization to replace the drawn mockups (`components/mocks`).
 - [ ] Transparent logo files for EVI, PositiEV and BikeWo.
 
@@ -140,3 +216,7 @@ All keys are listed with comments in each app's `.env.example`.
 | POST | `/api/billing/organizations/:id/free`, `/cancel` | admin |
 | PUT | `/api/billing/organizations/:id/details` | admin |
 | GET | `/api/billing/invoices/:paymentId` | admin |
+| GET / POST | `/api/crm-meta/webhook` | Meta (verify token / signed) |
+| GET | `/api/crm-meta/oauth/callback` | Meta redirect (signed state) |
+| GET | `/api/crm-meta/connection` | member |
+| POST / GET / PUT / DELETE | `/api/crm-meta/connect`, `/pages`, `/page`, `/forms`, `/backfill`, `/connection` | CRM settings manage |

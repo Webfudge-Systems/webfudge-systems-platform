@@ -21,10 +21,15 @@ const {
   isPmOrgAdminRole,
   isPmOrgManagerRole,
   isPmOrgMemberRole,
-  buildProjectListFiltersForUser,
   userCanAccessProjectRow,
-  userCanViewProjectRow,
 } = require('../../../utils/rbac');
+const {
+  buildProjectVisibilityFilters,
+  userCanViewProject,
+  PROJECT_ACCESS_POPULATE,
+  loadWorkspaceForAccess,
+  ensureDefaultWorkspace,
+} = require('../../../utils/workspaces');
 
 
 const UID = 'api::project.project';
@@ -62,6 +67,8 @@ const ALLOWED_POPULATE = new Set([
   'clientAccount',
   'organization',
   'sourceDeal',
+  'workspace',
+  'taskLists',
 ]);
 
 const sanitizePopulate = createPopulateSanitizer(ALLOWED_POPULATE, [
@@ -128,6 +135,16 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       if (clientErr) return ctx.badRequest(clientErr);
     }
 
+    // W1: same workspace rules as POST /projects
+    if (project.workspace != null && project.workspace !== '') {
+      const ws = await loadWorkspaceForAccess(strapi, ctx, project.workspace);
+      if (!ws) return ctx.badRequest('Workspace not found');
+      project.workspace = ws.id;
+    } else {
+      project.workspace = await ensureDefaultWorkspace(strapi, ctx.state.orgId);
+    }
+    delete project.taskLists;
+
     const roleAssignments = body.roleAssignments && typeof body.roleAssignments === 'object' ? body.roleAssignments : {};
     const actorId = ctx.state.user.id;
     const created = await createProjectFromTemplate(strapi, {
@@ -192,13 +209,15 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       defaultSort: 'updatedAt:desc',
     });
 
-    const baseFilters = buildProjectListFiltersForUser(ctx, ctx.state.orgId, ctx.state.user?.id);
+    // W1: project rules + workspace membership
+    const baseFilters = await buildProjectVisibilityFilters(strapi, ctx, ctx.state.orgId, ctx.state.user?.id);
     const filters = { ...baseFilters };
     const extra = query.filters;
     if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
       if (extra.clientAccount) filters.clientAccount = extra.clientAccount;
       if (extra.status) filters.status = extra.status;
       if (extra.sourceDeal) filters.sourceDeal = extra.sourceDeal;
+      if (extra.workspace) filters.workspace = extra.workspace;
     }
 
     const results = await strapi.entityService.findMany(UID, {
@@ -234,10 +253,10 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
     if (!isPmOrgAdminRole(ctx) && ctx.state.user?.id) {
       const gate = await strapi.entityService.findOne(UID, pk, {
-        populate: ['teamMembers', 'projectManager'],
+        populate: PROJECT_ACCESS_POPULATE,
         fields: ['isPrivate'],
       });
-      if (!userCanViewProjectRow(ctx, gate, ctx.state.user.id)) {
+      if (!userCanViewProject(ctx, gate, ctx.state.user.id)) {
         return ctx.forbidden('Access denied');
       }
     }
@@ -269,6 +288,16 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (data.clientAccount != null && data.clientAccount !== '') {
       const clientErr = await assertClientAccountInOrg(strapi, data.clientAccount, ctx.state.orgId);
       if (clientErr) return ctx.badRequest(clientErr);
+    }
+
+    // W1: workspace must be one the caller can see; default = org's General workspace
+    delete data.taskLists;
+    if (data.workspace != null && data.workspace !== '') {
+      const ws = await loadWorkspaceForAccess(strapi, ctx, data.workspace);
+      if (!ws) return ctx.badRequest('Workspace not found');
+      data.workspace = ws.id;
+    } else {
+      data.workspace = await ensureDefaultWorkspace(strapi, ctx.state.orgId);
     }
 
     const entry = await strapi.entityService.create(UID, { data });
@@ -331,6 +360,18 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (Object.prototype.hasOwnProperty.call(data, 'clientAccount') && data.clientAccount !== '') {
       const clientErr = await assertClientAccountInOrg(strapi, data.clientAccount, ctx.state.orgId);
       if (clientErr) return ctx.badRequest(clientErr);
+    }
+
+    // W1: moving a project to another workspace — target must be visible to the caller
+    delete data.taskLists;
+    if (Object.prototype.hasOwnProperty.call(data, 'workspace')) {
+      if (data.workspace == null || data.workspace === '') {
+        data.workspace = await ensureDefaultWorkspace(strapi, ctx.state.orgId);
+      } else {
+        const ws = await loadWorkspaceForAccess(strapi, ctx, data.workspace);
+        if (!ws) return ctx.badRequest('Workspace not found');
+        data.workspace = ws.id;
+      }
     }
 
     await strapi.entityService.update(UID, pk, { data });

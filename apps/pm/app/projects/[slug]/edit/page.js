@@ -25,6 +25,7 @@ import {
 import PMPageHeader from '../../../../components/PMPageHeader';
 import TaskAssigneesPicker from '../../../../components/TaskAssigneesPicker';
 import projectService from '../../../../lib/api/projectService';
+import useWorkspaces from '../../../../lib/useWorkspaces';
 import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../../lib/api/projectClientOptions';
 import { fetchProjectDirectoryUsers } from '../../../../lib/api/messageService';
 import { transformProject, transformUser } from '../../../../lib/api/dataTransformers';
@@ -70,7 +71,15 @@ export default function EditProjectPage() {
     projectManagerId: '',
     teamMemberIds: [],
     isPrivate: false,
+    workspaceId: '',
   });
+
+  // W1: move the project to another workspace
+  const { workspaces } = useWorkspaces();
+  const workspaceOptions = useMemo(
+    () => workspaces.map((w) => ({ value: String(w.id), label: w.membersMode === 'restricted' ? `${w.name} (restricted)` : w.name })),
+    [workspaces]
+  );
 
   const directoryUsers = useMemo(() => {
     const base = allUsers;
@@ -147,6 +156,7 @@ export default function EditProjectPage() {
             projectManagerId: p.projectManager?.id ? String(p.projectManager.id) : '',
             teamMemberIds: (p.team || []).map((m) => String(m.id)),
             isPrivate: p.isPrivate ?? false,
+            workspaceId: p.workspaceId ? String(p.workspaceId) : '',
           });
         }
       } catch (e) {
@@ -194,6 +204,7 @@ export default function EditProjectPage() {
       else payload.clientAccount = null;
       payload.teamMembers = form.teamMemberIds.map(Number);
       if (canToggleProjectPrivacy()) payload.isPrivate = form.isPrivate;
+      if (form.workspaceId) payload.workspace = Number(form.workspaceId);
 
       await projectService.updateProject(projectId, payload);
       router.push(`/projects/${projectSlug || projectId}`);
@@ -345,6 +356,15 @@ export default function EditProjectPage() {
               onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
               placeholder="Optional"
             />
+            {workspaceOptions.length > 0 ? (
+              <Select
+                label="Workspace"
+                value={form.workspaceId}
+                options={workspaceOptions}
+                onChange={(val) => setForm((p) => ({ ...p, workspaceId: val ?? '' }))}
+                allowEmpty={false}
+              />
+            ) : null}
             <Select
               label="Client"
               required

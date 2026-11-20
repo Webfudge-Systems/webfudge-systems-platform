@@ -27,6 +27,7 @@ const { logAccountsActivity, actorDisplayName } = require('../../../utils/crm-ac
 const { usernameExists } = require('../../../utils/user-username');
 const { isSaas } = require('../../../utils/platform');
 const { seatLimitProblem } = require('../../../utils/saas-org');
+const { accountsBillingUrl } = require('../../../utils/saas-plans');
 
 // On the SaaS platform, organizations and app trials are created through /api/saas/* and paid through /api/billing/*.
 const SAAS_ONLY_MESSAGE = 'Use the Webfudge Accounts sign-up flow to create organizations and add apps.';
@@ -542,7 +543,7 @@ module.exports = createCoreController('api::organization.organization', ({ strap
       if (isSaas()) {
         const adding = directAdd ? 1 : Array.isArray(emails) ? emails.length : 0;
         const overLimit = await seatLimitProblem(strapi, id, adding);
-        if (overLimit) return ctx.badRequest(overLimit, { code: 'PLAN_USER_LIMIT' });
+        if (overLimit) return ctx.badRequest(overLimit.message, { code: 'PLAN_USER_LIMIT', apps: overLimit.apps, app: overLimit.apps[0], limit: overLimit.limit, upgradeUrl: accountsBillingUrl(overLimit.apps[0]) });
       }
 
       if (directAdd) {

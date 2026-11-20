@@ -1,0 +1,76 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_meta_connections",
+  "info": {
+    "singularName": "crm-meta-connection",
+    "pluralName": "crm-meta-connections",
+    "displayName": "CRM Meta Connection",
+    "description": "Per-organization Meta Lead Ads connection (G6): Facebook Page, chosen lead forms and field mappings. Tokens are encrypted and never leave the server."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    },
+    "content-type-builder": {
+      "visible": false
+    }
+  },
+  "attributes": {
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "connectedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "metaUserId": {
+      "type": "string"
+    },
+    "metaUserName": {
+      "type": "string"
+    },
+    "userTokenEnc": {
+      "type": "text",
+      "private": true
+    },
+    "userTokenExpiresAt": {
+      "type": "datetime"
+    },
+    "pageId": {
+      "type": "string"
+    },
+    "pageName": {
+      "type": "string"
+    },
+    "pageTokenEnc": {
+      "type": "text",
+      "private": true
+    },
+    "forms": {
+      "type": "json"
+    },
+    "status": {
+      "type": "string",
+      "default": "pending_page"
+    },
+    "lastLeadAt": {
+      "type": "datetime"
+    },
+    "lastError": {
+      "type": "text"
+    },
+    "lastErrorAt": {
+      "type": "datetime"
+    },
+    "leadsCaptured": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

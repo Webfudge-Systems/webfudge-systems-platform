@@ -14,9 +14,14 @@ const SKIP_PREFIXES = [
   '/api/entity-attachments',
   '/api/invest', // internal investment manager: live prices + financial data stay out of Redis
   '/api/re-webhooks', // server-to-server lead ingestion — must never serve stale reads
+  '/api/crm-meta', // Meta Lead Ads (G6): webhook + live connection status; ingestion invalidates the org itself
+  '/api/lead-capture', // G7 public lead capture (webhooks / website forms)
+  '/api/crm-lead-capture', // G7 settings: secrets + live event log
   '/api/vendor', // staff portal: has its own short cache and must reflect staff actions at once
   '/api/portal', // client portal (W10): no user id, so the cache key would be shared across clients
   '/api/client-portal', // team-side portal controls (W10): must reflect invites / revokes at once
+  '/api/saas/access', // SaaS plan, limits and usage: must change as soon as a plan is bought (G16 / W15)
+  '/api/saas/features',
   '/admin',
   '/_health',
 ];

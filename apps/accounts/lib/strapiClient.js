@@ -65,7 +65,10 @@ class StrapiClient {
         (Array.isArray(err?.details?.errors) && err.details.errors[0]?.message) ||
         (typeof err === 'string' ? err : null) ||
         `HTTP ${response.status}`
-      throw new Error(message)
+      const apiError = new Error(message)
+      apiError.status = response.status
+      apiError.details = err?.details
+      throw apiError
     }
     return response.json()
   }
