@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Download, IndianRupee, Percent, Target, TrendingUp, Trophy } from 'lucide-react';
-import { Button, Card, DashboardKpiRow, LoadingSpinner, DASHBOARD_CHART_ACCENT } from '@webfudge/ui';
+import { Button, Card, DashboardKpiRow, LoadingSpinner, DASHBOARD_CHART_ACCENT, PlanGate } from '@webfudge/ui';
 import CRMPageHeader from '../../components/CRMPageHeader';
 import strapiClient from '../../lib/strapiClient';
 import analyticsService, { downloadCsv } from '../../lib/api/analyticsService';
@@ -216,7 +216,7 @@ export default function AnalyticsPage() {
         { title: 'Deals won', value: String(s.won), icon: Trophy },
         { title: 'Win rate', value: pct(s.winRate), icon: Percent },
         { title: 'Open pipeline', value: money(s.pipelineValue), icon: TrendingUp },
-        { title: 'Weighted forecast', value: money(s.weightedValue), icon: Target },
+        { title: 'Weighted forecast', value: s.weightedValue == null ? 'Business plan' : money(s.weightedValue), icon: Target },
       ]
     : [];
 
@@ -424,6 +424,12 @@ export default function AnalyticsPage() {
           </Section>
 
           <div className="grid gap-6 xl:grid-cols-2">
+            {!report.forecast ? (
+              // SaaS: the forecast is a Grow Business feature (G16); the API leaves it out on other plans.
+              <PlanGate feature="crm.forecast">
+                {null}
+              </PlanGate>
+            ) : (
             <Section
               title="Pipeline & weighted forecast"
               subtitle="Open deals by expected close month (value × stage probability)"
@@ -448,6 +454,7 @@ export default function AnalyticsPage() {
                 ]}
               />
             </Section>
+            )}
 
             <Section
               title="Why deals were lost"

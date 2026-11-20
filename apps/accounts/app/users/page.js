@@ -157,6 +157,7 @@ export default function UsersPage() {
   const [directPassword, setDirectPassword] = useState('')
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  const [inviteUpgradeApp, setInviteUpgradeApp] = useState(null)
   const [editUser, setEditUser] = useState(null)
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
@@ -422,6 +423,8 @@ export default function UsersPage() {
       await fetchUsers()
     } catch (error) {
       setInviteError(error?.message || 'Failed to send invitation')
+      // SaaS: Free plan user limit (G16 / W15) → link to that app's plan picker.
+      setInviteUpgradeApp(error?.details?.code === 'PLAN_USER_LIMIT' ? error.details.app || 'crm' : null)
     } finally {
       setInviteSubmitting(false)
     }
@@ -917,7 +920,19 @@ export default function UsersPage() {
               Invitation mode sends an email with a secure accept-invite link.
             </p>
           )}
-          {inviteError ? <p className="text-sm text-red-600">{inviteError}</p> : null}
+          {inviteError ? (
+            <p className="text-sm text-red-600">
+              {inviteError}
+              {inviteUpgradeApp ? (
+                <>
+                  {' '}
+                  <a href={`/billing?app=${inviteUpgradeApp}`} className="font-semibold underline underline-offset-2">
+                    Upgrade plan
+                  </a>
+                </>
+              ) : null}
+            </p>
+          ) : null}
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button variant="muted" onClick={() => setShowInviteModal(false)} disabled={inviteSubmitting}>
               Cancel

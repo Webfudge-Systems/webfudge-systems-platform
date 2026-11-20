@@ -198,7 +198,7 @@ module.exports = {
 
     const subs = await strapi.entityService.findMany(SUB_UID, {
       filters: { organization: orgId },
-      populate: { app: true },
+      populate: { app: true, plan: true },
       limit: 50,
     });
     const payments = guard.isAdmin

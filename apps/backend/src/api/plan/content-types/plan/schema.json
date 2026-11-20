@@ -38,6 +38,20 @@
     "maxUsers": {
       "type": "integer"
     },
+    "tier": {
+      "type": "enumeration",
+      "enum": [
+        "free",
+        "pro",
+        "business"
+      ]
+    },
+    "maxContacts": {
+      "type": "integer"
+    },
+    "aiCreditsMonthly": {
+      "type": "integer"
+    },
     "features": {
       "type": "json"
     },
