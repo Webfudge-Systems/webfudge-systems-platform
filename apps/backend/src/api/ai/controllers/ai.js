@@ -168,4 +168,26 @@ module.exports = {
       return ai.sendAiError(ctx, err);
     }
   },
+  /**
+   * POST /api/ai/transcribe  multipart: audio (file, up to 25 MB), language? ('en' | 'hi' | 'mr' | 'auto')
+   * Voice-note transcription (Whisper), metered in AI credits by audio minute.
+   */
+  async transcribe(ctx) {
+    if (!ai.requireAiEnabled(ctx)) return ctx.body;
+    const files = ctx.request.files || {};
+    const file = Array.isArray(files.audio) ? files.audio[0] : files.audio;
+    if (!file) return ctx.badRequest('Attach the voice note as the "audio" file.');
+    const filePath = file.filepath || file.path;
+    const mimeType = String(file.mimetype || file.type || '').split(';')[0].trim().toLowerCase();
+    const language = String(ctx.request.body?.language || 'auto').toLowerCase();
+    try {
+      const audio = await require('fs').promises.readFile(filePath);
+      const data = await require('../../../utils/ai/voice').transcribeVoiceNote(strapi, ctx, { audio, mimeType, language });
+      ctx.body = { data };
+      return ctx.body;
+    } catch (err) {
+      if (!err?.code && err?.message && /audio|Voice notes|Unsupported/.test(err.message)) return ctx.badRequest(err.message);
+      return ai.sendAiError(ctx, err);
+    }
+  },
 };

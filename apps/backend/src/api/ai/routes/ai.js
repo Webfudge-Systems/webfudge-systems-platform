@@ -16,5 +16,6 @@ module.exports = {
     route('POST', '/ai/actions/:id/reject', 'reject'),
     route('POST', '/ai/actions/:id/undo', 'undo'),
     route('POST', '/ai/memory/search', 'memorySearch'),
+    route('POST', '/ai/transcribe', 'transcribe'),
   ],
 };

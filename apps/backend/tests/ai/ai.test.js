@@ -320,6 +320,36 @@ test('business memory: scored leads are indexed and searchable within the org', 
   assert.equal(reader.status, 403);
 });
 
+test('voice notes: Whisper transcription over multipart, metered by audio minute', async () => {
+  const voice = require('../../src/utils/ai/voice');
+  const seen = [];
+  voice.setTranscriber({
+    name: 'whisper',
+    model: 'whisper-1',
+    async transcribe(input) {
+      seen.push(input);
+      return { text: 'कल डेमो रखते हैं', language: 'hi', durationSec: 125, segments: [], model: 'whisper-1' };
+    },
+  });
+  const form = new FormData();
+  form.append('audio', new Blob([Buffer.from('fake-ogg-bytes')], { type: 'audio/ogg' }), 'note.ogg');
+  form.append('language', 'hi');
+  const res = await fetch(`${base}/api/ai/transcribe`, { method: 'POST', headers: { Authorization: `Bearer ${ids.jwtA}`, 'X-Organization-Id': String(ids.orgA) }, body: form });
+  const body = await res.json();
+  assert.equal(res.status, 200, JSON.stringify(body));
+  assert.equal(body.data.text, 'कल डेमो रखते हैं');
+  assert.equal(body.data.creditsUsed, 2); // 125 s ≈ 2.08 min × $0.006 = $0.0125 → 2 credits
+  assert.equal(seen[0].mimeType, 'audio/ogg');
+  assert.equal(seen[0].language, 'hi');
+  assert.equal(seen[0].audio.toString(), 'fake-ogg-bytes');
+  const row = (await usageRows(ids.orgA)).find((u) => u.feature === 'voice.transcribe');
+  assert.equal(row.model, 'whisper-1');
+  assert.equal(row.credits, 2);
+
+  const missing = await api('POST', '/ai/transcribe', as('A'));
+  assert.equal(missing.status, 400);
+});
+
 test('credits used up: the next call is blocked with 402 before reaching the provider', async () => {
   const status = await require('../../src/utils/ai').creditStatus(app, ids.orgA);
   await create('api::ai.ai-usage', { organization: ids.orgA, orgKey: ids.orgA, period: status.period, feature: 'grow.test_fill', credits: status.remaining, status: 'ok' });

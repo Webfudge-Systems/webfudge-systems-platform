@@ -82,3 +82,33 @@ test('transcription: unconfigured by default, stub for tests, validates audio', 
   await assert.rejects(stub.transcribe({ audio: Buffer.alloc(0) }), /No audio/);
   await assert.rejects(stub.transcribe({ audio: Buffer.from('x'), mimeType: 'video/mp4' }), /Unsupported/);
 });
+
+test('whisper transcriber: posts the audio with model and language, maps the result', async () => {
+  const { createWhisperTranscriber } = require('../src');
+  let sent;
+  const fetchImpl = async (url, init) => {
+    assert.equal(url, 'https://api.openai.com/v1/audio/transcriptions');
+    assert.equal(init.headers.authorization, 'Bearer sk-test');
+    sent = init.body;
+    return { ok: true, json: async () => ({ text: ' नमस्ते, कल डेमो रखते हैं ', language: 'hindi', duration: 42.5, segments: [{ start: 0, end: 2, text: ' नमस्ते ' }] }) };
+  };
+  const t = createWhisperTranscriber({ apiKey: 'sk-test', fetchImpl });
+  const out = await t.transcribe({ audio: Buffer.from('fake-audio'), mimeType: 'audio/ogg' });
+  assert.equal(sent.get('model'), 'whisper-1');
+  assert.equal(sent.get('response_format'), 'verbose_json');
+  assert.equal(sent.get('language'), null); // auto-detect
+  assert.equal(sent.get('file').name, 'voice-note.ogg');
+  assert.equal(out.text, 'नमस्ते, कल डेमो रखते हैं');
+  assert.equal(out.language, 'hi');
+  assert.equal(out.durationSec, 42.5);
+  assert.equal(out.segments[0].text, 'नमस्ते');
+
+  await t.transcribe({ audio: Buffer.from('x'), mimeType: 'audio/webm', language: 'mr' });
+  assert.equal(sent.get('language'), 'mr');
+
+  const busy = createWhisperTranscriber({ apiKey: 'k', fetchImpl: async () => ({ ok: false, status: 429 }) });
+  await assert.rejects(busy.transcribe({ audio: Buffer.from('x'), mimeType: 'audio/webm' }), (e) => e.code === 'AI_PROVIDER_ERROR' && e.retryable);
+  await assert.rejects(createWhisperTranscriber({ apiKey: '' }).transcribe({ audio: Buffer.from('x'), mimeType: 'audio/webm' }), (e) => e.code === 'AI_NOT_CONFIGURED');
+  const { createTranscriberFromEnv } = require('../src');
+  assert.equal(createTranscriberFromEnv({ AI_TRANSCRIPTION_PROVIDER: 'whisper', OPENAI_API_KEY: 'k' }).name, 'whisper');
+});

@@ -10,7 +10,7 @@ deployment, and on SaaS until `AI_ENABLED=true`, every AI endpoint answers `403 
 | Prompt templates per app, English / Hindi / Marathi output | `packages/ai/src/templates/` |
 | Agent actions (permission → audit → undo, approval queue) | `packages/ai/src/actions.js`, wired in `apps/backend/src/utils/ai/actions.js` |
 | Business memory (per-org retrieval) | `packages/ai/src/memory.js`, store in `apps/backend/src/utils/ai/memory.js` |
-| Voice-note transcription (interface only) | `packages/ai/src/transcription.js` |
+| Voice-note transcription (OpenAI Whisper) | `packages/ai/src/transcription.js`, `apps/backend/src/utils/ai/voice.js` |
 | Credit metering against the plan | `apps/backend/src/utils/ai/index.js` |
 | HTTP | `/api/ai/*` (`apps/backend/src/api/ai`) and feature routes such as `POST /api/lead-companies/:id/ai-score` |
 | UI | Accounts → Apps & billing (AI credits card), Accounts → AI approvals, Grow → Settings → AI approvals (`AiApprovalQueue` in `@webfudge/ui`) |
@@ -152,10 +152,10 @@ refusal fallback is on (`AI_REFUSAL_FALLBACK=off` disables it). The system promp
 indexes the lead it scores and reads the top matches as context. `POST /api/ai/memory/search`
 (managers/admins) exposes search for debugging and future features.
 
-- Embeddings: `hash` (default) is local and free: hashed word and bigram features. It works for
-  English, Hindi and Marathi but is lexical, not semantic. `voyage` uses Voyage AI
-  (`VOYAGE_API_KEY`). Switching the embedder means re-indexing (search only compares vectors of the
-  same model).
+- Embeddings: production uses **Voyage AI** (`AI_EMBEDDINGS_PROVIDER=voyage`, `VOYAGE_API_KEY`,
+  model `voyage-3.5-lite`, multilingual). With nothing set it falls back to `hash`: local and free,
+  hashed word and bigram features, lexical rather than semantic (used in tests and local dev).
+  Switching the embedder means re-indexing (search only compares vectors of the same model).
 - Storage: `ai_memory_chunks` with the embedding as JSON and cosine ranking in Node (works on SQLite
   and Postgres; scans up to `AI_MEMORY_SCAN_LIMIT` chunks per org). On Postgres with the `vector`
   extension installed, vectors also go to `ai_memory_vectors` and search runs in SQL. The code never
@@ -163,10 +163,20 @@ indexes the lead it scores and reads the top matches as context. `POST /api/ai/m
 
 ## Voice notes
 
-`createTranscriberFromEnv()` returns a transcriber with `transcribe({ audio, mimeType, language })`.
-No vendor is wired: the default answers `AI_NOT_CONFIGURED`; `AI_TRANSCRIPTION_PROVIDER=stub`
-returns fixed text for demos. Adding a vendor is one adapter file plus metering under the feature
-key `voice.transcribe`.
+Vendor: **OpenAI Whisper** (`AI_TRANSCRIPTION_PROVIDER=whisper`, `OPENAI_API_KEY`, model
+`whisper-1`). Hindi, Marathi and English are supported; pass the language when the user picked one,
+otherwise Whisper detects it.
+
+- HTTP: `POST /api/ai/transcribe`, multipart with `audio` (webm, ogg, mp3, m4a, wav, aac; up to
+  25 MB) and optional `language` (`en` | `hi` | `mr` | `auto`). Returns
+  `{ text, language, durationSec, segments, creditsUsed }`.
+- In backend code: `transcribeVoiceNote(strapi, ctx, { audio, mimeType, language })` from
+  `utils/ai/voice.js`.
+- Metered as feature `voice.transcribe`, by audio minute: minutes × `AI_TRANSCRIPTION_USD_PER_MIN`
+  (default $0.006), turned into credits like model calls (minimum 1 per note). A 2-minute note is
+  2 credits.
+- Without a provider set it answers `AI_NOT_CONFIGURED`; `AI_TRANSCRIPTION_PROVIDER=stub` returns
+  fixed text for demos.
 
 ## Testing without a key
 
@@ -177,16 +187,14 @@ key `voice.transcribe`.
 - Locally: `AI_ENABLED=true AI_PROVIDER=mock` gives plausible scripted answers for the built-in
   templates.
 
-## Decisions to confirm
+## Product decisions (confirmed 2026-11-25)
 
-These have defaults and are configurable; they need a product decision.
+All of these stay configurable.
 
 1. **Credit price**: 1 credit = $0.01 of model cost, minimum 1 per call (`AI_CREDIT_USD`,
-   `AI_MIN_CREDITS_PER_CALL`), with Pro 100 / Business 1000 credits per app per month (plan rows)
-   and 100 per app during a trial.
-2. **Pooled credits**: an org's credits are the sum across its apps and any feature can use them.
-   Per-app pools would need a small change in `creditAllowance`.
-3. **Embeddings vendor**: local `hash` by default; Voyage AI is wired as the hosted option.
-4. **Transcription vendor**: none. Candidates for Hindi and Marathi: Sarvam AI, Deepgram, OpenAI
-   Whisper, Google Chirp.
-5. **Default models**: Haiku 5.5 for the cheap tier, Sonnet 5.5 for the strong tier.
+   `AI_MIN_CREDITS_PER_CALL`).
+2. **Monthly credits per app** (plan rows): Free 0, Pro 100, Business 1000, and 100 during a trial.
+3. **Pooled credits**: an org's credits are the sum across its apps and any feature can use them.
+4. **Embeddings**: Voyage AI.
+5. **Transcription**: OpenAI Whisper.
+6. **Default models**: Haiku 5.5 for the cheap tier, Sonnet 5.5 for the strong tier.
