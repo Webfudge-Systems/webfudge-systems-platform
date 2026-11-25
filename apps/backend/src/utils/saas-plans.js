@@ -41,17 +41,19 @@ const FEATURES = {
 
 /**
  * Default limits per app and plan code. null = no limit.
- * aiCreditsMonthly is stored for later use (AI features are not metered yet).
+ * aiCreditsMonthly is the monthly Fudge AI credit allowance (metered in utils/ai, ticket P5).
  */
 const PLAN_LIMITS = {
   crm: {
     free: { maxUsers: 2, maxContacts: 500, aiCreditsMonthly: 0 },
+    trial: { maxUsers: null, maxContacts: null, aiCreditsMonthly: 100 },
     standard: { maxUsers: null, maxContacts: null, aiCreditsMonthly: 100 },
     professional: { maxUsers: null, maxContacts: null, aiCreditsMonthly: 1000 },
     enterprise: { maxUsers: null, maxContacts: null, aiCreditsMonthly: 1000 },
   },
   pm: {
     free: { maxUsers: 5, maxContacts: null, aiCreditsMonthly: 0 },
+    trial: { maxUsers: null, maxContacts: null, aiCreditsMonthly: 100 },
     standard: { maxUsers: null, maxContacts: null, aiCreditsMonthly: 100 },
     professional: { maxUsers: null, maxContacts: null, aiCreditsMonthly: 1000 },
     enterprise: { maxUsers: null, maxContacts: null, aiCreditsMonthly: 1000 },

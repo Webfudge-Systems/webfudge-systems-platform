@@ -108,6 +108,7 @@ export { AccessDeniedPanel } from './AccessDeniedPanel';
 export { WorkspaceLayoutContent } from './WorkspaceLayoutContent';
 export { SaasAccessGate, IS_SAAS_PLATFORM, useSaasApps } from './SaasAccessGate';
 export { PlanGate, UpgradePrompt, PlanLimitNotice, usePlan, usePlanFeature, planErrorDetails, refreshSaasAccess, upgradeHref } from './PlanGate';
+export { AiApprovalQueue } from './AiApprovalQueue';
 export { WorkspaceProfileView } from './WorkspaceProfileView';
 export {
   entityInfoLabelClass,

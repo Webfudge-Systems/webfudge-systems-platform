@@ -19,5 +19,7 @@ module.exports = {
     { method: 'PUT',    path: '/lead-companies/:id',           handler: `${UID}.update`,          config: authFalse },
     { method: 'DELETE', path: '/lead-companies/:id',           handler: `${UID}.delete`,          config: authFalse },
     { method: 'POST',   path: '/lead-companies/:id/convert',   handler: `${UID}.convertToClient`, config: authFalse },
+    { method: 'POST',   path: '/lead-companies/:id/ai-score',  handler: `${UID}.aiScore`,         config: authFalse },
+    { method: 'POST',   path: '/lead-companies/:id/ai-followup', handler: `${UID}.aiFollowup`,    config: authFalse },
   ],
 };

@@ -153,7 +153,7 @@ export function PlanLimitNotice({ app, limit = 'contacts', threshold = 0.8, clas
   )
 }
 
-const PLAN_CODES = new Set(['PLAN_CONTACT_LIMIT', 'PLAN_USER_LIMIT', 'PLAN_FEATURE_REQUIRED'])
+const PLAN_CODES = new Set(['PLAN_CONTACT_LIMIT', 'PLAN_USER_LIMIT', 'PLAN_FEATURE_REQUIRED', 'AI_CREDITS_EXHAUSTED'])
 
 /**
  * Reads a plan-limit error from an API failure (axios error, fetch JSON body, or a thrown Error with
@@ -169,7 +169,7 @@ export function planErrorDetails(error) {
     code: details.code,
     app: details.app || details.apps?.[0] || 'crm',
     requiredTier: details.requiredTier || 'pro',
-    title: details.code === 'PLAN_FEATURE_REQUIRED' ? 'Upgrade required' : 'Plan limit reached',
+    title: details.code === 'PLAN_FEATURE_REQUIRED' ? 'Upgrade required' : details.code === 'AI_CREDITS_EXHAUSTED' ? 'AI credits used up' : 'Plan limit reached',
     message: err?.message || error?.message || 'Your plan does not include this.',
   }
 }

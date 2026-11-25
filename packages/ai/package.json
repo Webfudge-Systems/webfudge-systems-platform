@@ -1,0 +1,21 @@
+{
+  "name": "@webfudge/ai",
+  "version": "0.1.0",
+  "description": "Fudge AI foundation (server-side only): LLM client with model routing, credit metering hooks, structured outputs, prompt templates, agent actions, business memory, transcription interface",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
+    "ajv": "^8.17.1"
+  },
+  "author": "WebFudge Systems",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
