@@ -154,7 +154,7 @@ export function AiApprovalQueue({ request, app, className = '' }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-900">{row.summary}</p>
                 <p className="mt-0.5 text-xs text-gray-500">
-                  Drafted {when(row.createdAt)}
+                  {row.outbound ? 'Drafted' : 'Done'} {when(row.createdAt)}
                   {row.proposedFor ? ` for ${row.proposedFor.name}` : ''}
                   {row.decidedBy ? ` · ${row.status === 'rejected' ? 'rejected' : 'approved'} by ${row.decidedBy.name} ${when(row.decidedAt)}` : ''}
                   {row.status === 'executed' && row.result?.delivered === false ? ' · email sending is not set up, so it was not delivered' : ''}
