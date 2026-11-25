@@ -1,0 +1,91 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ai_usages",
+  "info": {
+    "singularName": "ai-usage",
+    "pluralName": "ai-usages",
+    "displayName": "AI Usage",
+    "description": "One row per AI model call (P5): tokens, model, feature, cost and credits, for per-org metering"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "orgKey": {
+      "type": "integer",
+      "required": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "period": {
+      "type": "string",
+      "required": true
+    },
+    "feature": {
+      "type": "string",
+      "required": true
+    },
+    "app": {
+      "type": "string"
+    },
+    "task": {
+      "type": "string"
+    },
+    "tier": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "inputTokens": {
+      "type": "integer",
+      "default": 0
+    },
+    "outputTokens": {
+      "type": "integer",
+      "default": 0
+    },
+    "cacheReadTokens": {
+      "type": "integer",
+      "default": 0
+    },
+    "cacheWriteTokens": {
+      "type": "integer",
+      "default": 0
+    },
+    "costUsd": {
+      "type": "decimal",
+      "default": 0
+    },
+    "credits": {
+      "type": "integer",
+      "default": 0
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["ok", "error"],
+      "default": "ok"
+    },
+    "error": {
+      "type": "string"
+    },
+    "latencyMs": {
+      "type": "integer"
+    },
+    "meta": {
+      "type": "json"
+    }
+  }
+}

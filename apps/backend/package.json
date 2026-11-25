@@ -21,7 +21,8 @@
     "db:row-counts": "node scripts/db-row-counts.js",
     "test:portal": "node --test --test-concurrency=1 tests/client-portal.test.js",
     "test:lead-capture": "node --test \"tests/lead-capture/*.test.js\"",
-    "e2e:lead-capture": "node scripts/e2e-lead-capture.js"
+    "e2e:lead-capture": "node scripts/e2e-lead-capture.js",
+    "test:ai": "node --test --test-concurrency=1 \"tests/ai/*.test.js\""
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
@@ -29,6 +30,7 @@
     "@strapi/plugin-users-permissions": "5.33.1",
     "@strapi/provider-upload-aws-s3": "^5.33.1",
     "@strapi/strapi": "5.33.1",
+    "@webfudge/ai": "*",
     "@webfudge/meta-ads": "*",
     "better-sqlite3": "^12.4.1",
     "pg": "^8.20.0",

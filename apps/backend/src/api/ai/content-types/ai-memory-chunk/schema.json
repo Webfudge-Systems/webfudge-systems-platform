@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ai_memory_chunks",
+  "info": {
+    "singularName": "ai-memory-chunk",
+    "pluralName": "ai-memory-chunks",
+    "displayName": "AI Memory Chunk",
+    "description": "Business memory (P5): per-organization text chunks with embeddings for retrieval"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "orgKey": {
+      "type": "integer",
+      "required": true
+    },
+    "sourceType": {
+      "type": "string",
+      "required": true
+    },
+    "sourceId": {
+      "type": "string",
+      "required": true
+    },
+    "chunkIndex": {
+      "type": "integer",
+      "default": 0
+    },
+    "text": {
+      "type": "text",
+      "required": true
+    },
+    "embedding": {
+      "type": "json"
+    },
+    "model": {
+      "type": "string"
+    },
+    "contentHash": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "json"
+    }
+  }
+}

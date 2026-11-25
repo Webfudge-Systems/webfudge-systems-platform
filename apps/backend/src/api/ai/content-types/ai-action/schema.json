@@ -1,0 +1,99 @@
+{
+  "kind": "collectionType",
+  "collectionName": "ai_actions",
+  "info": {
+    "singularName": "ai-action",
+    "pluralName": "ai-actions",
+    "displayName": "AI Action",
+    "description": "Actions proposed or taken by Fudge AI (P5). Outbound ones wait here with status pending_approval (the approval queue)."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "orgKey": {
+      "type": "integer",
+      "required": true
+    },
+    "actor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "decidedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "undoneBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "actionKey": {
+      "type": "string",
+      "required": true
+    },
+    "label": {
+      "type": "string"
+    },
+    "app": {
+      "type": "string"
+    },
+    "feature": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending_approval", "executing", "executed", "rejected", "failed", "undoing", "undone"],
+      "required": true
+    },
+    "outbound": {
+      "type": "boolean",
+      "default": false
+    },
+    "undoable": {
+      "type": "boolean",
+      "default": false
+    },
+    "subjectType": {
+      "type": "string"
+    },
+    "subjectId": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "text"
+    },
+    "input": {
+      "type": "json"
+    },
+    "result": {
+      "type": "json"
+    },
+    "undoData": {
+      "type": "json"
+    },
+    "aiMeta": {
+      "type": "json"
+    },
+    "error": {
+      "type": "text"
+    },
+    "decidedAt": {
+      "type": "datetime"
+    },
+    "executedAt": {
+      "type": "datetime"
+    },
+    "undoneAt": {
+      "type": "datetime"
+    }
+  }
+}

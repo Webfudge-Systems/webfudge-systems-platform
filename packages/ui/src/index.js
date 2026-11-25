@@ -121,6 +121,7 @@ export {
   planErrorDetails,
   refreshSaasAccess,
   upgradeHref,
+  AiApprovalQueue,
   WorkspaceProfileView,
   entityInfoLabelClass,
   InfoSection,

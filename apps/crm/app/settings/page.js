@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, ChevronRight, ExternalLink, GitBranch, Inbox, ListChecks, Megaphone, MessageSquare, Package, ShieldCheck, SlidersHorizontal, UserCheck } from 'lucide-react';
+import { Bell, ChevronRight, ExternalLink, GitBranch, Inbox, ListChecks, Megaphone, MessageSquare, Package, ShieldCheck, SlidersHorizontal, Sparkles, UserCheck } from 'lucide-react';
 import { Card, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import { getAppUrl } from '@webfudge/utils';
 import CRMPageHeader from '../../components/CRMPageHeader';
@@ -50,6 +50,17 @@ const SECTIONS = [
           icon: Inbox,
           title: 'Lead sources',
           description: 'Capture leads automatically from your website form, Google Ads, IndiaMART, JustDial, 99acres and MagicBricks, with a log of every lead received.',
+        },
+      ]
+    : []),
+  // P5: Fudge AI approval queue (SaaS only).
+  ...(IS_SAAS_PLATFORM
+    ? [
+        {
+          href: '/settings/ai-approvals',
+          icon: Sparkles,
+          title: 'AI approvals',
+          description: 'Emails Fudge AI drafted for your leads. Nothing is sent until someone on your team approves it.',
         },
       ]
     : []),

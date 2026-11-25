@@ -139,6 +139,18 @@
     },
     "sourceDetails": {
       "type": "json"
+    },
+    "aiScore": {
+      "type": "integer"
+    },
+    "aiScoreLabel": {
+      "type": "string"
+    },
+    "aiScoreReasons": {
+      "type": "json"
+    },
+    "aiScoredAt": {
+      "type": "datetime"
     }
   }
 }

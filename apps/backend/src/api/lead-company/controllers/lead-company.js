@@ -611,4 +611,37 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     await strapi.entityService.delete(UID, id);
     return { data: { id } };
   },
+  /**
+   * POST /lead-companies/:id/ai-score  { language?: 'en' | 'hi' | 'mr' }
+   * Fudge AI lead score (P5 first consumer; UI in G11). SaaS + AI_ENABLED only, metered in credits.
+   */
+  async aiScore(ctx) {
+    const ai = require('../../../utils/ai');
+    if (!ai.requireAiEnabled(ctx)) return ctx.body;
+    try {
+      const data = await require('../../../utils/ai/grow').scoreLead(strapi, ctx, ctx.params.id, { language: ctx.request.body?.language });
+      ctx.body = { data };
+      return ctx.body;
+    } catch (err) {
+      return ai.sendAiError(ctx, err);
+    }
+  },
+
+  /**
+   * POST /lead-companies/:id/ai-followup  { language?, goal?, to? }
+   * Drafts a follow-up email and puts it in the approval queue (never sent directly).
+   */
+  async aiFollowup(ctx) {
+    const ai = require('../../../utils/ai');
+    if (!ai.requireAiEnabled(ctx)) return ctx.body;
+    try {
+      const body = ctx.request.body || {};
+      const data = await require('../../../utils/ai/grow').draftFollowup(strapi, ctx, ctx.params.id, { language: body.language, goal: body.goal, to: body.to });
+      ctx.status = 201;
+      ctx.body = { data };
+      return ctx.body;
+    } catch (err) {
+      return ai.sendAiError(ctx, err);
+    }
+  },
 }));

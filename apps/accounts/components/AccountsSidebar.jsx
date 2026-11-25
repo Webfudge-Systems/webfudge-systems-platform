@@ -17,6 +17,7 @@ import {
   Home,
   CreditCard,
   UserCircle,
+  Sparkles,
 } from 'lucide-react'
 import { SidebarProductBranding } from '@webfudge/ui'
 import { ACCOUNTS_SITE } from '../lib/site'
@@ -40,6 +41,7 @@ const items = IS_SAAS
   ? [
       { label: 'Home', href: '/home', icon: Home },
       { label: 'Apps & billing', href: '/billing', icon: CreditCard },
+      { label: 'AI approvals', href: '/ai-approvals', icon: Sparkles },
       ...adminItems,
       { label: 'Profile', href: '/profile', icon: UserCircle },
     ]

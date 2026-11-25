@@ -7,6 +7,7 @@ import { CalendarClock, CreditCard, FileText, Grid3X3, Receipt } from 'lucide-re
 import { KPICard } from '@webfudge/ui'
 import { useHub } from '../../components/saas/HubShell'
 import PlanModal from '../../components/saas/PlanModal'
+import AiCreditsCard from '../../components/saas/AiCreditsCard'
 import { appMeta, appStatus, PLAN_LABEL } from '../../components/saas/appStatus'
 import { Alert, AppIcon, Badge, Button, Card, LoadingBlock, PageFrame, TextInput } from '../../components/saas/console'
 import { api, APP_META, formatDate, formatINR, SUPPORT_EMAIL } from '../../lib/saas'
@@ -227,6 +228,8 @@ function BillingContent() {
         })}
         </div>
       </Card>
+
+      <AiCreditsCard orgId={org.id} />
 
       {isAdmin && (
         <>
