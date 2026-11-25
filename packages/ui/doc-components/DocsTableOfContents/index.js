@@ -1,0 +1,1 @@
+export { DocsTableOfContents } from './DocsTableOfContents';

@@ -1,0 +1,1 @@
+export { DocsShell } from './DocsShell';
