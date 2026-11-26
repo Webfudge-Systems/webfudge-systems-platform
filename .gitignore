@@ -70,3 +70,6 @@ backups/
 # Claude Code local state (worktrees and personal settings)
 .claude/worktrees/
 .claude/settings.local.json
+
+# Graphify knowledge graph output (local, rebuilt per checkout)
+graphify-out/
