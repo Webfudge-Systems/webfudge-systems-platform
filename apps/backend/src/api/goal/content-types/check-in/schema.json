@@ -1,0 +1,22 @@
+{
+  "kind": "collectionType",
+  "collectionName": "goal_check_ins",
+  "info": {
+    "singularName": "check-in",
+    "pluralName": "check-ins",
+    "displayName": "Goal Check-in",
+    "description": "Progress update on a key result: manual (number / percent) or automatic (task-based) (W12)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "value": { "type": "decimal" },
+    "progress": { "type": "decimal" },
+    "confidence": { "type": "enumeration", "enum": ["on_track", "at_risk", "off_track"] },
+    "note": { "type": "text" },
+    "source": { "type": "enumeration", "enum": ["manual", "auto"], "default": "manual" },
+    "keyResult": { "type": "relation", "relation": "manyToOne", "target": "api::goal.key-result" },
+    "author": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}
