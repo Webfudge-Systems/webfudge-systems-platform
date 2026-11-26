@@ -91,15 +91,17 @@ before(async () => {
     ids[`org${key}`] = org.id;
     await create('api::subscription.subscription', { organization: org.id, app: pmApp.id, status: 'active', planCode: plans[key], startDate: new Date(), currentPeriodEnd: new Date(Date.now() + 30 * 864e5), totalUsers: 5 });
   }
-  const user = async (key, orgKey, role, name) => {
+  const user = async (key, orgKey, role, name, customPermissions) => {
     const u = await app.plugin('users-permissions').service('user').add({ username: `w19${key}${Date.now()}`, firstName: name, email: `w19-${key.toLowerCase()}@team.test`, password: 'Passw0rd!x', confirmed: true, provider: 'local' });
     const m = await addMember(app, { orgId: ids[`org${orgKey}`], userId: u.id, role });
+    if (customPermissions) await app.entityService.update('api::organization-user.organization-user', m.id, { data: { customPermissions } });
     ids[`user${key}`] = u.id;
     ids[`member${key}`] = m.id;
     ids[`jwt${key}`] = app.plugin('users-permissions').service('jwt').issue({ id: u.id });
   };
   await user('A', 'A', 'Admin', 'Asha');
   await user('A2', 'A', 'Member', 'Ravi');
+  await user('Ar', 'A', 'Member', 'Rita', { pm: { modules: { projects: { access: 'read' }, tasks: { access: 'read' } } } }); // read-only
   await user('B', 'B', 'Admin', 'Bina');
 
   const project = await create('api::project.project', {
@@ -111,7 +113,7 @@ before(async () => {
     hourlyRate: 2000,
     currency: 'INR',
     projectManager: ids.userA,
-    teamMembers: [ids.userA, ids.userA2],
+    teamMembers: [ids.userA, ids.userA2, ids.userAr],
   });
   ids.project = project.id;
   ids.projectB = (await create('api::project.project', { name: 'Free org project', organization: ids.orgB, status: 'IN_PROGRESS' })).id;
@@ -204,11 +206,11 @@ test('risk radar explanation uses Fudge AI and is metered', async () => {
 test('scope check without a SOW explains what to do', async () => {
   const res = await api('POST', `/scope-watch/projects/${ids.project}/check`, as('A'));
   assert.equal(res.status, 400, JSON.stringify(res.body));
-  assert.equal(res.body.error.details.code, 'SCOPE_SOW_MISSING');
+  assert.equal(res.body.error.details.code, 'AI_SCOPE_SOW_MISSING');
 });
 
 test('members without edit rights cannot change the SOW', async () => {
-  const res = await api('PUT', `/scope-watch/projects/${ids.project}/sow`, { ...as('A2'), body: { sowText: SOW } });
+  const res = await api('PUT', `/scope-watch/projects/${ids.project}/sow`, { ...as('Ar'), body: { sowText: SOW } });
   assert.equal(res.status, 403, JSON.stringify(res.body));
 });
 

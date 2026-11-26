@@ -42,7 +42,7 @@ const relId = (v) => (v && typeof v === 'object' ? v.id ?? null : v ?? null);
 const clip = (s, n) => String(s || '').trim().slice(0, n);
 const contactName = (c) => [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim() || c?.email || 'Client';
 
-function scopeError(message, code = 'SCOPE_SOW_MISSING', status = 400) {
+function scopeError(message, code = 'AI_SCOPE_SOW_MISSING', status = 400) {
   return new AiError(message, { code, status });
 }
 
@@ -72,12 +72,12 @@ async function readFileBytes(strapi, file) {
   if (!url) throw scopeError('The SOW file has no address.');
   if (/^https?:\/\//i.test(url)) {
     const res = await fetch(url);
-    if (!res.ok) throw scopeError(`Could not download the SOW file (${res.status}).`, 'SCOPE_SOW_UNREADABLE');
+    if (!res.ok) throw scopeError(`Could not download the SOW file (${res.status}).`, 'AI_SCOPE_SOW_UNREADABLE');
     return Buffer.from(await res.arrayBuffer());
   }
   const publicDir = strapi.dirs?.static?.public || path.join(process.cwd(), 'public');
   const full = path.resolve(publicDir, `.${url.startsWith('/') ? url : `/${url}`}`);
-  if (!full.startsWith(path.resolve(publicDir))) throw scopeError('Invalid SOW file path.', 'SCOPE_SOW_UNREADABLE');
+  if (!full.startsWith(path.resolve(publicDir))) throw scopeError('Invalid SOW file path.', 'AI_SCOPE_SOW_UNREADABLE');
   return fs.readFile(full);
 }
 
@@ -96,16 +96,16 @@ async function loadSow(strapi, orgId, projectId) {
   const mime = String(file.mime || '');
   const sizeBytes = Number(file.size || 0) * 1024; // Strapi stores size in KB
   if (mime === 'application/pdf' || /\.pdf$/i.test(name)) {
-    if (sizeBytes > MAX_PDF_BYTES) throw scopeError('The SOW PDF is larger than 10 MB. Paste the relevant text instead.', 'SCOPE_SOW_UNREADABLE');
+    if (sizeBytes > MAX_PDF_BYTES) throw scopeError('The SOW PDF is larger than 10 MB. Paste the relevant text instead.', 'AI_SCOPE_SOW_UNREADABLE');
     const bytes = await readFileBytes(strapi, file);
     return { kind: 'pdf', base64: bytes.toString('base64'), label: name, row };
   }
   if (TEXT_TYPES.test(mime) || TEXT_EXT.test(name)) {
-    if (sizeBytes > MAX_TEXT_BYTES) throw scopeError('The SOW file is too large. Paste the relevant text instead.', 'SCOPE_SOW_UNREADABLE');
+    if (sizeBytes > MAX_TEXT_BYTES) throw scopeError('The SOW file is too large. Paste the relevant text instead.', 'AI_SCOPE_SOW_UNREADABLE');
     const bytes = await readFileBytes(strapi, file);
     return { kind: 'text', text: bytes.toString('utf8'), label: name, row };
   }
-  throw scopeError(`Fudge AI can read SOWs as PDF or text files. "${name}" is neither: upload a PDF or paste the text.`, 'SCOPE_SOW_UNREADABLE');
+  throw scopeError(`Fudge AI can read SOWs as PDF or text files. "${name}" is neither: upload a PDF or paste the text.`, 'AI_SCOPE_SOW_UNREADABLE');
 }
 
 // ---------- requests ----------

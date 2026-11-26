@@ -39,11 +39,17 @@ function scopeCheck(req) {
   } catch {
     requests = [];
   }
-  const sow = new Set(words(sowMatch ? sowMatch[1] : ''));
+  // Words after an "Out of scope" / "Exclusions" heading are exclusions, not coverage.
+  const sowText = sowMatch ? sowMatch[1] : '';
+  const cut = sowText.search(/out of scope|exclusions?|not included/i);
+  const sow = new Set(words(cut >= 0 ? sowText.slice(0, cut) : sowText));
+  const excluded = new Set(cut >= 0 ? words(sowText.slice(cut)) : []);
   return {
     results: requests.map((r) => {
       if (!sow.size) return { requestId: r.requestId, verdict: 'unclear', confidence: 'low', reason: 'The mock provider cannot read this SOW document.', sowReference: '', estimateHours: 0 };
       const ws = [...new Set(words(`${r.title} ${r.details}`))];
+      const banned = ws.filter((w) => excluded.has(w) && !sow.has(w));
+      if (banned.length) return { requestId: r.requestId, verdict: 'out_of_scope', confidence: 'high', reason: `The SOW excludes ${banned.slice(0, 3).join(', ')}.`, sowReference: 'Out of scope section', estimateHours: Math.max(4, ws.length * 2) };
       const hit = ws.filter((w) => sow.has(w));
       const coverage = ws.length ? hit.length / ws.length : 1;
       const missing = ws.filter((w) => !sow.has(w)).slice(0, 4);

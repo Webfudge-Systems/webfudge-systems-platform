@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AlertTriangle, CheckCircle2, Clock, Flag, XCircle } from 'lucide-react';
 import { Card, DashboardKpiRow, LoadingSpinner } from '@webfudge/ui';
 import PMPageHeader from '../../components/PMPageHeader';
+import PortfolioRiskRadar from '../../components/PortfolioRiskRadar';
 import strapiClient from '../../lib/strapiClient';
 
 const selectClass =
@@ -88,6 +89,8 @@ export default function PortfolioPage() {
         ]}
       />
       <DashboardKpiRow stats={kpis} />
+      {/* W19: risk radar + scope-creep summary (SaaS, plan-gated) */}
+      <PortfolioRiskRadar />
 
       <Card className="flex flex-wrap items-end gap-3 border border-gray-200 p-4">
         <label className="text-sm">
