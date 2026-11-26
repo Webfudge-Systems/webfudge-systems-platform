@@ -29,7 +29,46 @@ function mockRespond(req) {
   if (props.status && props.nextSteps) {
     return JSON.stringify({ status: 'In progress.', blockers: [], nextSteps: ['Review the latest comments.'] });
   }
+  if (props.internal && props.client) return mockWeeklyStatus(req.messages);
   return 'ok';
+}
+
+/** W17 weekly status: lists the task names it was given, so local runs show real data. */
+function mockWeeklyStatus(messages = []) {
+  let activity = {};
+  try {
+    const text = String(messages[messages.length - 1]?.content || '');
+    const marker = 'Task activity:\n';
+    const from = text.indexOf(marker);
+    const to = text.indexOf('\n\nOutput language');
+    activity = JSON.parse(text.slice(from + marker.length, to > from ? to : undefined));
+  } catch {
+    /* not our prompt shape */
+  }
+  const names = (key) => (Array.isArray(activity[key]) ? activity[key].map((t) => t.name).filter(Boolean).slice(0, 8) : []);
+  const done = names('done');
+  const inProgress = names('inProgress');
+  const blocked = names('blocked');
+  const nextWeek = names('nextWeek');
+  return JSON.stringify({
+    internal: {
+      headline: `${done.length} done, ${inProgress.length} in progress, ${blocked.length} blocked this week.`,
+      health: blocked.length ? 'at_risk' : 'on_track',
+      done,
+      inProgress,
+      blocked,
+      nextWeek,
+      risks: blocked.length ? [`${blocked.length} task(s) blocked or overdue.`] : [],
+    },
+    client: {
+      subject: 'Your weekly project update',
+      summary: done.length ? `Good progress this week: we completed ${done.length} item(s).` : 'Work continued this week.',
+      done,
+      inProgress,
+      nextWeek,
+      needsFromClient: [],
+    },
+  });
 }
 
 module.exports = { mockRespond };
