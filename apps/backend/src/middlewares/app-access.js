@@ -55,6 +55,8 @@ const RESOURCE_APPS = {
   // Work hierarchy (W1)
   workspaces: ['pm'],
   'task-lists': ['pm'],
+  // Approvals & proofing (W9); the client side lives under /api/portal/*
+  proofs: ['pm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

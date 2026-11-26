@@ -55,6 +55,7 @@ import PMRowActions from '../../../components/PMRowActions';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import TaskDevDetailsPanel from '../../../components/TaskDevDetailsPanel';
 import DevTicketModal from '../../../components/DevTicketModal';
+import TaskProofsPanel from '../../../components/TaskProofsPanel';
 import { usePmTableSort } from '../../../hooks/usePmTableSort';
 import TaskAssigneesPicker from '../../../components/TaskAssigneesPicker';
 import { recurrencePayloadFromForm } from '../../../components/TaskRecurrenceFormFields';
@@ -101,6 +102,7 @@ const DETAIL_TABS = [
   { key: 'comments', label: 'Comments' },
   { key: 'activity', label: 'Activity' },
   { key: 'files', label: 'Files' },
+  { key: 'proofs', label: 'Proofs' }, // W9: deliverables only
 ];
 
 const headerIconBtnClass =
@@ -226,6 +228,11 @@ export default function TaskDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+  // W9: notifications link to /tasks/:id?tab=proofs
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab && DETAIL_TABS.some((t) => t.key === tab)) setActiveTab(tab);
+  }, []);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [editingTaskInfo, setEditingTaskInfo] = useState(false);
@@ -237,6 +244,7 @@ export default function TaskDetailPage() {
   const [crmTimelineTotal, setCrmTimelineTotal] = useState(0);
   const [commentCount, setCommentCount] = useState(0);
   const [fileCount, setFileCount] = useState(0);
+  const [proofCount, setProofCount] = useState(0);
   const [subtaskModalOpen, setSubtaskModalOpen] = useState(false);
   const [devTicketModalOpen, setDevTicketModalOpen] = useState(false);
   const [subtaskEditModal, setSubtaskEditModal] = useState({ open: false, task: null });
@@ -390,11 +398,13 @@ export default function TaskDetailPage() {
 
   const tabsWithBadges = useMemo(
     () =>
-      DETAIL_TABS.map((tab) => ({
+      DETAIL_TABS.filter((tab) => tab.key !== 'proofs' || task?.taskType === 'deliverable').map((tab) => ({
         ...tab,
         badge:
           tab.key === 'files'
             ? fileCount || undefined
+            : tab.key === 'proofs'
+              ? proofCount || undefined
             : tab.key === 'activity'
               ? activityCount || undefined
               : tab.key === 'comments'
@@ -405,7 +415,7 @@ export default function TaskDetailPage() {
                     ? (task?.subtasks?.length) || undefined
                     : undefined,
       })),
-    [activityCount, commentCount, fileCount, task?.subtaskCount, task?.subtasks]
+    [activityCount, commentCount, fileCount, proofCount, task?.taskType, task?.subtaskCount, task?.subtasks]
   );
 
   const handleAddTaskComment = useCallback(
@@ -1403,6 +1413,10 @@ export default function TaskDetailPage() {
           onRowsChange={(rows) => setFileCount(rows?.length ?? 0)}
           {...entityFilesPanelProps}
         />
+      ) : null}
+
+      {activeTab === 'proofs' && task.taskType === 'deliverable' ? (
+        <TaskProofsPanel taskId={task.id} onCountChange={setProofCount} />
       ) : null}
 
       {canEditCurrentTask ? (
