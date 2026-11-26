@@ -22,6 +22,8 @@ const SKIP_PREFIXES = [
   '/api/saas/access', // SaaS plan, limits and usage: must change as soon as a plan is bought (G16 / W15)
   '/api/saas/features',
   '/api/ai', // Fudge AI (P5): credit usage and the approval queue must be live; writes invalidate the org themselves
+  '/api/risk-radar', // W19: computed live from tasks, sprints and capacity
+  '/api/scope-watch', // W19: SOW + change-order status must be live
   '/admin',
   '/_health',
 ];

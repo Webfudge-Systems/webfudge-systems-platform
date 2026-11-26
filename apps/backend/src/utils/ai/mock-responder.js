@@ -9,6 +9,8 @@
 function mockRespond(req) {
   const props = req.jsonSchema?.properties || {};
   const user = JSON.stringify(req.messages || []);
+  const w19 = require('./mock-work-risk').mockWorkRisk(req); // W19 risk radar + scope watcher
+  if (w19) return w19;
   if (props.score && props.reasons) {
     const hasEmail = /\\"email\\"/.test(user);
     const hasPhone = /\\"phone\\"/.test(user);

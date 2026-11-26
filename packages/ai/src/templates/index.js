@@ -91,3 +91,4 @@ module.exports = { APPS, LANGUAGES, registerTemplate, getTemplate, listTemplates
 // Built-in templates register themselves.
 require('./grow');
 require('./work');
+require('./work-risk'); // W19 risk radar + scope-creep watcher

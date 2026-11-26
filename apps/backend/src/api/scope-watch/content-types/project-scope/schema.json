@@ -1,0 +1,22 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_scopes",
+  "info": {
+    "singularName": "project-scope",
+    "pluralName": "project-scopes",
+    "displayName": "Project Scope (SOW)",
+    "description": "Statement of work for a project, used by the scope-creep watcher (W19). One row per project."
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" },
+    "project": { "type": "relation", "relation": "manyToOne", "target": "api::project.project" },
+    "sowText": { "type": "text" },
+    "sowAttachmentId": { "type": "integer" },
+    "sowFileName": { "type": "string" },
+    "sowUpdatedAt": { "type": "datetime" },
+    "sowUpdatedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "lastCheckedAt": { "type": "datetime" }
+  }
+}

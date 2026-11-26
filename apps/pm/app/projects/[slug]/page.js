@@ -47,6 +47,8 @@ import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
+import ProjectRiskScopeTab from '../../../components/ProjectRiskScopeTab';
+import { IS_SAAS_PLATFORM } from '@webfudge/ui';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
 import ProjectTaskLists from '../../../components/ProjectTaskLists';
@@ -93,6 +95,8 @@ const DETAIL_TABS = [
   { key: 'activity', label: 'Activity' },
   { key: 'files', label: 'Files' },
   { key: 'client', label: 'Client portal' },
+  // W19 (SaaS only): risk radar + scope-creep watcher
+  ...(IS_SAAS_PLATFORM ? [{ key: 'risk', label: 'Risk & scope' }] : []),
 ];
 
 const headerIconBtnClass =
@@ -1234,6 +1238,8 @@ export default function ProjectDetailPage() {
           {...entityFilesPanelProps}
         />
       ) : null}
+
+      {activeTab === 'risk' && project?.id ? <ProjectRiskScopeTab projectId={project.id} /> : null}
 
       {activeTab === 'client' && project?.id ? (
         <ProjectClientPortalPanel projectId={project.id} canEdit={canEditThisProject} />

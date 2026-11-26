@@ -55,6 +55,9 @@ const RESOURCE_APPS = {
   // Work hierarchy (W1)
   workspaces: ['pm'],
   'task-lists': ['pm'],
+  // Risk radar + scope-creep watcher (W19)
+  'risk-radar': ['pm'],
+  'scope-watch': ['pm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
