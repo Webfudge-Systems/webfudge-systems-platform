@@ -644,4 +644,26 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       return ai.sendAiError(ctx, err);
     }
   },
+
+  /**
+   * POST /lead-companies/:id/rescore  { ai?: boolean }
+   * G11: recalculates the lead score now. Rules always; Fudge AI layer when enabled, configured and
+   * the org has credits (falls back to rule reasons otherwise). Works on Internal too (rules only).
+   */
+  async rescore(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'leads', 'read');
+    if (denied) return denied;
+    const wantAi = ctx.request.body?.ai;
+    const data = await require('../../../utils/lead-scoring').rescoreLead(strapi, ctx.params.id, {
+      orgId: ctx.state.orgId,
+      userId: ctx.state.user.id,
+      ai: wantAi === false ? false : undefined,
+      trigger: 'manual',
+    });
+    if (!data) return ctx.notFound('Lead not found.');
+    ctx.body = { data };
+    return ctx.body;
+  },
 }));

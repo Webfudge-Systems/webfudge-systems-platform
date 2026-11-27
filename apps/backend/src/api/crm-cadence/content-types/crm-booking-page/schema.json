@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_booking_pages",
+  "info": {
+    "singularName": "crm-booking-page",
+    "pluralName": "crm-booking-pages",
+    "displayName": "CRM Booking Page",
+    "description": "Public meeting booking page for one rep (G14)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "slug": { "type": "string", "required": true, "unique": true },
+    "enabled": { "type": "boolean", "default": false },
+    "title": { "type": "string" },
+    "description": { "type": "text" },
+    "durationMinutes": { "type": "integer", "default": 30 },
+    "bufferMinutes": { "type": "integer", "default": 0 },
+    "minNoticeMinutes": { "type": "integer", "default": 240 },
+    "daysAhead": { "type": "integer", "default": 14 },
+    "timezone": { "type": "string", "default": "Asia/Kolkata" },
+    "availability": { "type": "json" },
+    "meetingType": { "type": "string", "default": "discovery" },
+    "location": { "type": "string" },
+    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

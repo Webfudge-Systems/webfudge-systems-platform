@@ -118,4 +118,32 @@ module.exports = {
     },
     options: { rule: process.env.WEEKLY_STATUS_CRON_RULE || '0 16 * * 5', tz: 'Asia/Kolkata' },
   },
+  /** G11: 02:30 IST, rule-based scores for leads without one (and stale rule scores). No AI credits used. */
+  leadScoreBackfill: {
+    task: async ({ strapi }) => {
+      if (String(process.env.LEAD_SCORE_AUTO || '').toLowerCase() === 'off') return;
+      try {
+        const { backfillScores } = require('../src/utils/lead-scoring');
+        const r = await backfillScores(strapi, { limit: Number(process.env.LEAD_SCORE_BACKFILL_LIMIT) || 1000 });
+        if (r.scored || r.failed) strapi.log.info(`[cron] lead score backfill: ${r.scored} scored, ${r.failed} failed`);
+      } catch (e) {
+        strapi.log.error(`[cron] lead score backfill failed: ${e?.message || e}`);
+      }
+    },
+    options: { rule: process.env.LEAD_SCORE_BACKFILL_CRON_RULE || '30 2 * * *', tz: 'Asia/Kolkata' },
+  },
+  /** G14: run due cadence steps every 15 minutes (SaaS only); stops enrolments whose lead replied. */
+  crmCadences: {
+    task: async ({ strapi }) => {
+      if (!isSaas()) return;
+      try {
+        const { processDueEnrollments } = require('../src/utils/cadences');
+        const n = await processDueEnrollments(strapi);
+        if (n) strapi.log.info(`[cron] cadences: ${n} enrolment(s) processed`);
+      } catch (e) {
+        strapi.log.error(`[cron] cadences failed: ${e?.message || e}`);
+      }
+    },
+    options: { rule: process.env.CRM_CADENCE_CRON_RULE || '*/15 * * * *' },
+  },
 };
