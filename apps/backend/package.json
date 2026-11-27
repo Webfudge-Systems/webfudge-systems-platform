@@ -30,7 +30,8 @@
     "test:risk-radar": "node --test --test-concurrency=1 tests/risk-radar.test.js tests/scope-watch.test.js",
     "test:goals": "node --test --test-concurrency=1 tests/goals.test.js",
     "test:docs": "node --test --test-concurrency=1 tests/project-docs.test.js",
-    "test:cadences": "node --test --test-concurrency=1 tests/cadences.test.js"
+    "test:cadences": "node --test --test-concurrency=1 tests/cadences.test.js",
+    "test:vertical-packs": "node --test --test-concurrency=1 tests/vertical-packs.test.js tests/vertical-packs-api.test.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",

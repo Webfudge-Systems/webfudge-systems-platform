@@ -72,6 +72,14 @@ const SECTIONS = [
           icon: ListChecks,
           title: 'Cadences & booking page',
           description: 'Multi-step follow-up sequences (call, WhatsApp, email by day) that stop when the lead replies, and your public meeting booking link.',
+  // G22: industry starter packs (SaaS only). Reuses the GitBranch icon already imported.
+  ...(IS_SAAS_PLATFORM
+    ? [
+        {
+          href: '/settings/vertical-packs',
+          icon: GitBranch,
+          title: 'Vertical packs',
+          description: 'One-click setups for real estate, EV, jewellery, education and clinics: pipeline, statuses, fields and views.',
         },
       ]
     : []),
