@@ -29,6 +29,13 @@ module.exports = {
   async bootstrap({ strapi }) {
     console.log(`🚀 Strapi is bootstrapping (PLATFORM_MODE=${platformMode()})...`);
 
+    // G10: AI auto-capture on new CRM comments / meeting notes (SaaS only, debounced).
+    try {
+      require('./utils/ai/auto-capture').registerCaptureHooks(strapi);
+    } catch (e) {
+      console.warn('ai auto-capture hooks not registered:', e?.message || e);
+    }
+
     // W14: retainer usage alerts (80% / 100%) every 15 minutes.
     try {
       strapi.cron.add({

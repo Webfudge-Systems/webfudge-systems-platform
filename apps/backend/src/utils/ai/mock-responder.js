@@ -18,6 +18,8 @@ function mockRespond(req) {
   const user = JSON.stringify(req.messages || []);
   const w19 = require('./mock-work-risk').mockWorkRisk(req); // W19 risk radar + scope watcher
   if (w19) return w19;
+  const g10 = require('./mock-capture').mockCapture(req); // G10 auto-capture
+  if (g10) return g10;
   const g19 = require('./mock-grow-deals').mockGrowDeals(req); // G19 deal health + forecast
   if (g19) return g19;
   const g20 = require('./mock-grow-ask').mockGrowAsk(req); // G20 Ask Grow

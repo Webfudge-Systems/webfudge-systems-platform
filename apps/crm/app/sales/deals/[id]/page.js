@@ -71,6 +71,7 @@ import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../../lib/rba
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
 import { entityChatMediaProps, entityFilesPanelProps } from '../../../../lib/entityMedia';
 import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
+import AiCaptureCard from '../../../../components/AiCaptureCard'; // G10
 import DealHealthSignals from '../../../../components/deals/DealHealthSignals'; // G19
 
 const headerIconBtnClass =
@@ -1456,6 +1457,15 @@ export default function DealDetailPage() {
                     </>
                   )}
                 </Card>
+                <AiCaptureCard
+                  subjectType="deal"
+                  subjectId={deal?.id}
+                  canEdit={canEditDeal}
+                  onApplied={async () => {
+                    const r = await dealService.getOne(id);
+                    if (r?.data) setDeal(r.data);
+                  }}
+                />
                 <CustomFieldsCard
                   entity="deal"
                   values={deal?.customFields}
