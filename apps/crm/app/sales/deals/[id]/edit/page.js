@@ -760,6 +760,7 @@ export default function EditDealPage() {
       <WonDealProjectModal
         open={wonProjectModalOpen}
         dealName={dealName}
+        dealId={id}
         busy={saving}
         onClose={() => {
           if (!saving) setWonProjectModalOpen(false);

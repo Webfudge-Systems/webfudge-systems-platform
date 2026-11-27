@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cost_rates",
+  "info": {
+    "singularName": "cost-rate",
+    "pluralName": "cost-rates",
+    "displayName": "Cost Rate",
+    "description": "Internal hourly cost of one member (W22 profitability). Org admins only; never exposed to other roles."
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "hourlyCost": { "type": "decimal", "default": 0 },
+    "currency": { "type": "string", "default": "INR" },
+    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

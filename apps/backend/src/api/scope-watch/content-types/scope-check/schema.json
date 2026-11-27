@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "scope_checks",
+  "info": {
+    "singularName": "scope-check",
+    "pluralName": "scope-checks",
+    "displayName": "Scope Check",
+    "description": "Fudge AI verdict on one client request against the project SOW (W19). Out-of-scope ones link to a draft change order in the AI approval queue."
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" },
+    "project": { "type": "relation", "relation": "manyToOne", "target": "api::project.project" },
+    "task": { "type": "relation", "relation": "manyToOne", "target": "api::task.task" },
+    "requestedBy": { "type": "relation", "relation": "manyToOne", "target": "api::contact.contact" },
+    "sourceType": { "type": "enumeration", "enum": ["client_request", "change_request", "task"], "default": "client_request" },
+    "sourceKey": { "type": "string", "required": true },
+    "requestTitle": { "type": "string" },
+    "requestText": { "type": "text" },
+    "verdict": { "type": "enumeration", "enum": ["in_scope", "out_of_scope", "unclear"] },
+    "confidence": { "type": "enumeration", "enum": ["low", "medium", "high"] },
+    "reason": { "type": "text" },
+    "sowReference": { "type": "text" },
+    "estimateHours": { "type": "decimal" },
+    "aiActionId": { "type": "integer" },
+    "model": { "type": "string" },
+    "dismissed": { "type": "boolean", "default": false },
+    "checkedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" }
+  }
+}

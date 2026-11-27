@@ -23,7 +23,11 @@ const SKIP_PREFIXES = [
   '/api/saas/features',
   '/api/intake', // W13 public intake forms + Resend inbound webhook
   '/api/pm-intake', // W13 intake settings: secrets, live counters
+  '/api/proofs', // approvals & proofing (W9): review threads must show new comments at once
   '/api/ai', // Fudge AI (P5): credit usage and the approval queue must be live; writes invalidate the org themselves
+  '/api/risk-radar', // W19: computed live from tasks, sprints and capacity
+  '/api/scope-watch', // W19: SOW + change-order status must be live
+  '/api/project-docs', // W8 docs: autosaves every few seconds; must not flush the whole org cache each time
   '/admin',
   '/_health',
 ];

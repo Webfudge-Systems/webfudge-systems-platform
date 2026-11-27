@@ -1,0 +1,31 @@
+{
+  "kind": "collectionType",
+  "collectionName": "status_reports",
+  "info": {
+    "singularName": "status-report",
+    "pluralName": "status-reports",
+    "displayName": "Status Report",
+    "description": "Weekly project update written by Fudge AI from task activity, with a client and an internal version (W17)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" },
+    "orgKey": { "type": "integer" },
+    "project": { "type": "relation", "relation": "manyToOne", "target": "api::project.project" },
+    "weekKey": { "type": "string" },
+    "periodStart": { "type": "datetime" },
+    "periodEnd": { "type": "datetime" },
+    "status": { "type": "enumeration", "enum": ["draft", "partially_sent", "sent", "discarded"], "default": "draft" },
+    "source": { "type": "enumeration", "enum": ["scheduled", "manual"], "default": "manual" },
+    "language": { "type": "string", "default": "en" },
+    "health": { "type": "string" },
+    "aiContent": { "type": "json" },
+    "activity": { "type": "json" },
+    "versions": { "type": "json" },
+    "model": { "type": "string" },
+    "creditsUsed": { "type": "integer", "default": 0 },
+    "generatedAt": { "type": "datetime" },
+    "generatedBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" }
+  }
+}

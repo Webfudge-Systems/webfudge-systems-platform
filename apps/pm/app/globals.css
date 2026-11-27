@@ -75,3 +75,31 @@
     font-family: "Host Grotesk", sans-serif;
   }
 }
+
+/* W8 project docs: TipTap editor content */
+.wf-doc-editor .ProseMirror { min-height: 50vh; color: #1f2937; font-size: 0.95rem; line-height: 1.7; outline: none; }
+.wf-doc-editor .ProseMirror > * + * { margin-top: 0.6em; }
+.wf-doc-editor .ProseMirror h1 { font-size: 1.6rem; font-weight: 700; line-height: 1.25; margin-top: 1.2em; }
+.wf-doc-editor .ProseMirror h2 { font-size: 1.25rem; font-weight: 700; line-height: 1.3; margin-top: 1.1em; }
+.wf-doc-editor .ProseMirror h3 { font-size: 1.05rem; font-weight: 600; margin-top: 1em; }
+.wf-doc-editor .ProseMirror > :first-child { margin-top: 0; }
+.wf-doc-editor .ProseMirror ul { list-style: disc; padding-left: 1.4rem; }
+.wf-doc-editor .ProseMirror ol { list-style: decimal; padding-left: 1.4rem; }
+.wf-doc-editor .ProseMirror li > p { margin: 0; }
+.wf-doc-editor .ProseMirror ul[data-type='taskList'] { list-style: none; padding-left: 0.2rem; }
+.wf-doc-editor .ProseMirror ul[data-type='taskList'] li { display: flex; align-items: flex-start; gap: 0.5rem; }
+.wf-doc-editor .ProseMirror ul[data-type='taskList'] li > label { margin-top: 0.3rem; user-select: none; }
+.wf-doc-editor .ProseMirror ul[data-type='taskList'] li > label input { accent-color: #f97316; width: 1rem; height: 1rem; }
+.wf-doc-editor .ProseMirror ul[data-type='taskList'] li > div { flex: 1; }
+.wf-doc-editor .ProseMirror ul[data-type='taskList'] li[data-checked='true'] > div { color: #9ca3af; text-decoration: line-through; }
+.wf-doc-editor .ProseMirror blockquote { border-left: 3px solid #fdba74; padding-left: 1rem; color: #4b5563; }
+.wf-doc-editor .ProseMirror pre { background: #111827; color: #f9fafb; border-radius: 0.6rem; padding: 0.8rem 1rem; font-size: 0.85rem; overflow-x: auto; }
+.wf-doc-editor .ProseMirror code { background: #f3f4f6; border-radius: 0.3rem; padding: 0.1rem 0.3rem; font-size: 0.85em; }
+.wf-doc-editor .ProseMirror pre code { background: none; padding: 0; }
+.wf-doc-editor .ProseMirror a:not([data-task-id]) { color: #c2410c; text-decoration: underline; }
+.wf-doc-editor .ProseMirror hr { border-color: #e5e7eb; }
+.wf-doc-editor .ProseMirror .wf-doc-mention { background: #fff7ed; color: #c2410c; border-radius: 0.35rem; padding: 0.05rem 0.3rem; font-weight: 500; }
+.wf-doc-editor .ProseMirror .wf-doc-tasklink { display: inline-flex; align-items: center; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 9999px; padding: 0 0.5rem; font-size: 0.82em; font-weight: 500; text-decoration: none; cursor: pointer; }
+.wf-doc-editor .ProseMirror .wf-doc-tasklink:hover { background: #dbeafe; }
+.wf-doc-editor .ProseMirror p.is-editor-empty:first-child::before,
+.wf-doc-editor .ProseMirror .is-empty::before { content: attr(data-placeholder); color: #9ca3af; float: left; height: 0; pointer-events: none; }

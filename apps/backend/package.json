@@ -20,10 +20,15 @@
     "audit:prod-tasks": "node scripts/prod-task-audit.js",
     "db:row-counts": "node scripts/db-row-counts.js",
     "test:portal": "node --test --test-concurrency=1 tests/client-portal.test.js",
+    "test:proofs": "node --test --test-concurrency=1 tests/proofs.test.js",
     "test:lead-capture": "node --test \"tests/lead-capture/*.test.js\"",
     "e2e:lead-capture": "node scripts/e2e-lead-capture.js",
     "test:ai": "node --test --test-concurrency=1 \"tests/ai/*.test.js\"",
-    "test:intake": "node --test \"tests/intake/*.test.js\""
+    "test:intake": "node --test \"tests/intake/*.test.js\"",
+    "test:smart-triage": "node --test --test-concurrency=1 \"tests/smart-triage/*.test.js\"",
+    "test:risk-radar": "node --test --test-concurrency=1 tests/risk-radar.test.js tests/scope-watch.test.js",
+    "test:goals": "node --test --test-concurrency=1 tests/goals.test.js",
+    "test:docs": "node --test --test-concurrency=1 tests/project-docs.test.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
