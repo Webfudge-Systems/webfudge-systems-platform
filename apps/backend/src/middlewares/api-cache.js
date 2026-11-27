@@ -21,6 +21,8 @@ const SKIP_PREFIXES = [
   '/api/client-portal', // team-side portal controls (W10): must reflect invites / revokes at once
   '/api/saas/access', // SaaS plan, limits and usage: must change as soon as a plan is bought (G16 / W15)
   '/api/saas/features',
+  '/api/intake', // W13 public intake forms + Resend inbound webhook
+  '/api/pm-intake', // W13 intake settings: secrets, live counters
   '/api/ai', // Fudge AI (P5): credit usage and the approval queue must be live; writes invalidate the org themselves
   '/admin',
   '/_health',

@@ -1,0 +1,27 @@
+{
+  "kind": "collectionType",
+  "collectionName": "intake_channels",
+  "info": {
+    "singularName": "intake-channel",
+    "pluralName": "intake-channels",
+    "displayName": "Intake Channel",
+    "description": "W13 intake: a public form, inbound email address (or, later, WhatsApp number) that turns submissions into tasks in a project's task list."
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "channel": { "type": "enumeration", "enum": ["form", "email", "whatsapp"], "required": true, "default": "form" },
+    "name": { "type": "string", "required": true },
+    "enabled": { "type": "boolean", "default": true },
+    "secret": { "type": "string", "private": true, "required": true, "unique": true },
+    "fields": { "type": "json" },
+    "settings": { "type": "json" },
+    "submissionCount": { "type": "integer", "default": 0 },
+    "lastSubmissionAt": { "type": "datetime" },
+    "project": { "type": "relation", "relation": "manyToOne", "target": "api::project.project" },
+    "taskList": { "type": "relation", "relation": "manyToOne", "target": "api::task-list.task-list" },
+    "assignee": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "createdByUser": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

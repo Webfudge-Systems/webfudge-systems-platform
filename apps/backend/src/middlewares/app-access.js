@@ -55,6 +55,8 @@ const RESOURCE_APPS = {
   // Work hierarchy (W1)
   workspaces: ['pm'],
   'task-lists': ['pm'],
+  // Intake (W13) settings; the public /api/intake endpoints check the org's access themselves
+  'pm-intake': ['pm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

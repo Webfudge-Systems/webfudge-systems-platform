@@ -47,6 +47,7 @@ import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
+import ProjectIntakePanel from '../../../components/ProjectIntakePanel';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
 import ProjectTaskLists from '../../../components/ProjectTaskLists';
@@ -56,7 +57,7 @@ import { MyTasksKanbanBoard } from '../../../components/MyTasksViews';
 import useSavedViews from '../../../lib/useSavedViews';
 import { formatHours } from '../../../lib/api/timeTrackingService';
 import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
-import { InfoRow, InfoSection, SidebarCardTitle } from '@webfudge/ui';
+import { InfoRow, InfoSection, SidebarCardTitle, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import { getProjectStatusMeta, PROJECT_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
 import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions';
@@ -93,6 +94,8 @@ const DETAIL_TABS = [
   { key: 'activity', label: 'Activity' },
   { key: 'files', label: 'Files' },
   { key: 'client', label: 'Client portal' },
+  // W13 intake (forms / email → tasks): SaaS only
+  ...(IS_SAAS_PLATFORM ? [{ key: 'intake', label: 'Intake' }] : []),
 ];
 
 const headerIconBtnClass =
@@ -1238,6 +1241,8 @@ export default function ProjectDetailPage() {
       {activeTab === 'client' && project?.id ? (
         <ProjectClientPortalPanel projectId={project.id} canEdit={canEditThisProject} />
       ) : null}
+
+      {activeTab === 'intake' && project?.id ? <ProjectIntakePanel projectId={project.id} /> : null}
 
       <QuickCreateTaskModal
         isOpen={taskModal.open}
