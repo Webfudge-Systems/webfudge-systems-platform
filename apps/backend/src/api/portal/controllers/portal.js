@@ -8,6 +8,7 @@
  */
 
 const portal = require('../../../utils/client-portal');
+const proofs = require('../../../utils/proofs');
 
 const TASK_UID = 'api::task.task';
 const MAX_TITLE = 200;
@@ -115,7 +116,19 @@ module.exports = {
     if (decision === 'request_changes' && !comment) return ctx.badRequest('Tell the team what to change');
 
     const status = decision === 'approve' ? 'approved' : 'changes_requested';
-    // TODO(W9): approvals/proofing will add versions and multiple reviewers on top of these fields.
+    // W9: the decision also lands on the latest proof version, when the deliverable has any.
+    const latest = await proofs.latestVersion(strapi, { orgId: session.orgId, taskId: task.id });
+    if (latest) {
+      await proofs.decideVersion(strapi, {
+        orgId: session.orgId,
+        taskId: task.id,
+        taskName: task.name,
+        version: latest,
+        decision,
+        comment,
+        contact: session.contact,
+      });
+    }
     const updated = await strapi.entityService.update(TASK_UID, task.id, {
       data: {
         clientApprovalStatus: status,
@@ -142,6 +155,22 @@ module.exports = {
       title: `${who} ${verdict} "${task.name}"`,
       message: comment || `${who} ${verdict} this deliverable in the client portal.`,
     });
+    if (status === 'changes_requested') {
+      // W9: the assignee (and reporter / collaborators) hear about it even when not on the project team.
+      const team = await strapi.entityService.findOne('api::project.project', project.id, {
+        fields: ['id'],
+        populate: { projectManager: { fields: ['id'] }, teamMembers: { fields: ['id'] } },
+      });
+      await proofs.notifyRequestChanges(strapi, {
+        orgId: session.orgId,
+        taskId: task.id,
+        taskName: task.name,
+        versionLabel: latest ? `v${latest.version}` : 'the deliverable',
+        who: `${who} (client)`,
+        comment,
+        skipUserIds: [team?.projectManager?.id, ...(team?.teamMembers || []).map((m) => m.id)].filter(Boolean),
+      });
+    }
     ctx.body = { data: portal.serializeTask(updated, session) };
   }),
 

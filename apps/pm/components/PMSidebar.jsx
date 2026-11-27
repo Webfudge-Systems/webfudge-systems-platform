@@ -138,6 +138,13 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       ? [{ id: 'weekly-updates', module: 'projects', label: 'Weekly updates', icon: Megaphone, href: '/weekly-updates' }]
       : []),
     {
+      id: 'goals',
+      module: 'projects',
+      label: 'Goals',
+      icon: Target,
+      href: '/goals',
+    },
+    {
       id: 'clients',
       module: 'client_accounts',
       label: 'Clients',
@@ -156,9 +163,9 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
   const pmTools = [
     {
       label: 'Documents',
+      module: 'projects',
       icon: FileText,
-      href: '/coming-soon?feature=documents',
-      comingSoonFeature: 'documents',
+      href: '/docs',
     },
     { label: 'Calendar', module: 'calendar', icon: Calendar, href: '/calendar' },
   ]

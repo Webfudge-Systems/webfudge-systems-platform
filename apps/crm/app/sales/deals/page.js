@@ -1565,6 +1565,7 @@ export default function DealsPage() {
       <WonDealProjectModal
         open={!!wonDealPrompt}
         dealName={wonDealPrompt?.dealName}
+        dealId={wonDealPrompt?.dealId}
         busy={wonDealBusy}
         onClose={closeWonDealPrompt}
         onSkipProject={() => void confirmWonSkipProject()}

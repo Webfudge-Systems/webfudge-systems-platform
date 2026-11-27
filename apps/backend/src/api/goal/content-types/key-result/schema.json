@@ -1,0 +1,29 @@
+{
+  "kind": "collectionType",
+  "collectionName": "goal_key_results",
+  "info": {
+    "singularName": "key-result",
+    "pluralName": "key-results",
+    "displayName": "Goal Key Result",
+    "description": "Measurable result of an objective: number, percent, or task-based (progress from linked tasks / projects) (W12)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "title": { "type": "string", "required": true },
+    "metricType": { "type": "enumeration", "enum": ["number", "percent", "tasks"], "default": "number" },
+    "startValue": { "type": "decimal", "default": 0 },
+    "targetValue": { "type": "decimal", "default": 100 },
+    "currentValue": { "type": "decimal", "default": 0 },
+    "unit": { "type": "string" },
+    "progress": { "type": "decimal", "default": 0 },
+    "confidence": { "type": "enumeration", "enum": ["on_track", "at_risk", "off_track"], "default": "on_track" },
+    "sortOrder": { "type": "integer", "default": 0 },
+    "lastCheckInAt": { "type": "datetime" },
+    "objective": { "type": "relation", "relation": "manyToOne", "target": "api::goal.objective", "inversedBy": "keyResults" },
+    "owner": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "tasks": { "type": "relation", "relation": "manyToMany", "target": "api::task.task" },
+    "projects": { "type": "relation", "relation": "manyToMany", "target": "api::project.project" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

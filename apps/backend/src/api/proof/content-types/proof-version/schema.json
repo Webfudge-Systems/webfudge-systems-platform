@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "proof_versions",
+  "info": {
+    "singularName": "proof-version",
+    "pluralName": "proof-versions",
+    "displayName": "Proof Version",
+    "description": "W9: one uploaded version (v1, v2, …) of a creative or video on a deliverable task"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "version": {
+      "type": "integer",
+      "required": true,
+      "min": 1
+    },
+    "kind": {
+      "type": "enumeration",
+      "enum": ["image", "video", "pdf", "file"],
+      "default": "file"
+    },
+    "note": {
+      "type": "text"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["in_review", "approved", "changes_requested"],
+      "default": "in_review"
+    },
+    "decisionComment": {
+      "type": "text"
+    },
+    "decidedAt": {
+      "type": "datetime"
+    },
+    "decidedByUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "decidedByContact": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::contact.contact"
+    },
+    "task": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::task.task"
+    },
+    "attachment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::entity-attachment.entity-attachment"
+    },
+    "uploadedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}
