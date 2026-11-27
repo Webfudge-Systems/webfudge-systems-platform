@@ -49,9 +49,16 @@ registerTemplate({
     required: ['score', 'label', 'reasons', 'nextStep'],
     additionalProperties: false,
   },
-  user: ({ lead, memory = [] }) => {
+  user: ({ lead, memory = [], signals = null }) => {
     const parts = [`Lead:\n${JSON.stringify(leadFacts(lead), null, 2)}`];
     if (memory.length) parts.push(`Business memory (notes from this organization):\n${memory.map((m) => `- ${m.text}`).join('\n')}`);
+    // G11: deterministic baseline + recent conversation, so the model judges sentiment/intent on top of the rules.
+    if (signals?.baseline) {
+      const b = signals.baseline;
+      parts.push(`Baseline score from rules: ${b.score}/100 (fit ${b.fit}/50, intent ${b.intent}/50).${b.factors?.length ? `\nRule factors:\n${b.factors.map((f) => `- ${f}`).join('\n')}` : ''}`);
+    }
+    if (signals?.recentActivity?.length) parts.push(`Recent activity, newest first (judge the sentiment and buying intent):\n${signals.recentActivity.map((a) => `- ${a}`).join('\n')}`);
+    if (signals?.meetings?.length) parts.push(`Meetings:\n${JSON.stringify(signals.meetings)}`);
     parts.push('Score this lead.');
     return parts.join('\n\n');
   },

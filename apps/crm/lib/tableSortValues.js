@@ -97,6 +97,8 @@ export function getLeadCompanySortValue(row, key) {
       return stringValue(row.industry);
     case 'score':
       return numValue(row.score);
+    case 'aiScore':
+      return numValue(row.aiScore);
     case 'healthScore':
       return numValue(row.healthScore);
     case 'city':
