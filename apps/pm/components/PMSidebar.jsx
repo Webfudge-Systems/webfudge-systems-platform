@@ -35,7 +35,6 @@ import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 import { usePmSidebarBadges } from '../lib/usePmSidebarBadges'
 import { PM_SITE } from '../lib/site'
 import { isHiddenInSaas } from '../lib/saasHiddenRoutes'
-import { IS_SAAS_PLATFORM } from '@webfudge/ui'
 import useWorkspaces from '../lib/useWorkspaces'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 

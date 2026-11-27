@@ -38,8 +38,25 @@ function mockRespond(req) {
   if (props.status && props.nextSteps) {
     return JSON.stringify({ status: 'In progress.', blockers: [], nextSteps: ['Review the latest comments.'] });
   }
-  if (props.calls) return mockAskPlan(req);
-  if (props.answer && props.taskIds) return mockAskAnswer(req);
+  if (props.suggestions) {
+    // W20 triage: one plausible suggestion per task, no assignee (the user picks).
+    const ids = [...new Set([...plainText(req).matchAll(/"taskId":\s*(\d+)/g)].map((m) => Number(m[1])))];
+    const due = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+    return JSON.stringify({ suggestions: ids.map((taskId) => ({ taskId, priority: 'medium', assigneeId: null, taskListId: null, dueDate: due, reason: 'Mock suggestion (AI_PROVIDER=mock).' })) });
+  }
+  if (props.items) {
+    // W20 meeting -> tasks: every note line that reads like a commitment becomes an item.
+    const notes = (plainText(req).split('"""')[1] || '').split('\n').map((l) => l.replace(/^[-*\s]+/, '').trim());
+    const items = notes
+      .filter((l) => /\b(to|will|should|needs? to|action)\b/i.test(l))
+      .slice(0, 10)
+      .map((l) => ({ title: l.slice(0, 120), description: '', owner: (l.match(/^([A-Z][a-z]+)/) || [])[1] || null, dueDate: null, priority: 'medium' }));
+    return JSON.stringify({ items });
+  }
+  if (props.internal && props.client) return mockWeeklyStatus(req.messages); // W17
+  if (props.phases && props.projectName) return JSON.stringify(mockProjectPlan(user)); // W16
+  if (props.calls) return mockAskPlan(req); // W21
+  if (props.answer && props.taskIds) return mockAskAnswer(req); // W21
   return 'ok';
 }
 

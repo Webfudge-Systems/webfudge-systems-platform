@@ -49,7 +49,6 @@ import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
 import ProjectIntakePanel from '../../../components/ProjectIntakePanel';
 import ProjectRiskScopeTab from '../../../components/ProjectRiskScopeTab';
-import { IS_SAAS_PLATFORM } from '@webfudge/ui';
 import ProjectProfitabilityPanel from '../../../components/ProjectProfitabilityPanel';
 import ProjectLinkedGoals from '../../../components/ProjectLinkedGoals';
 import DocsList from '../../../components/docs/DocsList';
@@ -246,11 +245,7 @@ export default function ProjectDetailPage() {
     return id != null ? String(id) : '';
   }, [authUser]);
   const [activeTab, setActiveTab] = useState('overview');
-  // W22: margin alerts link to ?tab=profitability
-  useEffect(() => {
-    const t = new URLSearchParams(window.location.search).get('tab');
-    if (t && DETAIL_TABS.some((x) => x.key === t)) setActiveTab(t);
-  // W8: links like /projects/12?tab=docs open a tab directly
+  // W8 / W22: links like /projects/12?tab=docs or ?tab=profitability open a tab directly
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
     if (tab && DETAIL_TABS.some((t) => t.key === tab)) setActiveTab(tab);

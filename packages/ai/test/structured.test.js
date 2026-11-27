@@ -94,7 +94,9 @@ test('templates: per-app registry with English, Hindi and Marathi output', () =>
   assert.ok(workKeys.every((k) => k.startsWith('work.')), 'only work templates in the work list');
   assert.ok(keys.includes('work.weekly_status'));
   assert.ok(listTemplates('work').every((t) => t.app === 'work' && t.key.startsWith('work.')));
-  assert.deepEqual(listTemplates('work').map((t) => t.key), ['work.task_summary', 'work.project_plan']);
+  for (const k of ['work.project_plan', 'work.task_triage', 'work.meeting_action_items', 'work.risk_explain', 'work.scope_check', 'work.change_order']) {
+    assert.ok(workKeys.includes(k), k);
+  }
 
   const en = renderTemplate('grow.lead_score', { lead: { companyName: 'Acme', email: 'a@acme.in', id: 9 } });
   assert.equal(en.task, 'score');
