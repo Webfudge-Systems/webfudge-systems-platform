@@ -56,6 +56,19 @@ const RESOURCE_APPS = {
   // Work hierarchy (W1)
   workspaces: ['pm'],
   'task-lists': ['pm'],
+  // Risk radar + scope-creep watcher (W19)
+  'risk-radar': ['pm'],
+  'scope-watch': ['pm'],
+  // Weekly status reports (W17)
+  'status-reports': ['pm'],
+  // Project profitability (W22)
+  profitability: ['pm'],
+  // Goals / OKRs (W12). Fudge People will be added here when it reuses goals.
+  goals: ['pm'],
+  // Project docs (W8)
+  'project-docs': ['pm'],
+  // Approvals & proofing (W9); the client side lives under /api/portal/*
+  proofs: ['pm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

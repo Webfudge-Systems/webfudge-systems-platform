@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "proof_comments",
+  "info": {
+    "singularName": "proof-comment",
+    "pluralName": "proof-comments",
+    "displayName": "Proof Comment",
+    "description": "W9: a review comment on a proof version, optionally pinned to a point (x/y %) and/or a video timestamp (seconds)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "body": {
+      "type": "text",
+      "required": true
+    },
+    "x": {
+      "type": "decimal"
+    },
+    "y": {
+      "type": "decimal"
+    },
+    "timestamp": {
+      "type": "decimal"
+    },
+    "internal": {
+      "type": "boolean",
+      "default": false
+    },
+    "resolved": {
+      "type": "boolean",
+      "default": false
+    },
+    "resolvedAt": {
+      "type": "datetime"
+    },
+    "proofVersion": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::proof.proof-version"
+    },
+    "task": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::task.task"
+    },
+    "authorUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "authorContact": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::contact.contact"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

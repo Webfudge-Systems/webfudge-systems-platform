@@ -1,0 +1,52 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_doc_versions",
+  "info": {
+    "singularName": "project-doc-version",
+    "pluralName": "project-doc-versions",
+    "displayName": "Project Doc Version",
+    "description": "Snapshot of a project doc for version history and restore (W8)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "doc": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::project-doc.project-doc"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "versionNumber": {
+      "type": "integer",
+      "required": true
+    },
+    "title": {
+      "type": "string"
+    },
+    "content": {
+      "type": "json"
+    },
+    "contentText": {
+      "type": "text"
+    },
+    "reason": {
+      "type": "enumeration",
+      "enum": ["auto", "manual", "before_restore"],
+      "default": "auto"
+    },
+    "note": {
+      "type": "string"
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
