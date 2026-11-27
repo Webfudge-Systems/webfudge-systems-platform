@@ -48,6 +48,8 @@ import PMRowActions from '../../../components/PMRowActions';
 import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
 import ProjectProfitabilityPanel from '../../../components/ProjectProfitabilityPanel';
+import ProjectLinkedGoals from '../../../components/ProjectLinkedGoals';
+import DocsList from '../../../components/docs/DocsList';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
 import ProjectTaskLists from '../../../components/ProjectTaskLists';
@@ -92,6 +94,7 @@ const DETAIL_TABS = [
   { key: 'timeline', label: 'Timeline' },
   { key: 'sprints', label: 'Sprints' },
   { key: 'activity', label: 'Activity' },
+  { key: 'docs', label: 'Docs' },
   { key: 'files', label: 'Files' },
   { key: 'client', label: 'Client portal' },
   { key: 'profitability', label: 'Profitability' }, // W22: admins + managers only
@@ -240,6 +243,10 @@ export default function ProjectDetailPage() {
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get('tab');
     if (t && DETAIL_TABS.some((x) => x.key === t)) setActiveTab(t);
+  // W8: links like /projects/12?tab=docs open a tab directly
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab && DETAIL_TABS.some((t) => t.key === tab)) setActiveTab(tab);
   }, []);
   const [fileCount, setFileCount] = useState(0);
   const [project, setProject] = useState(null);
@@ -1093,6 +1100,7 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
             </Card>
+            {project?.id ? <ProjectLinkedGoals projectId={project.id} /> : null}
           </div>
         </div>
       ) : null}
@@ -1228,6 +1236,10 @@ export default function ProjectDetailPage() {
             />
           </div>
         </div>
+      ) : null}
+
+      {activeTab === 'docs' && project?.id ? (
+        <DocsList projectId={project.id} projectName={project.name} showScope={false} />
       ) : null}
 
       {activeTab === 'files' ? (

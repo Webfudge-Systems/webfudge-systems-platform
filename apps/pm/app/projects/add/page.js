@@ -12,6 +12,7 @@ import {
   Textarea,
   Select,
   LoadingSpinner,
+  IS_SAAS_PLATFORM,
 } from '@webfudge/ui'
 import {
   ArrowLeft,
@@ -19,6 +20,7 @@ import {
   FolderOpen,
   CalendarDays,
   DollarSign,
+  Sparkles,
 } from 'lucide-react'
 import PMPageHeader from '../../../components/PMPageHeader'
 import ProjectTemplatePicker from '../../../components/ProjectTemplatePicker'
@@ -246,6 +248,21 @@ export default function AddProjectPage() {
             {errors.submit}
           </div>
         )}
+
+        {/* W16: AI project planner (SaaS) */}
+        {IS_SAAS_PLATFORM ? (
+          <button
+            type="button"
+            onClick={() => router.push(`/projects/ai-plan${clientAccountFromQuery ? `?clientAccount=${encodeURIComponent(clientAccountFromQuery)}` : ''}`)}
+            className="flex w-full items-center gap-3 rounded-2xl border border-orange-200 bg-orange-50 px-4 py-3 text-left hover:bg-orange-100"
+          >
+            <Sparkles className="h-5 w-5 flex-shrink-0 text-orange-600" aria-hidden="true" />
+            <span className="min-w-0 flex-1 text-sm text-gray-800">
+              <span className="font-semibold">Have a brief or SOW?</span> Plan with AI: Fudge AI proposes phases, tasks, owners and estimates for you to edit.
+            </span>
+            <span className="text-sm font-semibold text-orange-700">Plan with AI →</span>
+          </button>
+        ) : null}
 
         {templates.length ? (
           <ProjectTemplatePicker
