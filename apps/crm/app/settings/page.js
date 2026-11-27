@@ -64,6 +64,17 @@ const SECTIONS = [
         },
       ]
     : []),
+  // G14: cadences + public booking page (SaaS only).
+  ...(IS_SAAS_PLATFORM
+    ? [
+        {
+          href: '/sales/cadences',
+          icon: ListChecks,
+          title: 'Cadences & booking page',
+          description: 'Multi-step follow-up sequences (call, WhatsApp, email by day) that stop when the lead replies, and your public meeting booking link.',
+        },
+      ]
+    : []),
   {
     href: '/settings/products',
     icon: Package,

@@ -12,6 +12,8 @@ export const CRM_ROUTE_MODULES = [
   { prefix: '/calendar', module: 'calendar' },
   { prefix: '/analytics', module: 'analytics' },
   { prefix: '/settings', module: 'settings' },
+  { prefix: '/sales/cadences', module: 'leads' }, // G14
+  { prefix: '/book/', module: 'dashboard' }, // G14 public booking pages (rendered outside the app shell)
 ]
 
 export function canReadCRM(moduleKey) {
