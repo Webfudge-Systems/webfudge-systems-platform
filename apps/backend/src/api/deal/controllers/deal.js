@@ -334,8 +334,11 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     }
 
     const body = ctx.request?.body?.data || ctx.request?.body || {};
-    const template = body.templateKey ? getTemplate(body.templateKey) : null;
-    if (body.templateKey && !template) return ctx.badRequest('Unknown project template');
+    // W16: a plan from the AI project planner, reviewed and edited by the person (takes precedence over a template).
+    const aiPlan = body.aiPlan && typeof body.aiPlan === 'object' ? body.aiPlan : null;
+    if (aiPlan && !require('../../../utils/ai').requireAiEnabled(ctx)) return ctx.body;
+    const template = !aiPlan && body.templateKey ? getTemplate(body.templateKey) : null;
+    if (!aiPlan && body.templateKey && !template) return ctx.badRequest('Unknown project template');
     const invoicePlan = ['none', 'full', 'split50'].includes(body.invoicePlan) ? body.invoicePlan : 'full';
 
     // Client account: the deal's own, else the account its lead was converted into.
@@ -373,7 +376,26 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     let project;
     let tasksCreated = 0;
-    if (template) {
+    if (aiPlan) {
+      const { createProjectFromPlan } = require('../../../utils/ai/work-planner');
+      const { ensureDefaultWorkspace } = require('../../../utils/workspaces');
+      if (body.projectName && String(body.projectName).trim()) data.name = String(body.projectName).trim().slice(0, 200);
+      data.workspace = await ensureDefaultWorkspace(strapi, ctx.state.orgId);
+      try {
+        const created = await createProjectFromPlan(strapi, {
+          orgId: ctx.state.orgId,
+          actorId: ctx.state.user.id,
+          plan: aiPlan,
+          project: data,
+          startDate: body.startDate,
+          roleAssignments: body.roleAssignments && typeof body.roleAssignments === 'object' ? body.roleAssignments : {},
+        });
+        project = created.entry;
+        tasksCreated = created.taskCount;
+      } catch (err) {
+        return require('../../../utils/ai').sendAiError(ctx, err);
+      }
+    } else if (template) {
       const created = await createProjectFromTemplate(strapi, {
         orgId: ctx.state.orgId,
         actorId: ctx.state.user.id,
@@ -406,6 +428,7 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       data: project,
       meta: {
         template: template?.key || null,
+        aiPlan: Boolean(aiPlan),
         tasksCreated,
         proposals: proposals.map((p) => p.id),
         invoices: invoices.map((i) => ({ id: i.id, invoiceNumber: i.invoiceNumber, total: i.total })),

@@ -57,6 +57,8 @@ const RESOURCE_APPS = {
   'task-lists': ['pm'],
   // Project docs (W8)
   'project-docs': ['pm'],
+  // Approvals & proofing (W9); the client side lives under /api/portal/*
+  proofs: ['pm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

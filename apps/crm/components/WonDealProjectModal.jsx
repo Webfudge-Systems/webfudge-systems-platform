@@ -1,8 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Modal, Button } from '@webfudge/ui';
+import { Modal, Button, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import strapiClient from '../lib/strapiClient';
+import { getPmAppBaseUrl } from '../lib/pmAppUrl';
+
+/** W16: template option that hands the deal to the AI project planner in Work (SaaS). */
+const AI_PLAN = '__ai_plan__';
 
 /** Suggest a Work template from the deal name (G23). */
 function suggestTemplate(name, templates) {
@@ -23,8 +27,11 @@ const selectCls =
 /**
  * Won deal → delivery project (G23): optional Work template (phases + tasks), start date and draft invoice plan.
  * Calls onCreateProject({ templateKey, startDate, invoicePlan }).
+ * SaaS (W16): "Plan with Fudge AI" saves the deal as won (onSkipProject) and opens the AI project
+ * planner in Work for this deal, where the plan drafted from the deal and its proposals is edited
+ * before the delivery project is created.
  */
-export default function WonDealProjectModal({ open, dealName, busy = false, onClose, onSkipProject, onCreateProject }) {
+export default function WonDealProjectModal({ open, dealName, dealId = null, busy = false, onClose, onSkipProject, onCreateProject }) {
   const [templates, setTemplates] = useState(null);
   const [templateKey, setTemplateKey] = useState('');
   const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -39,7 +46,7 @@ export default function WonDealProjectModal({ open, dealName, busy = false, onCl
         if (cancelled) return;
         const list = Array.isArray(res?.data) ? res.data : [];
         setTemplates(list);
-        setTemplateKey(suggestTemplate(dealName, list));
+        setTemplateKey(IS_SAAS_PLATFORM && dealId ? AI_PLAN : suggestTemplate(dealName, list));
       })
       .catch(() => {
         // No Work access: still allow a blank project + invoice.
@@ -48,9 +55,17 @@ export default function WonDealProjectModal({ open, dealName, busy = false, onCl
     return () => {
       cancelled = true;
     };
-  }, [open, dealName]);
+  }, [open, dealName, dealId]);
 
   const selected = (templates || []).find((t) => t.key === templateKey);
+  const aiPlan = templateKey === AI_PLAN;
+
+  const openAiPlanner = () => {
+    const qs = new URLSearchParams({ deal: String(dealId), startDate, invoicePlan });
+    // Open first (still inside the click, so it is not blocked), then save the deal as won here.
+    window.open(`${getPmAppBaseUrl()}/projects/ai-plan?${qs.toString()}`, '_blank', 'noopener');
+    onSkipProject();
+  };
 
   return (
     <Modal
@@ -72,6 +87,7 @@ export default function WonDealProjectModal({ open, dealName, busy = false, onCl
             <label className="space-y-1">
               <span className="text-sm font-medium text-gray-700">Project template</span>
               <select className={selectCls} value={templateKey} onChange={(e) => setTemplateKey(e.target.value)} disabled={busy}>
+                {IS_SAAS_PLATFORM && dealId ? <option value={AI_PLAN}>Plan with Fudge AI (from the deal and its SOW)</option> : null}
                 <option value="">Blank project</option>
                 {templates.map((t) => (
                   <option key={t.key} value={t.key}>
@@ -90,7 +106,12 @@ export default function WonDealProjectModal({ open, dealName, busy = false, onCl
                 disabled={busy || !templateKey}
               />
             </label>
-            {selected ? (
+            {aiPlan ? (
+              <p className="text-xs text-gray-500 sm:col-span-2">
+                Opens Fudge Work in a new tab with a plan drafted from this deal and its proposals: phases, tasks,
+                owners by role, estimates and dependencies. Edit it there, then create the project. Uses AI credits.
+              </p>
+            ) : selected ? (
               <p className="text-xs text-gray-500 sm:col-span-2">
                 {selected.phases.map((p) => p.name).join(' → ')} · about {selected.durationDays} days. You can assign
                 people on each task later.
@@ -121,9 +142,9 @@ export default function WonDealProjectModal({ open, dealName, busy = false, onCl
           type="button"
           variant="primary"
           disabled={busy}
-          onClick={() => onCreateProject({ templateKey: templateKey || undefined, startDate, invoicePlan })}
+          onClick={() => (aiPlan ? openAiPlanner() : onCreateProject({ templateKey: templateKey || undefined, startDate, invoicePlan }))}
         >
-          {busy ? 'Working…' : 'Create project'}
+          {busy ? 'Working…' : aiPlan ? 'Plan with AI' : 'Create project'}
         </Button>
       </div>
     </Modal>
