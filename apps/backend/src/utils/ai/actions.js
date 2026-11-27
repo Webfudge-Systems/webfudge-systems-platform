@@ -230,6 +230,9 @@ function registerBuiltInActions(r, strapi) {
       return { result: { delivered: Boolean(out.sent) }, subject: { type: 'lead_company', id: lead.id } };
     },
   });
+
+  // W17 Status Reporter: weekly project updates (outbound, approval queue).
+  require('../status-reports/actions').register(r, strapi);
 }
 
 module.exports = { ACTION_UID, getActionRunner, actorFromCtx, assertAllowed, fromDb, POPULATE, loadLead, canEditLead, createStrapiActionStore };

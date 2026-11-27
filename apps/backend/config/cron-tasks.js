@@ -104,4 +104,18 @@ module.exports = {
     },
     options: { rule: '15 3 * * *', tz: 'Asia/Kolkata' },
   },
+  /** W17: Friday 16:00 IST, Fudge AI drafts each active project's weekly update for approval (SaaS + AI + Business plan). */
+  weeklyStatusDrafts: {
+    task: async ({ strapi }) => {
+      if (!isSaas() || String(process.env.WEEKLY_STATUS_CRON || '').toLowerCase() === 'off') return;
+      try {
+        const { runWeeklyDrafts } = require('../src/utils/status-reports');
+        const c = await runWeeklyDrafts(strapi);
+        if (c.created || c.failed) strapi.log.info(`[cron] weekly status drafts: ${c.created} created, ${c.skipped} skipped, ${c.failed} failed (${c.orgs} orgs)`);
+      } catch (e) {
+        strapi.log.error(`[cron] weekly status drafts failed: ${e?.message || e}`);
+      }
+    },
+    options: { rule: process.env.WEEKLY_STATUS_CRON_RULE || '0 16 * * 5', tz: 'Asia/Kolkata' },
+  },
 };
