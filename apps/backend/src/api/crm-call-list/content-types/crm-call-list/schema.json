@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_call_lists",
+  "info": {
+    "singularName": "crm-call-list",
+    "pluralName": "crm-call-lists",
+    "displayName": "CRM Call List",
+    "description": "G19: daily prioritised 'who to call and what to say' list per sales rep, built each morning"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "items": {
+      "type": "json"
+    },
+    "aiUsed": {
+      "type": "boolean",
+      "default": false
+    },
+    "generatedAt": {
+      "type": "datetime"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    }
+  }
+}

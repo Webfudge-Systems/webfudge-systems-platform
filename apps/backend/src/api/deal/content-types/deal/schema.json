@@ -119,6 +119,9 @@
     },
     "lostReason": {
       "type": "string"
+    },
+    "aiHealth": {
+      "type": "json"
     }
   }
 }

@@ -71,6 +71,7 @@ import { canEditCRMRecord, canManageCRM, canWriteCRM } from '../../../../lib/rba
 import { fetchChatMentionUsers } from '../../../../lib/chatMentionUsers';
 import { entityChatMediaProps, entityFilesPanelProps } from '../../../../lib/entityMedia';
 import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
+import DealHealthSignals from '../../../../components/deals/DealHealthSignals'; // G19
 
 const headerIconBtnClass =
   'rounded-xl border border-white/20 bg-white/10 p-2.5 text-brand-text-light shadow-lg backdrop-blur-md transition-all duration-300 hover:border-white/30 hover:bg-white/20';
@@ -691,8 +692,9 @@ export default function DealDetailPage() {
   const probability = Math.min(100, Math.max(0, Number(deal?.probability) || 0));
   const dClose = daysToClose(deal?.expectedCloseDate);
 
+  const [aiHealth, setAiHealth] = useState(null); // G19 (SaaS): signal-based health replaces the probability chip
   const dealHealthVisual = useMemo(() => {
-    const p = probability;
+    const p = aiHealth ? { high: 30, medium: 50, low: 90 }[aiHealth.level] ?? probability : probability;
     if (p >= 80)
       return {
         barClass: 'bg-emerald-500',
@@ -720,7 +722,7 @@ export default function DealDetailPage() {
       chipClass: 'bg-red-50 text-red-800 ring-red-200',
       summary: 'At risk',
     };
-  }, [probability]);
+  }, [probability, aiHealth]);
 
   const activityCount = crmTimeline.length;
 
@@ -1787,7 +1789,7 @@ export default function DealDetailPage() {
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset ${dealHealthVisual.chipClass}`}
                     >
-                      {dealHealthVisual.summary}
+                      {aiHealth?.label || dealHealthVisual.summary}
                     </span>
                   </div>
 
@@ -1831,6 +1833,7 @@ export default function DealDetailPage() {
                     </div>
                   </div>
 
+                  <DealHealthSignals dealId={id} onHealth={setAiHealth} />
                   <div className="mt-5 space-y-5">
                     <div>
                       <h3 className="mb-2.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
