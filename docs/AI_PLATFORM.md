@@ -198,3 +198,17 @@ All of these stay configurable.
 4. **Embeddings**: Voyage AI.
 5. **Transcription**: OpenAI Whisper.
 6. **Default models**: Haiku 5.5 for the cheap tier, Sonnet 5.5 for the strong tier.
+
+## G19: deal health, daily call list, revenue forecast (Fudge Grow)
+
+- Engine (pure, tested): `apps/backend/src/utils/deal-health.js`. Signals: days silent, time in stage vs the org's
+  average (from stage changes in the CRM activity log), overdue deal tasks, close date passed, plus competitor and
+  negative tone found by Fudge AI in recent notes. Forecast = won so far + open pipeline × historical stage win
+  rates, 80% range from Σ value²·p(1−p).
+- Loader + cron: `utils/deal-health-loader.js`; cron `dealCallLists` 08:00 IST (`DEAL_CALL_LIST_CRON=off` to stop)
+  stores each rep's list in `api::crm-call-list` and sends a notification. AI results are cached on `deal.aiHealth`.
+- API: `/api/deal-health/{call-list, call-list/refresh, deals/:id, deals/:id/analyse, forecast, forecast/explain}`.
+  Plan features: `crm.deal_health` (Pro) and `crm.forecast` (Business). Templates `grow.deal_signals`,
+  `grow.forecast_explain` (`packages/ai/src/templates/grow-deals.js`). With AI off, reasons and talking points
+  are deterministic.
+- Tests: `apps/backend npm run test:deal-health`.

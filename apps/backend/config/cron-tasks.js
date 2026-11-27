@@ -118,4 +118,18 @@ module.exports = {
     },
     options: { rule: process.env.WEEKLY_STATUS_CRON_RULE || '0 16 * * 5', tz: 'Asia/Kolkata' },
   },
+  /** G19: 08:00 IST, each rep's "who to call and what to say" list (SaaS + crm.deal_health plan feature). */
+  dealCallLists: {
+    task: async ({ strapi }) => {
+      if (!isSaas() || String(process.env.DEAL_CALL_LIST_CRON || '').toLowerCase() === 'off') return;
+      try {
+        const { runDailyCallLists } = require('../src/utils/deal-health-loader');
+        const c = await runDailyCallLists(strapi);
+        strapi.log.info(`[cron] deal call lists: ${c.reps} reps in ${c.orgs} orgs, ${c.ai} deals read by AI, ${c.failed} failed`);
+      } catch (e) {
+        strapi.log.error(`[cron] deal call lists failed: ${e?.message || e}`);
+      }
+    },
+    options: { rule: process.env.DEAL_CALL_LIST_CRON_RULE || '0 8 * * *', tz: 'Asia/Kolkata' },
+  },
 };
