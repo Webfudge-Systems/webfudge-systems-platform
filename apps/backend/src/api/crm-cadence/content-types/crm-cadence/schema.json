@@ -1,0 +1,20 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_cadences",
+  "info": {
+    "singularName": "crm-cadence",
+    "pluralName": "crm-cadences",
+    "displayName": "CRM Cadence",
+    "description": "Multi-step outreach sequence (call / task / email / WhatsApp by day) that stops on reply (G14)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "name": { "type": "string", "required": true },
+    "description": { "type": "text" },
+    "status": { "type": "enumeration", "enum": ["active", "paused", "archived"], "default": "active" },
+    "steps": { "type": "json" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" },
+    "createdByUser": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" }
+  }
+}

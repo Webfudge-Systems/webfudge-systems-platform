@@ -118,4 +118,18 @@ module.exports = {
     },
     options: { rule: process.env.WEEKLY_STATUS_CRON_RULE || '0 16 * * 5', tz: 'Asia/Kolkata' },
   },
+  /** G14: run due cadence steps every 15 minutes (SaaS only); stops enrolments whose lead replied. */
+  crmCadences: {
+    task: async ({ strapi }) => {
+      if (!isSaas()) return;
+      try {
+        const { processDueEnrollments } = require('../src/utils/cadences');
+        const n = await processDueEnrollments(strapi);
+        if (n) strapi.log.info(`[cron] cadences: ${n} enrolment(s) processed`);
+      } catch (e) {
+        strapi.log.error(`[cron] cadences failed: ${e?.message || e}`);
+      }
+    },
+    options: { rule: process.env.CRM_CADENCE_CRON_RULE || '*/15 * * * *' },
+  },
 };
