@@ -3,6 +3,7 @@
 import { AiApprovalQueue, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import CRMPageHeader from '../../../components/CRMPageHeader';
 import strapiClient from '../../../lib/strapiClient';
+import AiCaptureSettings from '../../../components/AiCaptureSettings'; // G10
 
 const BREADCRUMB = [
   { label: 'Settings', href: '/settings' },
@@ -18,7 +19,10 @@ export default function AiApprovalsPage() {
     <div className="p-4 md:p-6 space-y-6">
       <CRMPageHeader title="AI approvals" subtitle="Review what Fudge AI drafted before anything is sent to a lead." breadcrumb={BREADCRUMB} />
       {IS_SAAS_PLATFORM ? (
-        <AiApprovalQueue request={request} app="crm" />
+        <>
+          <AiCaptureSettings />
+          <AiApprovalQueue request={request} app="crm" />
+        </>
       ) : (
         <p className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600">Fudge AI is available on Webfudge SaaS.</p>
       )}

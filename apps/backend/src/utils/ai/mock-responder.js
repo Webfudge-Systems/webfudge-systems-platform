@@ -18,6 +18,8 @@ function mockRespond(req) {
   const user = JSON.stringify(req.messages || []);
   const w19 = require('./mock-work-risk').mockWorkRisk(req); // W19 risk radar + scope watcher
   if (w19) return w19;
+  const g10 = require('./mock-capture').mockCapture(req); // G10 auto-capture
+  if (g10) return g10;
   if (props.score && props.reasons) {
     const hasEmail = /\\"email\\"/.test(user);
     const hasPhone = /\\"phone\\"/.test(user);

@@ -94,3 +94,4 @@ require('./work');
 require('./work-ask');
 require('./work-triage');
 require('./work-risk'); // W19 risk radar + scope-creep watcher
+require('./grow-capture'); // G10 AI auto-capture

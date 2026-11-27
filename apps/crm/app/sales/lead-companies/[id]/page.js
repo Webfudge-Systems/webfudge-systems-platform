@@ -69,6 +69,7 @@ import {
 import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
+import AiCaptureCard from '../../../../components/AiCaptureCard'; // G10
 import DuplicateWarning from '../../../../components/DuplicateWarning';
 import { useLeadSourceLabel } from '../../../../lib/leadSources';
 
@@ -1801,6 +1802,15 @@ export default function LeadCompanyDetailPage() {
                   phone={lead?.phone}
                   excludeId={lead?.id}
                   allowMerge={canManageCRM('leads')}
+                />
+                <AiCaptureCard
+                  subjectType="lead_company"
+                  subjectId={lead?.id}
+                  canEdit={canEditLeadCompany}
+                  onApplied={async () => {
+                    const r = await leadCompanyService.getOne(id);
+                    if (r?.data) setLead(r.data);
+                  }}
                 />
                 <CustomFieldsCard
                   entity="lead"

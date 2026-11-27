@@ -157,6 +157,7 @@ function getActionRunner(strapi) {
   });
   registerBuiltInActions(runner, strapi);
   require('./work-triage').registerWorkTriageActions(runner, strapi); // W20
+  require('./auto-capture').registerCaptureActions(runner, strapi); // G10
   return runner;
 }
 

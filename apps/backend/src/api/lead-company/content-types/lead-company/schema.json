@@ -88,6 +88,15 @@
     "notes": {
       "type": "text"
     },
+    "expectedTimeline": {
+      "type": "string"
+    },
+    "requirementSummary": {
+      "type": "text"
+    },
+    "aiCapture": {
+      "type": "json"
+    },
     "nextConnectDate": {
       "type": "date"
     },
