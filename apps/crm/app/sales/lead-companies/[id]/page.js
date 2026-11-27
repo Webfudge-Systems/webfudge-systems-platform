@@ -49,6 +49,7 @@ import {
   useIndustrySelectOptions,
   TableCellNextConnect,
 } from '@webfudge/ui';
+import DraftWithAiButton from '../../../../components/ai/DraftWithAiButton';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import { InlineEditableNextConnect } from '../../../../components/InlineEditableNextConnect';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
@@ -69,7 +70,9 @@ import {
 import { fetchStoredIndustriesForCrm } from '../../../../lib/industryOptionsLoader';
 import { canEditCRMRecord, canManageCRM } from '../../../../lib/rbac';
 import CustomFieldsCard from '../../../../components/customFields/CustomFieldsCard';
+import LeadScoreCard from '../../../../components/leads/LeadScoreCard';
 import DuplicateWarning from '../../../../components/DuplicateWarning';
+import LeadCadencePanel from '../../../../components/LeadCadencePanel';
 import { useLeadSourceLabel } from '../../../../lib/leadSources';
 
 function formatCurrency(value) {
@@ -1447,6 +1450,7 @@ export default function LeadCompanyDetailPage() {
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <DraftWithAiButton recordType="lead" recordId={id} defaultTo={lead?.email} />
           {isAlreadyConverted ? (
             lead?.convertedAccount?.id ? (
               <Link
@@ -1811,6 +1815,7 @@ export default function LeadCompanyDetailPage() {
                     setLead((prev) => (prev ? { ...prev, customFields: res?.data?.customFields ?? customFields } : prev));
                   }}
                 />
+                <LeadCadencePanel leadId={lead?.id} canEdit={canEditLeadCompany} />
 
                 <Card variant="elevated" className="rounded-xl">
                   <div className="mb-6">
@@ -1976,6 +1981,8 @@ export default function LeadCompanyDetailPage() {
                     ) : null}
                   </div>
                 </Card>
+
+                <LeadScoreCard lead={lead} onUpdated={(patch) => setLead((prev) => (prev ? { ...prev, ...patch } : prev))} />
 
                 <Card variant="elevated" className="rounded-xl">
                   <div className="mb-4 flex flex-wrap items-start justify-between gap-2">

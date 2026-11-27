@@ -28,6 +28,9 @@ const SKIP_PREFIXES = [
   '/api/risk-radar', // W19: computed live from tasks, sprints and capacity
   '/api/scope-watch', // W19: SOW + change-order status must be live
   '/api/project-docs', // W8 docs: autosaves every few seconds; must not flush the whole org cache each time
+  '/api/booking', // G14 public booking pages: live free slots, no user id
+  '/api/crm-cadences', // G14 cadences: enrolment state changes from the cron
+  '/api/crm-booking-pages', // G14 booking page settings
   '/admin',
   '/_health',
 ];

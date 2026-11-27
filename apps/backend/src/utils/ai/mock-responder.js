@@ -20,6 +20,8 @@ function mockRespond(req) {
   if (w19) return w19;
   const g19 = require('./mock-grow-deals').mockGrowDeals(req); // G19 deal health + forecast
   if (g19) return g19;
+  const g20 = require('./mock-grow-ask').mockGrowAsk(req); // G20 Ask Grow
+  if (g20) return g20;
   if (props.score && props.reasons) {
     const hasEmail = /\\"email\\"/.test(user);
     const hasPhone = /\\"phone\\"/.test(user);

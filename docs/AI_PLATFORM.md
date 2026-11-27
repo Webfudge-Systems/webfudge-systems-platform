@@ -212,3 +212,10 @@ All of these stay configurable.
   `grow.forecast_explain` (`packages/ai/src/templates/grow-deals.js`). With AI off, reasons and talking points
   are deterministic.
 - Tests: `apps/backend npm run test:deal-health`.
+
+## Ask Grow + Draft anything (G20)
+
+- **Ask Grow** (Cmd+K in Fudge Grow, SaaS): type a question with 3+ words, press Ctrl/Cmd+Enter. `POST /api/ask-grow/query` → template `grow.ask_filter` returns one lead filter; `utils/ai/ask-grow.js` keeps whitelisted fields only (city, source, status, owner, industry, text, period / createdFrom-To, scoreMin/Max, notContacted), compiles it to org-pinned Strapi filters and runs it only for users with `crm.leads` read. Score uses `aiScore` when the field exists, else the manual `score`. "Not contacted" = no `firstContactedAt` and no linked meeting.
+- "Open in the list" goes to `/sales/lead-companies?ai=<filter>`; the list calls `POST /api/ask-grow/run` (no AI, no credits) and restricts GET /lead-companies to the returned ids.
+- **Draft anything**: "Draft with AI" on lead / deal / contact pages → `POST /api/ask-grow/draft` (`grow.draft_message`, metered as `grow.draft`), in the org brand tone (`GET|PUT /api/ask-grow/brand-tone`, crm-org-setting `brand_tone`; PUT needs CRM settings manage). The draft opens in the email composer (mailto); nothing is sent by the server. WhatsApp shows as needing Fudge Connect.
+- Tests: `tests/ai/ask-grow.test.js` (pure) and `tests/ai/ask-grow.api.test.js` (in-process Strapi), both in `npm run test:ai`.
