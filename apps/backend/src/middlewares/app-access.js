@@ -74,6 +74,8 @@ const RESOURCE_APPS = {
   'project-docs': ['pm'],
   // Approvals & proofing (W9); the client side lives under /api/portal/*
   proofs: ['pm'],
+  // Ask Grow + Draft anything (G20)
+  'ask-grow': ['crm'],
   // Cadences + booking page settings (G14); the public /api/booking endpoints check the org's access themselves
   'crm-cadences': ['crm'],
   'crm-booking-pages': ['crm'],

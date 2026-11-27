@@ -69,6 +69,7 @@ import { LeadNextConnectCell } from '../../../components/LeadNextConnectCell';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import leadCompanyService from '../../../lib/api/leadCompanyService';
+import { useAskGrowFilter, withAskGrowIds, AskGrowFilterBanner } from '../../../components/ai/useAskGrowFilter';
 import strapiClient from '../../../lib/strapiClient';
 import crmActivityService from '../../../lib/api/crmActivityService';
 import { canEditCRMRecord, canManageCRM, currentStrapiUserId, isCrmManagerOrAdmin } from '../../../lib/rbac';
@@ -463,6 +464,8 @@ export default function LeadCompaniesPage() {
     }
   }, [canShowMembersView, leadViewMode, handleLeadViewChange]);
 
+  const askGrowFilter = useAskGrowFilter(); // G20: ?ai= filter from Cmd+K
+  const askGrowIds = askGrowFilter.ids;
   const fetchLeadCompanies = useCallback(async () => {
     try {
       setLoading(true);
@@ -471,7 +474,7 @@ export default function LeadCompaniesPage() {
       // Status / primaryContact sort, kanban, and members need the full filtered set.
       // Backend caps pageSize at 500 — page through with fetchAll instead of one oversized request.
       const needAllRows = isBulkView || fetchAllForClientSort;
-      const params = leadCompanyService.buildListParams({
+      const params = withAskGrowIds(leadCompanyService.buildListParams({
         page: needAllRows ? 1 : currentPage,
         pageSize: needAllRows ? 500 : itemsPerPage,
         activeTab,
@@ -479,7 +482,7 @@ export default function LeadCompaniesPage() {
         appliedFilters,
         sort: sortApiParam,
         assignedToUserId: activeTab === 'my' ? currentStrapiUserId() : null,
-      });
+      }), askGrowIds);
 
       if (needAllRows) {
         const rows = await leadCompanyService.fetchAll(params);
@@ -510,6 +513,7 @@ export default function LeadCompaniesPage() {
     itemsPerPage,
     leadViewMode,
     usesClientSideSort,
+    askGrowIds,
   ]);
 
   useEffect(() => {
@@ -1538,7 +1542,7 @@ export default function LeadCompaniesPage() {
           }))}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          afterTabs={<div className="flex items-center gap-2">{leadsViewSwitcher}{savedViewsMenu}</div>}
+          afterTabs={<div className="flex items-center gap-2">{leadsViewSwitcher}{savedViewsMenu}<AskGrowFilterBanner filter={askGrowFilter} /></div>}
           showSearch={true}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
