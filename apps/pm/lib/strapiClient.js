@@ -41,12 +41,14 @@ class StrapiClient {
     const token = this.getToken();
     const orgId = this.getCurrentOrgId();
     const { headers: optionHeaders, body, ...rest } = options;
+    // FormData (file uploads) must let the browser set the multipart boundary.
+    const sendsFormData = typeof FormData !== 'undefined' && body instanceof FormData;
 
     const config = {
       method: 'GET',
       ...rest,
       headers: {
-        'Content-Type': 'application/json',
+        ...(sendsFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token && { Authorization: `Bearer ${token}` }),
         ...(orgId && { 'X-Organization-Id': orgId }),
         ...(optionHeaders && typeof optionHeaders === 'object' ? optionHeaders : {}),
