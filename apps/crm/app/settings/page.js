@@ -64,6 +64,17 @@ const SECTIONS = [
         },
       ]
     : []),
+  // G22: industry starter packs (SaaS only). Reuses the GitBranch icon already imported.
+  ...(IS_SAAS_PLATFORM
+    ? [
+        {
+          href: '/settings/vertical-packs',
+          icon: GitBranch,
+          title: 'Vertical packs',
+          description: 'One-click setups for real estate, EV, jewellery, education and clinics: pipeline, statuses, fields and views.',
+        },
+      ]
+    : []),
   {
     href: '/settings/products',
     icon: Package,
