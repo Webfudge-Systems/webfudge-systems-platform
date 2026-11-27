@@ -19,7 +19,7 @@ export default function QuoteItemsCard({ proposal, onConverted }) {
   if (!lines.length) return null;
   const t = proposal.quoteTotals || {};
   const invoiceId = proposal.convertedInvoice?.id ?? proposal.convertedInvoice ?? null;
-  const canConvert = canWriteCRM('client_invoices');
+  const canConvert = canWriteCRM('client_invoices') && !['pending', 'rejected'].includes(proposal.approval?.state);
 
   const convert = async () => {
     setBusy(true);

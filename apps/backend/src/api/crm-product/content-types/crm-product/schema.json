@@ -19,6 +19,8 @@
     "unitPrice": { "type": "decimal", "default": 0 },
     "gstRate": { "type": "decimal", "default": 18 },
     "active": { "type": "boolean", "default": true },
+    "bundleItems": { "type": "json" },
+    "maxDiscountPct": { "type": "decimal" },
     "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
   }
 }

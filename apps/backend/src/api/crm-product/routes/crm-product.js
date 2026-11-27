@@ -16,5 +16,7 @@ module.exports = {
     { method: 'PUT', path: '/crm-price-books/:id', handler: `${UID}.updatePriceBook`, config: authFalse },
     { method: 'DELETE', path: '/crm-price-books/:id', handler: `${UID}.deletePriceBook`, config: authFalse },
     { method: 'POST', path: '/crm-quotes/calculate', handler: `${UID}.calculate`, config: authFalse },
+    { method: 'GET', path: '/crm-quote-policy', handler: `${UID}.getQuotePolicy`, config: authFalse },
+    { method: 'PUT', path: '/crm-quote-policy', handler: `${UID}.updateQuotePolicy`, config: authFalse },
   ],
 };

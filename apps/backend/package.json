@@ -29,7 +29,8 @@
     "test:smart-triage": "node --test --test-concurrency=1 \"tests/smart-triage/*.test.js\"",
     "test:risk-radar": "node --test --test-concurrency=1 tests/risk-radar.test.js tests/scope-watch.test.js",
     "test:goals": "node --test --test-concurrency=1 tests/goals.test.js",
-    "test:docs": "node --test --test-concurrency=1 tests/project-docs.test.js"
+    "test:docs": "node --test --test-concurrency=1 tests/project-docs.test.js",
+    "test:cpq": "node --test tests/cpq.test.js tests/cpq-quote.test.js"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",

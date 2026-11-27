@@ -22,15 +22,51 @@ function Banner({ tone, children }) {
   );
 }
 
-function ProductForm({ initial, onSave, onCancel, busy }) {
-  const [d, setD] = useState({ ...EMPTY, ...initial, unitPrice: initial?.unitPrice ?? '' });
+/** G27: components of a bundle; optional ones are add-ons the rep can tick on the quote. */
+function BundleEditor({ items, onChange, catalogue, selfId }) {
+  const options = (catalogue || []).filter((p) => p.id !== selfId && !(p.bundleItems || []).length);
+  const update = (i, patch) => onChange(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  return (
+    <div className="space-y-2 text-sm md:col-span-6">
+      <span className="block font-medium text-gray-700">Bundle contents (optional)</span>
+      {items.map((it, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-2">
+          <select className={`${inputClass} max-w-xs`} value={it.productId} onChange={(e) => update(i, { productId: Number(e.target.value) })}>
+            {options.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <input className={`${inputClass} w-20`} value={it.qty} onChange={(e) => update(i, { qty: e.target.value })} inputMode="numeric" aria-label="Quantity" />
+          <label className="flex items-center gap-1">
+            <input type="checkbox" checked={Boolean(it.optional)} onChange={(e) => update(i, { optional: e.target.checked })} /> Optional add-on
+          </label>
+          <button type="button" className="text-red-600 hover:underline" onClick={() => onChange(items.filter((_, j) => j !== i))}>Remove</button>
+        </div>
+      ))}
+      {options.length ? (
+        <button type="button" className="font-semibold text-orange-700 hover:underline" onClick={() => onChange([...items, { productId: options[0].id, qty: 1, optional: false }])}>
+          + Add product to bundle
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ProductForm({ initial, onSave, onCancel, busy, catalogue }) {
+  const [d, setD] = useState({ ...EMPTY, ...initial, unitPrice: initial?.unitPrice ?? '', maxDiscountPct: initial?.maxDiscountPct ?? '', bundleItems: initial?.bundleItems || [] });
   const set = (k, v) => setD((x) => ({ ...x, [k]: v }));
   return (
     <form
       className="grid gap-3 md:grid-cols-6"
       onSubmit={(e) => {
         e.preventDefault();
-        onSave({ ...d, unitPrice: Number(d.unitPrice) || 0, gstRate: Number(d.gstRate) });
+        onSave({
+          ...d,
+          unitPrice: Number(d.unitPrice) || 0,
+          gstRate: Number(d.gstRate),
+          maxDiscountPct: String(d.maxDiscountPct).trim() === '' ? null : Number(d.maxDiscountPct),
+          bundleItems: d.bundleItems.map((it) => ({ ...it, qty: Number(it.qty) || 1 })),
+        });
       }}
     >
       <label className="text-sm md:col-span-2">
@@ -70,11 +106,16 @@ function ProductForm({ initial, onSave, onCancel, busy }) {
         <span className="mb-1 block font-medium text-gray-700">SKU (optional)</span>
         <input className={inputClass} value={d.sku} onChange={(e) => set('sku', e.target.value)} />
       </label>
-      <label className="text-sm md:col-span-3">
+      <label className="text-sm">
+        <span className="mb-1 block font-medium text-gray-700">Max discount % (optional)</span>
+        <input className={inputClass} value={d.maxDiscountPct} onChange={(e) => set('maxDiscountPct', e.target.value)} inputMode="decimal" placeholder="Org limit" />
+      </label>
+      <label className="text-sm md:col-span-2">
         <span className="mb-1 block font-medium text-gray-700">Description (optional)</span>
         <input className={inputClass} value={d.description} onChange={(e) => set('description', e.target.value)} />
       </label>
-      <div className="flex items-end justify-end gap-2">
+      <BundleEditor items={d.bundleItems} onChange={(v) => set('bundleItems', v)} catalogue={catalogue} selfId={initial?.id} />
+      <div className="flex items-end justify-end gap-2 md:col-span-6">
         {onCancel ? (
           <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
             Cancel
@@ -99,12 +140,15 @@ export default function ProductsSettingsPage() {
   const [bookId, setBookId] = useState(null);
   const [bookPrices, setBookPrices] = useState({});
   const [newBook, setNewBook] = useState('');
+  const [orgMax, setOrgMax] = useState('');
+  const [bookMax, setBookMax] = useState('');
 
   const load = useCallback(async () => {
     try {
-      const [p, b] = await Promise.all([productService.list(), productService.listPriceBooks()]);
+      const [p, b, policy] = await Promise.all([productService.list(), productService.listPriceBooks(), productService.getQuotePolicy()]);
       setProducts(p);
       setBooks(b);
+      setOrgMax(policy?.maxDiscountPct == null ? '' : String(policy.maxDiscountPct));
     } catch (e) {
       setProducts([]);
       setMessage({ tone: 'error', text: e?.message || 'Could not load the catalogue' });
@@ -118,6 +162,7 @@ export default function ProductsSettingsPage() {
   const book = books.find((b) => b.id === bookId) || null;
   useEffect(() => {
     setBookPrices(Object.fromEntries(Object.entries(book?.prices || {}).map(([k, v]) => [k, String(v)])));
+    setBookMax(book?.maxDiscountPct == null ? '' : String(book.maxDiscountPct));
   }, [book]);
 
   const run = async (fn, okText) => {
@@ -155,6 +200,22 @@ export default function ProductsSettingsPage() {
         </div>
       ) : (
         <>
+          <Card className="space-y-3 border border-gray-200 p-5">
+            <h2 className="text-base font-semibold text-gray-900">Discount approval</h2>
+            <p className="text-sm text-gray-600">Quotes with a bigger discount than this need a CRM manager or admin to approve them before they can be sent. Leave blank for no limit. A product or price book can set its own limit.</p>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-sm">
+                <span className="mb-1 block font-medium text-gray-700">Max discount %</span>
+                <input className={`${inputClass} w-32`} value={orgMax} onChange={(e) => setOrgMax(e.target.value)} inputMode="decimal" disabled={!canEdit} placeholder="No limit" />
+              </label>
+              {canEdit ? (
+                <Button onClick={() => run(() => productService.updateQuotePolicy(orgMax.trim() === '' ? null : Number(orgMax)), 'Discount limit saved.')} disabled={busy}>
+                  Save limit
+                </Button>
+              ) : null}
+            </div>
+          </Card>
+
           <Card className="space-y-4 border border-gray-200 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-base font-semibold text-gray-900">Catalogue ({products.length})</h2>
@@ -168,6 +229,7 @@ export default function ProductsSettingsPage() {
             {adding ? (
               <div className="rounded-lg border border-orange-200 bg-orange-50/40 p-4">
                 <ProductForm
+                  catalogue={products}
                   busy={busy}
                   onCancel={() => setAdding(false)}
                   onSave={async (d) => {
@@ -196,6 +258,7 @@ export default function ProductsSettingsPage() {
                         <tr key={p.id}>
                           <td colSpan={7} className="bg-orange-50/40 p-3">
                             <ProductForm
+                              catalogue={products}
                               initial={p}
                               busy={busy}
                               onCancel={() => setEditing(null)}
@@ -320,7 +383,11 @@ export default function ProductsSettingsPage() {
                   </table>
                 </div>
                 {canEdit ? (
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <div className="flex flex-wrap items-end justify-end gap-2">
+                    <label className="mr-auto text-sm">
+                      <span className="mb-1 block font-medium text-gray-700">Max discount % for this book</span>
+                      <input className={`${inputClass} w-32`} value={bookMax} onChange={(e) => setBookMax(e.target.value)} inputMode="decimal" placeholder="Org limit" />
+                    </label>
                     <Button variant="outline" onClick={() => run(() => productService.updatePriceBook(book.id, { isDefault: !book.isDefault }), book.isDefault ? 'No longer the default.' : `${book.name} is now the default price book.`)} disabled={busy}>
                       {book.isDefault ? 'Remove default' : 'Make default'}
                     </Button>
@@ -337,6 +404,7 @@ export default function ProductsSettingsPage() {
                           () =>
                             productService.updatePriceBook(book.id, {
                               prices: Object.fromEntries(Object.entries(bookPrices).filter(([, v]) => String(v).trim() !== '').map(([k, v]) => [k, Number(v)])),
+                              maxDiscountPct: bookMax.trim() === '' ? null : Number(bookMax),
                             }),
                           'Prices saved.'
                         )
