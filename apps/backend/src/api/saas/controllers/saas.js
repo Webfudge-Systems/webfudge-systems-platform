@@ -13,6 +13,8 @@ const { TRIAL_DAYS, DAY, getOrgAccess, invalidateOrgAccess } = require('../../..
 const { requireMember, memberCount, addMember, relationId, seatLimitProblem, MEMBERSHIP_UID } = require('../../../utils/saas-org');
 const { accountsBillingUrl, FEATURES, CODE_TIER, requireFeature } = require('../../../utils/saas-plans');
 const { sessionPayload, userPayload, normalizeEmail, isEmail, passwordProblem } = require('../../../utils/auth-session');
+const { listPacks, getPack } = require('../../../utils/vertical-packs');
+const { applyVerticalPack } = require('../../../utils/vertical-pack-apply');
 
 const ORG_UID = 'api::organization.organization';
 const APP_UID = 'api::app.app';
@@ -140,7 +142,7 @@ async function acceptInvite(inv, user) {
 module.exports = {
   async catalog(ctx) {
     if (!ensureSaas(ctx)) return;
-    ctx.send({ apps: await loadCatalog(), trialDays: TRIAL_DAYS });
+    ctx.send({ apps: await loadCatalog(), trialDays: TRIAL_DAYS, verticalPacks: listPacks() });
   },
 
   async home(ctx) {
@@ -205,7 +207,17 @@ module.exports = {
       },
     });
     await createOrganizationOwnerMembership(strapi, { userId: user.id, organizationId: org.id });
-    ctx.send({ organization: { id: org.id, name: org.name, slug: org.slug } });
+    // G22: optional industry pack (pipelines, fields, statuses, views). Never blocks sign-up.
+    let verticalPack = null;
+    const packKey = ctx.request.body?.verticalPack;
+    if (packKey && getPack(packKey)) {
+      try {
+        verticalPack = await applyVerticalPack(strapi, { orgId: org.id, userId: user.id, packKey });
+      } catch (err) {
+        strapi.log.warn(`[saas] vertical pack ${packKey} for org ${org.id} failed: ${err.message}`);
+      }
+    }
+    ctx.send({ organization: { id: org.id, name: org.name, slug: org.slug }, verticalPack });
   },
 
   /** Starts a 14-day trial for each requested app the organization doesn't have yet. */

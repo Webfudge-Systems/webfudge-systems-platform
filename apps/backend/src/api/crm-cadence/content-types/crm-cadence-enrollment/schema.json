@@ -1,0 +1,27 @@
+{
+  "kind": "collectionType",
+  "collectionName": "crm_cadence_enrollments",
+  "info": {
+    "singularName": "crm-cadence-enrollment",
+    "pluralName": "crm-cadence-enrollments",
+    "displayName": "CRM Cadence Enrollment",
+    "description": "A lead running through a cadence; steps run from the cron until done or the lead replies (G14)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "status": { "type": "enumeration", "enum": ["active", "completed", "stopped"], "default": "active" },
+    "stopReason": { "type": "string" },
+    "enrolledAt": { "type": "datetime" },
+    "nextStepIndex": { "type": "integer", "default": 0 },
+    "nextRunAt": { "type": "datetime" },
+    "stoppedAt": { "type": "datetime" },
+    "history": { "type": "json" },
+    "cadence": { "type": "relation", "relation": "manyToOne", "target": "api::crm-cadence.crm-cadence" },
+    "leadCompany": { "type": "relation", "relation": "manyToOne", "target": "api::lead-company.lead-company" },
+    "contact": { "type": "relation", "relation": "manyToOne", "target": "api::contact.contact" },
+    "owner": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "enrolledBy": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}
