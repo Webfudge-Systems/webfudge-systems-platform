@@ -49,6 +49,7 @@ const RESOURCE_APPS = {
   portfolio: ['pm'],
   retainers: ['pm'],
   sprints: ['pm'],
+  'smart-triage': ['pm'], // W20 smart triage + meeting -> tasks
   // Client portal controls (W10). The client-facing /api/portal/* has no team user and checks the
   // portal session and plan feature itself.
   'client-portal': ['pm'],

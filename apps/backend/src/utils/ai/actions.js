@@ -156,6 +156,7 @@ function getActionRunner(strapi) {
     logger: strapi.log,
   });
   registerBuiltInActions(runner, strapi);
+  require('./work-triage').registerWorkTriageActions(runner, strapi); // W20
   return runner;
 }
 

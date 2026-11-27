@@ -25,6 +25,7 @@ import {
   PieChart,
   Clock,
   Repeat,
+  Sparkles,
   Megaphone,
 } from 'lucide-react'
 import projectService from '../lib/api/projectService'
@@ -34,6 +35,7 @@ import { canCreateProjectsInPm } from '../lib/pmOrgRoles'
 import { usePmSidebarBadges } from '../lib/usePmSidebarBadges'
 import { PM_SITE } from '../lib/site'
 import { isHiddenInSaas } from '../lib/saasHiddenRoutes'
+import { IS_SAAS_PLATFORM } from '@webfudge/ui'
 import useWorkspaces from '../lib/useWorkspaces'
 import WorkspaceSwitcher from './WorkspaceSwitcher'
 
@@ -104,6 +106,14 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       href: '/capacity',
     },
     {
+      id: 'triage',
+      module: 'tasks',
+      label: 'Smart triage',
+      icon: Sparkles,
+      href: '/triage',
+      saasOnly: true, // W20: Fudge AI, SaaS only
+    },
+    {
       id: 'inbox',
       module: 'inbox',
       label: 'Inbox',
@@ -172,6 +182,7 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
 
   const visibleNavigationItems = mainNavigationItems.filter((item) => {
     if (isHiddenInSaas(item.href)) return false
+    if (item.saasOnly && !IS_SAAS_PLATFORM) return false
     if (item.id === 'clients') return canReadClientAccounts()
     return canReadPM(item.module)
   })
