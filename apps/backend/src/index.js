@@ -48,6 +48,25 @@ module.exports = {
       console.warn('retainer cron not registered:', e?.message || e);
     }
 
+    // W22: project margin below target alerts (Business plan), hourly; once per project per month.
+    try {
+      strapi.cron.add({
+        marginAlerts: {
+          task: async ({ strapi: s }) => {
+            try {
+              const n = await require('./utils/profitability').checkMarginAlerts(s);
+              if (n) s.log.info(`[cron] margin alerts sent: ${n}`);
+            } catch (e) {
+              s.log.error(`[cron] margin alerts failed: ${e?.message || e}`);
+            }
+          },
+          options: { rule: '5 * * * *' },
+        },
+      });
+    } catch (e) {
+      console.warn('margin alert cron not registered:', e?.message || e);
+    }
+
     if (redis.isRedisConfigured()) {
       const hostHint = (redis.resolveRedisUrl() || '').replace(/:[^:@]+@/, ':****@');
       try {

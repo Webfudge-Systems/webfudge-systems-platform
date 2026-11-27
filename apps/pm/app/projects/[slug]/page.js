@@ -47,6 +47,7 @@ import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
+import ProjectProfitabilityPanel from '../../../components/ProjectProfitabilityPanel';
 import ProjectLinkedGoals from '../../../components/ProjectLinkedGoals';
 import DocsList from '../../../components/docs/DocsList';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
@@ -96,6 +97,7 @@ const DETAIL_TABS = [
   { key: 'docs', label: 'Docs' },
   { key: 'files', label: 'Files' },
   { key: 'client', label: 'Client portal' },
+  { key: 'profitability', label: 'Profitability' }, // W22: admins + managers only
 ];
 
 const headerIconBtnClass =
@@ -237,6 +239,10 @@ export default function ProjectDetailPage() {
     return id != null ? String(id) : '';
   }, [authUser]);
   const [activeTab, setActiveTab] = useState('overview');
+  // W22: margin alerts link to ?tab=profitability
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    if (t && DETAIL_TABS.some((x) => x.key === t)) setActiveTab(t);
   // W8: links like /projects/12?tab=docs open a tab directly
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
@@ -461,7 +467,7 @@ export default function ProjectDetailPage() {
 
   const tabsWithBadges = useMemo(
     () =>
-      DETAIL_TABS.map((tab) => ({
+      DETAIL_TABS.filter((tab) => tab.key !== 'profitability' || pmOrgRoleKind !== 'member').map((tab) => ({
         ...tab,
         badge:
           tab.key === 'tasks'
@@ -472,7 +478,7 @@ export default function ProjectDetailPage() {
                 ? activityCount || undefined
                 : undefined,
       })),
-    [majorProjectTasks.length, activityCount, fileCount]
+    [majorProjectTasks.length, activityCount, fileCount, pmOrgRoleKind]
   );
 
   const handleAddProjectComment = useCallback(
@@ -1251,6 +1257,8 @@ export default function ProjectDetailPage() {
       {activeTab === 'client' && project?.id ? (
         <ProjectClientPortalPanel projectId={project.id} canEdit={canEditThisProject} />
       ) : null}
+
+      {activeTab === 'profitability' && project?.id && pmOrgRoleKind !== 'member' ? <ProjectProfitabilityPanel projectId={project.id} /> : null}
 
       <QuickCreateTaskModal
         isOpen={taskModal.open}

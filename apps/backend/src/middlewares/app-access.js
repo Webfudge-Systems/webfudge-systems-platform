@@ -55,6 +55,8 @@ const RESOURCE_APPS = {
   // Work hierarchy (W1)
   workspaces: ['pm'],
   'task-lists': ['pm'],
+  // Project profitability (W22)
+  profitability: ['pm'],
   // Goals / OKRs (W12). Fudge People will be added here when it reuses goals.
   goals: ['pm'],
   // Project docs (W8)
