@@ -120,3 +120,12 @@ export function postSignInTarget(organizations, next) {
   if (IS_SAAS && (!organizations || organizations.length === 0)) return '/setup/organization'
   return safeNext(next, IS_SAAS ? '/home' : '/')
 }
+
+// G22: optional Fudge Grow starter packs (keys match apps/backend/src/utils/vertical-packs).
+export const VERTICAL_PACKS = [
+  ['real_estate', 'Real estate (site visits)'],
+  ['ev', 'Electric vehicles (test rides)'],
+  ['jewellery', 'Jewellery (store visits)'],
+  ['education', 'Education (admissions)'],
+  ['clinics', 'Clinics (consultations)'],
+]

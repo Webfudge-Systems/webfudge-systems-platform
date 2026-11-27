@@ -69,11 +69,13 @@ import { LeadNextConnectCell } from '../../../components/LeadNextConnectCell';
 import { TableSortDropdown as CrmTableSortDropdown } from '@webfudge/ui';
 import { useCrmTableSort } from '../../../hooks/useCrmTableSort';
 import leadCompanyService from '../../../lib/api/leadCompanyService';
+import { useAskGrowFilter, withAskGrowIds, AskGrowFilterBanner } from '../../../components/ai/useAskGrowFilter';
 import strapiClient from '../../../lib/strapiClient';
 import crmActivityService from '../../../lib/api/crmActivityService';
 import { canEditCRMRecord, canManageCRM, currentStrapiUserId, isCrmManagerOrAdmin } from '../../../lib/rbac';
 import { commentTextFromMeta } from '../../../lib/leadCompanyComments';
 import { primaryContactForLeadCompany } from '../../../lib/leadCompanyContacts';
+import LeadScoreBadge from '../../../components/leads/LeadScoreBadge';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'crm.leadCompanies.tableColumnVisibility';
 const COLUMN_ORDER_STORAGE_KEY = 'crm.leadCompanies.tableColumnOrder';
@@ -133,6 +135,7 @@ const DEFAULT_COLUMN_WIDTHS = {
   linkedIn: 100,
   twitter: 120,
   score: 90,
+  aiScore: 110,
   healthScore: 100,
   notes: 180,
   organization: 160,
@@ -175,6 +178,7 @@ const TOGGLEABLE_COLUMNS = [
   { key: 'linkedIn', label: 'LinkedIn' },
   { key: 'twitter', label: 'Twitter / X' },
   { key: 'score', label: 'Score' },
+  { key: 'aiScore', label: 'AI score' },
   { key: 'healthScore', label: 'Health score' },
   { key: 'notes', label: 'Notes' },
   { key: 'organization', label: 'Organization' },
@@ -248,6 +252,7 @@ export default function LeadCompaniesPage() {
       companyQuery: '',
       dateRange: '',
       valueRange: '',
+      scoreBand: '',
     }),
     []
   );
@@ -459,6 +464,8 @@ export default function LeadCompaniesPage() {
     }
   }, [canShowMembersView, leadViewMode, handleLeadViewChange]);
 
+  const askGrowFilter = useAskGrowFilter(); // G20: ?ai= filter from Cmd+K
+  const askGrowIds = askGrowFilter.ids;
   const fetchLeadCompanies = useCallback(async () => {
     try {
       setLoading(true);
@@ -467,7 +474,7 @@ export default function LeadCompaniesPage() {
       // Status / primaryContact sort, kanban, and members need the full filtered set.
       // Backend caps pageSize at 500 — page through with fetchAll instead of one oversized request.
       const needAllRows = isBulkView || fetchAllForClientSort;
-      const params = leadCompanyService.buildListParams({
+      const params = withAskGrowIds(leadCompanyService.buildListParams({
         page: needAllRows ? 1 : currentPage,
         pageSize: needAllRows ? 500 : itemsPerPage,
         activeTab,
@@ -475,7 +482,7 @@ export default function LeadCompaniesPage() {
         appliedFilters,
         sort: sortApiParam,
         assignedToUserId: activeTab === 'my' ? currentStrapiUserId() : null,
-      });
+      }), askGrowIds);
 
       if (needAllRows) {
         const rows = await leadCompanyService.fetchAll(params);
@@ -506,6 +513,7 @@ export default function LeadCompaniesPage() {
     itemsPerPage,
     leadViewMode,
     usesClientSideSort,
+    askGrowIds,
   ]);
 
   useEffect(() => {
@@ -1307,6 +1315,12 @@ export default function LeadCompaniesPage() {
         ),
       },
       {
+        key: 'aiScore',
+        visibilityKey: 'aiScore',
+        label: 'AI SCORE',
+        render: (_, company) => <LeadScoreBadge lead={company} />,
+      },
+      {
         key: 'healthScore',
         visibilityKey: 'healthScore',
         label: 'HEALTH',
@@ -1528,7 +1542,7 @@ export default function LeadCompaniesPage() {
           }))}
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          afterTabs={<div className="flex items-center gap-2">{leadsViewSwitcher}{savedViewsMenu}</div>}
+          afterTabs={<div className="flex items-center gap-2">{leadsViewSwitcher}{savedViewsMenu}<AskGrowFilterBanner filter={askGrowFilter} /></div>}
           showSearch={true}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -1855,6 +1869,19 @@ export default function LeadCompaniesPage() {
                     {opt.label}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm font-medium text-gray-700">AI score</span>
+              <select
+                value={draftFilters.scoreBand || ''}
+                onChange={(e) => setDraftFilters((prev) => ({ ...prev, scoreBand: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              >
+                <option value="">Any score</option>
+                <option value="hot">Hot (70-100)</option>
+                <option value="warm">Warm (40-69)</option>
+                <option value="cold">Cold (0-39)</option>
               </select>
             </label>
             <label className="space-y-1.5">

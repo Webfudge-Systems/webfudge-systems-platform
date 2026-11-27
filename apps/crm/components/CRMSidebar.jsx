@@ -202,6 +202,10 @@ export default function CRMSidebar({ collapsed = false, onToggle }) {
           icon: BarChart3,
           href: '/sales/deals/pipeline',
         },
+        // G14: cadences (SaaS only)
+        ...(process.env.NEXT_PUBLIC_PLATFORM_MODE === 'saas'
+          ? [{ id: 'cadences', module: 'leads', label: 'Cadences', icon: GitBranch, href: '/sales/cadences' }]
+          : []),
       ],
     },
     {

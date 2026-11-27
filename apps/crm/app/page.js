@@ -3,6 +3,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@webfudge/auth';
 import { ShieldX } from 'lucide-react';
+import { IS_SAAS_PLATFORM, PlanGate } from '@webfudge/ui';
+import DealCallListWidget from '../components/dashboard/DealCallListWidget';
+import RevenueForecastWidget from '../components/dashboard/RevenueForecastWidget';
 import CRMPageHeader from '../components/CRMPageHeader';
 import {
   DashboardViewSwitcher,
@@ -86,6 +89,21 @@ export default function DashboardPage() {
         searchPlaceholder="Search anything..."
         actions={viewSwitcher}
       />
+
+      {/* G19 (SaaS): daily call list for reps; revenue forecast on the sales and manager views. */}
+      {IS_SAAS_PLATFORM && canReadCRM('deals') && activeView === DASHBOARD_VIEW_IDS.PERSONAL && (
+        <PlanGate feature="crm.deal_health" compact>
+          <DealCallListWidget />
+        </PlanGate>
+      )}
+      {IS_SAAS_PLATFORM && canReadCRM('deals') && activeView !== DASHBOARD_VIEW_IDS.PERSONAL && (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <PlanGate feature="crm.deal_health" compact>
+            <DealCallListWidget />
+          </PlanGate>
+          <RevenueForecastWidget />
+        </div>
+      )}
 
       {activeView === DASHBOARD_VIEW_IDS.PERSONAL && (
         <PersonalDashboardView canViewLeads={canViewLeads} canViewMeetings={canViewMeetings} />

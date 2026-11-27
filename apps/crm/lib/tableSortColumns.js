@@ -11,6 +11,7 @@ export const LEAD_COMPANY_SORT_COLUMNS = [
   { key: 'type', label: 'Type' },
   { key: 'industry', label: 'Industry' },
   { key: 'score', label: 'Score' },
+  { key: 'aiScore', label: 'AI score' },
   { key: 'healthScore', label: 'Health score' },
   { key: 'city', label: 'City' },
   { key: 'country', label: 'Country' },

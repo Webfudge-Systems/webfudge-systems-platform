@@ -100,6 +100,13 @@ export function buildLeadCompanyListParams({
   const dealValue = valueRangeToDealValueFilter(f.valueRange);
   if (dealValue) params['filters[dealValue]'] = dealValue;
 
+  // G11: computed lead score band (hot 70+, warm 40-69, cold <40).
+  const band = { hot: [70, 100], warm: [40, 69], cold: [0, 39] }[f.scoreBand];
+  if (band) {
+    params['filters[aiScore][$gte]'] = band[0];
+    params['filters[aiScore][$lte]'] = band[1];
+  }
+
   return params;
 }
 
@@ -245,6 +252,12 @@ export default {
    * POST /lead-companies/:id/convert
    * Returns { data: { leadCompany, clientAccount } }
    */
+  /** G11: recalculate the lead score now (rules + Fudge AI when available). */
+  async rescore(id, { ai } = {}) {
+    const response = await strapiClient.post(`${ENDPOINT}/${id}/rescore`, ai === false ? { ai: false } : {});
+    return response?.data ?? response;
+  },
+
   async convertToClient(id, options = {}) {
     const body = {};
     if (options?.clientAccountId != null) {
