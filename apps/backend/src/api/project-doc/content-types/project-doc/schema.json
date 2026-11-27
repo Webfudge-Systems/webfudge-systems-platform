@@ -1,0 +1,66 @@
+{
+  "kind": "collectionType",
+  "collectionName": "project_docs",
+  "info": {
+    "singularName": "project-doc",
+    "pluralName": "project-docs",
+    "displayName": "Project Doc",
+    "description": "Rich-text docs (briefs, SOPs, meeting notes) in a Work project or workspace (W8)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "docType": {
+      "type": "enumeration",
+      "enum": ["brief", "sop", "meeting_notes", "wiki", "other"],
+      "default": "other"
+    },
+    "content": {
+      "type": "json"
+    },
+    "contentText": {
+      "type": "text"
+    },
+    "mentionedUserIds": {
+      "type": "json"
+    },
+    "versionCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "lastSnapshotAt": {
+      "type": "datetime"
+    },
+    "organization": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::organization.organization"
+    },
+    "project": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::project.project"
+    },
+    "workspace": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::workspace.workspace"
+    },
+    "author": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "lastEditedBy": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
