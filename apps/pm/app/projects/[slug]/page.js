@@ -47,6 +47,7 @@ import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
+import ProjectIntakePanel from '../../../components/ProjectIntakePanel';
 import ProjectRiskScopeTab from '../../../components/ProjectRiskScopeTab';
 import { IS_SAAS_PLATFORM } from '@webfudge/ui';
 import ProjectProfitabilityPanel from '../../../components/ProjectProfitabilityPanel';
@@ -61,7 +62,7 @@ import { MyTasksKanbanBoard } from '../../../components/MyTasksViews';
 import useSavedViews from '../../../lib/useSavedViews';
 import { formatHours } from '../../../lib/api/timeTrackingService';
 import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
-import { InfoRow, InfoSection, SidebarCardTitle } from '@webfudge/ui';
+import { InfoRow, InfoSection, SidebarCardTitle, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import { getProjectStatusMeta, PROJECT_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
 import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions';
@@ -99,6 +100,8 @@ const DETAIL_TABS = [
   { key: 'docs', label: 'Docs' },
   { key: 'files', label: 'Files' },
   { key: 'client', label: 'Client portal' },
+  // W13 intake (forms / email → tasks): SaaS only
+  ...(IS_SAAS_PLATFORM ? [{ key: 'intake', label: 'Intake' }] : []),
   // W19 (SaaS only): risk radar + scope-creep watcher
   ...(IS_SAAS_PLATFORM ? [{ key: 'risk', label: 'Risk & scope' }] : []),
   { key: 'profitability', label: 'Profitability' }, // W22: admins + managers only
@@ -1264,6 +1267,7 @@ export default function ProjectDetailPage() {
         <ProjectClientPortalPanel projectId={project.id} canEdit={canEditThisProject} />
       ) : null}
 
+      {activeTab === 'intake' && project?.id ? <ProjectIntakePanel projectId={project.id} /> : null}
       {activeTab === 'profitability' && project?.id && pmOrgRoleKind !== 'member' ? <ProjectProfitabilityPanel projectId={project.id} /> : null}
 
       <QuickCreateTaskModal
