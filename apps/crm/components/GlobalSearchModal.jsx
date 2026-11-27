@@ -11,7 +11,8 @@ import {
   ArrowRight,
   FileText,
 } from 'lucide-react';
-import { LoadingSpinner, WorkspaceSearchModal } from '@webfudge/ui';
+import { LoadingSpinner, WorkspaceSearchModal, IS_SAAS_PLATFORM } from '@webfudge/ui';
+import AskGrowPanel from './ai/AskGrowPanel';
 import globalSearchService from '../lib/api/globalSearchService';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -314,6 +315,10 @@ export default function GlobalSearchModal({ isOpen, onClose, initialQuery = '' }
         </div>
       }
     >
+      {/* G20 Ask Grow (SaaS): plain-language lead questions, Ctrl/Cmd+Enter */}
+      {IS_SAAS_PLATFORM && trimmed.split(/\s+/).length >= 3 && (
+        <AskGrowPanel question={trimmed} onNavigate={(href) => { router.push(href); onClose(); }} />
+      )}
       {body}
     </WorkspaceSearchModal>
   );

@@ -37,6 +37,7 @@ import {
   ActivitiesTimeline,
   EntityActivityPanel,
 } from '@webfudge/ui';
+import DraftWithAiButton from '../../../../components/ai/DraftWithAiButton';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import contactService from '../../../../lib/api/contactService';
 import { fetchActivityTimeline, fetchContactComments, addContactComment } from '../../../../lib/api/crmActivityService';
@@ -605,6 +606,7 @@ export default function ContactDetailPage() {
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <DraftWithAiButton recordType="contact" recordId={id} defaultTo={contact?.email || ''} />
           {canEditContact ? (
             <Link href={`/sales/contacts/${id}/edit`} className={headerIconBtnClass} title="Edit">
               <Edit className="h-5 w-5" />

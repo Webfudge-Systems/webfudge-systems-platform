@@ -80,6 +80,12 @@
     "notes": {
       "type": "text"
     },
+    "requirementSummary": {
+      "type": "text"
+    },
+    "aiCapture": {
+      "type": "json"
+    },
     "assignedTo": {
       "type": "relation",
       "relation": "manyToOne",
@@ -119,6 +125,9 @@
     },
     "lostReason": {
       "type": "string"
+    },
+    "aiHealth": {
+      "type": "json"
     }
   }
 }

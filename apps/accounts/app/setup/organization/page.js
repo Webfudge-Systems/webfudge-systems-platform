@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@webfudge/auth'
 import AuthLayout from '../../../components/saas/AuthLayout'
 import { Alert, Button, FullPageSpinner, SelectInput, TextInput } from '../../../components/saas/ui'
-import { api, INDUSTRIES, IS_SAAS, SIGNUP_STEPS, TEAM_SIZES } from '../../../lib/saas'
+import { api, INDUSTRIES, IS_SAAS, SIGNUP_STEPS, TEAM_SIZES, VERTICAL_PACKS } from '../../../lib/saas'
 
 export default function SetupOrganizationPage() {
   const router = useRouter()
@@ -13,6 +13,7 @@ export default function SetupOrganizationPage() {
   const [name, setName] = useState('')
   const [industry, setIndustry] = useState('')
   const [size, setSize] = useState('size_1_10')
+  const [verticalPack, setVerticalPack] = useState('')
   const [error, setError] = useState('')
   const [nameError, setNameError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -29,7 +30,7 @@ export default function SetupOrganizationPage() {
     if (name.trim().length < 2) return setNameError('Enter your company or team name.')
     setSubmitting(true)
     try {
-      const { organization } = await api('/api/saas/organizations', { method: 'POST', body: { name: name.trim(), industry, size } })
+      const { organization } = await api('/api/saas/organizations', { method: 'POST', body: { name: name.trim(), industry, size, verticalPack: verticalPack || undefined } })
       await refreshSession()
       switchOrg(organization.id)
       router.push(`/setup/apps?org=${organization.id}`)
@@ -64,6 +65,10 @@ export default function SetupOrganizationPage() {
       <form onSubmit={submit} noValidate className="space-y-5">
         <TextInput label="Organization name" autoComplete="organization" value={name} onChange={(e) => { setName(e.target.value); setNameError('') }} error={nameError} placeholder="Northline Foods" maxLength={80} autoFocus />
         <SelectInput label="Industry" value={industry} onChange={(e) => setIndustry(e.target.value)} options={INDUSTRIES} placeholder="Choose your industry" />
+        <div>
+          <SelectInput label="Fudge Grow starter pack (optional)" value={verticalPack} onChange={(e) => setVerticalPack(e.target.value)} options={VERTICAL_PACKS} placeholder="No pack, start blank" />
+          <p className="mt-1.5 text-sm text-[#5C5C5C]">Sets up a sales pipeline, lead statuses, custom fields and saved views for your business. You can add or change packs later in Grow settings.</p>
+        </div>
         <fieldset>
           <legend className="mb-2 text-sm font-semibold">Team size</legend>
           <div role="radiogroup" className="grid grid-cols-3 gap-2 sm:grid-cols-5">

@@ -115,3 +115,13 @@ test('templates: per-app registry with English, Hindi and Marathi output', () =>
   assert.throws(() => registerTemplate({ key: 'sales.x', user: () => '' }), /must start with/);
   assert.throws(() => registerTemplate({ key: 'grow.lead_score', user: () => '' }), /already registered/);
 });
+
+test('G11: grow.lead_score includes the deterministic baseline and recent activity when given', () => {
+  const t = renderTemplate('grow.lead_score', {
+    lead: { companyName: 'Acme' },
+    signals: { baseline: { score: 62, fit: 30, intent: 32, factors: ['Engaged today.'] }, recentActivity: ['2026-11-27 comment: please send a quote'], meetings: [] },
+  });
+  assert.match(t.prompt, /Baseline score from rules: 62\/100/);
+  assert.match(t.prompt, /please send a quote/);
+  assert.doesNotMatch(renderTemplate('grow.lead_score', { lead: { companyName: 'Acme' } }).prompt, /Baseline score/);
+});

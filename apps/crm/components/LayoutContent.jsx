@@ -32,6 +32,9 @@ export default function LayoutContent({ children }) {
   const moduleKey = crmModuleForPath(pathname)
   const moduleLabel = MODULE_LABELS[moduleKey] || 'This CRM module'
 
+  // G14: public booking pages (/book/<slug>) render without login, sidebar or app shell.
+  if (pathname?.startsWith('/book/')) return children
+
   return (
     <WorkspaceLayoutContent
       sidebar={CRMSidebar}
