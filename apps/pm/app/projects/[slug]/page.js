@@ -47,6 +47,7 @@ import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
+import ProjectLinkedGoals from '../../../components/ProjectLinkedGoals';
 import DocsList from '../../../components/docs/DocsList';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
@@ -1093,6 +1094,7 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
             </Card>
+            {project?.id ? <ProjectLinkedGoals projectId={project.id} /> : null}
           </div>
         </div>
       ) : null}

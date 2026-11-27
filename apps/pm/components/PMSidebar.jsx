@@ -133,6 +133,13 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       href: '/retainers',
     },
     {
+      id: 'goals',
+      module: 'projects',
+      label: 'Goals',
+      icon: Target,
+      href: '/goals',
+    },
+    {
       id: 'clients',
       module: 'client_accounts',
       label: 'Clients',
