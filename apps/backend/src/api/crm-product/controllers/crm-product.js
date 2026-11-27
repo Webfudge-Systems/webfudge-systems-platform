@@ -9,6 +9,15 @@ const { createCoreController } = require('@strapi/strapi').factories;
 const { orgIdFromRelation } = require('../../../utils/content-api-helpers');
 const { canAccess, requireAppSettingsManage } = require('../../../utils/rbac');
 const { GST_RATES, calculate, r2 } = require('../../../utils/gst');
+const { checkDiscount, expandBundleLines, loadPolicy, loadBook, POLICY_UID } = require('../../../utils/cpq-quote');
+
+/** G27: '' / null clears an override; otherwise 0–100. */
+function pctOrNull(v) {
+  if (v === null || v === '' || v === undefined) return { value: null };
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return { error: 'Max discount must be between 0 and 100%' };
+  return { value: r2(n) };
+}
 
 const PRODUCT_UID = 'api::crm-product.crm-product';
 const BOOK_UID = 'api::crm-product.crm-price-book';
@@ -56,6 +65,19 @@ function normalizeProduct(body, creating) {
     data.gstRate = g;
   }
   if (body.active !== undefined) data.active = Boolean(body.active);
+  if (body.maxDiscountPct !== undefined) {
+    const { value, error } = pctOrNull(body.maxDiscountPct);
+    if (error) return { error };
+    data.maxDiscountPct = value;
+  }
+  if (body.bundleItems !== undefined) {
+    const items = Array.isArray(body.bundleItems) ? body.bundleItems : [];
+    data.bundleItems = items
+      .map((i) => ({ productId: Number(i?.productId), qty: Math.max(1, Number(i?.qty) || 1), optional: Boolean(i?.optional) }))
+      .filter((i) => i.productId > 0)
+      .slice(0, 50);
+    if (!data.bundleItems.length) data.bundleItems = null;
+  }
   return { data };
 }
 
@@ -70,9 +92,18 @@ const serializeProduct = (p) => ({
   unitPrice: Number(p.unitPrice) || 0,
   gstRate: Number(p.gstRate) || 0,
   active: p.active !== false,
+  bundleItems: Array.isArray(p.bundleItems) ? p.bundleItems : [],
+  maxDiscountPct: p.maxDiscountPct === null || p.maxDiscountPct === undefined ? null : Number(p.maxDiscountPct),
 });
 
-const serializeBook = (b) => ({ id: b.id, name: b.name, description: b.description || '', isDefault: Boolean(b.isDefault), prices: b.prices || {} });
+const serializeBook = (b) => ({
+  id: b.id,
+  name: b.name,
+  description: b.description || '',
+  isDefault: Boolean(b.isDefault),
+  prices: b.prices || {},
+  maxDiscountPct: b.maxDiscountPct === null || b.maxDiscountPct === undefined ? null : Number(b.maxDiscountPct),
+});
 
 async function loadOwned(strapi, ctx, uid) {
   const id = parseInt(String(ctx.params.id), 10);
@@ -135,6 +166,7 @@ module.exports = createCoreController(PRODUCT_UID, ({ strapi }) => ({
     if (!row) return ctx.notFound('Product not found');
     const { data, error } = normalizeProduct(ctx.request?.body?.data || ctx.request?.body || {}, false);
     if (error) return ctx.badRequest(error);
+    if (data.bundleItems?.some((i) => i.productId === row.id)) return ctx.badRequest("A bundle can't contain itself");
     const entry = await strapi.entityService.update(PRODUCT_UID, row.id, { data });
     return { data: serializeProduct(entry) };
   },
@@ -171,6 +203,7 @@ module.exports = createCoreController(PRODUCT_UID, ({ strapi }) => ({
         description: String(body.description || '').slice(0, 250),
         isDefault: Boolean(body.isDefault),
         prices: await cleanPrices(strapi, ctx.state.orgId, body.prices),
+        maxDiscountPct: pctOrNull(body.maxDiscountPct).value ?? null,
         organization: ctx.state.orgId,
       },
     });
@@ -194,6 +227,11 @@ module.exports = createCoreController(PRODUCT_UID, ({ strapi }) => ({
     if (body.description !== undefined) data.description = String(body.description || '').slice(0, 250);
     if (body.isDefault !== undefined) data.isDefault = Boolean(body.isDefault);
     if (body.prices !== undefined) data.prices = await cleanPrices(strapi, ctx.state.orgId, body.prices);
+    if (body.maxDiscountPct !== undefined) {
+      const { value, error } = pctOrNull(body.maxDiscountPct);
+      if (error) return ctx.badRequest(error);
+      data.maxDiscountPct = value;
+    }
     const entry = await strapi.entityService.update(BOOK_UID, row.id, { data });
     if (data.isDefault) await clearDefaultBook(strapi, ctx.state.orgId, row.id);
     return { data: serializeBook(entry) };
@@ -214,8 +252,34 @@ module.exports = createCoreController(PRODUCT_UID, ({ strapi }) => ({
     if (!guard(ctx)) return;
     if (!canRead(ctx)) return ctx.forbidden('You need access to proposals or invoices');
     const body = ctx.request?.body?.data || ctx.request?.body || {};
-    const result = calculate(body.lines, { sellerGstin: body.sellerGstin, buyerGstin: body.buyerGstin });
+    const book = await loadBook(strapi, ctx.state.orgId, body.priceBookId);
+    const lines = await expandBundleLines(strapi, ctx.state.orgId, body.lines, book?.prices || {});
+    const result = calculate(lines, { sellerGstin: body.sellerGstin, buyerGstin: body.buyerGstin });
     if (result.error) return ctx.badRequest(result.error);
-    return { data: result };
+    const discount = await checkDiscount(strapi, ctx.state.orgId, result.lines, body.priceBookId); // G27
+    return { data: { ...result, discount } };
+  },
+
+  /** GET /crm-quote-policy — org max discount before approval (G27). */
+  async getQuotePolicy(ctx) {
+    if (!guard(ctx)) return;
+    if (!canRead(ctx)) return ctx.forbidden('You need access to proposals or invoices');
+    const policy = await loadPolicy(strapi, ctx.state.orgId);
+    ctx.set('Cache-Control', 'no-store');
+    return { data: { maxDiscountPct: policy.maxDiscountPct } };
+  },
+
+  /** PUT /crm-quote-policy { maxDiscountPct: number | null } — CRM settings manage. */
+  async updateQuotePolicy(ctx) {
+    if (!guard(ctx)) return;
+    const denied = requireAppSettingsManage(ctx);
+    if (denied) return denied;
+    const body = ctx.request?.body?.data || ctx.request?.body || {};
+    const { value, error } = pctOrNull(body.maxDiscountPct);
+    if (error) return ctx.badRequest(error);
+    const policy = await loadPolicy(strapi, ctx.state.orgId);
+    if (policy.id) await strapi.entityService.update(POLICY_UID, policy.id, { data: { maxDiscountPct: value } });
+    else await strapi.entityService.create(POLICY_UID, { data: { maxDiscountPct: value, organization: ctx.state.orgId } });
+    return { data: { maxDiscountPct: value } };
   },
 }));

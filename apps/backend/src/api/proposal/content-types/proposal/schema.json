@@ -33,7 +33,7 @@
     },
     "status": {
       "type": "enumeration",
-      "enum": ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"],
+      "enum": ["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED", "PENDING_APPROVAL"],
       "default": "DRAFT"
     },
     "proposalNumber": {
@@ -169,6 +169,11 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::invoice.invoice"
-    }
+    },
+    "priceBookId": { "type": "integer" },
+    "approval": { "type": "json" },
+    "quoteVersion": { "type": "integer", "default": 1 },
+    "versionHistory": { "type": "json" },
+    "esign": { "type": "json" }
   }
 }

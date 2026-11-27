@@ -49,17 +49,39 @@ export default function NewCatalogueQuotePage() {
   const [lines, setLines] = useState([blankLine()]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [orgMaxPct, setOrgMaxPct] = useState(null);
+  const [editing, setEditing] = useState(null); // G27: ?edit=<id> edits lines; sent/approved quotes get a new version
+
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('edit');
+    if (!id) return;
+    proposalService
+      .getOne(id)
+      .then((res) => {
+        const q = res?.data;
+        if (!q) return;
+        setEditing(q);
+        setForm((f) => Object.fromEntries(Object.keys(f).map((k) => [k, q[k] ?? f[k]])));
+        if (q.priceBookId) setBookId(String(q.priceBookId));
+        if (Array.isArray(q.lineItems) && q.lineItems.length) {
+          setLines(q.lineItems.map((l) => ({ ...blankLine(), ...l, qty: String(l.qty), unitPrice: String(l.unitPrice), discountPct: String(l.discountPct || '') })));
+        }
+      })
+      .catch((e) => setError(e?.message || 'Could not load the quote'));
+  }, []);
 
   useEffect(() => {
     Promise.all([
       productService.list({ activeOnly: true }),
       productService.listPriceBooks(),
       clientAccountService.getAll({ 'pagination[pageSize]': 200 }).catch(() => ({ data: [] })),
+      productService.getQuotePolicy().catch(() => ({ maxDiscountPct: null })),
     ])
-      .then(([p, b, a]) => {
+      .then(([p, b, a, policy]) => {
+        setOrgMaxPct(policy?.maxDiscountPct ?? null);
         setProducts(p);
         setBooks(b);
-        setBookId(String(b.find((x) => x.isDefault)?.id || ''));
+        setBookId((cur) => cur || String(b.find((x) => x.isDefault)?.id || ''));
         setAccounts(Array.isArray(a?.data) ? a.data : []);
       })
       .catch((e) => {
@@ -75,6 +97,24 @@ export default function NewCatalogueQuotePage() {
   const pickProduct = (key, productId) => {
     const p = products.find((x) => String(x.id) === String(productId));
     if (!p) return setLine(key, { productId: null });
+    if (p.bundleItems?.length) {
+      // G27: a bundle becomes its component lines (own HSN/GST); optional add-ons can be removed
+      const comps = p.bundleItems
+        .map((it) => ({ it, c: products.find((x) => x.id === it.productId) }))
+        .filter(({ c }) => c)
+        .map(({ it, c }) => ({
+          ...blankLine(),
+          productId: c.id,
+          name: it.optional ? `${c.name} (add-on)` : c.name,
+          hsnSac: c.hsnSac,
+          unit: c.unit,
+          qty: String(it.qty || 1),
+          unitPrice: String(priceFor(c, book)),
+          gstRate: c.gstRate,
+          bundleName: p.name,
+        }));
+      return setLines((ls) => ls.flatMap((l) => (l.key === key ? comps : [l])));
+    }
     setLine(key, { productId: p.id, name: p.name, hsnSac: p.hsnSac, unit: p.unit, unitPrice: String(priceFor(p, book)), gstRate: p.gstRate });
   };
 
@@ -107,6 +147,21 @@ export default function NewCatalogueQuotePage() {
 
   const calc = useMemo(() => calculateQuote(lines.filter((l) => l.name), form.sellerGstin, form.buyerGstin), [lines, form.sellerGstin, form.buyerGstin]);
 
+  // G27: same rule as the server — drop from the price book / list price, limit per product → book → org
+  const overLimit = useMemo(() => {
+    const out = [];
+    for (const l of lines) {
+      const p = l.productId && (products || []).find((x) => x.id === l.productId);
+      const unit = Number(l.unitPrice) || 0;
+      const ref = Math.max(unit, p ? priceFor(p, book) : unit);
+      if (!ref || !l.name) continue;
+      const pct = Math.round((1 - (unit * (1 - (Number(l.discountPct) || 0) / 100)) / ref) * 10000) / 100;
+      const limit = p?.maxDiscountPct ?? book?.maxDiscountPct ?? orgMaxPct;
+      if (limit != null && pct > limit) out.push({ name: l.name, pct, limit });
+    }
+    return out;
+  }, [lines, products, book, orgMaxPct]);
+
   const save = async (e) => {
     e.preventDefault();
     setError('');
@@ -117,7 +172,7 @@ export default function NewCatalogueQuotePage() {
     if (form.buyerGstin && !isValidGstin(form.buyerGstin)) return setError("Client's GSTIN looks wrong (15 characters)");
     setBusy(true);
     try {
-      const res = await proposalService.create({
+      const payload = {
         ...form,
         sellerGstin: form.sellerGstin.trim().toUpperCase() || null,
         buyerGstin: form.buyerGstin.trim().toUpperCase() || null,
@@ -125,6 +180,7 @@ export default function NewCatalogueQuotePage() {
         title: form.title.trim() || `Quote for ${form.clientCompanyName.trim()}`,
         documentType: 'QUOTE',
         creationMode: 'BUILDER',
+        priceBookId: book?.id || null,
         status: 'DRAFT',
         currency: 'INR',
         proposalNumber: `QT-${Date.now().toString().slice(-6)}`,
@@ -140,7 +196,13 @@ export default function NewCatalogueQuotePage() {
           gstRate: Number(l.gstRate),
         })),
         modules: [],
-      });
+      };
+      if (editing) {
+        const { status, proposalNumber, modules, creationMode, ...changes } = payload;
+        await proposalService.update(editing.id, changes);
+        return router.push(`/clients/proposals/${editing.id}`);
+      }
+      const res = await proposalService.create(payload);
       router.push(res?.id ? `/clients/proposals/${res.id}` : '/clients/proposals');
     } catch (err) {
       setError(err?.message || 'Could not save the quote');
@@ -153,7 +215,7 @@ export default function NewCatalogueQuotePage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       <CRMPageHeader
-        title="New quote from catalogue"
+        title={editing ? `Edit quote ${editing.proposalNumber || ""}`.trim() : "New quote from catalogue"}
         subtitle="Pick products, set quantities and discounts; GST is worked out per line"
         breadcrumb={[
           { label: 'Clients', href: '/clients' },
@@ -325,6 +387,11 @@ export default function NewCatalogueQuotePage() {
                 </tbody>
               </table>
             </div>
+            {overLimit.length ? (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800" role="status">
+                {overLimit.map((o) => `${o.name}: ${o.pct}% (limit ${o.limit}%)`).join(' · ')}. This quote will need manager approval before it can be sent.
+              </p>
+            ) : null}
             <Button type="button" variant="outline" onClick={() => setLines((ls) => [...ls, blankLine()])}>
               <Plus className="mr-1 h-4 w-4" aria-hidden />
               Add line

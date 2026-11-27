@@ -30,6 +30,7 @@
     "test:risk-radar": "node --test --test-concurrency=1 tests/risk-radar.test.js tests/scope-watch.test.js",
     "test:goals": "node --test --test-concurrency=1 tests/goals.test.js",
     "test:docs": "node --test --test-concurrency=1 tests/project-docs.test.js",
+    "test:cpq": "node --test tests/cpq.test.js tests/cpq-quote.test.js",
     "test:auto-capture": "node --test --test-concurrency=1 \"tests/auto-capture/*.test.js\"",
     "test:deal-health": "node --test --test-concurrency=1 \"tests/deal-health/*.test.js\"",
     "test:cadences": "node --test --test-concurrency=1 tests/cadences.test.js",

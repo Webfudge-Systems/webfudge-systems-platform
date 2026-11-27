@@ -14,9 +14,13 @@ const {
   resolveEntityPkForRouteParam,
 } = require('../../../utils/content-api-helpers');
 const { requireModuleAccess } = require('../../../utils/rbac');
-const { applyQuoteLines, createInvoiceFromQuote } = require('../../../utils/quote-invoice');
+const { createInvoiceFromQuote } = require('../../../utils/quote-invoice');
+const { prepareQuoteSave, notifyApprovers, notifyRequester } = require('../../../utils/cpq-quote');
+const { sendBlockReason } = require('../../../utils/cpq');
+const { getEsignProvider } = require('../../../utils/esign');
 
 const UID = 'api::proposal.proposal';
+const conflict = (ctx, msg) => (ctx.conflict ? ctx.conflict(msg) : ctx.badRequest(msg));
 
 const ALLOWED_POPULATE = new Set([
   'assignedTo',
@@ -105,10 +109,12 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
 
     delete data.id;
     delete data.documentId;
-    const quoteError = applyQuoteLines(data, null); // G13: server-side GST maths
-    if (quoteError) return ctx.badRequest(quoteError);
+    // G13 GST maths + G27 bundles / discount approval
+    const prep = await prepareQuoteSave(strapi, { orgId: ctx.state.orgId, actorId: ctx.state.user.id, data, existing: null });
+    if (prep.error) return prep.blocked ? conflict(ctx, prep.error) : ctx.badRequest(prep.error);
 
-    const entry = await strapi.entityService.create(UID, { data });
+    const entry = await strapi.entityService.create(UID, { data: prep.data });
+    if (prep.newlyPending) await notifyApprovers(strapi, { orgId: ctx.state.orgId, actorId: ctx.state.user.id, quote: entry });
     return { data: entry };
   },
 
@@ -133,11 +139,13 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     const payload = body.data || body;
     const data = typeof payload === 'object' ? { ...payload } : {};
     delete data.organization;
-    const quoteError = applyQuoteLines(data, existing); // G13: server-side GST maths
-    if (quoteError) return ctx.badRequest(quoteError);
+    // G13 GST maths + G27 bundles / discount approval / versions
+    const prep = await prepareQuoteSave(strapi, { orgId: ctx.state.orgId, actorId: ctx.state.user.id, data, existing });
+    if (prep.error) return prep.blocked ? conflict(ctx, prep.error) : ctx.badRequest(prep.error);
 
-    const entry = await strapi.entityService.update(UID, pk, { data });
-    return { data: entry };
+    const entry = await strapi.entityService.update(UID, pk, { data: prep.data });
+    if (prep.newlyPending) await notifyApprovers(strapi, { orgId: ctx.state.orgId, actorId: ctx.state.user.id, quote: entry });
+    return { data: entry, meta: { versioned: Boolean(prep.versioned) } };
   },
 
   /**
@@ -159,6 +167,8 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
     if (quote.convertedInvoice?.id) {
       return { data: quote.convertedInvoice, meta: { existing: true } };
     }
+    const blocked = sendBlockReason(quote); // G27
+    if (blocked) return conflict(ctx, blocked);
     if (!Array.isArray(quote.lineItems) || !quote.lineItems.length) {
       return ctx.badRequest('Only quotes built from products can be converted. Add line items first.');
     }
@@ -168,6 +178,62 @@ module.exports = createCoreController(UID, ({ strapi }) => ({
       data: { convertedInvoice: invoice.id, ...(['DRAFT', 'SENT'].includes(quote.status) ? { status: 'ACCEPTED' } : {}) },
     });
     return { data: invoice, meta: { existing: false } };
+  },
+
+  /** POST /proposals/:id/approval { decision: 'approve' | 'reject', note? } — CRM proposals manage (G27). */
+  async decideApproval(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'proposals', 'manage');
+    if (denied) return denied;
+    const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
+    if (pk == null) return ctx.notFound();
+    const quote = await strapi.entityService.findOne(UID, pk, { populate: ['organization', 'assignedTo'] });
+    if (!quote) return ctx.notFound();
+    if (orgIdFromRelation(quote.organization) !== ctx.state.orgId) return ctx.forbidden('Access denied');
+    if (quote.approval?.state !== 'pending') return ctx.badRequest('This quote is not waiting for approval');
+    const body = ctx.request?.body?.data || ctx.request?.body || {};
+    const approved = body.decision === 'approve';
+    if (!approved && body.decision !== 'reject') return ctx.badRequest('decision must be approve or reject');
+    const now = new Date().toISOString();
+    const approval = {
+      ...quote.approval,
+      state: approved ? 'approved' : 'rejected',
+      approvedDiscountPct: approved ? quote.approval.maxPct : undefined,
+      decidedBy: ctx.state.user.id,
+      decidedAt: now,
+      note: String(body.note || '').slice(0, 500) || undefined,
+    };
+    const entry = await strapi.entityService.update(UID, pk, { data: { approval, status: 'DRAFT' } });
+    await notifyRequester(strapi, { orgId: ctx.state.orgId, quote, approved, actorId: ctx.state.user.id });
+    return { data: entry };
+  },
+
+  /** POST /proposals/:id/send-for-signature — e-sign hand-off; provider not configured yet (G27). */
+  async sendForSignature(ctx) {
+    if (!ctx.state.user) return ctx.unauthorized('Missing or invalid credentials');
+    if (!ctx.state.orgId) return ctx.forbidden('No active organization');
+    const denied = requireModuleAccess(ctx, 'crm', 'proposals', 'write');
+    if (denied) return denied;
+    const pk = await resolveEntityPkForRouteParam(strapi, UID, ctx.params.id);
+    if (pk == null) return ctx.notFound();
+    const quote = await strapi.entityService.findOne(UID, pk, { populate: ['organization'] });
+    if (!quote) return ctx.notFound();
+    if (orgIdFromRelation(quote.organization) !== ctx.state.orgId) return ctx.forbidden('Access denied');
+    const blocked = sendBlockReason(quote);
+    if (blocked) return conflict(ctx, blocked);
+    const provider = getEsignProvider();
+    const body = ctx.request?.body?.data || ctx.request?.body || {};
+    const signer = { name: body.signerName || quote.clientContactName || '', email: body.signerEmail || quote.clientEmail || '' };
+    if (!provider.configured) {
+      const esign = { state: 'not_configured', requestedAt: new Date().toISOString(), requestedBy: ctx.state.user.id, signer };
+      await strapi.entityService.update(UID, pk, { data: { esign } });
+      return { data: esign, meta: { configured: false, message: 'E-signature is not set up yet. Download the PDF and send it for signature manually.' } };
+    }
+    const result = await provider.send({ quote, pdfBase64: body.pdfBase64 || null, signer });
+    const esign = { state: 'sent', provider: provider.name, envelopeId: result.envelopeId, url: result.url || null, requestedAt: new Date().toISOString(), requestedBy: ctx.state.user.id, signer };
+    await strapi.entityService.update(UID, pk, { data: { esign, ...(quote.status === 'DRAFT' ? { status: 'SENT' } : {}) } });
+    return { data: esign, meta: { configured: true } };
   },
 
   async delete(ctx) {

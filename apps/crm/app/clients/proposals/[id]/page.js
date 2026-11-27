@@ -16,6 +16,7 @@ import {
 } from '@webfudge/ui';
 import proposalService from '../../../../lib/api/proposalService';
 import QuoteItemsCard from '../../../../components/QuoteItemsCard';
+import QuoteApprovalCard from '../../../../components/QuoteApprovalCard';
 import {
   FileText, Eye, Pencil, Trash2, Download, ArrowLeft,
   Building2, User, Mail, Phone, MapPin, Calendar, Clock,
@@ -73,6 +74,7 @@ const STATUS_CONFIG = {
   ACCEPTED: { variant: 'success', label: 'Accepted', color: 'bg-green-100 text-green-700' },
   REJECTED: { variant: 'danger',  label: 'Rejected', color: 'bg-red-100 text-red-700' },
   EXPIRED:  { variant: 'warning', label: 'Expired',  color: 'bg-amber-100 text-amber-700' },
+  PENDING_APPROVAL: { variant: 'warning', label: 'Pending approval', color: 'bg-amber-100 text-amber-800' },
 };
 
 // ─── Inline ProposalPreviewDocument (same as new/page.js) ─────────────────────
@@ -263,7 +265,7 @@ export default function ProposalDetailPage() {
     try {
       const res = await proposalService.update(id, { status: newStatus });
       if (res?.data) setProposal(res.data);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error(err); if (typeof window !== 'undefined') window.alert(err?.message || 'Could not change the status'); }
   };
 
   const handleDownloadPDF = async () => {
@@ -308,7 +310,7 @@ export default function ProposalDetailPage() {
   const uploadedPdfUrl = getProposalFileUrl(proposal.proposalFile);
 
   const statusActions = Object.entries(STATUS_CONFIG)
-    .filter(([k]) => k !== proposal.status)
+    .filter(([k]) => k !== proposal.status && k !== 'PENDING_APPROVAL')
     .map(([k, v]) => ({ key: k, label: `Mark as ${v.label}` }));
 
   return (
@@ -498,6 +500,7 @@ export default function ProposalDetailPage() {
             </Card>
 
             <QuoteItemsCard proposal={proposal} />
+            <QuoteApprovalCard proposal={proposal} onChange={setProposal} onDownloadPdf={handleDownloadPDF} />
 
             {modules.length > 0 && modules.some((m) => m.name) && (
               <Card variant="elevated" className="rounded-xl">
