@@ -37,6 +37,7 @@ const RESOURCE_APPS = {
   'crm-products': ['crm'],
   'crm-price-books': ['crm'],
   'crm-quotes': ['crm'],
+  'crm-vertical-packs': ['crm'], // G22
   // Meta Lead Ads settings (G6). The webhook carries no user, so this middleware lets it through.
   'crm-meta': ['crm'],
   // Lead capture settings (G7); the public /lead-capture endpoints check access themselves.
