@@ -52,6 +52,7 @@ import {
   EntityActivityPanel,
   EntityFilesPanel,
 } from '@webfudge/ui';
+import DraftWithAiButton from '../../../../components/ai/DraftWithAiButton';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import dealService from '../../../../lib/api/dealService';
 import pipelineService, { dealPipelineId, dealStageKey } from '../../../../lib/api/pipelineService';
@@ -1225,6 +1226,7 @@ export default function DealDetailPage() {
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <DraftWithAiButton recordType="deal" recordId={id} defaultTo={deal?.contact?.email || ''} />
           {canEditDeal ? (
             <Link href={id ? `/sales/deals/${id}/edit` : '#'} className={headerIconBtnClass} title="Edit">
               <Edit className="h-5 w-5" />

@@ -73,6 +73,8 @@ const RESOURCE_APPS = {
   'project-docs': ['pm'],
   // Approvals & proofing (W9); the client side lives under /api/portal/*
   proofs: ['pm'],
+  // Ask Grow + Draft anything (G20)
+  'ask-grow': ['crm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

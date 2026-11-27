@@ -49,6 +49,7 @@ import {
   useIndustrySelectOptions,
   TableCellNextConnect,
 } from '@webfudge/ui';
+import DraftWithAiButton from '../../../../components/ai/DraftWithAiButton';
 import CRMPageHeader from '../../../../components/CRMPageHeader';
 import { InlineEditableNextConnect } from '../../../../components/InlineEditableNextConnect';
 import leadCompanyService from '../../../../lib/api/leadCompanyService';
@@ -1447,6 +1448,7 @@ export default function LeadCompanyDetailPage() {
         showProfile
       >
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <DraftWithAiButton recordType="lead" recordId={id} defaultTo={lead?.email} />
           {isAlreadyConverted ? (
             lead?.convertedAccount?.id ? (
               <Link
