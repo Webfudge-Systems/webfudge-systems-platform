@@ -1,0 +1,22 @@
+{
+  "kind": "collectionType",
+  "collectionName": "my_day_plans",
+  "info": {
+    "singularName": "my-day-plan",
+    "pluralName": "my-day-plans",
+    "displayName": "My Day plan",
+    "description": "A user's planned day: time blocks from the deterministic scheduler plus their overrides (W21)"
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "date": { "type": "string", "required": true },
+    "orgKey": { "type": "integer", "required": true },
+    "userKey": { "type": "integer", "required": true },
+    "overrides": { "type": "json" },
+    "plan": { "type": "json" },
+    "generatedAt": { "type": "datetime" },
+    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

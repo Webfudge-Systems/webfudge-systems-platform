@@ -4,9 +4,11 @@ export const dynamic = 'force-dynamic';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@webfudge/auth';
 import {
   Avatar,
+  IS_SAAS_PLATFORM,
   Button,
   KPICard,
   LoadingSpinner,
@@ -1150,6 +1152,13 @@ export default function MyTasksPage() {
         onImportClick={() => console.log('Import clicked')}
         onExportClick={() => console.log('Export clicked')}
       />
+
+      {IS_SAAS_PLATFORM && (
+        <Link href="/my-tasks/my-day" className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800 hover:bg-orange-100">
+          <span><strong>My Day</strong> · your tasks planned around meetings and capacity, plus Ask Work</span>
+          <span aria-hidden>→</span>
+        </Link>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard

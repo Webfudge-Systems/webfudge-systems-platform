@@ -24,6 +24,7 @@
     "test:lead-capture": "node --test \"tests/lead-capture/*.test.js\"",
     "e2e:lead-capture": "node scripts/e2e-lead-capture.js",
     "test:ai": "node --test --test-concurrency=1 \"tests/ai/*.test.js\"",
+    "test:my-day": "node --test --test-concurrency=1 \"tests/my-day/*.test.js\"",
     "test:intake": "node --test \"tests/intake/*.test.js\"",
     "test:smart-triage": "node --test --test-concurrency=1 \"tests/smart-triage/*.test.js\"",
     "test:risk-radar": "node --test --test-concurrency=1 tests/risk-radar.test.js tests/scope-watch.test.js",

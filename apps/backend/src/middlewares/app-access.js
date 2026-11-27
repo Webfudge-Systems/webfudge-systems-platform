@@ -56,6 +56,8 @@ const RESOURCE_APPS = {
   // Work hierarchy (W1)
   workspaces: ['pm'],
   'task-lists': ['pm'],
+  // My Day + Ask Work (W21)
+  'my-day': ['pm'],
   // Intake (W13) settings; the public /api/intake endpoints check the org's access themselves
   'pm-intake': ['pm'],
   // Risk radar + scope-creep watcher (W19)
