@@ -37,6 +37,8 @@ const FEATURES = {
   'pm.client_portal': { app: 'pm', tier: 'business', label: 'Client portal' },
   'pm.profitability': { app: 'pm', tier: 'business', label: 'Project profitability' },
   'pm.ai_teammates': { app: 'pm', tier: 'business', label: 'AI teammates' },
+  'pm.risk_radar': { app: 'pm', tier: 'business', label: 'Risk radar' }, // W19
+  'pm.scope_watch': { app: 'pm', tier: 'business', label: 'Scope-creep watcher' }, // W19
 };
 
 /**

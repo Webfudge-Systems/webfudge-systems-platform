@@ -364,6 +364,7 @@ export default function PipelinePage() {
       <WonDealProjectModal
         open={wonModal.open}
         dealName={wonModal.dealName}
+        dealId={wonModal.dealId}
         busy={wonBusy}
         onClose={() => setWonModal((s) => ({ ...s, open: false }))}
         onSkipProject={handleWonSkip}

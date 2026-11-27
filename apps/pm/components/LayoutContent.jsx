@@ -21,6 +21,8 @@ export default function LayoutContent({ children }) {
   }, [saasRedirect, router])
   // Client portal (W10): client contacts, no team sidebar, no team auth. Has its own layout.
   if (pathname === '/portal' || pathname.startsWith('/portal/')) return children
+  // Public intake forms (W13): anyone with the link, no sidebar, no auth.
+  if (pathname.startsWith('/intake/')) return children
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
   const hasToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('auth-token'))

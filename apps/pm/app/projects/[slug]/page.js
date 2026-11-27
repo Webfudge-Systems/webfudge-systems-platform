@@ -47,6 +47,12 @@ import ProjectDetailMetaBar from '../../../components/ProjectDetailMetaBar';
 import PMRowActions from '../../../components/PMRowActions';
 import ProjectSprintsPanel from '../../../components/ProjectSprintsPanel';
 import ProjectClientPortalPanel from '../../../components/ProjectClientPortalPanel';
+import ProjectIntakePanel from '../../../components/ProjectIntakePanel';
+import ProjectRiskScopeTab from '../../../components/ProjectRiskScopeTab';
+import { IS_SAAS_PLATFORM } from '@webfudge/ui';
+import ProjectProfitabilityPanel from '../../../components/ProjectProfitabilityPanel';
+import ProjectLinkedGoals from '../../../components/ProjectLinkedGoals';
+import DocsList from '../../../components/docs/DocsList';
 import QuickCreateTaskModal from '../../../components/QuickCreateTaskModal';
 import ProjectTasksPanel from '../../../components/ProjectTasksPanel';
 import ProjectTaskLists from '../../../components/ProjectTaskLists';
@@ -56,7 +62,7 @@ import { MyTasksKanbanBoard } from '../../../components/MyTasksViews';
 import useSavedViews from '../../../lib/useSavedViews';
 import { formatHours } from '../../../lib/api/timeTrackingService';
 import ProjectOwnerPicker from '../../../components/ProjectOwnerPicker';
-import { InfoRow, InfoSection, SidebarCardTitle } from '@webfudge/ui';
+import { InfoRow, InfoSection, SidebarCardTitle, IS_SAAS_PLATFORM } from '@webfudge/ui';
 import { getProjectStatusMeta, PROJECT_STATUS_OPTIONS } from '../../../components/PMStatusBadge';
 import projectService from '../../../lib/api/projectService';
 import { fetchProjectClientOptions, mapProjectClientSelectOptions } from '../../../lib/api/projectClientOptions';
@@ -91,8 +97,14 @@ const DETAIL_TABS = [
   { key: 'timeline', label: 'Timeline' },
   { key: 'sprints', label: 'Sprints' },
   { key: 'activity', label: 'Activity' },
+  { key: 'docs', label: 'Docs' },
   { key: 'files', label: 'Files' },
   { key: 'client', label: 'Client portal' },
+  // W13 intake (forms / email → tasks): SaaS only
+  ...(IS_SAAS_PLATFORM ? [{ key: 'intake', label: 'Intake' }] : []),
+  // W19 (SaaS only): risk radar + scope-creep watcher
+  ...(IS_SAAS_PLATFORM ? [{ key: 'risk', label: 'Risk & scope' }] : []),
+  { key: 'profitability', label: 'Profitability' }, // W22: admins + managers only
 ];
 
 const headerIconBtnClass =
@@ -234,6 +246,15 @@ export default function ProjectDetailPage() {
     return id != null ? String(id) : '';
   }, [authUser]);
   const [activeTab, setActiveTab] = useState('overview');
+  // W22: margin alerts link to ?tab=profitability
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get('tab');
+    if (t && DETAIL_TABS.some((x) => x.key === t)) setActiveTab(t);
+  // W8: links like /projects/12?tab=docs open a tab directly
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab && DETAIL_TABS.some((t) => t.key === tab)) setActiveTab(tab);
+  }, []);
   const [fileCount, setFileCount] = useState(0);
   const [project, setProject] = useState(null);
   // W3: project task views (list / board / table / calendar / Gantt / workload) + saved views per user
@@ -453,7 +474,7 @@ export default function ProjectDetailPage() {
 
   const tabsWithBadges = useMemo(
     () =>
-      DETAIL_TABS.map((tab) => ({
+      DETAIL_TABS.filter((tab) => tab.key !== 'profitability' || pmOrgRoleKind !== 'member').map((tab) => ({
         ...tab,
         badge:
           tab.key === 'tasks'
@@ -464,7 +485,7 @@ export default function ProjectDetailPage() {
                 ? activityCount || undefined
                 : undefined,
       })),
-    [majorProjectTasks.length, activityCount, fileCount]
+    [majorProjectTasks.length, activityCount, fileCount, pmOrgRoleKind]
   );
 
   const handleAddProjectComment = useCallback(
@@ -1086,6 +1107,7 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
             </Card>
+            {project?.id ? <ProjectLinkedGoals projectId={project.id} /> : null}
           </div>
         </div>
       ) : null}
@@ -1223,6 +1245,10 @@ export default function ProjectDetailPage() {
         </div>
       ) : null}
 
+      {activeTab === 'docs' && project?.id ? (
+        <DocsList projectId={project.id} projectName={project.name} showScope={false} />
+      ) : null}
+
       {activeTab === 'files' ? (
         <EntityFilesPanel
           subjectType="project"
@@ -1235,9 +1261,14 @@ export default function ProjectDetailPage() {
         />
       ) : null}
 
+      {activeTab === 'risk' && project?.id ? <ProjectRiskScopeTab projectId={project.id} /> : null}
+
       {activeTab === 'client' && project?.id ? (
         <ProjectClientPortalPanel projectId={project.id} canEdit={canEditThisProject} />
       ) : null}
+
+      {activeTab === 'intake' && project?.id ? <ProjectIntakePanel projectId={project.id} /> : null}
+      {activeTab === 'profitability' && project?.id && pmOrgRoleKind !== 'member' ? <ProjectProfitabilityPanel projectId={project.id} /> : null}
 
       <QuickCreateTaskModal
         isOpen={taskModal.open}
