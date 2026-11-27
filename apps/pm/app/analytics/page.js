@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, Clock, Flag, XCircle } from 'lucide-react';
-import { Card, DashboardKpiRow, LoadingSpinner } from '@webfudge/ui';
+import { AlertTriangle, CheckCircle2, Clock, Flag, Percent, Settings2, XCircle } from 'lucide-react';
+import { Card, DashboardKpiRow, LoadingSpinner, usePlanFeature } from '@webfudge/ui';
 import PMPageHeader from '../../components/PMPageHeader';
 import PortfolioRiskRadar from '../../components/PortfolioRiskRadar';
 import strapiClient from '../../lib/strapiClient';
+import { getPmOrgRoleKind } from '../../lib/pmOrgRoles';
+import CostRatesModal from '../../components/CostRatesModal';
+import { MARGIN_STATUS } from '../../components/ProjectProfitabilityPanel';
 
 const selectClass =
   'rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20';
@@ -28,6 +31,37 @@ function Bar({ value, tone = 'bg-orange-500', marker }) {
   );
 }
 
+/** W22: margin % vs target, revenue − cost, and a 6-month margin sparkline. */
+function MarginCell({ m }) {
+  if (!m) return <span className="text-xs text-gray-400">—</span>;
+  const S = MARGIN_STATUS[m.status] || MARGIN_STATUS.ok;
+  const pts = m.trend.map((t) => t.marginPct);
+  const known = pts.filter((v) => v != null);
+  const lo = Math.min(0, ...known);
+  const hi = Math.max(1, ...known);
+  const path = pts
+    .map((v, i) => (v == null ? null : `${(i / Math.max(1, pts.length - 1)) * 60},${16 - ((v - lo) / (hi - lo || 1)) * 16}`))
+    .filter(Boolean)
+    .join(' ');
+  return (
+    <div title={`Revenue ${inr.format(m.revenue)} · Cost ${inr.format(m.cost)} · Target ${m.targetMarginPct}%`}>
+      <div className="flex items-center gap-2">
+        <span className={`text-sm font-semibold tabular-nums ${m.status === 'below' ? 'text-red-600' : m.status === 'near' ? 'text-amber-700' : m.status === 'ok' ? 'text-emerald-700' : 'text-gray-400'}`}>
+          {m.marginPct == null ? '—' : `${m.marginPct}%`}
+        </span>
+        {known.length > 1 ? (
+          <svg width="60" height="16" className="overflow-visible" aria-hidden>
+            <polyline points={path} fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-400" />
+          </svg>
+        ) : null}
+      </div>
+      <p className="text-xs text-gray-500">
+        {m.status === 'no_revenue' ? S.label : `${inr.format(m.margin)} · target ${m.targetMarginPct}%`}
+      </p>
+    </div>
+  );
+}
+
 export default function PortfolioPage() {
   const [data, setData] = useState(null);
   const [options, setOptions] = useState({ clients: [], managers: [] });
@@ -37,6 +71,26 @@ export default function PortfolioPage() {
   const [status, setStatus] = useState('active');
   const [sort, setSort] = useState('health');
   const [error, setError] = useState('');
+  // W22: margin per project (Business plan; admins + managers)
+  const profitPlan = usePlanFeature('pm.profitability');
+  const [roleKind, setRoleKind] = useState('member');
+  useEffect(() => setRoleKind(getPmOrgRoleKind()), []);
+  const showMargin = profitPlan.ready && profitPlan.allowed && roleKind !== 'member';
+  const [profit, setProfit] = useState(null);
+  const [ratesOpen, setRatesOpen] = useState(false);
+  const loadProfit = useCallback(async () => {
+    if (!showMargin) return setProfit(null);
+    try {
+      const res = await strapiClient.get('/profitability/summary', { status });
+      setProfit(res?.data || null);
+    } catch {
+      setProfit(null);
+    }
+  }, [showMargin, status]);
+  useEffect(() => {
+    loadProfit();
+  }, [loadProfit]);
+  const marginById = useMemo(() => new Map((profit?.projects || []).map((m) => [m.id, m])), [profit]);
 
   const load = useCallback(async () => {
     setError('');
@@ -63,11 +117,13 @@ export default function PortfolioPage() {
         ? rank[a.health] - rank[b.health] || b.tasks.overdue - a.tasks.overdue
         : sort === 'burn'
           ? (b.budget?.burn ?? -1) - (a.budget?.burn ?? -1)
+          : sort === 'margin'
+            ? (marginById.get(a.id)?.marginPct ?? 999) - (marginById.get(b.id)?.marginPct ?? 999)
           : sort === 'end'
             ? String(a.endDate || '9').localeCompare(String(b.endDate || '9'))
             : a.name.localeCompare(b.name)
     );
-  }, [data, health, sort]);
+  }, [data, health, sort, marginById]);
 
   const s = data?.summary || {};
   const kpis = [
@@ -76,13 +132,16 @@ export default function PortfolioPage() {
     { title: 'At risk', value: data ? String(s.atRisk || 0) : '—', icon: AlertTriangle },
     { title: 'Off track', value: data ? String(s.offTrack || 0) : '—', icon: XCircle },
     { title: 'Billable hours', value: data ? `${s.billableHours || 0} h` : '—', icon: Clock },
+    ...(showMargin && profit
+      ? [{ title: 'Margin', value: profit.totals.marginPct == null ? '—' : `${profit.totals.marginPct}%`, icon: Percent, change: profit.totals.belowTarget ? `${profit.totals.belowTarget} below target` : `Target ${profit.orgTarget}%`, changeType: profit.totals.belowTarget ? 'decrease' : 'increase' }]
+      : []),
   ];
 
   return (
     <div className="p-4 md:p-6 space-y-6">
       <PMPageHeader
         title="Portfolio"
-        subtitle="Every project's health, progress, budget burn and upcoming milestones on one screen"
+        subtitle={`Every project's health, progress, budget burn${showMargin ? ', margin' : ''} and upcoming milestones on one screen`}
         breadcrumb={[
           { label: 'Dashboard', href: '/' },
           { label: 'Portfolio', href: '/analytics' },
@@ -136,11 +195,23 @@ export default function PortfolioPage() {
           <select className={selectClass} value={sort} onChange={(e) => setSort(e.target.value)}>
             <option value="health">Needs attention first</option>
             <option value="burn">Budget burn</option>
+            {showMargin ? <option value="margin">Lowest margin</option> : null}
             <option value="end">End date</option>
             <option value="name">Name</option>
           </select>
         </label>
+        {showMargin && profit?.canManage ? (
+          <button
+            type="button"
+            onClick={() => setRatesOpen(true)}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Settings2 className="h-4 w-4" aria-hidden />
+            Cost rates &amp; targets
+          </button>
+        ) : null}
       </Card>
+      {ratesOpen ? <CostRatesModal isOpen={ratesOpen} onClose={() => setRatesOpen(false)} onChanged={loadProfit} /> : null}
 
       {error ? (
         <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700" role="alert">
@@ -162,6 +233,7 @@ export default function PortfolioPage() {
                 <th className="min-w-[10rem] px-3 py-2 font-medium">Progress</th>
                 <th className="px-3 py-2 text-right font-medium">Overdue</th>
                 <th className="min-w-[10rem] px-3 py-2 font-medium">Budget burn</th>
+                {showMargin ? <th className="min-w-[9rem] px-3 py-2 font-medium">Margin</th> : null}
                 <th className="px-3 py-2 text-right font-medium">Hours (billable)</th>
                 <th className="px-3 py-2 font-medium">Next milestones</th>
                 <th className="px-3 py-2 font-medium">Ends</th>
@@ -211,6 +283,11 @@ export default function PortfolioPage() {
                         <span className="text-xs text-gray-400">No budget</span>
                       )}
                     </td>
+                    {showMargin ? (
+                      <td className="px-3 py-3">
+                        <MarginCell m={marginById.get(p.id)} />
+                      </td>
+                    ) : null}
                     <td className="px-3 py-3 text-right tabular-nums text-gray-800">
                       {p.hoursLogged} <span className="text-gray-500">({p.billableHours})</span>
                       {p.approvedHours ? <p className="text-xs text-gray-500">{p.approvedHours} h approved</p> : null}
@@ -234,7 +311,7 @@ export default function PortfolioPage() {
               })}
               {!rows.length ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-gray-500">
+                  <td colSpan={showMargin ? 9 : 8} className="p-8 text-center text-gray-500">
                     No projects match.
                   </td>
                 </tr>
@@ -246,6 +323,7 @@ export default function PortfolioPage() {
       <p className="text-xs text-gray-500">
         Health: off track when past the end date, 3+ overdue tasks, more than 30% behind the timeline or over budget; at risk with any overdue task, 15%+ behind or
         budget burning faster than time (or 90%+ used). The grey tick on each bar marks how much of the timeline has elapsed.
+        {showMargin ? ' Margin = Grow invoices (before tax) minus approved timesheet hours × each person’s cost rate.' : ''}
       </p>
     </div>
   );

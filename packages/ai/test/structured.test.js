@@ -89,6 +89,9 @@ test('templates: per-app registry with English, Hindi and Marathi output', () =>
   const workKeys = listTemplates('work').map((t) => t.key);
   assert.ok(workKeys.includes('work.task_summary'));
   assert.ok(workKeys.every((k) => k.startsWith('work.')), 'only work templates in the work list');
+  assert.ok(keys.includes('work.weekly_status'));
+  assert.ok(listTemplates('work').every((t) => t.app === 'work' && t.key.startsWith('work.')));
+  assert.deepEqual(listTemplates('work').map((t) => t.key), ['work.task_summary', 'work.project_plan']);
 
   const en = renderTemplate('grow.lead_score', { lead: { companyName: 'Acme', email: 'a@acme.in', id: 9 } });
   assert.equal(en.task, 'score');

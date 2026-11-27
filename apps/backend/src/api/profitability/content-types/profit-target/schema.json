@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "profit_targets",
+  "info": {
+    "singularName": "profit-target",
+    "pluralName": "profit-targets",
+    "displayName": "Profit Target",
+    "description": "Target margin % for a project, or the organization default when project is empty (W22). alertsSent tracks below-target alerts per month."
+  },
+  "options": { "draftAndPublish": false },
+  "pluginOptions": {},
+  "attributes": {
+    "targetMarginPct": { "type": "decimal" },
+    "alertsSent": { "type": "json" },
+    "project": { "type": "relation", "relation": "manyToOne", "target": "api::project.project" },
+    "organization": { "type": "relation", "relation": "manyToOne", "target": "api::organization.organization" }
+  }
+}

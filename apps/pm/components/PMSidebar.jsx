@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { LoadingSpinner, SidebarProductBranding } from '@webfudge/ui'
+import { IS_SAAS_PLATFORM, LoadingSpinner, SidebarProductBranding } from '@webfudge/ui'
 import {
   LayoutDashboard,
   CheckSquare,
@@ -25,6 +25,7 @@ import {
   PieChart,
   Clock,
   Repeat,
+  Megaphone,
 } from 'lucide-react'
 import projectService from '../lib/api/projectService'
 import { transformProject } from '../lib/api/dataTransformers'
@@ -132,6 +133,17 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
       icon: Repeat,
       href: '/retainers',
     },
+    // W17 Status Reporter (SaaS only): AI weekly project updates
+    ...(IS_SAAS_PLATFORM
+      ? [{ id: 'weekly-updates', module: 'projects', label: 'Weekly updates', icon: Megaphone, href: '/weekly-updates' }]
+      : []),
+    {
+      id: 'goals',
+      module: 'projects',
+      label: 'Goals',
+      icon: Target,
+      href: '/goals',
+    },
     {
       id: 'clients',
       module: 'client_accounts',
@@ -151,9 +163,9 @@ export default function PMSidebar({ collapsed = false, onToggle }) {
   const pmTools = [
     {
       label: 'Documents',
+      module: 'projects',
       icon: FileText,
-      href: '/coming-soon?feature=documents',
-      comingSoonFeature: 'documents',
+      href: '/docs',
     },
     { label: 'Calendar', module: 'calendar', icon: Calendar, href: '/calendar' },
   ]
