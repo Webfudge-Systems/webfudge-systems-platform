@@ -55,6 +55,8 @@ const RESOURCE_APPS = {
   // Work hierarchy (W1)
   workspaces: ['pm'],
   'task-lists': ['pm'],
+  // My Day + Ask Work (W21)
+  'my-day': ['pm'],
 };
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);

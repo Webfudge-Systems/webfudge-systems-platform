@@ -86,7 +86,7 @@ test('templates: per-app registry with English, Hindi and Marathi output', () =>
   assert.ok(keys.includes('grow.lead_score'));
   assert.ok(keys.includes('grow.followup_email'));
   assert.ok(keys.includes('work.task_summary'));
-  assert.deepEqual(listTemplates('work').map((t) => t.key), ['work.task_summary']);
+  for (const k of ['work.task_summary', 'work.ask_plan', 'work.ask_answer']) assert.ok(listTemplates('work').some((t) => t.key === k), k);
 
   const en = renderTemplate('grow.lead_score', { lead: { companyName: 'Acme', email: 'a@acme.in', id: 9 } });
   assert.equal(en.task, 'score');
