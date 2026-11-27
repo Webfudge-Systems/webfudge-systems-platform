@@ -231,6 +231,8 @@ function registerBuiltInActions(r, strapi) {
     },
   });
 
+  // W19 scope-creep watcher: change orders (outbound → approval queue).
+  require('./work-scope').registerScopeActions(r, strapi);
   // W17 Status Reporter: weekly project updates (outbound, approval queue).
   require('../status-reports/actions').register(r, strapi);
 }
